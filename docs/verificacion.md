@@ -99,18 +99,33 @@ pasaba de 300 caracteres. No era el emulador ni el código: **el APK nunca llega
 Con esas medidas: **BUILD SUCCESSFUL**. APK release de 82 MB con el JS **embebido**, para `x86_64` y
 `arm64-v8a`, que no depende de Metro ni de `adb reverse`.
 
-### Pantallas verificadas en el emulador
+### El recorrido completo, pantalla por pantalla
 
-Capturas en `docs/evidence/`:
+Capturas en `docs/evidence/`, tomadas del APK de release instalado y con el backend real detrás:
 
 | Captura | Qué demuestra |
 |---|---|
 | `01-bienvenida.png` | Arranque y propuesta de valor |
 | `02-registro.png` | Formulario de alta |
-| `02-registro-datos.png` | **Validación en vivo**: fecha mal formada marcada en rojo con su mensaje |
-| `03-ingresar.png` | Ingreso, con el aviso de bloqueo por intentos |
-| `03-ingresar-datos.png` | Credenciales completas y botón habilitado |
-| `04-inicio.png` | **Error de red presentado con claridad** cuando la API no responde |
+| `02-ingresar.png` · `03-ingresar.png` | Ingreso, con el aviso de bloqueo por intentos |
+| `03-inicio.png` | **Sesión iniciada**: línea de Bs 5.000,00 y el badge «Entorno sandbox» declarado |
+| `04-escanear.png` · `04-escanear-codigos.png` | Permiso de cámara, entrada manual y códigos de prueba |
+| `05-monto.png` | **Desglose 60/40 en vivo** y el tope de política (Bs 100.000 rechazado con su motivo) |
+| `06-evaluacion.png` | Orden creada, en evaluación, con el contexto del comercio resuelto del token |
+| `06b-motor-caido-va-a-revision.png` | **El motor caído manda a REVISIÓN, no a rechazo**, y la pantalla lo dice |
+| `07-decision.png` | **Crédito aprobado** y la compra pidiendo el inicial |
+| `08-calendario.png` · `09-calendario-completo.png` | Trazabilidad de la decisión y calendario de 4 obligaciones |
+| `10-pago-qr.png` · `11-pago-detalle.png` | **QR bancario del comercio** con el monto exacto y su vigencia |
+| `12-evidencia-pago.png` | Beneficiario, cuenta, y «tu comprobante es evidencia, no confirma el pago» |
+| `08-pagos.png` | Calendario consolidado de pagos |
+
+Dos capturas merecen mirarse juntas, porque son el mismo invariante visto por sus dos caras:
+
+- `06b` se tomó con el motor de decisión **apagado**. La pantalla muestra «EN REVISIÓN» y el pie
+  dice `modo engine_unavailable_manual`. Una avería no se convirtió en un rechazo.
+- `08-calendario.png` se tomó con el motor **vivo**. El mismo pie dice
+  `solicitud CRA-49c46300-… · ejecución 4 · modo decision_engine`, y ese `4` es el `executionId`
+  que el motor guardó en su propia auditoría.
 
 ### Matriz por plataforma
 
@@ -121,7 +136,8 @@ Capturas en `docs/evidence/`:
 | Instalación del APK | verificado | **bloqueado por el dispositivo** | no ejecutado |
 | Arranque y navegación | verificado | no ejecutado | no ejecutado |
 | Registro y validaciones | verificado | no ejecutado | no ejecutado |
-| Compra completa hasta calendario | **no ejecutado** | no ejecutado | no ejecutado |
+| Compra completa hasta calendario | **verificado** | no ejecutado | no ejecutado |
+| QR bancario y evidencia de pago | **verificado** | no ejecutado | no ejecutado |
 
 El tablet Xiaomi rechaza `adb install` con `INSTALL_FAILED_USER_RESTRICTED` mientras no se active
 **«Instalar vía USB»** en las opciones de desarrollador. Es una restricción del dispositivo, no del

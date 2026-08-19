@@ -159,42 +159,25 @@ procedimiento completo está en [`verificacion.md`](verificacion.md) §3.
 
 ## 5. TODO — lo que queda pendiente
 
-### TODO-1 · Capturas del flujo de compra `[bloqueado por el entorno]`
+### TODO-1 · ~~Capturas del flujo de compra~~ `[HECHO]`
 
-Faltan las pantallas de escaneo, monto, evaluación, aceptación del comercio, calendario y evidencia
-de pago. Todo lo demás del recorrido está en `docs/evidence/`.
+Recorrido completo capturado en `docs/evidence/`, del arranque al QR bancario, con el APK de
+release instalado y el backend real detrás. Incluye las dos caras del mismo invariante: el motor
+caído derivando a revisión (`06b`) y el motor vivo aprobando con su `executionId` (`08-calendario`).
 
-**Los dos caminos y por qué ninguno salió:**
+Quedó sin capturar solo el **camino de rechazo por QR revocado**: la pantalla de escaneo ofrece el
+botón «Comercio con QR revocado» para provocarlo.
 
-El **emulador** (`Pixel_2`, imagen `android-37.0 google_apis_playstore_ps16k`) tiene la red rota: el
-sistema levanta `wlan0` en `10.0.2.16` y a veces también `eth0` en `10.0.2.15`, ambas en la misma
-subred y sin ruta por defecto. `ping 10.0.2.2` responde, pero **ninguna conexión TCP prospera**, ni
-por NAT ni por `adb reverse`. Sobrevive a un `-wipe-data`. Además su SystemUI cae cada pocos minutos
-bajo carga. Si hay que insistir, probar con **otra imagen de sistema** (una `google_apis` normal, sin
-`playstore`, API 34) antes que con otro ajuste de red.
+**Cómo repetirlo** (5 minutos, con el stack arriba):
 
-El **tablet** (`2505DRP06G`, Xiaomi) rechaza `adb install` con `INSTALL_FAILED_USER_RESTRICTED`
-mientras no se active **«Instalar vía USB»** en las opciones de desarrollador. **Es restricción del
-dispositivo, no del APK**: el mismo fichero instala bien en el emulador. En Xiaomi ese ajuste exige
-sesión iniciada con cuenta Mi y tarda un minuto en habilitarse.
+1. `node tools/dev-backend/host-port-bridge.mjs --listen 3106 --target 3105` — sin esto el
+   emulador no alcanza la API publicada por Docker (ver TODO-3-bis y el propio script).
+2. Compilar con `usesCleartextTraffic` y la URL apuntando a `http://10.0.2.2:3106/api/v1`.
+3. Entrar con el cliente aprovisionado, pestaña **Escanear** → **Comercio válido** → monto → seguir.
 
-**Con el tablet listo, el recorrido son 5 minutos.** El APK ya está compilado para `arm64-v8a` y
-apunta a `192.168.0.197:3105`, que es la dirección de tu `.env`:
-
-```bash
-adb install -r <copia-de-build>/android/app/build/outputs/apk/release/app-release.apk
-```
-
-Entra con `pabliarca@gmail.com`, ve a la pestaña **Escanear**, usa el código a mano con el token de
-Farmacia Bolivia de más abajo, escribe un monto (p. ej. 500) y sigue hasta el calendario.
-
-Para el flujo no hace falta cámara: la pantalla de escaneo acepta el código a mano. Token válido de
-`src/sandbox/fixtures.ts`:
-
-```
-atlas://pos/9f2b7c41d8a54e6fb03c15ae77d2be90     Farmacia Bolivia (ACTIVE)
-atlas://pos/55aa10cc74e8493cb6f0d2a91e3b7c64     Tecno Import (REVOKED, para el camino de rechazo)
-```
+**Aviso sobre el emulador**: el AVD `Pixel_2` con la imagen `android-37.0 google_apis_playstore_ps16k`
+tiene la red rota (`ping` responde, ningún TCP prospera) y su SystemUI cae bajo carga. El AVD
+`AtlasDemo` sobre `android-36`, con 2 GB y **el stack de ALO VIDA detenido**, sí funciona.
 
 ### TODO-2 · Llevar el artefacto del motor a un seeder `[alto]`
 
