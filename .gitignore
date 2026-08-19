@@ -39,3 +39,12 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Entorno local (no versionado)
+.env
+.env.local
+
+# Evidencia generada en ejecucion
+*.log
+android/
+ios/

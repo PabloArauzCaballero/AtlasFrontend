@@ -1,0 +1,106 @@
+# Override de DESARROLLO para AtlasBackend. No modifica el repositorio del backend.
+#
+# Anade lo que al stack local le falta para que el flujo del cliente final se pueda recorrer
+# COMPLETO desde la app:
+#
+#   1. Proveedor `webhook` de SMS/WhatsApp apuntando al sumidero local (`otp-sink.mjs`), para poder
+#      leer el codigo de verificacion REAL que el backend genera. Sin esto,
+#      `contact-verification/request` responde `VERIFICATION_CHANNEL_UNAVAILABLE`.
+#   2. MinIO como almacenamiento S3 compatible. Sin esto,
+#      `documents/upload-url` responde `DOCUMENT_STORAGE_NOT_CONFIGURED` y el paquete de identidad
+#      es imposible de completar.
+#   3. La direccion y las credenciales del MOTOR DE DECISION. Sin `DECISION_ENGINE_BASE_URL` el
+#      backend responde `DECISION_ENGINE_NOT_CONFIGURED` y manda toda solicitud a revision humana:
+#      la cadena movil -> backend -> motor no llega a existir y la compra se queda esperando a una
+#      persona que en local no hay.
+#
+# `ATLAS_DEV_HOST_IP` debe ser la IP LAN de la maquina anfitriona: es la unica direccion que
+# resuelven a la vez el contenedor del backend (para firmar y guardar) y el emulador/dispositivo
+# (para subir el archivo con la URL prefirmada). `localhost` no sirve para ninguno de los dos.
+#
+# Uso desde AtlasBackend/:
+#   ATLAS_DEV_HOST_IP=192.168.0.197 API_PUBLISH_PORT=3105 \
+#   ATLAS_DEV_DECISION_ENGINE_URL=http://host.docker.internal:3200 \
+#   ATLAS_DEV_DECISION_ENGINE_RUNTIME_KEY=<RUNTIME_API_KEY del motor> \
+#   ATLAS_DEV_DECISION_ENGINE_MANAGEMENT_KEY=<MANAGEMENT_API_KEY del motor> \
+#   docker compose -f docker-compose.yml \
+#     -f ../AtlasConsumerApp/tools/dev-backend/docker-compose.dev-channels.yml \
+#     --profile app up -d api minio minio-init
+#
+# Nunca usar fuera de local.
+services:
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: atlas
+      MINIO_ROOT_PASSWORD: atlas-dev-secret
+    ports:
+      - '${MINIO_PUBLISH_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PUBLISH_PORT:-9001}:9001'
+    volumes:
+      - atlas-minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "mc alias set local http://minio:9000 atlas atlas-dev-secret &&
+             mc mb --ignore-existing local/atlas-documents &&
+             mc anonymous set none local/atlas-documents &&
+             echo 'bucket atlas-documents listo'"
+    restart: 'no'
+
+  # El admin interno lo siembra `migrate`, no `api`: es ahi donde corren los seeders. Sin estas dos
+  # variables el seeder usa el hash versionado, cuya contrasena no esta en el repositorio y por
+  # tanto no sirve para autenticarse desde una maquina nueva.
+  migrate:
+    environment:
+      DEV_ADMIN_EMAIL: ${ATLAS_DEV_ADMIN_EMAIL:-pablo@atlas.internal}
+      DEV_ADMIN_PASSWORD: ${ATLAS_DEV_ADMIN_PASSWORD:-}
+
+  api:
+    environment:
+      NOTIFICATION_SMS_PROVIDER: webhook
+      NOTIFICATION_SMS_WEBHOOK_URL: http://host.docker.internal:4599/notify
+      NOTIFICATION_WHATSAPP_PROVIDER: webhook
+      NOTIFICATION_WHATSAPP_WEBHOOK_URL: http://host.docker.internal:4599/notify
+      STORAGE_S3_ENDPOINT: http://${ATLAS_DEV_HOST_IP:-host.docker.internal}:9000
+      STORAGE_S3_BUCKET: atlas-documents
+      STORAGE_S3_REGION: us-east-1
+      STORAGE_S3_ACCESS_KEY_ID: atlas
+      STORAGE_S3_SECRET_ACCESS_KEY: atlas-dev-secret
+      STORAGE_S3_FORCE_PATH_STYLE: 'true'
+      STORAGE_UPLOAD_URL_TTL_SECONDS: '900'
+      # Motor de decision. `host.docker.internal` es la unica direccion que resuelve desde dentro
+      # del contenedor hacia un puerto publicado en el anfitrion.
+      # Vacia por defecto A PROPOSITO. `env.decision-engine.checks.ts` rechaza el arranque si hay
+      # URL sin credencial, asi que un default con URL y sin llave dejaria el backend sin
+      # levantar. Sin URL el backend arranca y manda las solicitudes a revision, que es el
+      # comportamiento correcto de «no llegue a preguntar».
+      DECISION_ENGINE_BASE_URL: ${ATLAS_DEV_DECISION_ENGINE_URL:-}
+      # Dos credenciales distintas a proposito: la de EJECUCION solo decide, la de GESTION carga
+      # desenlaces. Reutilizar una sola le daria al componente que decide la capacidad de reescribir
+      # la medida de su propio acierto.
+      DECISION_ENGINE_API_KEY: ${ATLAS_DEV_DECISION_ENGINE_RUNTIME_KEY:-}
+      DECISION_ENGINE_OUTCOME_API_KEY: ${ATLAS_DEV_DECISION_ENGINE_MANAGEMENT_KEY:-}
+      DECISION_ENGINE_CREDIT_ARTIFACT: ${ATLAS_DEV_DECISION_ENGINE_ARTIFACT:-credit_underwriting}
+      # Sal del identificador opaco del cliente dentro del motor. Es de DESARROLLO: rotarla parte la
+      # historia del sujeto en dos, asi que en un entorno real es una migracion, no un ajuste.
+      DECISION_ENGINE_SUBJECT_SALT: ${ATLAS_DEV_DECISION_ENGINE_SALT:-atlas-dev-subject-salt}
+      # Credencial del admin interno, para poder sembrar el catalogo de productos de credito con la
+      # API real en lugar de escribir en la base a mano.
+      DEV_ADMIN_EMAIL: ${ATLAS_DEV_ADMIN_EMAIL:-pablo@atlas.internal}
+      DEV_ADMIN_PASSWORD: ${ATLAS_DEV_ADMIN_PASSWORD:-}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+volumes:
+  atlas-minio-data:
