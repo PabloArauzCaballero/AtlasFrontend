@@ -1,0 +1,255 @@
+# Estado del trabajo y pendientes
+
+Documento de traspaso de la sesión del **2026-08-19**. Dice qué se construyó, qué se sembró, qué se
+corrigió y qué queda por hacer, con el detalle suficiente para retomarlo sin volver a investigar.
+
+---
+
+## 1. Seeders creados
+
+### `AtlasBackend` — `src/database/seeders/development/20260819100000-seed-producto-bnpl-desarrollo.ts`
+
+**Qué siembra:** el producto de crédito `bnpl_atlas_estandar`, en estado `active`, moneda BOB,
+importe financiado entre Bs 40 y Bs 4.000, plazo de 1 a 6 meses, interés 0 %.
+
+**Por qué existe:** en toda instalación nueva `GET /customers/:id/credit-products` devolvía una
+lista vacía y `POST /customers/:id/credit-applications` fallaba con `CREDIT_PRODUCT_NOT_FOUND`. El
+dominio de crédito parecía roto cuando lo único que pasaba es que no había nada que ofrecer. Sin
+este seeder **el flujo de compra no se puede recorrer en una máquina nueva**.
+
+**Decisiones que conviene conocer:**
+
+- Se siembra **activo**, no en `draft`. Un producto en borrador no se oferta, y dejarlo así
+  reproduce exactamente el síntoma que el seeder viene a eliminar.
+- La idempotencia es por `product_code` dentro del tenant, no por identificador: reejecutarlo sobre
+  una base que ya lo tiene actualiza en lugar de duplicar, y no rompe las solicitudes existentes.
+- El `ON CONFLICT` repite el predicado `WHERE _deleted = false` porque
+  `ux_credit_products_tenant_code` es un índice **parcial**; sin el predicado Postgres no reconoce
+  el conflicto y el `INSERT` revienta.
+- El `down` **no borra** el producto si alguna solicitud lo referencia: lo pasa a `retired`. Borrarlo
+  dejaría expedientes apuntando a una oferta inexistente, que es el estado que ninguna auditoría
+  puede reconstruir.
+
+**Rango, y por qué ése:** `min_amount`/`max_amount` acotan el importe **financiado** (el 40 %), que
+es lo que la app envía como `requestedAmount`. Con el 60 % inicial encima, cubre compras de entre
+Bs 100 y Bs 10.000 aproximadamente.
+
+> Las condiciones comerciales son dato administrado por negocio. Este seeder **no** fija la oferta
+> real: pone una coherente con el modelo BNPL para que exista algo que solicitar. En producción el
+> catálogo lo da de alta operaciones por `POST /operations/credit/products`.
+
+### Lo que deliberadamente NO se sembró: el cliente de demostración
+
+**No se puede sembrar honestamente.** La elegibilidad no es una columna: es el resultado de un
+expediente completo —contacto verificado, perfil, economía, domicilio, referencias, tres documentos
+subidos al almacenamiento y **dos decisiones de operaciones**—. Un seeder que escribiera
+`credit_eligibility_status = 'eligible'` produciría un cliente que la pantalla acepta y el dominio
+rechaza, que es peor que no tener ninguno.
+
+En su lugar hay un aprovisionador que recorre la API real:
+
+```bash
+node tools/dev-backend/otp-sink.mjs &        # el sumidero debe estar corriendo
+
+ATLAS_ADMIN_PASSWORD='<la del admin interno>' \
+node tools/dev-backend/provision-demo-customer.mjs \
+  --email pabliarca@gmail.com --password '<contraseña>' --phone +59176543210 \
+  --firstName Pablo --lastName Arauz
+```
+
+Cada paso va por su endpoint real, **incluido el código de verificación**, que se lee del sumidero
+tal y como lo emitió el backend. El script aborta al primer paso que falla: seguir dejaría un
+expediente a medias sin avisar.
+
+**Cliente ya aprovisionado en esta base:** `customerId 20`, `pabliarca@gmail.com` /
+`+59176543210`, estado `active`, `eligible: true`.
+
+---
+
+## 2. El artefacto del motor de decisión
+
+No es un seeder del repositorio, pero es estado que la base del motor necesita y conviene saber cómo
+se creó, porque **sin él la decisión de crédito no funciona**.
+
+El artefacto demo que trae el motor (`BNPL_CREDIT_DECISION`) exige **56 variables** de un contrato
+que AtlasBackend no emite. Con el payload real responde `422`, y el cliente del backend lee el 422
+como «la política dice que no»: un desajuste de contrato se le habría presentado al cliente como un
+**rechazo de crédito**.
+
+Se creó `ATLAS_BNPL_UNDERWRITING` (artefacto 7, versión 10, desplegado en PROD) con el contrato que
+el backend sí emite: `requested_amount`, `requested_term_months`, `currency_code`, `product_code`,
+`purpose_code`. Pasó por todo el gobierno del motor: compilación válida, suite de regresión
+bloqueante **5/5**, dos aprobaciones de principales distintos y despliegue.
+
+**Pendiente:** ese artefacto vive solo en la base local. Para que sea reproducible hay que llevarlo
+al seeder del motor (`src/modules/seeding/data/`) o exportarlo como artefacto versionado. Ver §5.
+
+---
+
+## 3. Defectos corregidos
+
+### `AtlasBackend` · `subject-reference.service.ts` — commit `7b66c5e`
+
+`DecisionSubjectLinkModel` declara `_created_at` como `allowNull: false` y
+`SubjectReferenceService.register()` nunca lo asignaba. **Sequelize valida antes de enviar la
+sentencia**, así que el insert no llegaba a Postgres —donde la columna sí tiene `DEFAULT now()`—.
+
+El síntoma no delataba la causa: emergía como `409 CONFLICT — La operación viola una restricción de
+datos` sobre `POST /customers/:id/credit-applications`, que se lee como choque de índice único. En
+la base no había ninguno, y `credit.decision_subject_links` estaba **vacía**: ningún cliente había
+llegado nunca a tener una decisión.
+
+### `AtlasConsumerApp` · grupos de ruta — commit `a524d06`
+
+`(auth)` y `(public)` no existían como rutas por faltarles su `_layout.tsx`. Un grupo de Expo Router
+sin layout se aplana al padre, así que los `Stack.Screen` de la raíz apuntaban a nombres inexistentes
+y el aviso salía en cada arranque.
+
+---
+
+## 4. Cómo levantar todo desde cero
+
+```bash
+# 1. Motor de decisión (puerto 3200)
+cd AtlasDecisionEngineBackend
+docker compose -f docker-compose.yml -f docker-compose.no-gvisor.yml \
+  -f docker-compose.host-expose.yml up -d migrate seed api worker
+
+# 2. AtlasBackend (puerto 3105) — cableado al motor
+cd ../AtlasBackend
+ATLAS_DEV_HOST_IP=<tu-ip-lan> API_PUBLISH_PORT=3105 \
+ATLAS_DEV_DECISION_ENGINE_URL=http://host.docker.internal:3200 \
+ATLAS_DEV_DECISION_ENGINE_RUNTIME_KEY=<RUNTIME_API_KEY del motor> \
+ATLAS_DEV_DECISION_ENGINE_MANAGEMENT_KEY=<MANAGEMENT_API_KEY del motor> \
+ATLAS_DEV_DECISION_ENGINE_ARTIFACT=ATLAS_BNPL_UNDERWRITING \
+ATLAS_DEV_ADMIN_PASSWORD='<la que quieras sembrar>' \
+docker compose -f docker-compose.yml \
+  -f ../AtlasConsumerApp/tools/dev-backend/docker-compose.dev-channels.yml \
+  --profile app up -d api minio minio-init
+
+# 3. Sumidero de códigos de verificación
+cd ../AtlasConsumerApp && node tools/dev-backend/otp-sink.mjs &
+
+# 4. Cliente de demostración habilitado
+ATLAS_ADMIN_PASSWORD='<la misma>' node tools/dev-backend/provision-demo-customer.mjs \
+  --email <correo> --password '<contraseña>' --phone <telefono>
+```
+
+**La contraseña del admin interno no está versionada.** Se siembra con `DEV_ADMIN_PASSWORD` en el
+servicio `migrate`, y hay que borrar antes su fila de `SequelizeDataSeedersDevelopments` porque el
+seeder es idempotente y si no, se salta.
+
+### Compilar la app en Windows
+
+`AtlasConsumerApp` **no compila desde su ruta actual**: CMake espeja la ruta absoluta de cada fuente
+y con `Downloads\Entrypoint-GitHUb\Atlas\AtlasConsumerApp\node_modules\react-native-...` se pasa del
+límite de 260 caracteres de Windows. Hay que compilar desde una copia en una ruta corta. El
+procedimiento completo está en [`verificacion.md`](verificacion.md) §3.
+
+**Dos trampas que cuestan horas si no se saben:**
+
+1. El `.env` **no llega al bundle de release**. `expo export:embed`, invocado por Gradle, no lo carga
+   como sí hace `expo start`: el binario acaba con el valor por defecto de
+   `src/api/config.ts`. Para un binario de release con otra dirección hay que cambiar ese valor por
+   defecto o pasar la variable de otro modo. **Ver el TODO-3.**
+2. Desde el emulador el backend responde por `10.0.2.2`, **no** por la IP LAN del anfitrión. En un
+   teléfono real es al revés.
+
+---
+
+## 5. TODO — lo que queda pendiente
+
+### TODO-1 · Capturas del flujo de compra `[bloqueado por el entorno]`
+
+Faltan las pantallas de escaneo, monto, evaluación, aceptación del comercio, calendario y evidencia
+de pago. Todo lo demás del recorrido está en `docs/evidence/`.
+
+**Los dos caminos y por qué ninguno salió:**
+
+El **emulador** (`Pixel_2`, imagen `android-37.0 google_apis_playstore_ps16k`) tiene la red rota: el
+sistema levanta `wlan0` en `10.0.2.16` y a veces también `eth0` en `10.0.2.15`, ambas en la misma
+subred y sin ruta por defecto. `ping 10.0.2.2` responde, pero **ninguna conexión TCP prospera**, ni
+por NAT ni por `adb reverse`. Sobrevive a un `-wipe-data`. Además su SystemUI cae cada pocos minutos
+bajo carga. Si hay que insistir, probar con **otra imagen de sistema** (una `google_apis` normal, sin
+`playstore`, API 34) antes que con otro ajuste de red.
+
+El **tablet** (`2505DRP06G`, Xiaomi) rechaza `adb install` con `INSTALL_FAILED_USER_RESTRICTED`
+mientras no se active **«Instalar vía USB»** en las opciones de desarrollador. **Es restricción del
+dispositivo, no del APK**: el mismo fichero instala bien en el emulador. En Xiaomi ese ajuste exige
+sesión iniciada con cuenta Mi y tarda un minuto en habilitarse.
+
+**Con el tablet listo, el recorrido son 5 minutos.** El APK ya está compilado para `arm64-v8a` y
+apunta a `192.168.0.197:3105`, que es la dirección de tu `.env`:
+
+```bash
+adb install -r <copia-de-build>/android/app/build/outputs/apk/release/app-release.apk
+```
+
+Entra con `pabliarca@gmail.com`, ve a la pestaña **Escanear**, usa el código a mano con el token de
+Farmacia Bolivia de más abajo, escribe un monto (p. ej. 500) y sigue hasta el calendario.
+
+Para el flujo no hace falta cámara: la pantalla de escaneo acepta el código a mano. Token válido de
+`src/sandbox/fixtures.ts`:
+
+```
+atlas://pos/9f2b7c41d8a54e6fb03c15ae77d2be90     Farmacia Bolivia (ACTIVE)
+atlas://pos/55aa10cc74e8493cb6f0d2a91e3b7c64     Tecno Import (REVOKED, para el camino de rechazo)
+```
+
+### TODO-2 · Llevar el artefacto del motor a un seeder `[alto]`
+
+`ATLAS_BNPL_UNDERWRITING` solo existe en la base local. Una instalación nueva del motor se queda con
+el artefacto demo, cuyo contrato no coincide, y **toda decisión sale rechazada por un 422 de
+contrato**. Hay que sembrarlo en `AtlasDecisionEngineBackend/src/modules/seeding/data/` siguiendo el
+patrón de `demo-artifact.ts`, con su suite de regresión bloqueante.
+
+### TODO-3 · Que el `.env` llegue al bundle de release `[medio]`
+
+Hoy `EXPO_PUBLIC_ATLAS_API_URL` se ignora al compilar release por Gradle. El binario queda apuntando
+al valor por defecto del código, que es una IP de desarrollo. **Esto es un riesgo de publicación**:
+un release construido «con el `.env` de producción» saldría apuntando a una IP privada. Revisar cómo
+`expo export:embed` carga el entorno en esta versión de Expo y fijarlo en el `build.gradle`.
+
+### TODO-4 · Dominio de compra V3 en el backend `[grande]`
+
+`purchase_order`, `purchase_commitment` y `payment_schedule` no existen en AtlasBackend. Mientras
+tanto el flujo de compra corre en el motor local de `src/sandbox` —que **se declara en pantalla**— y
+`EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE` no puede ponerse en `live`.
+
+### TODO-5 · Pruebas que faltan `[medio]`
+
+1. **E2E móvil** sobre app instalada (Maestro o Detox) para los flujos P0.
+2. **Mutación de cliente**: interceptar el tráfico y alterar `organizationId`, `posId`,
+   `financedAmount`, `decisionId`. Hoy la app no los envía; falta demostrarlo contra el servidor.
+3. **Concurrencia**: dos compras simultáneas que juntas exceden la línea; solo una debe confirmar.
+4. **Regresión visual** por pantalla.
+5. **Accesibilidad** con TalkBack y VoiceOver reales, y escala de fuente al máximo.
+
+### TODO-6 · iOS `[bloqueado por plataforma]`
+
+Nada ejecutado: exige macOS con Xcode. El código no usa ninguna API exclusiva de Android.
+
+### TODO-7 · Higiene de credenciales de desarrollo `[bajo]`
+
+- La contraseña del admin interno se sembró como `AtlasDev-2026!local`. Cambiarla si molesta.
+- En el motor se crearon dos credenciales de integración (`dev-qa-analyst`, `dev-risk-approver`)
+  **insertándolas directamente en la base**, porque el motor exige separación de funciones y no
+  expone endpoint para darlas de alta. Conviene un camino soportado para crearlas.
+- En `AtlasBackend` quedan **15 archivos locales sin commitear** anteriores a esta sesión (seeders,
+  `tenant.model.ts`, `tools/`, `envelope-encryption.util.ts`). No se tocaron.
+
+---
+
+## 6. Lo que sí quedó probado
+
+La cadena completa, ejecutada dos veces y de forma reproducible tras un reinicio completo del
+entorno:
+
+```
+status: "approved"    decisionMode: "decision_engine"    executionId: "3"
+```
+
+El motor guarda esa misma ejecución con el `requestId` del expediente del backend y el
+`inputSnapshotJson` que el backend proyectó, así que la cadena se recorre en los dos sentidos. El
+detalle está en [`evidence/traza-decision.md`](evidence/traza-decision.md) y el alcance exacto de lo
+verificado —y de lo que no— en [`verificacion.md`](verificacion.md).

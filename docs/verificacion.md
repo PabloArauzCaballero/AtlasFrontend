@@ -139,7 +139,20 @@ Por eso `EXPO_PUBLIC_ATLAS_API_URL` es una variable y no una constante.
 
 ---
 
-## 4. Qué falta antes de producción
+## 4. Cómo reproducirlo
+
+El estado de la base y los pendientes con su detalle están en
+[`estado-y-pendientes.md`](estado-y-pendientes.md). En resumen:
+
+- el producto de crédito lo siembra
+  `AtlasBackend/src/database/seeders/development/20260819100000-seed-producto-bnpl-desarrollo.ts`;
+- el cliente habilitado se aprovisiona con `tools/dev-backend/provision-demo-customer.mjs`, que
+  recorre la API real porque la elegibilidad **no es una columna que se pueda poner a mano**;
+- el artefacto del motor todavía vive solo en la base local (TODO-2).
+
+---
+
+## 5. Qué falta antes de producción
 
 1. **Recorrido de compra con capturas** — escaneo del QR, monto, evaluación, aceptación del comercio,
    calendario y evidencia de pago. Es lo único del flujo que no llegó a fotografiarse.
