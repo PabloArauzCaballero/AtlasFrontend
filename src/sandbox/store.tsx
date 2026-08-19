@@ -195,7 +195,18 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
    */
   const evaluate = useCallback<SandboxContextValue['evaluate']>(
     async (orderId) => {
-      const current = stateRef.current;
+      // La orden se lee del ACTUALIZADOR, no de `stateRef`.
+      //
+      // `stateRef` se refresca al renderizar, y esta funcion se llama inmediatamente despues de
+      // `submitAmount`: la orden recien creada todavia no ha llegado al ref. Leerla de ahi devolvia
+      // `undefined` y la evaluacion se abandonaba en silencio —sin error, sin decision— dejando la
+      // compra en «evaluando» para siempre. El actualizador si ve el estado ya aplicado.
+      const current = await new Promise<SandboxState>((resolve) => {
+        setState((state) => {
+          resolve(state);
+          return state;
+        });
+      });
       const order = current.orders.find((item) => item.id === orderId);
       if (!order || order.decision) return;
 

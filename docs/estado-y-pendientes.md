@@ -203,6 +203,27 @@ el artefacto demo, cuyo contrato no coincide, y **toda decisión sale rechazada 
 contrato**. Hay que sembrarlo en `AtlasDecisionEngineBackend/src/modules/seeding/data/` siguiendo el
 patrón de `demo-artifact.ts`, con su suite de regresión bloqueante.
 
+### TODO-3-bis · El APK de release no puede hablar HTTP en claro `[alto]`
+
+**Esta es la causa de todos los «Sin conexión» que costaron horas.** Android bloquea el tráfico en
+claro para `targetSdkVersion >= 28`, y el manifiesto de release no declara
+`android:usesCleartextTraffic="true"` — el de debug sí lo hace solo. El resultado es que **ninguna**
+petición sale del binario de release contra un backend `http://`, y la app muestra «Sin conexión»,
+que es exactamente lo que hay que enseñarle a alguien sin red.
+
+Lo engañoso es que el diagnóstico apunta a todas partes menos aquí: `ping` responde, `nc` desde el
+mismo emulador alcanza el puerto, el backend contesta desde el anfitrión, y aun así la app no
+conecta. Se puede confirmar en un minuto mirando si las peticiones llegan al puente
+(`host-port-bridge.mjs --verbose true`): si el log queda vacío, la petición **nunca salió del
+dispositivo**.
+
+Para probar en local hay que añadir el atributo al `<application>` de
+`android/app/src/main/AndroidManifest.xml`. **No conviene dejarlo puesto para producción**: ahí la
+API va por HTTPS y el bloqueo de tráfico en claro es una protección, no un estorbo. La forma limpia
+es declararlo solo para el sabor de desarrollo —vía `expo-build-properties` o un
+`network_security_config` restringido a la IP del backend local— en lugar de abrirlo en el
+manifiesto principal.
+
 ### TODO-3 · Que el `.env` llegue al bundle de release `[medio]`
 
 Hoy `EXPO_PUBLIC_ATLAS_API_URL` se ignora al compilar release por Gradle. El binario queda apuntando
