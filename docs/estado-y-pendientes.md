@@ -165,8 +165,9 @@ Recorrido completo capturado en `docs/evidence/`, del arranque al QR bancario, c
 release instalado y el backend real detrás. Incluye las dos caras del mismo invariante: el motor
 caído derivando a revisión (`06b`) y el motor vivo aprobando con su `executionId` (`08-calendario`).
 
-Quedó sin capturar solo el **camino de rechazo por QR revocado**: la pantalla de escaneo ofrece el
-botón «Comercio con QR revocado» para provocarlo.
+El camino de **rechazo por QR revocado** también quedó capturado (`13-qr-revocado.png`): el escaneo
+no abre sesión y la pantalla explica que el código fue dado de baja por seguridad. Es el invariante
+R15 visto desde la pantalla.
 
 **Cómo repetirlo** (5 minutos, con el stack arriba):
 

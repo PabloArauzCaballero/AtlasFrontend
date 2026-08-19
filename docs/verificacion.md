@@ -118,6 +118,8 @@ Capturas en `docs/evidence/`, tomadas del APK de release instalado y con el back
 | `10-pago-qr.png` · `11-pago-detalle.png` | **QR bancario del comercio** con el monto exacto y su vigencia |
 | `12-evidencia-pago.png` | Beneficiario, cuenta, y «tu comprobante es evidencia, no confirma el pago» |
 | `08-pagos.png` | Calendario consolidado de pagos |
+| `13-qr-revocado.png` | **QR revocado rechazado** — «Este código fue revocado por seguridad» (R15) |
+| `14-perfil.png` | Perfil con **minimización de datos**: el teléfono solo por sus 4 últimos, el correo solo por su dominio |
 
 Dos capturas merecen mirarse juntas, porque son el mismo invariante visto por sus dos caras:
 
@@ -137,6 +139,7 @@ Dos capturas merecen mirarse juntas, porque son el mismo invariante visto por su
 | Arranque y navegación | verificado | no ejecutado | no ejecutado |
 | Registro y validaciones | verificado | no ejecutado | no ejecutado |
 | Compra completa hasta calendario | **verificado** | no ejecutado | no ejecutado |
+| Rechazo por QR revocado | **verificado** | no ejecutado | no ejecutado |
 | QR bancario y evidencia de pago | **verificado** | no ejecutado | no ejecutado |
 
 El tablet Xiaomi rechaza `adb install` con `INSTALL_FAILED_USER_RESTRICTED` mientras no se active
