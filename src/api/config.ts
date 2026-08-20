@@ -3,13 +3,35 @@
  *
  * Se lee de `EXPO_PUBLIC_*` (visibles en el bundle: aqui NO va ningun secreto) con valores por
  * defecto pensados para desarrollo local contra el stack de AtlasBackend.
+ *
+ * ## Dos fuentes, y por que hacen falta las dos
+ *
+ * `process.env` se inlinea al empaquetar y es lo que funciona con `expo start`. En un binario nativo
+ * de release, en cambio, el empaquetado lo lanza Gradle y la carga de los `.env` no esta garantizada
+ * ahi: el binario acababa con el valor por defecto del codigo —una IP de desarrollo— aunque se
+ * hubiera compilado con otro `.env`. Como no falla al compilar, se descubria con la app instalada.
+ *
+ * Por eso `app.config.js` lee el `.env` de forma explicita y deja los valores en `extra.atlas`, que
+ * `expo-constants` serializa dentro del APK en cada compilacion. Se consulta primero el entorno
+ * —para que exportar una variable en la terminal siga mandando— y despues `extra`.
  */
 import Constants from 'expo-constants';
 
-const fromEnv = (key: string): string | undefined => {
-  const value = process.env[key];
-  return value && value.length > 0 ? value : undefined;
+type AtlasExtra = {
+  apiUrl?: string;
+  tenantId?: string;
+  timeoutMs?: string;
+  purchaseSource?: string;
+  decisionSource?: string;
 };
+
+const extra = (Constants.expoConfig?.extra?.atlas ?? {}) as AtlasExtra;
+
+const clean = (value: string | undefined): string | undefined =>
+  value !== undefined && value.length > 0 ? value : undefined;
+
+const fromEnv = (key: string, fallback?: string): string | undefined =>
+  clean(process.env[key]) ?? clean(fallback);
 
 /**
  * `localhost` no sirve: dentro del emulador apunta al propio emulador. Se usa la IP LAN del equipo
@@ -19,9 +41,9 @@ const fromEnv = (key: string): string | undefined => {
 const DEFAULT_API_BASE_URL = 'http://192.168.0.197:3105/api/v1';
 
 export const apiConfig = {
-  baseUrl: fromEnv('EXPO_PUBLIC_ATLAS_API_URL') ?? DEFAULT_API_BASE_URL,
-  tenantId: fromEnv('EXPO_PUBLIC_ATLAS_TENANT_ID') ?? '1',
-  requestTimeoutMs: Number(fromEnv('EXPO_PUBLIC_ATLAS_TIMEOUT_MS') ?? 20_000),
+  baseUrl: fromEnv('EXPO_PUBLIC_ATLAS_API_URL', extra.apiUrl) ?? DEFAULT_API_BASE_URL,
+  tenantId: fromEnv('EXPO_PUBLIC_ATLAS_TENANT_ID', extra.tenantId) ?? '1',
+  requestTimeoutMs: Number(fromEnv('EXPO_PUBLIC_ATLAS_TIMEOUT_MS', extra.timeoutMs) ?? 20_000),
   appVersion: Constants.expoConfig?.version ?? '0.0.0',
 } as const;
 
@@ -40,7 +62,7 @@ export const apiConfig = {
 export type PurchaseDataSource = 'sandbox' | 'live';
 
 export const purchaseDataSource: PurchaseDataSource =
-  (fromEnv('EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE') as PurchaseDataSource | undefined) ?? 'sandbox';
+  (fromEnv('EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE', extra.purchaseSource) as PurchaseDataSource | undefined) ?? 'sandbox';
 
 export const isSandboxPurchase = purchaseDataSource === 'sandbox';
 
@@ -61,6 +83,6 @@ export const isSandboxPurchase = purchaseDataSource === 'sandbox';
 export type DecisionSource = 'backend' | 'local';
 
 export const decisionSource: DecisionSource =
-  (fromEnv('EXPO_PUBLIC_ATLAS_DECISION_SOURCE') as DecisionSource | undefined) ?? 'backend';
+  (fromEnv('EXPO_PUBLIC_ATLAS_DECISION_SOURCE', extra.decisionSource) as DecisionSource | undefined) ?? 'backend';
 
 export const isBackendDecision = decisionSource === 'backend';
