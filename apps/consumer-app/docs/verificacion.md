@@ -237,7 +237,41 @@ configuración y no la red. Detalle y criterio en `estado-y-pendientes.md`, TODO
 
 ---
 
-## 6. Qué falta antes de producción
+## 6. El escaneo de QR, con un código real
+
+Los recorridos anteriores entraban a la compra por el botón **«Comercio válido»** de la tarjeta de
+códigos de prueba. Eso ejercita el flujo, pero **no demuestra que el lector de QR funcione**: se
+salta justo la parte que habría que probar.
+
+Corrida del **2026-08-20**. Se generó el QR del comercio con el mismo token que emite el POS
+—`atlas://pos/9f2b7c41d8a54e6fb03c15ae77d2be90`, Farmacia Bolivia · Sucursal Equipetrol— usando la
+librería `qrcode` que ya está en el proyecto, y se colgó **en la pared de la escena virtual del
+emulador**. La cámara lo ve como vería un QR pegado junto a una caja.
+
+| Paso | Resultado |
+| --- | --- |
+| Abrir la pestaña **Escanear** | La cámara enfoca el QR de la pared (`evidence/46`) |
+| El lector reconoce el código | **Salta solo** a «Tu compra», Farmacia Bolivia · VERIFICADO (`evidence/47`) |
+| Monto Bs 850 | Desglose 60/40: Bs 510 hoy, Bs 340 financiados (`evidence/48`) |
+| Continuar | **APROBADO** (`evidence/49`) |
+| Motor de decisión | `decision_execution` **10** · `ATLAS_BNPL_UNDERWRITING` · `SUCCEEDED` / `APPROVE` |
+
+Nadie tocó el botón de códigos de prueba: la compra la inició la cámara leyendo el código. El QR
+usado se guardó en `evidence/50-qr-del-comercio.png`.
+
+### Cómo repetirlo
+
+El emulador toma el póster de la pared de `<SDK>/emulator/resources/poster.png`, y su tamaño y
+posición de `Toren1BD.posters`, en la misma carpeta. Se sustituye el PNG por el QR y se reinicia el
+emulador; ambos archivos originales quedaron respaldados al lado con el sufijo `.original`.
+
+**La distancia importa y cuesta un par de intentos.** Demasiado cerca, el código sale recortado por
+los bordes del visor y el lector no engancha: un QR sin sus esquinas de posición no es un QR. Con
+`size 0.9` a `position 0 0 -2.4` el código entra entero en el encuadre y se lee de inmediato.
+
+---
+
+## 7. Qué falta antes de producción
 
 1. **E2E móvil** sobre app instalada (Maestro o Detox) para los flujos P0.
 2. **Pruebas de mutación de cliente**: interceptar el tráfico y alterar `organizationId`, `posId`,
