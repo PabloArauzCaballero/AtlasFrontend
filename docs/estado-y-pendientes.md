@@ -206,40 +206,69 @@ R15 visto desde la pantalla.
 tiene la red rota (`ping` responde, ningún TCP prospera) y su SystemUI cae bajo carga. El AVD
 `AtlasDemo` sobre `android-36`, con 2 GB y **el stack de ALO VIDA detenido**, sí funciona.
 
-### TODO-2 · Llevar el artefacto del motor a un seeder `[alto]`
+### TODO-8 · ~~Un boton bloqueado tiene que decir que falta~~ `[HECHO]`
 
-`ATLAS_BNPL_UNDERWRITING` solo existe en la base local. Una instalación nueva del motor se queda con
-el artefacto demo, cuyo contrato no coincide, y **toda decisión sale rechazada por un 422 de
-contrato**. Hay que sembrarlo en `AtlasDecisionEngineBackend/src/modules/seeding/data/` siguiendo el
-patrón de `demo-artifact.ts`, con su suite de regresión bloqueante.
+El síntoma era el mismo en `registro` y en `identidad`: un placeholder con la **forma exacta del
+valor** —`1996-04-12` en la fecha de nacimiento, `2031-03-10` en el vencimiento del carnet— hacía
+ver la pantalla llena, y el botón se apagaba sin decir por qué.
 
-### TODO-3-bis · El APK de release no puede hablar HTTP en claro `[alto]`
+Se arregló por los dos lados, porque hacían falta los dos:
 
-**Esta es la causa de todos los «Sin conexión» que costaron horas.** Android bloquea el tráfico en
-claro para `targetSdkVersion >= 28`, y el manifiesto de release no declara
-`android:usesCleartextTraffic="true"` — el de debug sí lo hace solo. El resultado es que **ninguna**
-petición sale del binario de release contra un backend `http://`, y la app muestra «Sin conexión»,
-que es exactamente lo que hay que enseñarle a alguien sin red.
+1. `color.text.placeholder`: token propio, más apagado que el texto terciario. El ejemplo deja de
+   competir con el dato.
+2. `Button` acepta `blockedReason` y lo muestra **debajo** del botón, con su icono de aviso. Debajo
+   y no dentro: dentro, la etiqueta cambiaría de longitud y el botón daría un salto cada vez que se
+   completa un campo. El motivo viaja además como `accessibilityHint`, que antes no decía nada.
 
-Lo engañoso es que el diagnóstico apunta a todas partes menos aquí: `ping` responde, `nc` desde el
-mismo emulador alcanza el puerto, el backend contesta desde el anfitrión, y aun así la app no
-conecta. Se puede confirmar en un minuto mirando si las peticiones llegan al puente
-(`host-port-bridge.mjs --verbose true`): si el log queda vacío, la petición **nunca salió del
-dispositivo**.
+`src/ui/blocked.ts` centraliza la regla: **se nombra un solo motivo, el primero en el orden de la
+pantalla**. Listar los cinco pendientes a la vez es un párrafo que nadie lee y que además se
+contradice solo, porque cuatro dejan de ser ciertos en cuanto se escribe el primero. Va cubierto por
+`__tests__/blocked.test.ts`.
 
-Para probar en local hay que añadir el atributo al `<application>` de
-`android/app/src/main/AndroidManifest.xml`. **No conviene dejarlo puesto para producción**: ahí la
-API va por HTTPS y el bloqueo de tráfico en claro es una protección, no un estorbo. La forma limpia
-es declararlo solo para el sabor de desarrollo —vía `expo-build-properties` o un
-`network_security_config` restringido a la IP del backend local— en lugar de abrirlo en el
-manifiesto principal.
+Cubre las **12 pantallas** con botón bloqueable, no solo las dos citadas: registro, identidad,
+domicilio, economía, referencias, revisión, verificar contacto, ingresar, recuperar (sus dos pasos),
+escanear (código a mano), monto de compra y pago.
 
-### TODO-3 · Que el `.env` llegue al bundle de release `[medio]`
+### TODO-2 · ~~Llevar el artefacto del motor a un seeder~~ `[HECHO]`
 
-Hoy `EXPO_PUBLIC_ATLAS_API_URL` se ignora al compilar release por Gradle. El binario queda apuntando
-al valor por defecto del código, que es una IP de desarrollo. **Esto es un riesgo de publicación**:
-un release construido «con el `.env` de producción» saldría apuntando a una IP privada. Revisar cómo
-`expo export:embed` carga el entorno en esta versión de Expo y fijarlo en el `build.gradle`.
+`ATLAS_BNPL_UNDERWRITING` ya no vive solo en la base local. Se sembró en
+`AtlasDecisionEngineBackend`:
+
+- `src/modules/seeding/data/atlas-underwriting.graph.ts` — el grafo y los casos como **datos puros**.
+- `src/modules/seeding/data/atlas-underwriting.seed.ts` — artefacto, contrato de variables,
+  compilado, filas relacionales del grafo, suite bloqueante en verde, aprobación con los dos roles
+  de la separación de funciones y despliegue ACTIVO en los tres entornos.
+- `test/atlas-underwriting-seed.spec.ts` — ejecuta los cinco casos **con el motor real**. Un seeder
+  escribe los resultados que su autor cree que produce el grafo; si esa creencia es falsa, la base
+  queda con una suite «en verde» que nadie ejecutó.
+
+Va en el **bootstrap**, no en el mockup: sin él una instalación nueva se queda solo con el demo
+`BNPL_CREDIT_DECISION` y su contrato de 56 variables, y toda decisión sale rechazada por un 422 que
+el cliente del backend presenta como negativa de crédito.
+
+### TODO-3-bis · ~~El APK de release no puede hablar HTTP en claro~~ `[HECHO]`
+
+Era la causa de todos los «Sin conexión» que costaron horas. Android bloquea el tráfico en claro
+desde `targetSdkVersion` 28 y solo el manifiesto de **depuración** declaraba
+`usesCleartextTraffic`. Ninguna petición salía del binario de release, mientras `ping` respondía,
+`nc` alcanzaba el puerto desde el mismo emulador y el backend contestaba desde el anfitrión.
+
+`plugins/with-cleartext-when-http.js` concede el permiso **solo si la dirección configurada empieza
+por `http://`**, y solo para ese host, vía `network_security_config`. No es un interruptor que
+alguien pueda dejar encendido: en cuanto la URL es `https://`, el atributo desaparece del
+manifiesto. Verificado en los dos sentidos.
+
+### TODO-3 · ~~Que el `.env` llegue al bundle de release~~ `[HECHO]`
+
+`expo start` carga los `.env`; el empaquetado de release lo lanza Gradle con `expo export:embed`,
+donde esa carga no está documentada ni garantizada. El binario acababa con el valor por defecto del
+código —una IP de desarrollo— aunque se hubiera compilado «con el `.env` de producción». No falla al
+compilar: se descubre con la app instalada.
+
+`app.config.js` lee ahora el `.env` de forma explícita y deja los valores en `extra.atlas`. El
+plugin de Gradle de `expo-constants` serializa esa configuración en los assets **en cada
+compilación**, así que viaja dentro del APK. `src/api/config.ts` consulta primero el entorno —para
+que exportar una variable en la terminal siga mandando, también en CI— y después `extra`.
 
 ### TODO-4 · Dominio de compra V3 en el backend `[grande]`
 
