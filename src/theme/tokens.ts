@@ -91,6 +91,21 @@ export const color = {
     neutral: 'rgba(255,255,255,0.07)',
   },
   brandGradient: [palette.brand500, palette.brand400, palette.brand300] as const,
+  /**
+   * Lavado de marca para superficies grandes.
+   *
+   * Es el degradado de la identidad rebajado a un tinte: destaca la superficie sin obligar a
+   * cambiar el color del texto que va encima, que es lo que pasa con el degradado pleno.
+   */
+  brandWash: { from: 'rgba(20,168,148,0.16)', to: 'rgba(43,224,168,0.06)' },
+  /**
+   * Contornos de los avisos. Es el mismo color del estado a un tercio de opacidad: el borde
+   * delimita sin competir con el texto que encierra.
+   */
+  feedbackBorder: {
+    warning: 'rgba(255,196,107,0.35)',
+    danger: 'rgba(255,138,138,0.35)',
+  },
 } as const;
 
 /** Escala de espaciado en multiplos de 4. Evita el "casi alineado". */
@@ -117,27 +132,62 @@ export const radius = {
 } as const;
 
 /**
- * Tipografia. `Sora` para display y `Manrope` para texto, con fallback del sistema: la app debe
- * verse correcta aunque la fuente no llegue a cargar.
+ * Tipografia: `Sora` para display, `Manrope` para texto.
+ *
+ * Se nombra la FAMILIA CONCRETA de cada grosor en vez de combinar una familia con `fontWeight`.
+ * En Android `fontWeight` no interpola sobre una fuente cargada: o existe el archivo de ese
+ * grosor, o el sistema finge la negrita engordando los trazos, y ese engorde es exactamente lo
+ * que hace que una app se vea barata al lado de su propia web.
+ *
+ * Por eso ningun estilo de `type` lleva `fontWeight`: el grosor viaja en el nombre de la familia.
  */
 export const font = {
-  display: 'Sora_600SemiBold',
-  displayFallback: undefined,
-  body: 'Manrope_500Medium',
+  displaySemi: 'Sora_600SemiBold',
+  displayBold: 'Sora_700Bold',
+  bodyRegular: 'Manrope_400Regular',
+  bodyMedium: 'Manrope_500Medium',
+  bodySemi: 'Manrope_600SemiBold',
+  bodyBold: 'Manrope_700Bold',
 } as const;
 
+/**
+ * Escala tipografica.
+ *
+ * La regla de reparto: `Sora` manda en lo que se lee de un vistazo —titulos e importes— y
+ * `Manrope` en lo que se lee de verdad, que es todo lo demas. Mezclar al reves cansa: Sora tiene
+ * demasiada personalidad para un parrafo y Manrope demasiada poca para un titular.
+ */
 export const type = {
-  hero: { fontSize: 34, lineHeight: 40, letterSpacing: -0.8, fontWeight: '700' as const },
-  h1: { fontSize: 26, lineHeight: 32, letterSpacing: -0.5, fontWeight: '700' as const },
-  h2: { fontSize: 20, lineHeight: 26, letterSpacing: -0.3, fontWeight: '700' as const },
-  h3: { fontSize: 17, lineHeight: 23, letterSpacing: -0.2, fontWeight: '600' as const },
-  body: { fontSize: 15, lineHeight: 22, fontWeight: '500' as const },
-  bodyStrong: { fontSize: 15, lineHeight: 22, fontWeight: '700' as const },
-  caption: { fontSize: 13, lineHeight: 18, fontWeight: '500' as const },
-  micro: { fontSize: 11, lineHeight: 15, letterSpacing: 0.3, fontWeight: '700' as const },
-  /** Importes: tabulares para que las columnas de dinero no bailen entre filas. */
-  amount: { fontSize: 30, lineHeight: 36, letterSpacing: -1, fontWeight: '700' as const },
-  amountSmall: { fontSize: 17, lineHeight: 22, fontWeight: '700' as const },
+  hero: { fontFamily: font.displayBold, fontSize: 34, lineHeight: 42, letterSpacing: -0.8 },
+  h1: { fontFamily: font.displayBold, fontSize: 26, lineHeight: 34, letterSpacing: -0.5 },
+  h2: { fontFamily: font.displaySemi, fontSize: 20, lineHeight: 27, letterSpacing: -0.3 },
+  h3: { fontFamily: font.bodyBold, fontSize: 17, lineHeight: 23, letterSpacing: -0.2 },
+  body: { fontFamily: font.bodyMedium, fontSize: 15, lineHeight: 23 },
+  bodyStrong: { fontFamily: font.bodyBold, fontSize: 15, lineHeight: 23 },
+  caption: { fontFamily: font.bodyMedium, fontSize: 13, lineHeight: 19 },
+  /** Etiquetas y estados. Va en versalita espaciada: a 11 px el peso solo no basta para jerarquia. */
+  micro: { fontFamily: font.bodyBold, fontSize: 11, lineHeight: 15, letterSpacing: 0.6 },
+  /**
+   * Importes. Cifras TABULARES a proposito.
+   *
+   * Con cifras proporcionales el «1» es mas estrecho que el «8», asi que una columna de importes
+   * baila de fila en fila y el ojo deja de poder compararlos de un vistazo. En dinero eso no es
+   * un detalle tipografico: es la diferencia entre leer un saldo y tener que releerlo.
+   */
+  amount: {
+    fontFamily: font.displayBold,
+    fontSize: 32,
+    lineHeight: 40,
+    letterSpacing: -1.2,
+    fontVariant: ['tabular-nums'] as const,
+  },
+  amountSmall: {
+    fontFamily: font.displaySemi,
+    fontSize: 17,
+    lineHeight: 23,
+    letterSpacing: -0.3,
+    fontVariant: ['tabular-nums'] as const,
+  },
 } as const;
 
 /** Duraciones de motion. Se respetan salvo que el sistema pida movimiento reducido. */

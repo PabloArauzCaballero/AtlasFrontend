@@ -10,10 +10,10 @@ import { isSandboxPurchase } from '../../../src/api/config';
 import { formatMoney } from '../../../src/domain/money';
 import { useSandbox } from '../../../src/sandbox/store';
 import { useSession } from '../../../src/session/session';
-import { color, radius, space } from '../../../src/theme/tokens';
+import { space } from '../../../src/theme/tokens';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { Gap, Screen } from '../../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, EmptyState, ListRow, Skeleton } from '../../../src/ui/primitives';
+import { AtlasText, Badge, BrandPanel, Button, Card, Divider, EmptyState, ListRow, Skeleton } from '../../../src/ui/primitives';
 import { dueLabel, statusTone, statusLabel } from '../../../src/features/payment-copy';
 
 export default function Home() {
@@ -54,7 +54,7 @@ export default function Home() {
         {isSandboxPurchase ? <DataSourceBadge /> : null}
       </View>
 
-      <Card style={styles.lineCard}>
+      <BrandPanel>
         <AtlasText variant="caption" tone="secondary">
           Disponible para comprar
         </AtlasText>
@@ -76,7 +76,7 @@ export default function Home() {
         </View>
 
         <Button label="Escanear QR del comercio" onPress={() => router.push('/(app)/(tabs)/escanear')} />
-      </Card>
+      </BrandPanel>
 
       {sandbox.nextDue ? (
         <Card>
@@ -132,7 +132,6 @@ export default function Home() {
 const styles = StyleSheet.create({
   greeting: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space.md },
   greetingText: { gap: space.xxs },
-  lineCard: { backgroundColor: color.surface.secondary, borderRadius: radius.xxl },
   lineMeta: { flexDirection: 'row', gap: space.xl },
   lineMetaItem: { gap: space.xxs },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },

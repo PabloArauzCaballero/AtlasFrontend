@@ -20,7 +20,7 @@ import { isSandboxPurchase } from '../../../src/api/config';
 import { formatMoney } from '../../../src/domain/money';
 import { dueLabel, formatTime, itemTitle, statusLabel, statusTone } from '../../../src/features/payment-copy';
 import { useSandbox } from '../../../src/sandbox/store';
-import { color, radius, space } from '../../../src/theme/tokens';
+import { color, palette, radius, space } from '../../../src/theme/tokens';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
@@ -125,7 +125,7 @@ export default function PaymentScreen() {
           </AtlasText>
 
           <View style={styles.qrBox}>
-            <QRCode value={instruction.qrPayloadSnapshot} size={196} backgroundColor="#FFFFFF" color="#061426" />
+            <QRCode value={instruction.qrPayloadSnapshot} size={196} backgroundColor={palette.white} color={palette.bg} />
           </View>
 
           <Divider />

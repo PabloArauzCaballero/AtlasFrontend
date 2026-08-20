@@ -9,6 +9,7 @@
  *  - ningun color literal fuera de `theme/tokens`.
  */
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import {
   ActivityIndicator,
@@ -25,7 +26,7 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
-import { color, radius, shadow, space, touch, type } from '../theme/tokens';
+import { color, palette, radius, shadow, space, touch, type } from '../theme/tokens';
 
 /* ------------------------------------------------------------------ texto */
 
@@ -137,6 +138,59 @@ export function Card({ style, children, ...rest }: ViewProps & { style?: ViewSty
     <View {...rest} style={[styles.card, style]}>
       {children}
     </View>
+  );
+}
+
+/**
+ * Panel de marca: la unica superficie de la app que lleva el degradado de ATLAS.
+ *
+ * ## Por que existe, y por que solo una
+ *
+ * El degradado azul -> teal -> menta es la firma de la identidad. Repetirlo en cada tarjeta lo
+ * convertiria en papel pintado: cuando todo destaca, no destaca nada. Se gasta entero en la
+ * superficie que responde la pregunta con la que se abre la app —cuanto puedo gastar— y el resto
+ * de la pantalla se mantiene en el navy plano para que esa sea la que el ojo encuentra primero.
+ *
+ * ## Por que un lavado y no un plano saturado
+ *
+ * Sobre el degradado vivo el texto claro pierde contraste en el extremo menta, y el oscuro lo
+ * pierde en el navy: no hay un solo color de texto que aguante todo el recorrido. Se usa el
+ * lavado tenue de la identidad (`--g-soft` en la web), que tine la superficie sin mover el
+ * contraste, y el degradado pleno se reserva para el filo.
+ *
+ * ## El filo
+ *
+ * React Native no tiene bordes con degradado. El truco es un degradado de 1 px de grosor con la
+ * superficie encima: lo que asoma por el contorno ES el borde. Se hace aqui una vez para que
+ * ninguna pantalla tenga que conocerlo.
+ */
+export function BrandPanel({ style, children, ...rest }: ViewProps & { style?: ViewStyle }) {
+  return (
+    <LinearGradient
+      colors={[palette.brand500, palette.brand400, palette.brand700]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      locations={[0, 0.55, 1]}
+      style={[styles.brandPanelEdge, style]}
+    >
+      {/*
+        La superficie es OPACA antes de recibir el tinte. El lavado se define con alfa, y sin una
+        base opaca debajo lo que se ve por transparencia es el degradado del filo: la tarjeta se
+        convierte en un plano menta saturado y el texto secundario deja de leerse encima. La base
+        navy es lo que mantiene el contraste mientras el tinte solo insinua la marca.
+      */}
+      <View style={styles.brandPanelSurface}>
+        <LinearGradient
+          colors={[color.brandWash.from, color.brandWash.to]}
+          start={{ x: 0.1, y: 0 }}
+          end={{ x: 0.9, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View {...rest} style={styles.brandPanelContent}>
+          {children}
+        </View>
+      </View>
+    </LinearGradient>
   );
 }
 
@@ -323,6 +377,10 @@ const styles = StyleSheet.create({
     ...shadow.card,
   },
 
+  // El filo: 1 px de degradado que asoma por el contorno de la superficie.
+  brandPanelEdge: { borderRadius: radius.xxl, padding: 1 },
+  brandPanelSurface: { borderRadius: radius.xxl - 1, overflow: 'hidden', backgroundColor: color.surface.secondary },
+  brandPanelContent: { padding: space.lg, gap: space.md },
   divider: { height: 1, backgroundColor: color.border.subtle, marginVertical: space.md },
 
   badge: { borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.xs, alignSelf: 'flex-start' },
@@ -340,7 +398,7 @@ const styles = StyleSheet.create({
     padding: space.xl,
     gap: space.xs,
   },
-  stateBoxError: { borderColor: 'rgba(255,138,138,0.35)' },
+  stateBoxError: { borderColor: color.feedbackBorder.danger },
   stateDetail: { marginTop: space.xs },
   stateReference: { marginTop: space.sm },
   stateAction: { marginTop: space.base, alignSelf: 'flex-start' },

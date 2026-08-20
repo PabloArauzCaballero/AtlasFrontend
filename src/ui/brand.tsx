@@ -67,7 +67,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: 'rgba(255,196,107,0.35)',
+    borderColor: color.feedbackBorder.warning,
     backgroundColor: color.feedbackSoft.warning,
     paddingHorizontal: space.md,
     paddingVertical: space.xs,

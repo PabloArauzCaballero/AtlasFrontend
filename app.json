@@ -91,7 +91,8 @@
           "backgroundColor": "#0B1220",
           "imageWidth": 160
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true
