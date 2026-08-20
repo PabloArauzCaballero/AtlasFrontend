@@ -17,19 +17,46 @@ import { AtlasApiError } from '../api/errors';
 
 export type EvidenceKind = 'identity_front' | 'identity_back' | 'selfie';
 
+/** Los unicos formatos que el backend verifica por firma para una evidencia fotografica. */
+export type EvidenceMimeType = 'image/jpeg' | 'image/png';
+
 export type PreparedEvidence = {
   kind: EvidenceKind;
   localUri: string;
   storageKey: string;
   sha256Hash: string;
   sizeBytes: number;
-  mimeType: 'image/jpeg';
+  mimeType: EvidenceMimeType;
 };
 
 function toHex(bytes: Uint8Array): string {
   let out = '';
   for (const byte of bytes) out += byte.toString(16).padStart(2, '0');
   return out;
+}
+
+const MAGIC_BYTES: ReadonlyArray<{ mimeType: EvidenceMimeType; signature: readonly number[] }> = [
+  { mimeType: 'image/jpeg', signature: [0xff, 0xd8, 0xff] },
+  { mimeType: 'image/png', signature: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
+];
+
+/**
+ * Deduce el tipo real de la foto por su firma binaria.
+ *
+ * El formato lo elige la camara, no nosotros: `takePictureAsync` devuelve JPEG en la mayoria de
+ * dispositivos, pero con `skipProcessing` hay camaras —el emulador de Android entre ellas— que
+ * entregan PNG. Declarar `image/jpeg` a ciegas hacia que el backend comparara la firma contra lo
+ * declarado, encontrara un PNG y devolviera 422 `EVIDENCE_CONTENT_TYPE_MISMATCH`: el registro se
+ * quedaba clavado en el paso del carnet sin que el cliente pudiera hacer nada al respecto.
+ *
+ * Se lee la firma en vez de fiarse de la extension del URI porque la extension es un nombre y la
+ * firma es el archivo.
+ */
+function detectMimeType(bytes: Uint8Array): EvidenceMimeType | null {
+  for (const candidate of MAGIC_BYTES) {
+    if (candidate.signature.every((byte, index) => bytes[index] === byte)) return candidate.mimeType;
+  }
+  return null;
 }
 
 /** Sube una foto ya capturada y devuelve lo que el paquete de identidad necesita declarar. */
@@ -43,9 +70,21 @@ export async function uploadEvidence(input: {
   const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes as unknown as BufferSource);
   const sha256Hash = toHex(new Uint8Array(digest));
 
+  const mimeType = detectMimeType(bytes);
+  if (!mimeType) {
+    // Preferimos fallar aqui, con la foto todavia en la mano, a subir un objeto y que el backend lo
+    // rechace despues: el mensaje util es "repite la foto", y solo se puede dar antes de subirla.
+    throw new AtlasApiError({
+      kind: 'validation',
+      code: 'EVIDENCE_FORMAT_UNSUPPORTED',
+      message: 'No pudimos leer la foto. Vuelve a tomarla.',
+      status: 422,
+    });
+  }
+
   const ticket = await onboardingApi.createUploadUrl(input.customerId, {
     documentType: input.kind,
-    contentType: 'image/jpeg',
+    contentType: mimeType,
     sizeBytes: bytes.length,
   });
 
@@ -71,6 +110,6 @@ export async function uploadEvidence(input: {
     storageKey: ticket.storageKey,
     sha256Hash,
     sizeBytes: bytes.length,
-    mimeType: 'image/jpeg',
+    mimeType,
   };
 }

@@ -99,6 +99,32 @@ datos` sobre `POST /customers/:id/credit-applications`, que se lee como choque d
 la base no había ninguno, y `credit.decision_subject_links` estaba **vacía**: ningún cliente había
 llegado nunca a tener una decisión.
 
+### `AtlasConsumerApp` · `evidence-upload.ts` — el registro se clavaba en el paso del carnet
+
+La app declaraba `image/jpeg` fijo al pedir la URL de subida y al firmar el paquete de identidad. El
+formato, sin embargo, lo elige la cámara: `takePictureAsync({ skipProcessing: true })` devuelve JPEG
+en la mayoría de dispositivos, pero el emulador de Android entrega **PNG**.
+
+El backend compara la firma binaria del objeto contra lo declarado —`document-storage.service.ts`,
+`matchesMagicBytes`— y devolvía `422 EVIDENCE_CONTENT_TYPE_MISMATCH`. Ningún cliente nuevo podía
+pasar del carnet.
+
+Lo que lo hacía difícil de ver desde la app: el hash **sí** cuadraba, porque lo que se sube es
+exactamente lo que se lee del archivo. Solo fallaba la firma, y el 422 llegaba a la pantalla como
+«Revisa los datos ingresados», que apunta a los campos de texto —lo único que el cliente sí había
+escrito bien—.
+
+Ahora el tipo se deduce leyendo los bytes: la extensión es un nombre, la firma es el archivo. Si no
+es ni JPEG ni PNG se corta **antes** de subir, con «vuelve a tomarla», que es el único consejo
+accionable en ese momento.
+
+### `AtlasBackend` · `envelope-encryption.util.ts` — commit `b998158`
+
+Las columnas de sobres cifrados son `BLOB` y el driver las devuelve como `Buffer`;
+`decryptSecretEnvelope` asumía `string` y lanzaba `startsWith is not a function`. El llamador lo
+interpretaba como «sobre ilegible», así que se veía como un código de verificación que nunca
+llegaba, no como un fallo de cifrado.
+
 ### `AtlasConsumerApp` · grupos de ruta — commit `a524d06`
 
 `(auth)` y `(public)` no existían como rutas por faltarles su `_layout.tsx`. Un grupo de Expo Router
