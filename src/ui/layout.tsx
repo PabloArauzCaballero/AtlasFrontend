@@ -19,12 +19,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, radius, space, touch } from '../theme/tokens';
+import { Icon } from './icons';
+import { Appear } from './motion';
 import { AtlasText } from './primitives';
 
 export function Screen({
   children,
   scroll = true,
   padded = true,
+  animate = true,
   footer,
   onRefresh,
   refreshing = false,
@@ -33,6 +36,17 @@ export function Screen({
   children: React.ReactNode;
   scroll?: boolean;
   padded?: boolean;
+  /**
+   * Entrada escalonada de los bloques de la pantalla.
+   *
+   * Por defecto si: es lo que hace que una pantalla se lea en el orden en que esta escrita en vez de
+   * aparecer entera de golpe. Se apaga donde el contenido ocupa la pantalla completa y no tiene
+   * bloques que escalonar —la camara, el escaner—, porque ahi el desplazamiento inicial se ve como
+   * un salto del visor.
+   *
+   * Con «movimiento reducido» activo no hace nada: ver `ui/motion.tsx`.
+   */
+  animate?: boolean;
   /** Accion fija al pie: se mantiene sobre el area segura, nunca bajo el indicador de inicio. */
   footer?: React.ReactNode;
   onRefresh?: () => void;
@@ -41,6 +55,20 @@ export function Screen({
 }) {
   const insets = useSafeAreaInsets();
   const body = padded ? [styles.content, contentStyle] : contentStyle;
+
+  /*
+    Se envuelve cada hijo por separado, no el conjunto: escalonar exige que cada bloque tenga su
+    propio retardo.
+
+    Los huecos (`null`, `false`) se dejan pasar tal cual. Envolverlos crearia una vista vacia que el
+    `gap` del contenedor separaria igual que a un bloque real, y las pantallas con avisos
+    condicionales —casi todas— acabarian con agujeros donde no hay nada que mostrar.
+  */
+  const bodyChildren = animate
+    ? React.Children.map(children, (child, index) =>
+        child === null || child === undefined || typeof child === 'boolean' ? child : <Appear index={index}>{child}</Appear>,
+      )
+    : children;
 
   return (
     <KeyboardAvoidingView
@@ -59,10 +87,10 @@ export function Screen({
             onRefresh ? <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={color.action.primary} /> : undefined
           }
         >
-          {children}
+          {bodyChildren}
         </ScrollView>
       ) : (
-        <View style={[styles.flex, body]}>{children}</View>
+        <View style={[styles.flex, body]}>{bodyChildren}</View>
       )}
 
       {footer ? <View style={[styles.footer, { paddingBottom: Math.max(space.base, insets.bottom) }]}>{footer}</View> : null}
@@ -99,9 +127,7 @@ export function ScreenHeader({
           hitSlop={12}
           style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
         >
-          <AtlasText variant="h3" tone="secondary">
-            {'‹'}
-          </AtlasText>
+          <Icon name="atras" size={22} />
         </Pressable>
       ) : null}
 

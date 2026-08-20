@@ -26,7 +26,9 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
-import { color, palette, radius, shadow, space, touch, type } from '../theme/tokens';
+import { color, palette, press, radius, shadow, space, touch, type } from '../theme/tokens';
+import { Icon, type IconName } from './icons';
+import { PressSurface } from './motion';
 
 /* ------------------------------------------------------------------ texto */
 
@@ -65,6 +67,7 @@ export function Button({
   disabled = false,
   haptic = 'light',
   icon,
+  blockedReason,
   style,
   ...rest
 }: Omit<PressableProps, 'style'> & {
@@ -73,6 +76,15 @@ export function Button({
   loading?: boolean;
   haptic?: 'none' | 'light' | 'success' | 'warning';
   icon?: React.ReactNode;
+  /**
+   * Por que el boton no responde.
+   *
+   * Un boton apagado sin explicacion convierte un formulario en un acertijo: el cliente ve la
+   * pantalla llena —a menudo porque un placeholder se parece a un valor— y no tiene de donde tirar.
+   * Cuando se bloquea por validacion, el motivo es obligatorio en la practica aunque el tipo lo deje
+   * opcional: `disabled` sin motivo solo se justifica mientras hay una operacion en curso.
+   */
+  blockedReason?: string | null;
   style?: ViewStyle;
 }) {
   const isBlocked = disabled || loading;
@@ -94,11 +106,14 @@ export function Button({
     onPress?.(event);
   };
 
-  return (
+  const showReason = Boolean(blockedReason) && disabled && !loading;
+
+  const pressable = (
     <Pressable
       {...rest}
       accessibilityRole="button"
       accessibilityLabel={rest.accessibilityLabel ?? label}
+      accessibilityHint={showReason ? (blockedReason ?? undefined) : rest.accessibilityHint}
       accessibilityState={{ disabled: isBlocked, busy: loading }}
       disabled={isBlocked}
       onPress={handlePress}
@@ -110,7 +125,7 @@ export function Button({
         variant === 'destructive' && styles.buttonDestructive,
         pressed && !isBlocked && styles.buttonPressed,
         isBlocked && styles.buttonDisabled,
-        style,
+        showReason ? undefined : style,
       ]}
     >
       {loading ? (
@@ -128,6 +143,25 @@ export function Button({
         </View>
       )}
     </Pressable>
+  );
+
+  if (!showReason) return pressable;
+
+  return (
+    <View style={[styles.buttonBlock, style]}>
+      {pressable}
+      {/*
+        El motivo va DEBAJO y no dentro: dentro obligaria a que la etiqueta cambiara de longitud y el
+        boton diera un salto cada vez que se completa un campo. Debajo, el boton se queda quieto y el
+        aviso aparece y desaparece sin mover nada de lo que hay encima.
+      */}
+      <View style={styles.buttonReason}>
+        <Icon name="alerta" size={15} tint={color.feedback.warning} />
+        <AtlasText variant="caption" tone="warning" style={styles.buttonReasonText}>
+          {blockedReason}
+        </AtlasText>
+      </View>
+    </View>
   );
 }
 
@@ -312,17 +346,29 @@ export function ListRow({
   title,
   subtitle,
   right,
+  icon,
   onPress,
   accessibilityHint,
 }: {
   title: string;
   subtitle?: string;
   right?: React.ReactNode;
+  /**
+   * Icono a la izquierda. Opcional a proposito: una lista donde cada fila lleva icono obliga a
+   * inventar uno para conceptos que no lo tienen, y un icono inventado se lee como ruido. Se pone
+   * donde ayuda a encontrar la fila de un vistazo, y se omite donde no.
+   */
+  icon?: IconName;
   onPress?: () => void;
   accessibilityHint?: string;
 }) {
   const content = (
     <View style={styles.row}>
+      {icon ? (
+        <View style={styles.rowIcon}>
+          <Icon name={icon} size={20} />
+        </View>
+      ) : null}
       <View style={styles.rowText}>
         <AtlasText variant="bodyStrong">{title}</AtlasText>
         {subtitle ? (
@@ -332,20 +378,23 @@ export function ListRow({
         ) : null}
       </View>
       {right}
+      {/* La punta de flecha solo aparece si la fila lleva a algun sitio: es la unica senal fiable de
+          que se puede tocar cuando no hay ninguna otra affordance. */}
+      {onPress && !right ? <Icon name="adelante" size={18} tint={color.text.tertiary} /> : null}
     </View>
   );
 
   if (!onPress) return content;
   return (
-    <Pressable
+    <PressSurface
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={accessibilityHint}
       onPress={onPress}
-      style={({ pressed }) => [pressed && styles.rowPressed]}
+      scaleTo={press.scaleSubtle}
     >
       {content}
-    </Pressable>
+    </PressSurface>
   );
 }
 
@@ -367,6 +416,9 @@ const styles = StyleSheet.create({
   buttonDisabled: { backgroundColor: color.action.disabled },
   buttonLabelDisabled: { color: color.text.tertiary },
 
+  buttonBlock: { gap: space.sm },
+  buttonReason: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.xs },
+  buttonReasonText: { flex: 1 },
   card: {
     backgroundColor: color.surface.raised,
     borderRadius: radius.xxl,
@@ -411,6 +463,6 @@ const styles = StyleSheet.create({
     gap: space.md,
     paddingVertical: space.md,
   },
+  rowIcon: { width: 28, alignItems: 'flex-start' },
   rowText: { flex: 1, gap: space.xxs },
-  rowPressed: { opacity: 0.7 },
 });

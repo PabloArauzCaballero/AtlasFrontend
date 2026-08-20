@@ -18,6 +18,7 @@ import { hashSensitiveText } from '../../src/device/device';
 import { uploadEvidence, type EvidenceKind, type PreparedEvidence } from '../../src/features/evidence-upload';
 import { useSession } from '../../src/session/session';
 import { color, radius, space } from '../../src/theme/tokens';
+import { firstBlocker } from '../../src/ui/blocked';
 import { Field } from '../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, ErrorState } from '../../src/ui/primitives';
@@ -49,6 +50,19 @@ export default function Identity() {
   const documentOk = documentNumber.trim().length >= 5;
   const expiryOk = isIsoDate(expiresAt) && new Date(`${expiresAt}T23:59:59.999Z`).getTime() > Date.now();
   const canSubmit = allCaptured && documentOk && expiryOk && !busy;
+
+  /*
+    Las tres capturas se nombran una a una. Decir "faltan fotos" obliga a repasar las tres tarjetas
+    para descubrir cual, cuando la pantalla ya sabe exactamente cual es.
+  */
+  const blockedReason = firstBlocker([
+    [Boolean(evidence.identity_front), 'Falta la foto del anverso del carnet.'],
+    [Boolean(evidence.identity_back), 'Falta la foto del reverso del carnet.'],
+    [Boolean(evidence.selfie), 'Falta la selfie.'],
+    [documentOk, 'Falta el numero de tu carnet.'],
+    [isIsoDate(expiresAt), 'Falta la fecha de vencimiento del carnet, en formato AAAA-MM-DD.'],
+    [expiryOk, 'El carnet esta vencido: solo aceptamos documentos vigentes.'],
+  ]);
 
   const capture = async () => {
     if (!cameraRef.current || !session.customerId || !activeStep) return;
@@ -129,6 +143,9 @@ export default function Identity() {
     return (
       <Screen
         scroll={false}
+        // El visor ocupa la pantalla: no hay bloques que escalonar, y envolverlo en una vista
+        // animada le quitaria el `flex: 1` del que depende para llenar el hueco.
+        animate={false}
         footer={
           <>
             <Button label="Tomar foto" onPress={capture} loading={busy} disabled={busy} />
@@ -148,7 +165,18 @@ export default function Identity() {
   /* ------------------------------------------------------------- formulario */
 
   return (
-    <Screen footer={<Button label="Enviar documento" onPress={submit} loading={busy} disabled={!canSubmit} haptic="success" />}>
+    <Screen
+      footer={
+        <Button
+          label="Enviar documento"
+          onPress={submit}
+          loading={busy}
+          disabled={!canSubmit}
+          blockedReason={blockedReason}
+          haptic="success"
+        />
+      }
+    >
       <ScreenHeader title="Tu documento" subtitle="Carnet de identidad vigente." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}

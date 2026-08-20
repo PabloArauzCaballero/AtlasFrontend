@@ -11,6 +11,8 @@ import { Alert, View } from 'react-native';
 import { apiConfig, purchaseDataSource } from '../../../src/api/config';
 import { useSandbox } from '../../../src/sandbox/store';
 import { useSession } from '../../../src/session/session';
+import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS } from '../../../src/features/tour-inicio';
+import { resetTour, useTour } from '../../../src/ui/tour';
 import { Gap, Screen } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, Divider, ListRow } from '../../../src/ui/primitives';
 
@@ -19,6 +21,7 @@ export default function Profile() {
   const session = useSession();
   const sandbox = useSandbox();
   const [signingOut, setSigningOut] = useState(false);
+  const tour = useTour();
 
   const me = session.me;
   const fullName = [me?.profile.firstName, me?.profile.lastName].filter(Boolean).join(' ') || 'Tu cuenta';
@@ -80,6 +83,26 @@ export default function Profile() {
         <ListRow title="Como funciona Atlas" subtitle="Pagas 60% hoy y el resto en 3 cuotas cada 14 dias" />
         <Divider />
         <ListRow title="Donde pago mis cuotas" subtitle="Siempre al QR bancario del comercio donde compraste" />
+        <Divider />
+        {/*
+          El recorrido tiene que poder repetirse. Quien lo salto el primer dia porque tenia prisa no
+          deberia quedarse sin el para siempre; y quien lo vio, lo necesita justo cuando le surge la
+          duda, no cuando instalo la app.
+
+          Se olvida que ya se vio ANTES de lanzarlo para que al cerrarlo vuelva a marcarse: si no,
+          el estado quedaria en "visto" y el boton no tendria nada que restablecer la vez siguiente.
+        */}
+        <ListRow
+          title="Ver el recorrido de nuevo"
+          subtitle="Los tres puntos que conviene saber antes de comprar"
+          icon="ayuda"
+          onPress={() => {
+            void resetTour(TOUR_INICIO_KEY).then(() => {
+              router.push('/(app)/(tabs)');
+              tour.start(TOUR_INICIO_STEPS, TOUR_INICIO_KEY);
+            });
+          }}
+        />
       </Card>
 
       <Card>

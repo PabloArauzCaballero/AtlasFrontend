@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
+import { firstBlocker } from '../../src/ui/blocked';
 import { Field } from '../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
@@ -22,6 +23,11 @@ export default function SignIn() {
   const [error, setError] = useState<unknown>(null);
 
   const canSubmit = identifier.trim().length >= 3 && password.length >= 1 && !submitting;
+
+  const blockedReason = firstBlocker([
+    [identifier.trim().length >= 3, 'Escribe el correo o telefono con el que te registraste.'],
+    [password.length >= 1, 'Falta tu contrasena.'],
+  ]);
 
   const submit = async () => {
     if (!canSubmit) return;
@@ -48,7 +54,7 @@ export default function SignIn() {
     <Screen
       footer={
         <>
-          <Button label="Ingresar" onPress={submit} loading={submitting} disabled={!canSubmit} />
+          <Button label="Ingresar" onPress={submit} loading={submitting} disabled={!canSubmit} blockedReason={blockedReason} />
           <Button label="Crear una cuenta" variant="ghost" onPress={() => router.replace('/(onboarding)/registro')} />
         </>
       }

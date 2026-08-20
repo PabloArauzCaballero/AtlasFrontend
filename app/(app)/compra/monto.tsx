@@ -16,6 +16,7 @@ import { STANDARD_POLICY_V1, buildBreakdown, describeAmountRejection, validateGr
 import { formatDate } from '../../../src/features/payment-copy';
 import { useSandbox, useScanSession } from '../../../src/sandbox/store';
 import { space } from '../../../src/theme/tokens';
+import { firstBlocker } from '../../../src/ui/blocked';
 import { AmountField } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, Divider, ErrorState } from '../../../src/ui/primitives';
@@ -82,6 +83,16 @@ export default function PurchaseAmount() {
           label="Continuar"
           onPress={submit}
           disabled={!amount || Boolean(rejection) || exceedsAvailable}
+          blockedReason={firstBlocker([
+            [Boolean(amount), 'Escribe el monto total que te indica el comercio.'],
+            [
+              !rejection,
+              rejection ? describeAmountRejection(rejection, STANDARD_POLICY_V1) : 'El monto esta fuera de rango.',
+            ],
+            // El detalle exacto ya esta arriba, en su propio aviso con las dos cifras. Repetirlo
+            // aqui obligaria a leer dos veces lo mismo.
+            [!exceedsAvailable, 'El monto supera tu disponible.'],
+          ])}
           haptic="light"
         />
       }

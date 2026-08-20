@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import * as authApi from '../../src/api/endpoints/auth';
 import { describeError } from '../../src/api/errors';
+import { firstBlocker } from '../../src/ui/blocked';
 import { Field } from '../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
@@ -54,6 +55,7 @@ export default function RecoverPassword() {
             label="Enviarme el codigo"
             loading={busy}
             disabled={!email.includes('@') || busy}
+            blockedReason={firstBlocker([[email.includes('@'), 'Escribe el correo de tu cuenta.']])}
             onPress={() =>
               run(async () => {
                 await authApi.requestPasswordReset(email.trim());
@@ -66,6 +68,10 @@ export default function RecoverPassword() {
             label="Guardar contrasena"
             loading={busy}
             disabled={code.length !== 6 || newPassword.length < 10 || busy}
+            blockedReason={firstBlocker([
+              [code.length === 6, 'El codigo tiene 6 digitos.'],
+              [newPassword.length >= 10, 'La contrasena nueva necesita al menos 10 caracteres.'],
+            ])}
             onPress={() =>
               run(async () => {
                 await authApi.confirmPasswordReset({ email: email.trim(), code, newPassword });

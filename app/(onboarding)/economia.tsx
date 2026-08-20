@@ -10,6 +10,7 @@ import { useState } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
+import { firstBlocker } from '../../src/ui/blocked';
 import { Field, OptionGroup } from '../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
@@ -50,6 +51,15 @@ export default function FinancialProfile() {
     !employerRequired &&
     !busy;
 
+  const blockedReason = firstBlocker([
+    [employmentStatus !== null, 'Falta elegir tu situacion laboral.'],
+    [!employerRequired, 'Falta el nombre de tu empleador.'],
+    [toNumber(income) !== undefined, 'Falta tu ingreso mensual.'],
+    [toNumber(expenses) !== undefined, 'Faltan tus gastos mensuales.'],
+    [activity.trim().length > 0, 'Falta a que te dedicas.'],
+    [sourceOfFunds !== null, 'Falta el origen de tus ingresos.'],
+  ]);
+
   const save = async () => {
     if (!session.customerId || !canSubmit) return;
     setBusy(true);
@@ -77,7 +87,7 @@ export default function FinancialProfile() {
   const described = error ? describeError(error) : null;
 
   return (
-    <Screen footer={<Button label="Guardar" onPress={save} loading={busy} disabled={!canSubmit} />}>
+    <Screen footer={<Button label="Guardar" onPress={save} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
       <ScreenHeader title="Tu situacion economica" subtitle="Con esto calculamos cuanto puedes pagar comodamente." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}

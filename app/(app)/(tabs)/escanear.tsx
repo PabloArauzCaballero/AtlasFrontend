@@ -16,6 +16,7 @@ import { DEMO_TOKEN, REVOKED_DEMO_TOKEN } from '../../../src/sandbox/fixtures';
 import { useSandbox } from '../../../src/sandbox/store';
 import { color, radius, space } from '../../../src/theme/tokens';
 import { DataSourceBadge } from '../../../src/ui/brand';
+import { firstBlocker } from '../../../src/ui/blocked';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen } from '../../../src/ui/layout';
 import { AtlasText, Button, Card, ErrorState } from '../../../src/ui/primitives';
@@ -118,6 +119,9 @@ export default function ScanScreen() {
           label="Continuar"
           variant="secondary"
           disabled={manual.trim().length < 8}
+          blockedReason={firstBlocker([
+            [manual.trim().length >= 8, 'El codigo del comercio tiene al menos 8 caracteres.'],
+          ])}
           onPress={() => {
             locked.current = false;
             handleToken(manual.trim());

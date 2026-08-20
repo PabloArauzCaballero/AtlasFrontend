@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import * as customerApi from '../../src/api/endpoints/customer';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
+import { firstBlocker } from '../../src/ui/blocked';
 import { CheckRow, Field } from '../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, Card, ErrorState, Skeleton } from '../../src/ui/primitives';
@@ -76,6 +77,22 @@ export default function Register() {
   const formOk = Object.values(errors).every((value) => value === null);
   const canSubmit = formOk && consentsOk && !busy && documents !== null;
 
+  /*
+    El motivo va en el orden de la pantalla: el primero que falta es el que hay que ir a corregir.
+    La fecha de nacimiento es el caso que motivo todo esto —su ejemplo `1996-04-12` se lee como un
+    valor ya escrito—, asi que su mensaje nombra el campo en vez de limitarse a "revisa los datos".
+  */
+  const blockedReason = firstBlocker([
+    [documents !== null, 'Estamos cargando las autorizaciones. Un momento.'],
+    [errors.firstName === null, 'Falta tu nombre.'],
+    [errors.lastName === null, 'Falta tu apellido.'],
+    [errors.birthDate === null, errors.birthDate ?? 'Falta tu fecha de nacimiento.'],
+    [errors.phone === null, 'Falta tu telefono con codigo de pais.'],
+    [errors.email === null, 'Falta tu correo electronico.'],
+    [errors.password === null, 'La contrasena necesita al menos 10 caracteres.'],
+    [consentsOk, 'Falta aceptar las autorizaciones obligatorias.'],
+  ]);
+
   const submit = async () => {
     if (!canSubmit || !documents) return;
     setBusy(true);
@@ -106,7 +123,7 @@ export default function Register() {
   const describedLoad = loadError ? describeError(loadError) : null;
 
   return (
-    <Screen footer={<Button label="Crear mi cuenta" onPress={submit} loading={busy} disabled={!canSubmit} />}>
+    <Screen footer={<Button label="Crear mi cuenta" onPress={submit} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
       <ScreenHeader title="Crear cuenta" subtitle="Necesitamos estos datos para abrir tu expediente." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}

@@ -35,7 +35,7 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
         ref={ref}
         {...rest}
         accessibilityLabel={rest.accessibilityLabel ?? label}
-        placeholderTextColor={color.text.tertiary}
+        placeholderTextColor={color.text.placeholder}
         onFocus={(event) => {
           setFocused(true);
           rest.onFocus?.(event);
@@ -97,7 +97,7 @@ export function AmountField({
           keyboardType="decimal-pad"
           inputMode="decimal"
           placeholder="0,00"
-          placeholderTextColor={color.text.tertiary}
+          placeholderTextColor={color.text.placeholder}
           autoFocus={autoFocus}
           returnKeyType="done"
           style={styles.amountInput}

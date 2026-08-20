@@ -18,6 +18,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SandboxProvider } from '../src/sandbox/store';
 import { SessionProvider, useSession } from '../src/session/session';
 import { color } from '../src/theme/tokens';
+import { TourProvider } from '../src/ui/tour';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -72,7 +73,14 @@ export default function RootLayout() {
         <StatusBar style="light" />
         <SessionProvider>
           <SandboxProvider>
-            <NavigationTree fontsReady={fontsLoaded || Boolean(fontError)} />
+            {/*
+              El recorrido guiado envuelve a la navegacion, no a una pantalla: su capa se dibuja
+              sobre la ventana completa —incluida la barra de pestanas, que es uno de los objetivos
+              que senala— y una capa montada dentro de una pantalla queda recortada por ella.
+            */}
+            <TourProvider>
+              <NavigationTree fontsReady={fontsLoaded || Boolean(fontError)} />
+            </TourProvider>
           </SandboxProvider>
         </SessionProvider>
       </SafeAreaProvider>

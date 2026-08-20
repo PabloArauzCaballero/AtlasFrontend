@@ -63,6 +63,18 @@ export const color = {
     tertiary: palette.text3,
     onBrand: palette.brand900,
     onInverse: palette.brand900,
+    /**
+     * Texto de ejemplo dentro de un campo vacio.
+     *
+     * Mas apagado que `tertiary` a proposito. Cuando el ejemplo tiene la forma exacta del valor
+     * —`1996-04-12` en una fecha, `2031-03-10` en un vencimiento— y comparte color con el resto de
+     * los textos secundarios, el campo se lee como relleno. Eso dejaba el boton principal apagado
+     * con la pantalla aparentemente completa, sin nada que indicara donde estaba el hueco.
+     *
+     * El contraste sigue por encima del minimo de texto no esencial: un ejemplo tiene que poder
+     * leerse, solo que no tiene que competir con un dato.
+     */
+    placeholder: '#41546E',
   },
   border: {
     subtle: palette.line,
@@ -90,6 +102,14 @@ export const color = {
     info: 'rgba(127,239,214,0.12)',
     neutral: 'rgba(255,255,255,0.07)',
   },
+  /**
+   * Velo para superponer contenido sobre la pantalla.
+   *
+   * A 0.72 el fondo sigue reconociendose —el usuario no pierde el contexto de donde estaba— pero ya
+   * no compite con lo que se le esta senalando. Por debajo de 0.6 el texto de la tarjeta se lee peor
+   * segun lo que quede debajo, que es una lectura distinta en cada pantalla.
+   */
+  overlay: { scrim: 'rgba(3,10,20,0.72)' },
   brandGradient: [palette.brand500, palette.brand400, palette.brand300] as const,
   /**
    * Lavado de marca para superficies grandes.
@@ -190,11 +210,44 @@ export const type = {
   },
 } as const;
 
-/** Duraciones de motion. Se respetan salvo que el sistema pida movimiento reducido. */
+/**
+ * Motion.
+ *
+ * Las duraciones son cortas a proposito. En una app de dinero la animacion existe para explicar de
+ * donde sale una pantalla y a donde va, no para lucirse: pasado el cuarto de segundo el movimiento
+ * deja de leerse como continuidad y empieza a leerse como espera.
+ *
+ * Se respetan siempre salvo que el sistema pida movimiento reducido, en cuyo caso valen cero. Ver
+ * `ui/motion.tsx`.
+ */
 export const motion = {
+  /** Respuesta al toque: tiene que sentirse inmediata o no se percibe como respuesta. */
   fast: 140,
+  /** Entradas y salidas de contenido. */
   base: 240,
+  /** Recorridos largos: hojas, superposiciones a pantalla completa. */
   slow: 380,
+  /** Retardo entre elementos de una misma entrada escalonada. */
+  stagger: 45,
+} as const;
+
+/**
+ * Curvas de aceleracion.
+ *
+ * `standard` para lo que entra y sale, `decelerate` para lo que aparece —arranca rapido y se posa—,
+ * `spring` para lo que responde al dedo. Escribirlas aqui evita que cada pantalla invente la suya y
+ * que dos elementos vecinos se muevan con temperamentos distintos.
+ */
+export const easing = {
+  standard: [0.2, 0, 0, 1] as const,
+  decelerate: [0.05, 0.7, 0.1, 1] as const,
+  accelerate: [0.3, 0, 1, 1] as const,
+} as const;
+
+/** Escala del elemento presionado. Suficiente para notarse en el pulgar, no para saltar a la vista. */
+export const press = {
+  scale: 0.97,
+  scaleSubtle: 0.985,
 } as const;
 
 /**

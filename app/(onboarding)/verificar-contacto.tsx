@@ -10,6 +10,7 @@ import { useState } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
+import { firstBlocker } from '../../src/ui/blocked';
 import { Field, OptionGroup } from '../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, Card, ErrorState } from '../../src/ui/primitives';
@@ -75,7 +76,14 @@ export default function VerifyContact() {
       footer={
         sent && !deliveryFailed ? (
           <>
-            <Button label="Confirmar codigo" onPress={confirmCode} loading={busy} disabled={code.length < 4 || busy} haptic="success" />
+            <Button
+              label="Confirmar codigo"
+              onPress={confirmCode}
+              loading={busy}
+              disabled={code.length < 4 || busy}
+              blockedReason={firstBlocker([[code.length >= 4, 'Escribe el codigo que recibiste.']])}
+              haptic="success"
+            />
             <Button label="Enviar otro codigo" variant="ghost" onPress={sendCode} disabled={busy} />
           </>
         ) : (

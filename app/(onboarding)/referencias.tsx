@@ -12,6 +12,7 @@ import { View } from 'react-native';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
+import { firstBlocker } from '../../src/ui/blocked';
 import { CheckRow, Field, OptionGroup } from '../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, Card, Divider, ErrorState } from '../../src/ui/primitives';
@@ -38,7 +39,19 @@ export default function References() {
   const isComplete = (draft: Draft) =>
     draft.relationshipType !== null && draft.fullName.trim().length >= 3 && draft.phone.trim().length >= 8;
 
-  const canSubmit = drafts.filter(isComplete).length >= REQUIRED_REFERENCES && !busy;
+  const completed = drafts.filter(isComplete).length;
+  const canSubmit = completed >= REQUIRED_REFERENCES && !busy;
+
+  // Se cuenta cuantas faltan en vez de senalar un campo: con dos fichas identicas en pantalla,
+  // "falta el telefono" no dice de cual de las dos.
+  const blockedReason = firstBlocker([
+    [
+      completed >= REQUIRED_REFERENCES,
+      completed === 0
+        ? `Falta completar ${REQUIRED_REFERENCES} referencias con relacion, nombre y telefono.`
+        : `Falta completar ${REQUIRED_REFERENCES - completed} referencia mas: relacion, nombre y telefono.`,
+    ],
+  ]);
 
   const save = async () => {
     if (!session.customerId || !canSubmit) return;
@@ -67,7 +80,7 @@ export default function References() {
   const described = error ? describeError(error) : null;
 
   return (
-    <Screen footer={<Button label="Guardar referencias" onPress={save} loading={busy} disabled={!canSubmit} />}>
+    <Screen footer={<Button label="Guardar referencias" onPress={save} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
       <ScreenHeader title="Tus referencias" subtitle={`Necesitamos ${REQUIRED_REFERENCES} personas que puedan dar referencia de ti.`} onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}

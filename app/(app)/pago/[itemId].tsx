@@ -98,7 +98,13 @@ export default function PaymentScreen() {
         reported || claim ? (
           <Button label="Entendido" onPress={() => router.back()} />
         ) : (
-          <Button label="Ya realice el pago" onPress={reportPayment} disabled={!instruction} haptic="success" />
+          <Button
+            label="Ya realice el pago"
+            onPress={reportPayment}
+            disabled={!instruction}
+            blockedReason={instruction ? null : 'Estamos preparando las instrucciones de pago.'}
+            haptic="success"
+          />
         )
       }
     >

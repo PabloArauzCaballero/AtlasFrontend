@@ -11,6 +11,7 @@ import { useState } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
+import { firstBlocker } from '../../src/ui/blocked';
 import { Field, OptionGroup } from '../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, ErrorState } from '../../src/ui/primitives';
@@ -35,6 +36,13 @@ export default function Address() {
   const [error, setError] = useState<unknown>(null);
 
   const canSubmit = Boolean(department) && city.trim().length > 1 && !busy;
+
+  // La ubicacion GPS no entra aqui a proposito: es opcional, y nombrarla como pendiente la
+  // convertiria en obligatoria a ojos del cliente.
+  const blockedReason = firstBlocker([
+    [Boolean(department), 'Falta elegir tu departamento.'],
+    [city.trim().length > 1, 'Falta tu ciudad.'],
+  ]);
 
   const captureLocation = async () => {
     setLocationState('asking');
@@ -74,7 +82,7 @@ export default function Address() {
   const described = error ? describeError(error) : null;
 
   return (
-    <Screen footer={<Button label="Guardar domicilio" onPress={save} loading={busy} disabled={!canSubmit} />}>
+    <Screen footer={<Button label="Guardar domicilio" onPress={save} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
       <ScreenHeader title="Tu domicilio" subtitle="Donde vives actualmente." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}

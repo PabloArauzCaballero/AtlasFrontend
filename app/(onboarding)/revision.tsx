@@ -14,6 +14,7 @@ import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { SECTION_LABEL, SECTION_ROUTE, describeBlocker, describeLifecycle } from '../../src/features/onboarding-map';
 import { useSession } from '../../src/session/session';
+import { firstBlocker } from '../../src/ui/blocked';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, Divider, ErrorState, ListRow } from '../../src/ui/primitives';
 
@@ -79,6 +80,22 @@ export default function Review() {
   const described = error ? describeError(error) : null;
   const pending = (status?.sections ?? []).filter((section) => section.status !== 'completed');
 
+  /*
+    Aqui el motivo no lo decide la pantalla sino el servidor, que es el unico que valida completitud.
+    Se nombra la primera seccion pendiente —la misma que aparece en la lista de abajo, tocable— para
+    que el aviso y la lista digan lo mismo y no haya que elegir a cual creerle.
+  */
+  const firstPending = pending[0];
+  const blockedReason = firstBlocker([
+    [Boolean(status), 'Estamos consultando el estado de tu solicitud.'],
+    [
+      status?.canSubmit ?? false,
+      firstPending
+        ? `Falta completar ${(SECTION_LABEL[firstPending.code]?.title ?? firstPending.code).toLowerCase()}.`
+        : 'Todavia falta completar una parte de tu expediente.',
+    ],
+  ]);
+
   return (
     <Screen
       onRefresh={onRefresh}
@@ -92,6 +109,7 @@ export default function Review() {
             onPress={submit}
             loading={busy}
             disabled={busy || !(status?.canSubmit ?? false)}
+            blockedReason={blockedReason}
             haptic="success"
           />
         )

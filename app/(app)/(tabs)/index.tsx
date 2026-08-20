@@ -5,6 +5,7 @@
  * debo y que me vence primero. Todo lo demas baja en la jerarquia.
  */
 import { useRouter } from 'expo-router';
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { isSandboxPurchase } from '../../../src/api/config';
 import { formatMoney } from '../../../src/domain/money';
@@ -15,6 +16,8 @@ import { DataSourceBadge } from '../../../src/ui/brand';
 import { Gap, Screen } from '../../../src/ui/layout';
 import { AtlasText, Badge, BrandPanel, Button, Card, Divider, EmptyState, ListRow, Skeleton } from '../../../src/ui/primitives';
 import { dueLabel, statusTone, statusLabel } from '../../../src/features/payment-copy';
+import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS, TOUR_INICIO_TARGETS } from '../../../src/features/tour-inicio';
+import { TourTarget, shouldAutoStart, useTour } from '../../../src/ui/tour';
 
 export default function Home() {
   const router = useRouter();
@@ -23,6 +26,29 @@ export default function Home() {
 
   const firstName = session.me?.profile.firstName ?? '';
   const activeOrders = sandbox.state.orders.filter((order) => order.status === 'ACTIVE' || order.status === 'WAITING_INITIAL_PAYMENT');
+
+  const tour = useTour();
+  /*
+    El recorrido se lanza solo una vez y SOLO si no hay nada que atender.
+
+    Quien abre la app con una cuota por pagar entro a resolver eso; superponerle un tutorial de tres
+    pasos convierte la ayuda en un obstaculo. Con compras activas tampoco hace falta: si llego a
+    tener una, ya recorrio el flujo entero.
+
+    Se espera a `sandbox.ready` porque hasta entonces la pantalla son esqueletos, y medir el objetivo
+    sobre un esqueleto deja el recorte en el sitio equivocado.
+  */
+  useEffect(() => {
+    if (!sandbox.ready || activeOrders.length > 0 || sandbox.nextDue) return;
+    let cancelled = false;
+    void shouldAutoStart(TOUR_INICIO_KEY).then((should) => {
+      if (should && !cancelled) tour.start(TOUR_INICIO_STEPS, TOUR_INICIO_KEY);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // `tour.start` es estable y las dependencias reales son las tres condiciones de arranque.
+  }, [sandbox.ready, sandbox.nextDue, activeOrders.length, tour]);
 
   if (!sandbox.ready) {
     return (
@@ -54,48 +80,68 @@ export default function Home() {
         {isSandboxPurchase ? <DataSourceBadge /> : null}
       </View>
 
-      <BrandPanel>
-        <AtlasText variant="caption" tone="secondary">
-          Disponible para comprar
-        </AtlasText>
-        <AtlasText variant="amount">{formatMoney(sandbox.available)}</AtlasText>
+      <TourTarget id={TOUR_INICIO_TARGETS.linea}>
+        <BrandPanel>
+          <AtlasText variant="caption" tone="secondary">
+            Disponible para comprar
+          </AtlasText>
+          <AtlasText variant="amount">{formatMoney(sandbox.available)}</AtlasText>
 
-        <View style={styles.lineMeta}>
-          <View style={styles.lineMetaItem}>
-            <AtlasText variant="caption" tone="tertiary">
-              Limite aprobado
-            </AtlasText>
-            <AtlasText variant="amountSmall">{formatMoney(sandbox.state.creditLine.approvedLimit)}</AtlasText>
-          </View>
-          <View style={styles.lineMetaItem}>
-            <AtlasText variant="caption" tone="tertiary">
-              Por pagar
-            </AtlasText>
-            <AtlasText variant="amountSmall">{formatMoney(sandbox.outstanding)}</AtlasText>
-          </View>
-        </View>
-
-        <Button label="Escanear QR del comercio" onPress={() => router.push('/(app)/(tabs)/escanear')} />
-      </BrandPanel>
-
-      {sandbox.nextDue ? (
-        <Card>
-          <View style={styles.rowBetween}>
-            <AtlasText variant="h3">Tu proximo pago</AtlasText>
-            <Badge label={statusLabel(sandbox.nextDue.item.status)} tone={statusTone(sandbox.nextDue.item.status)} />
-          </View>
-          <Divider />
-          <View style={styles.rowBetween}>
-            <View>
-              <AtlasText variant="amount">{formatMoney(sandbox.nextDue.item.amount)}</AtlasText>
-              <AtlasText variant="caption" tone="secondary">
-                {dueLabel(sandbox.nextDue.item)}
+          <View style={styles.lineMeta}>
+            <View style={styles.lineMetaItem}>
+              <AtlasText variant="caption" tone="tertiary">
+                Limite aprobado
               </AtlasText>
+              <AtlasText variant="amountSmall">{formatMoney(sandbox.state.creditLine.approvedLimit)}</AtlasText>
+            </View>
+            <View style={styles.lineMetaItem}>
+              <AtlasText variant="caption" tone="tertiary">
+                Por pagar
+              </AtlasText>
+              <AtlasText variant="amountSmall">{formatMoney(sandbox.outstanding)}</AtlasText>
             </View>
           </View>
-          <Button label="Ver como pagar" variant="secondary" onPress={() => router.push(`/(app)/pago/${sandbox.nextDue!.item.id}`)} />
-        </Card>
-      ) : null}
+
+          <TourTarget id={TOUR_INICIO_TARGETS.escanear}>
+            <Button label="Escanear QR del comercio" onPress={() => router.push('/(app)/(tabs)/escanear')} />
+          </TourTarget>
+        </BrandPanel>
+      </TourTarget>
+
+      <TourTarget id={TOUR_INICIO_TARGETS.pagos}>
+        {sandbox.nextDue ? (
+          <Card>
+            <View style={styles.rowBetween}>
+              <AtlasText variant="h3">Tu proximo pago</AtlasText>
+              <Badge label={statusLabel(sandbox.nextDue.item.status)} tone={statusTone(sandbox.nextDue.item.status)} />
+            </View>
+            <Divider />
+            <View style={styles.rowBetween}>
+              <View>
+                <AtlasText variant="amount">{formatMoney(sandbox.nextDue.item.amount)}</AtlasText>
+                <AtlasText variant="caption" tone="secondary">
+                  {dueLabel(sandbox.nextDue.item)}
+                </AtlasText>
+              </View>
+            </View>
+            <Button label="Ver como pagar" variant="secondary" onPress={() => router.push(`/(app)/pago/${sandbox.nextDue!.item.id}`)} />
+          </Card>
+        ) : (
+          /*
+            Sin proximo pago el paso del recorrido necesita igual algo a lo que apuntar. En vez de un
+            hueco vacio se explica el invariante que va a nombrar, que ademas es justo lo que alguien
+            sin compras se esta preguntando: donde se paga esto.
+          */
+          <Card>
+            <AtlasText variant="h3">Tus pagos</AtlasText>
+            <Divider />
+            <AtlasText variant="body" tone="secondary">
+              Cuando tengas una compra activa, aqui aparece tu proxima cuota y el QR bancario del comercio donde
+              pagarla.
+            </AtlasText>
+          </Card>
+        )}
+      </TourTarget>
 
       <AtlasText variant="h3">Tus compras</AtlasText>
 
