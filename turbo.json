@@ -1,0 +1,33 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "stream",
+  "globalEnv": [
+    "EXPO_PUBLIC_ATLAS_API_URL",
+    "EXPO_PUBLIC_ATLAS_TENANT_ID",
+    "EXPO_PUBLIC_ATLAS_TIMEOUT_MS",
+    "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE",
+    "EXPO_PUBLIC_ATLAS_DECISION_SOURCE"
+  ],
+  "tasks": {
+    "typecheck": {
+      "dependsOn": ["^typecheck"],
+      "outputs": []
+    },
+    "lint": {
+      "dependsOn": ["^lint"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^test"],
+      "outputs": []
+    },
+    "android": {
+      "cache": false,
+      "persistent": false
+    },
+    "start": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}

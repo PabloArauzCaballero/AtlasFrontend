@@ -1,0 +1,22 @@
+# Dependencias
+node_modules/
+
+# Turborepo
+.turbo/
+
+# Compilaciones nativas: se regeneran con `expo prebuild` y pesan cientos de megas.
+# Ademas guardan rutas absolutas de la maquina que las genero, asi que versionarlas
+# rompe la compilacion de cualquier otro equipo.
+apps/*/android/
+apps/*/ios/
+apps/*/.expo/
+
+# Entorno local. `\.env.example` y `\.env.production.example` SI se versionan:
+# son la plantilla, y no llevan ningun valor real.
+.env
+.env.local
+.env*.local
+
+# Sistema
+.DS_Store
+Thumbs.db

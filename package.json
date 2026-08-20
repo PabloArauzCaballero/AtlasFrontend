@@ -1,0 +1,23 @@
+{
+  "name": "atlas-frontend",
+  "private": true,
+  "packageManager": "npm@10.9.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "verify": "turbo run typecheck test",
+    "android": "npm run android --workspace=atlas-consumer-app",
+    "start": "npm run start --workspace=atlas-consumer-app"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.8"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
