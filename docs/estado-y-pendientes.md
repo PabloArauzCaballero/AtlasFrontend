@@ -61,8 +61,16 @@ Cada paso va por su endpoint real, **incluido el código de verificación**, que
 tal y como lo emitió el backend. El script aborta al primer paso que falla: seguir dejaría un
 expediente a medias sin avisar.
 
-**Cliente ya aprovisionado en esta base:** `customerId 20`, `pabliarca@gmail.com` /
-`+59176543210`, estado `active`, `eligible: true`.
+**Clientes en esta base:**
+
+| Cliente | Cómo se creó | Credenciales |
+|---|---|---|
+| `customerId 23` · Valeria Méndez | **Registro completo desde las pantallas** (2026-08-20) | `valeria.mendez@atlas.bo` / `AtlasDemo-2026!` |
+| `customerId 22` · Pablo Arauz | Aprovisionador | `demo.presenta@atlas.bo` / `AtlasDemo-2026!` |
+| `customerId 20` | Aprovisionador | `pabliarca@gmail.com` — **contraseña no registrada** |
+
+El de Valeria es el que demuestra el producto: cada paso se tecleó en la app y se verificó contra
+`GET /customer-onboarding/23/status`. Ver `verificacion.md` §5.
 
 ---
 

@@ -187,13 +187,61 @@ El estado de la base y los pendientes con su detalle están en
 
 ---
 
-## 5. Qué falta antes de producción
+## 5. El registro completo, hecho DESDE LAS PANTALLAS
 
-1. **Recorrido de compra con capturas** — escaneo del QR, monto, evaluación, aceptación del comercio,
-   calendario y evidencia de pago. Es lo único del flujo que no llegó a fotografiarse.
-2. **E2E móvil** sobre app instalada (Maestro o Detox) para los flujos P0.
-3. **Pruebas de mutación de cliente**: interceptar el tráfico y alterar `organizationId`, `posId`,
+Corrida del **2026-08-20** sobre el APK de release instalado en el emulador `AtlasDemo`, contra
+AtlasBackend y el motor de decisión reales. Es la diferencia con §2: allí el expediente lo creó el
+aprovisionador contra la API; aquí se tecleó en la app, pantalla por pantalla.
+
+La distinción importa. Un script que llama a los endpoints demuestra que **el servidor** funciona.
+Solo recorrer las pantallas demuestra que el cliente puede llegar hasta el final: que los botones se
+habilitan cuando deben, que la cámara entrega un archivo que el almacenamiento acepta, y que lo que
+la pantalla dice coincide con lo que el backend cree.
+
+**Cliente: Valeria Méndez (`customerId 23`), creada desde cero.**
+
+| Paso en la app | Verificado contra el backend |
+|---|---|
+| Crear cuenta + consentimiento | `customerId 23` emitido |
+| Código por SMS | **generado por el backend**, leído del sumidero: `469653` |
+| Verificar contacto | `contact_verification = completed` · avance 33 % |
+| Situación económica | `financial_profile = completed` · 50 % |
+| Domicilio | `address = completed` · 67 % |
+| Referencias (2) | `reference_contacts = completed` · 83 % |
+| Carnet: anverso, reverso y selfie | 3 subidas reales con hashes distintos · `identity_documents = completed` · **100 %**, `canSubmit: true` |
+| Enviar solicitud | `Solicitud en revisión` |
+| Decisiones de operaciones | `status: active`, `eligible: true`, **sin bloqueos** |
+| Compra de Bs 1.200 | `APROBADO` en pantalla |
+| Ejecución en el motor | **`decision_execution` 8** — `ATLAS_BNPL_UNDERWRITING`, `SUCCEEDED`, `APPROVE`, `requestId` = `credit-app-CRA-6f5dd817…` |
+
+El avance no se leyó de la pantalla: se consultó `GET /customer-onboarding/23/status` después de
+cada paso. La pantalla y el servidor coincidieron en los seis.
+
+Las dos decisiones de operaciones **no son del cliente**: las toma un operador desde el back-office y
+son deliberadamente humanas. Se resolvieron con `tools/dev-backend/approve-customer.mjs`, que pega
+contra los mismos endpoints que usa el portal. Lo único que ahorra es abrir el portal.
+
+Capturas en `evidence/30-…` a `evidence/45-…`.
+
+### Un defecto encontrado y corregido durante esta corrida
+
+La subida del carnet falló con **«Algo no salió bien»** y, lo que la hacía difícil, **sin una sola
+línea en los registros del servidor**. La causa estaba en el propio arreglo de tráfico en claro: el
+`network_security_config` permitía HTTP solo hacia el host de la API, y la app **no habla solo con la
+API** — sigue las URLs firmadas hacia el almacenamiento de objetos, que vive en otro host y no se
+conoce al compilar. La petición nunca salía del dispositivo, y por eso el servidor no tenía nada que
+contar.
+
+Se comprobó por separado que el emulador **sí** alcanza el almacenamiento, así que el bloqueo era la
+configuración y no la red. Detalle y criterio en `estado-y-pendientes.md`, TODO-3-bis.
+
+---
+
+## 6. Qué falta antes de producción
+
+1. **E2E móvil** sobre app instalada (Maestro o Detox) para los flujos P0.
+2. **Pruebas de mutación de cliente**: interceptar el tráfico y alterar `organizationId`, `posId`,
    `financedAmount`, `decisionId`. Hoy la app no los envía; falta demostrarlo contra el servidor.
-4. **Concurrencia**: dos compras simultáneas que juntas exceden la línea; solo una debe confirmar.
-5. **Regresión visual** por pantalla en ambas plataformas.
-6. **Accesibilidad** con TalkBack y VoiceOver reales, y con escala de fuente al máximo.
+3. **Concurrencia**: dos compras simultáneas que juntas exceden la línea; solo una debe confirmar.
+4. **Regresión visual** por pantalla en ambas plataformas.
+5. **Accesibilidad** con TalkBack y VoiceOver reales, y con escala de fuente al máximo.
