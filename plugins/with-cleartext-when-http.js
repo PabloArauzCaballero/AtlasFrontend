@@ -12,79 +12,35 @@
  * puerto desde el mismo emulador y el backend contesta desde el anfitrion. La peticion no falla en
  * la red: no llega a salir.
  *
- * ## Por que se decide mirando la URL y no con un interruptor
+ * ## La condicion es la URL, no un interruptor
  *
  * Un `ALLOW_CLEARTEXT=1` es un interruptor que alguien deja encendido, y publicar con el encendido
  * expone los tokens de sesion de cada cliente en cualquier wifi. Aqui la condicion es la unica que
  * importa de verdad —que la direccion configurada sea `http://`—, asi que no hay nada que acordarse
  * de apagar: en cuanto la URL es `https://`, el atributo desaparece del manifiesto.
  *
- * Se limita ademas al dominio concreto con un `network_security_config`, en vez de abrir el trafico
- * en claro para todo destino: si el binario de desarrollo acaba en manos de alguien, solo puede
- * hablar en claro con el host que se configuro.
+ * ## Por que NO se restringe al host de la API
+ *
+ * La primera version de este plugin generaba un `network_security_config` que permitia texto claro
+ * **solo para el host de la API**. Parecia mas estricto y rompio el registro: la app no habla solo
+ * con la API. El backend le entrega **URLs firmadas hacia el almacenamiento de objetos**, que vive
+ * en otro host y cuyo nombre no se conoce al compilar. La subida del carnet se cortaba sin decir
+ * nada util —«Algo no salio bien»— porque la peticion nunca salia del dispositivo.
+ *
+ * Enumerar hosts no es viable: la app sigue las direcciones que el servidor le da. Y en un binario
+ * que ya apunta a un backend en claro, restringir por dominio no aporta seguridad real; solo
+ * convierte un permiso explicito en un fallo intermitente y dificil de atribuir. Asi que el permiso
+ * es el mismo que el manifiesto de depuracion ya se concede, con la diferencia de que aqui esta
+ * condicionado a que el entorno sea de desarrollo.
  */
 const { AndroidConfig, withAndroidManifest } = require('expo/config-plugins');
-const { withDangerousMod } = require('expo/config-plugins');
-const fs = require('fs');
-const path = require('path');
-
-/** Nombre del recurso XML que se genera. Se referencia desde el manifiesto. */
-const CONFIG_RESOURCE = 'atlas_network_security_config';
-
-/** Extrae el host de una URL. Devuelve `null` si no es una URL utilizable. */
-function hostOf(url) {
-  try {
-    return new URL(url).hostname || null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Escribe `res/xml/atlas_network_security_config.xml` con el host permitido.
- *
- * `includeSubdomains` queda en `false`: el permiso se concede al host que se configuro, no a un
- * arbol de nombres que nadie reviso.
- */
-function withNetworkSecurityConfig(config, host) {
-  return withDangerousMod(config, [
-    'android',
-    async (modConfig) => {
-      const xmlDir = path.join(modConfig.modRequest.platformProjectRoot, 'app/src/main/res/xml');
-      fs.mkdirSync(xmlDir, { recursive: true });
-      fs.writeFileSync(
-        path.join(xmlDir, `${CONFIG_RESOURCE}.xml`),
-        [
-          '<?xml version="1.0" encoding="utf-8"?>',
-          '<!-- Generado por plugins/with-cleartext-when-http.js. No editar a mano. -->',
-          '<network-security-config>',
-          '  <domain-config cleartextTrafficPermitted="true">',
-          `    <domain includeSubdomains="false">${host}</domain>`,
-          '  </domain-config>',
-          '</network-security-config>',
-          '',
-        ].join('\n'),
-        'utf8',
-      );
-      return modConfig;
-    },
-  ]);
-}
 
 module.exports = function withCleartextWhenHttp(config, { apiUrl } = {}) {
   if (!apiUrl || !apiUrl.startsWith('http://')) return config;
 
-  const host = hostOf(apiUrl);
-  if (!host) return config;
-
-  const withXml = withNetworkSecurityConfig(config, host);
-
-  return withAndroidManifest(withXml, (modConfig) => {
+  return withAndroidManifest(config, (modConfig) => {
     const application = AndroidConfig.Manifest.getMainApplicationOrThrow(modConfig.modResults);
-    // El atributo general sigue haciendo falta ademas del fichero: hay rutas de red —y versiones de
-    // Android— que consultan el atributo antes que la configuracion por dominio.
     application.$['android:usesCleartextTraffic'] = 'true';
-    application.$['android:networkSecurityConfig'] = `@xml/${CONFIG_RESOURCE}`;
     return modConfig;
   });
 };

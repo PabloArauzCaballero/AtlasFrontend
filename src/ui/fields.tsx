@@ -151,11 +151,11 @@ export function OptionGroup<T extends string>({
               onPress={() => onChange(option.value)}
               style={({ pressed }) => [styles.option, selected && styles.optionSelected, pressed && styles.optionPressed]}
             >
-              <AtlasText variant="bodyStrong" tone={selected ? 'onBrand' : 'primary'}>
+              <AtlasText variant="bodyStrong" tone={selected ? 'brand' : 'primary'}>
                 {option.label}
               </AtlasText>
               {option.detail ? (
-                <AtlasText variant="caption" tone={selected ? 'onBrand' : 'tertiary'}>
+                <AtlasText variant="caption" tone={selected ? 'secondary' : 'tertiary'}>
                   {option.detail}
                 </AtlasText>
               ) : null}
@@ -218,20 +218,26 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: color.border.subtle,
-    backgroundColor: color.surface.raised,
+    backgroundColor: color.surface.sunken,
     paddingHorizontal: space.base,
     paddingVertical: space.md,
     color: color.text.primary,
     fontSize: type.body.fontSize,
   },
-  inputFocused: { borderColor: color.border.focus },
+  /*
+    El foco no solo cambia el borde: lo engorda y lo tine.
+
+    Con un unico pixel de color, en una pantalla oscura y a la luz del sol, no se distingue cual de
+    los seis campos tiene el cursor. Es la senal mas util del formulario y la mas barata de dar.
+  */
+  inputFocused: { borderColor: color.border.focus, borderWidth: 1.5 },
   inputError: { borderColor: color.feedback.danger },
 
   amountBox: {
     borderRadius: radius.xxl,
     borderWidth: 1,
     borderColor: color.border.subtle,
-    backgroundColor: color.surface.raised,
+    backgroundColor: color.surface.sunken,
     padding: space.lg,
     gap: space.sm,
   },
@@ -239,10 +245,22 @@ const styles = StyleSheet.create({
   amountInput: {
     flex: 1,
     color: color.text.primary,
+    padding: 0,
+    /*
+      La familia completa, no `fontWeight: '700'`.
+
+      Era la unica cifra de la app dibujada con negrita fingida: en Android el sistema engorda los
+      trazos de la fuente cargada en vez de cambiar de archivo, y ese engorde es exactamente lo que
+      delata a una app al lado de su propia web. Ademas hereda las cifras TABULARES, que es lo que
+      permite comparar importes sin releerlos.
+    */
+    fontFamily: type.amount.fontFamily,
     fontSize: type.amount.fontSize,
     lineHeight: type.amount.lineHeight,
-    fontWeight: '700',
-    padding: 0,
+    letterSpacing: type.amount.letterSpacing,
+    // Se copia campo a campo en vez de esparcir `type.amount`: su `fontVariant` es una tupla de
+    // solo lectura y `TextInput` exige un array mutable.
+    fontVariant: ['tabular-nums' as const],
   },
 
   options: { gap: space.sm },
@@ -251,13 +269,25 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: color.border.subtle,
-    backgroundColor: color.surface.raised,
+    backgroundColor: color.surface.sunken,
     paddingHorizontal: space.base,
     paddingVertical: space.md,
     justifyContent: 'center',
     gap: space.xxs,
   },
-  optionSelected: { backgroundColor: color.action.primary, borderColor: color.action.primary },
+  /*
+    La opcion elegida se TINE, no se rellena.
+
+    Rellenarla de menta plena ponia en pantalla dos bloques del mismo color saturado: la opcion y el
+    boton principal. Cuando dos elementos gritan igual, ninguno manda, y el que tiene que mandar es
+    la accion. Tenida —fondo de marca al 12 %, borde y texto de marca— la seleccion se lee igual de
+    clara y el boton recupera su sitio.
+  */
+  optionSelected: {
+    backgroundColor: color.brandWash.from,
+    borderColor: color.action.primary,
+    borderWidth: 1.5,
+  },
   optionPressed: { opacity: 0.8 },
 
   checkRow: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start', minHeight: touch.minSize, paddingVertical: space.sm },

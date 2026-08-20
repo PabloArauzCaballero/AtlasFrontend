@@ -254,9 +254,16 @@ desde `targetSdkVersion` 28 y solo el manifiesto de **depuración** declaraba
 `nc` alcanzaba el puerto desde el mismo emulador y el backend contestaba desde el anfitrión.
 
 `plugins/with-cleartext-when-http.js` concede el permiso **solo si la dirección configurada empieza
-por `http://`**, y solo para ese host, vía `network_security_config`. No es un interruptor que
-alguien pueda dejar encendido: en cuanto la URL es `https://`, el atributo desaparece del
-manifiesto. Verificado en los dos sentidos.
+por `http://`**. No es un interruptor que alguien pueda dejar encendido: en cuanto la URL es
+`https://`, el atributo desaparece del manifiesto. Verificado en los dos sentidos.
+
+**Un intento fallido que conviene no repetir.** La primera versión restringía el permiso al host de
+la API con un `network_security_config`. Parecía más estricto y **rompió la subida del carnet**: la
+app no habla solo con la API, sino que sigue las **URLs firmadas hacia el almacenamiento de
+objetos** que el backend le entrega, y ese host no se conoce al compilar. El fallo llegaba a la
+pantalla como «Algo no salió bien», sin nada en los registros del servidor, porque la petición nunca
+salía del dispositivo. Enumerar hosts no es viable cuando la app sigue direcciones que le dan; y en
+un binario que ya apunta a un backend en claro, restringir por dominio no añade seguridad real.
 
 ### TODO-3 · ~~Que el `.env` llegue al bundle de release~~ `[HECHO]`
 

@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0B1220"
+      "backgroundColor": "#061426"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -29,7 +29,7 @@
       "package": "bo.atlas.consumer",
       "predictiveBackGestureEnabled": true,
       "adaptiveIcon": {
-        "backgroundColor": "#0B1220",
+        "backgroundColor": "#061426",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -88,7 +88,7 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",
-          "backgroundColor": "#0B1220",
+          "backgroundColor": "#061426",
           "imageWidth": 160
         }
       ],

@@ -108,6 +108,18 @@ export function Button({
 
   const showReason = Boolean(blockedReason) && disabled && !loading;
 
+  /*
+    La accion principal se pinta con el DEGRADADO de la marca y lleva halo, no un relleno plano.
+
+    Es la firma visual de la identidad publicada, y es lo que separa un boton que parece una
+    superficie iluminada de un rectangulo pintado de menta. El halo se reserva a esta variante: si
+    dos elementos de la misma pantalla brillan, no brilla ninguno.
+
+    Bloqueado NO lleva ninguna de las dos cosas. Un boton apagado que sigue brillando invita a
+    pulsarlo, y ese es justo el malentendido que la pantalla trata de evitar.
+  */
+  const isLitPrimary = variant === 'primary' && !isBlocked;
+
   const pressable = (
     <Pressable
       {...rest}
@@ -119,15 +131,24 @@ export function Button({
       onPress={handlePress}
       style={({ pressed }) => [
         styles.button,
-        variant === 'primary' && styles.buttonPrimary,
         variant === 'secondary' && styles.buttonSecondary,
         variant === 'ghost' && styles.buttonGhost,
         variant === 'destructive' && styles.buttonDestructive,
+        isLitPrimary && styles.buttonLit,
         pressed && !isBlocked && styles.buttonPressed,
         isBlocked && styles.buttonDisabled,
         showReason ? undefined : style,
       ]}
     >
+      {isLitPrimary ? (
+        <LinearGradient
+          colors={[palette.brand300, palette.brand400, palette.brand500]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          locations={[0, 0.45, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : null}
       {loading ? (
         <ActivityIndicator color={variant === 'primary' ? color.text.onBrand : color.text.primary} />
       ) : (
@@ -168,6 +189,13 @@ export function Button({
 /* ------------------------------------------------------------------ card */
 
 export function Card({ style, children, ...rest }: ViewProps & { style?: ViewStyle }) {
+  /*
+    El filo superior es 1 px mas claro que el resto del contorno.
+
+    Es como se lee una superficie fisica: la luz viene de arriba y el canto la recoge. Sin el, una
+    tarjeta oscura sobre un fondo oscuro es un rectangulo con borde, y toda la pantalla se aplana
+    por mucha sombra que se le ponga debajo.
+  */
   return (
     <View {...rest} style={[styles.card, style]}>
       {children}
@@ -262,7 +290,17 @@ export function ProgressBar({ value, label }: { value: number; label?: string })
       accessibilityLabel={label ?? `Avance ${clamped}%`}
     >
       <View style={styles.progressTrack}>
-        <View style={[styles.progressFill, { width: `${clamped}%` }]} />
+        {/*
+          El relleno lleva el degradado de la marca, no un menta plano. Es el unico elemento que el
+          cliente vuelve a ver entre paso y paso del registro, asi que es donde el avance se siente
+          como avance y no como una barra de sistema.
+        */}
+        <LinearGradient
+          colors={[palette.brand500, palette.brand400, palette.brand300]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.progressFill, { width: `${clamped}%` }]}
+        />
       </View>
     </View>
   );
@@ -408,11 +446,12 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
   },
   buttonInner: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  buttonPrimary: { backgroundColor: color.action.primary },
   buttonSecondary: { backgroundColor: color.action.secondary, borderWidth: 1, borderColor: color.border.subtle },
   buttonGhost: { backgroundColor: 'transparent' },
   buttonDestructive: { backgroundColor: 'transparent', borderWidth: 1, borderColor: color.feedback.danger },
-  buttonPressed: { opacity: 0.82, transform: [{ scale: 0.985 }] },
+  // `overflow: hidden` recorta el degradado al radio de la pildora; sin el, asoma por las esquinas.
+  buttonLit: { backgroundColor: color.action.primary, overflow: 'hidden', ...shadow.brandGlow },
+  buttonPressed: { opacity: 0.9, transform: [{ scale: 0.985 }] },
   buttonDisabled: { backgroundColor: color.action.disabled },
   buttonLabelDisabled: { color: color.text.tertiary },
 
@@ -424,6 +463,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.xxl,
     borderWidth: 1,
     borderColor: color.border.subtle,
+    borderTopColor: color.surface.edge,
     padding: space.lg,
     gap: space.md,
     ...shadow.card,
@@ -433,7 +473,14 @@ const styles = StyleSheet.create({
   brandPanelEdge: { borderRadius: radius.xxl, padding: 1 },
   brandPanelSurface: { borderRadius: radius.xxl - 1, overflow: 'hidden', backgroundColor: color.surface.secondary },
   brandPanelContent: { padding: space.lg, gap: space.md },
-  divider: { height: 1, backgroundColor: color.border.subtle, marginVertical: space.md },
+  /*
+    El divisor va al ras de la tarjeta y con MENOS aire del que tenia.
+
+    Con `marginVertical: space.md` a cada lado, cada fila quedaba flotando en su propio bloque y la
+    tarjeta se leia como un menu de ajustes del sistema. Lo que agrupa una lista es la proximidad;
+    la linea solo tiene que separar, no abrir un hueco.
+  */
+  divider: { height: 1, backgroundColor: color.border.subtle, marginVertical: space.sm },
 
   badge: { borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.xs, alignSelf: 'flex-start' },
 
@@ -446,9 +493,11 @@ const styles = StyleSheet.create({
     borderRadius: radius.xxl,
     borderWidth: 1,
     borderColor: color.border.subtle,
+    borderTopColor: color.surface.edge,
     backgroundColor: color.surface.raised,
     padding: space.xl,
     gap: space.xs,
+    ...shadow.card,
   },
   stateBoxError: { borderColor: color.feedbackBorder.danger },
   stateDetail: { marginTop: space.xs },
@@ -461,7 +510,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: space.md,
-    paddingVertical: space.md,
+    // Menos aire vertical: la altura minima tactil ya garantiza que la fila se pueda tocar, y el
+    // relleno de mas solo separaba cada fila de sus vecinas hasta deshacer la lista.
+    paddingVertical: space.sm,
   },
   rowIcon: { width: 28, alignItems: 'flex-start' },
   rowText: { flex: 1, gap: space.xxs },

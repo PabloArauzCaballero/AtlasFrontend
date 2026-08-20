@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { Alert, View } from 'react-native';
 import { apiConfig, purchaseDataSource } from '../../../src/api/config';
 import { useSandbox } from '../../../src/sandbox/store';
+import { describeCustomerStatus } from '../../../src/features/onboarding-map';
 import { useSession } from '../../../src/session/session';
 import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS } from '../../../src/features/tour-inicio';
 import { resetTour, useTour } from '../../../src/ui/tour';
@@ -57,7 +58,12 @@ export default function Profile() {
         <ListRow
           title="Estado"
           subtitle="Determina que puedes hacer en la app"
-          right={<Badge label={me?.customer.status ?? 'desconocido'} tone={me?.customer.status === 'active' ? 'success' : 'warning'} />}
+          right={
+            <Badge
+              label={describeCustomerStatus(me?.customer.status)}
+              tone={me?.customer.status === 'active' ? 'success' : 'warning'}
+            />
+          }
         />
         <Divider />
         <ListRow title="Telefono" subtitle={me?.customer.phoneLast4 ? `Termina en ${me.customer.phoneLast4}` : 'Sin registrar'} />

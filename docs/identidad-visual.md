@@ -89,10 +89,83 @@ ninguna pantalla tenga que conocerlo.
 
 ---
 
-## 4. Qué NO se hizo, a propósito
+## 4. Profundidad: por qué la app se veía plana
 
-- **No se tocó la estructura de las pantallas.** El encargo era estético; mover la jerarquía
-  habría invalidado las capturas de evidencia y las pruebas del recorrido.
+Los tokens estaban bien portados desde el primer día. Lo que fallaba era **cómo se aplicaban**, y
+por eso la app se leía como una web sin terminar en vez de como un producto financiero.
+
+### Las tarjetas no existían
+
+`surface.raised` era `rgba(255,255,255,0.04)`. Sobre un navy tan profundo, ese 4 % no llega a
+separarse del papel: la pantalla entera se leía como **un solo plano con texto suelto encima**, y
+ninguna sombra podía arreglarlo porque no había nada que proyectara sombra.
+
+Ahora es una superficie **opaca** (`palette.bgCard`, tres pasos por encima del fondo) con tres
+cosas que van juntas y solas no bastan:
+
+1. **Sombra grande y muy difusa** —`0 16px 32px` al 55 %—, como el `--sh` de la web. Sobre fondo
+   oscuro lo que separa una superficie del papel es el **tamaño del desenfoque**, no su opacidad:
+   una sombra corta y dura es negro sobre negro.
+2. **Filo superior iluminado**: el borde de arriba, 1 px más claro que el resto del contorno. Es
+   como se lee un objeto físico —la luz cae desde arriba y el canto la recoge—.
+3. **Menos aire dentro.** Las filas tenían tanto relleno vertical que cada una flotaba en su propio
+   bloque y la tarjeta se leía como un menú de ajustes del sistema. Lo que agrupa una lista es la
+   proximidad.
+
+### Los campos eran pedestales, no huecos
+
+Un campo de texto es un sitio donde se escribe. Estaba pintado del mismo color que la superficie
+que lo contiene, así que dejaba de leerse como zona editable. Ahora usa `surface.sunken` —más
+oscuro que la tarjeta—: el hueco se ve hueco. El foco, además, engorda el borde a 1,5 px: con un
+solo píxel de color, en una pantalla oscura, no se distingue cuál de seis campos tiene el cursor.
+
+### La acción principal no era una fuente de luz
+
+Era un rectángulo relleno de menta plano. En la identidad publicada la llamada a la acción es un
+**degradado con halo**, y esa es la diferencia entre una superficie iluminada y un rectángulo
+pintado. El halo (`shadow.brandGlow`) se reserva a **una acción por pantalla**: si brillan dos, no
+brilla ninguna.
+
+Por la misma regla, la **opción elegida se tiñe en vez de rellenarse**. Rellenarla de menta ponía
+en pantalla dos bloques del mismo color saturado —la opción y el botón—, y cuando dos elementos
+gritan igual el que pierde es el que tenía que mandar.
+
+### El importe llevaba negrita fingida
+
+`AmountField` usaba `fontWeight: '700'`, justo lo que §2 de este documento prohíbe. Era la única
+cifra de la app dibujada con el engorde del sistema en vez de con la familia real, y encima perdía
+las cifras tabulares. Es el número más importante de la app.
+
+---
+
+## 5. La marca en el sistema operativo
+
+El icono del lanzador y la pantalla de arranque eran **los marcadores de posición de Expo**: la «A»
+azul sobre celeste con guías de construcción, y una rejilla gris con círculos. Es lo primero que ve
+cualquiera —antes que ninguna pantalla— y decía que la app no estaba terminada.
+
+Se generaron desde el **mismo trazado SVG que dibuja `src/ui/brand.tsx`**, para que el icono del
+teléfono y el logotipo de dentro sean el mismo objeto y no dos dibujos parecidos:
+
+| Archivo | Qué es |
+| --- | --- |
+| `icon.png` | Marca sobre navy con halo de marca detrás |
+| `splash-icon.png` | La misma marca, más pequeña, sobre el fondo exacto de la app |
+| `android-icon-foreground.png` | Capa delantera del icono adaptativo, en su zona segura |
+| `android-icon-background.png` | Capa de fondo, navy sólido |
+| `android-icon-monochrome.png` | Silueta blanca sobre transparente, para iconos con tema |
+
+El fondo del arranque era `#0B1220` y el de la app `#061426`: al entrar se veía un **escalón de
+color**. Ahora los dos son `#061426` y la transición no se nota, que es justo lo que tiene que
+pasar.
+
+---
+
+## 6. Qué NO se hizo, a propósito
+
+- **No se movió la jerarquía de ninguna pantalla.** Los cambios de §4 son de superficie, tipografía
+  y profundidad: viven en los tokens y en los primitivos, así que llegan a las veinte pantallas sin
+  reordenar ninguna. Ninguna pantalla cambió de contenido ni de orden de lectura.
 - **No se añadió movimiento nuevo.** El playbook pide degradar con gracia y respetar «menos
   movimiento»; añadir animación sin ese respeto instalado es deuda, no pulido.
 - **No se creó un tema claro.** Los tokens semánticos ya lo permiten (`color.surface.*`), pero la
@@ -100,7 +173,7 @@ ninguna pantalla tenga que conocerlo.
 
 ---
 
-## 5. Si cambia la marca
+## 7. Si cambia la marca
 
 Se toca `src/theme/tokens.ts` y nada más. Ese es el contrato. Si hay que buscar y reemplazar en
 las pantallas, es que alguien escribió un literal y hay que devolverlo al sistema.

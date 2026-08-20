@@ -22,6 +22,17 @@ export const palette = {
   bg: '#061426',
   bgElevated: '#0A1C33',
   bgSheet: '#0B2138',
+  /**
+   * Superficie de tarjeta. OPACA, no un velo blanco.
+   *
+   * Antes las tarjetas eran `rgba(255,255,255,0.04)` sobre el fondo: a esa alfa, sobre un navy tan
+   * profundo, la tarjeta no llega a separarse del papel y la pantalla entera se lee como un solo
+   * plano con texto suelto encima. Una superficie propia —tres pasos por encima del fondo— es lo
+   * que convierte una lista de textos en objetos que se pueden tocar.
+   */
+  bgCard: '#0B1E36',
+  /** Filo superior iluminado de una superficie elevada: la luz cae desde arriba, y se nota. */
+  edgeLit: 'rgba(255,255,255,0.10)',
 
   ink04: 'rgba(255,255,255,0.04)',
   ink07: 'rgba(255,255,255,0.07)',
@@ -52,10 +63,21 @@ export const color = {
   surface: {
     primary: palette.bg,
     secondary: palette.bgElevated,
-    raised: palette.ink04,
+    /** Tarjetas y cualquier cosa que deba leerse POR ENCIMA del fondo. Ver `palette.bgCard`. */
+    raised: palette.bgCard,
     raisedStrong: palette.ink07,
     sheet: palette.bgSheet,
     inverse: palette.white,
+    /** Filo superior de una superficie elevada. */
+    edge: palette.edgeLit,
+    /**
+     * Superficie HUNDIDA: campos de texto, opciones, cajas de importe.
+     *
+     * Un campo es un hueco donde se escribe, no un pedestal. Cuando comparte color con la tarjeta
+     * que lo contiene deja de leerse como una zona editable y la pantalla se vuelve una lista de
+     * etiquetas con rectangulos al lado. Mas oscuro que la tarjeta, el hueco se ve hueco.
+     */
+    sunken: palette.bg,
   },
   text: {
     primary: palette.text1,
@@ -260,12 +282,34 @@ export const touch = {
 } as const;
 
 export const shadow = {
+  /**
+   * Elevacion de una tarjeta.
+   *
+   * Profunda y muy difusa, como en la identidad publicada (`--sh` del landing es
+   * `0 30px 80px -28px rgba(0,0,0,.8)`). Una sombra corta y dura sobre fondo oscuro no se ve
+   * —no hay contraste entre negro y negro—; lo que separa la superficie del papel es el TAMANO
+   * del desenfoque, no su opacidad.
+   */
   card: {
     shadowColor: palette.black,
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 6,
+    shadowOpacity: 0.55,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 10,
+  },
+  /**
+   * Halo de marca bajo la accion principal.
+   *
+   * Es lo que hace que el boton se lea como fuente de luz y no como un rectangulo pintado, y es
+   * la firma visual de la identidad en la web. Se reserva para UNA accion por pantalla: si
+   * brillan dos, no brilla ninguna.
+   */
+  brandGlow: {
+    shadowColor: palette.brand400,
+    shadowOpacity: 0.45,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
   },
   sheet: {
     shadowColor: palette.black,

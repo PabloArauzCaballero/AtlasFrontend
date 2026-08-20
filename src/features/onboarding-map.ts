@@ -82,3 +82,30 @@ const LIFECYCLE_COPY: Record<string, { title: string; detail: string }> = {
 export function describeLifecycle(status: string): { title: string; detail: string } {
   return LIFECYCLE_COPY[status] ?? { title: 'Registro en curso', detail: 'Continua donde lo dejaste.' };
 }
+
+/**
+ * Estado de la cuenta, dicho en el idioma del cliente.
+ *
+ * El backend devuelve su enumerado (`active`, `suspended`…) y la pantalla lo estaba mostrando tal
+ * cual: en el perfil se leia «ACTIVE», que es vocabulario del sistema, no del producto. Una palabra
+ * en ingles y en mayusculas dentro de una pantalla en espanol es lo que delata que la interfaz esta
+ * ensenando su base de datos.
+ *
+ * Lo que no reconoce se devuelve sin traducir en lugar de inventarse un nombre: un estado nuevo del
+ * servidor debe verse raro, no verse mal.
+ */
+const CUSTOMER_STATUS_COPY: Record<string, string> = {
+  active: 'activa',
+  pending: 'pendiente',
+  pending_verification: 'por verificar',
+  under_review: 'en revision',
+  suspended: 'suspendida',
+  blocked: 'bloqueada',
+  closed: 'cerrada',
+  rejected: 'rechazada',
+};
+
+export function describeCustomerStatus(status: string | undefined): string {
+  if (!status) return 'sin estado';
+  return CUSTOMER_STATUS_COPY[status] ?? status;
+}
