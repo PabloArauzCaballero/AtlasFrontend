@@ -107,7 +107,7 @@ Capturas en `docs/evidence/`, tomadas del APK de release instalado y con el back
 |---|---|
 | `01-bienvenida.png` | Arranque y propuesta de valor |
 | `02-registro.png` | Formulario de alta |
-| `02-ingresar.png` · `03-ingresar.png` | Ingreso, con el aviso de bloqueo por intentos |
+| `03-ingresar.png` | Ingreso, con el aviso de bloqueo por intentos |
 | `03-inicio.png` | **Sesión iniciada**: línea de Bs 5.000,00 y el badge «Entorno sandbox» declarado |
 | `04-escanear.png` · `04-escanear-codigos.png` | Permiso de cámara, entrada manual y códigos de prueba |
 | `05-monto.png` | **Desglose 60/40 en vivo** y el tope de política (Bs 100.000 rechazado con su motivo) |
@@ -126,8 +126,24 @@ Dos capturas merecen mirarse juntas, porque son el mismo invariante visto por su
 - `06b` se tomó con el motor de decisión **apagado**. La pantalla muestra «EN REVISIÓN» y el pie
   dice `modo engine_unavailable_manual`. Una avería no se convirtió en un rechazo.
 - `08-calendario.png` se tomó con el motor **vivo**. El mismo pie dice
-  `solicitud CRA-49c46300-… · ejecución 4 · modo decision_engine`, y ese `4` es el `executionId`
+  `solicitud CRA-52d3cfd1-… · ejecución 5 · modo decision_engine`, y ese `5` es el `executionId`
   que el motor guardó en su propia auditoría.
+
+Las dos caras quedan también en la tabla del backend, que es donde se decide de verdad:
+
+```
+ _id |    status    |       decision_mode       | decision_execution_id
+-----+--------------+---------------------------+-----------------------
+   9 | under_review | engine_unavailable_manual |
+   8 | approved     | decision_engine           | 6
+   7 | approved     | decision_engine           | 5
+```
+
+`under_review` sin ejecución es el motor apagado; `approved` con ejecución es el motor
+respondiendo. Ninguna de las dos filas es un rechazo, que es justo el punto.
+
+> Todas las capturas de esta tabla se retomaron después del rediseño tipográfico, así que lo que
+> se ve es Sora/Manrope cargadas, no la fuente del sistema. Ver `identidad-visual.md`.
 
 ### Matriz por plataforma
 
