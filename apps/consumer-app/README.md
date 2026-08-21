@@ -70,7 +70,7 @@ Desde `AtlasBackend/`, con el override de desarrollo que vive en este repositori
 ```bash
 ATLAS_DEV_HOST_IP=<tu-ip-lan> API_PUBLISH_PORT=3105 \
 docker compose -f docker-compose.yml \
-  -f ../AtlasConsumerApp/tools/dev-backend/docker-compose.dev-channels.yml \
+  -f ../AtlasFrontend/apps/consumer-app/tools/dev-backend/docker-compose.dev-channels.yml \
   --profile app up -d --build api minio minio-init
 ```
 

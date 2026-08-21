@@ -162,11 +162,11 @@ ATLAS_DEV_DECISION_ENGINE_MANAGEMENT_KEY=<MANAGEMENT_API_KEY del motor> \
 ATLAS_DEV_DECISION_ENGINE_ARTIFACT=ATLAS_BNPL_UNDERWRITING \
 ATLAS_DEV_ADMIN_PASSWORD='<la que quieras sembrar>' \
 docker compose -f docker-compose.yml \
-  -f ../AtlasConsumerApp/tools/dev-backend/docker-compose.dev-channels.yml \
+  -f ../AtlasFrontend/apps/consumer-app/tools/dev-backend/docker-compose.dev-channels.yml \
   --profile app up -d api minio minio-init
 
 # 3. Sumidero de códigos de verificación
-cd ../AtlasConsumerApp && node tools/dev-backend/otp-sink.mjs &
+cd ../AtlasFrontend/apps/consumer-app && node tools/dev-backend/otp-sink.mjs &
 
 # 4. Cliente de demostración habilitado
 ATLAS_ADMIN_PASSWORD='<la misma>' node tools/dev-backend/provision-demo-customer.mjs \
@@ -179,9 +179,10 @@ seeder es idempotente y si no, se salta.
 
 ### Compilar la app en Windows
 
-`AtlasConsumerApp` **no compila desde su ruta actual**: CMake espeja la ruta absoluta de cada fuente
-y con `Downloads\Entrypoint-GitHUb\Atlas\AtlasConsumerApp\node_modules\react-native-...` se pasa del
-límite de 260 caracteres de Windows. Hay que compilar desde una copia en una ruta corta. El
+La app **no compila desde su ruta dentro del monorepo**: CMake espeja la ruta absoluta de cada
+fuente, y con `…\Atlas\AtlasFrontend\apps\consumer-app\node_modules\react-native-…` se pasa del
+límite de 260 caracteres de Windows. Con el monorepo la ruta es **más larga que antes**, así que el
+problema no desaparece: empeora. Hay que compilar desde una copia en una ruta corta; el
 procedimiento completo está en [`verificacion.md`](verificacion.md) §3.
 
 **Dos trampas que cuestan horas si no se saben:**

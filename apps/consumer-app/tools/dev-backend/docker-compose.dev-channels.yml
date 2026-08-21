@@ -24,7 +24,7 @@
 #   ATLAS_DEV_DECISION_ENGINE_RUNTIME_KEY=<RUNTIME_API_KEY del motor> \
 #   ATLAS_DEV_DECISION_ENGINE_MANAGEMENT_KEY=<MANAGEMENT_API_KEY del motor> \
 #   docker compose -f docker-compose.yml \
-#     -f ../AtlasConsumerApp/tools/dev-backend/docker-compose.dev-channels.yml \
+#     -f ../AtlasFrontend/apps/consumer-app/tools/dev-backend/docker-compose.dev-channels.yml \
 #     --profile app up -d api minio minio-init
 #
 # Nunca usar fuera de local.
