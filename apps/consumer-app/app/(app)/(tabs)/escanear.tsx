@@ -9,8 +9,8 @@
  */
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
+import { useIsFocused, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { DEMO_TOKEN, REVOKED_DEMO_TOKEN } from '../../../src/sandbox/fixtures';
 import { useSandbox } from '../../../src/sandbox/store';
@@ -41,6 +41,31 @@ export default function ScanScreen() {
   const [rejection, setRejection] = useState<string | null>(null);
   // Un QR permanece en cuadro varios fotogramas: sin este cerrojo se abririan varias sesiones.
   const locked = useRef(false);
+
+  /*
+   * La camara SOLO existe mientras esta pestana esta en pantalla.
+   *
+   * `CameraView` monta una superficie nativa que sigue capturando aunque la pestana quede detras:
+   * al volver, esa superficie y la nueva se pisan y el visor aparece en negro, congelado o encima
+   * del contenido de otra pantalla. Es el defecto que se ve como «la vista se buguea».
+   *
+   * Desmontarla al perder el foco tambien libera la camara para el paso de identidad, que la usa
+   * para el carnet: dos superficies pidiendo el mismo sensor no es un problema de rendimiento, es
+   * una de las dos sin imagen.
+   */
+  const isFocused = useIsFocused();
+
+  /*
+   * Y al volver se suelta el cerrojo. Sin esto, quien escanea, vuelve atras y lo intenta otra vez
+   * se encuentra una camara que ya no reacciona: el cerrojo quedo echado del intento anterior y no
+   * hay nada en pantalla que explique por que no pasa nada.
+   */
+  useEffect(() => {
+    if (isFocused) {
+      locked.current = false;
+      setRejection(null);
+    }
+  }, [isFocused]);
 
   const handleToken = useCallback(
     (token: string) => {
@@ -86,12 +111,14 @@ export default function ScanScreen() {
 
       {permission?.granted ? (
         <View style={styles.cameraFrame}>
-          <CameraView
-            style={styles.camera}
-            facing="back"
-            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-            onBarcodeScanned={({ data }) => handleToken(data)}
-          />
+          {isFocused ? (
+            <CameraView
+              style={styles.camera}
+              facing="back"
+              barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+              onBarcodeScanned={({ data }) => handleToken(data)}
+            />
+          ) : null}
           <View style={styles.reticle} pointerEvents="none" />
         </View>
       ) : (
