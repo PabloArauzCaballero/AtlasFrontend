@@ -15,9 +15,17 @@ type State = {
   loans: loansApi.LoanSummary[];
   spending: loansApi.SpendingByCategory | null;
   rating: loansApi.CreditRating | null;
+  /**
+   * El calendario: todas las cuotas de todos los creditos en una sola linea de tiempo.
+   *
+   * Viaja con el resto y no en su propio hook porque la pantalla de pagos lo necesita para DOS
+   * cosas a la vez —pintar el mes y decidir que credito esta «por vencer»— y pedirlo aparte
+   * permitiria que la lista y el calendario contaran la misma cuota de dos maneras.
+   */
+  calendar: loansApi.PaymentCalendar | null;
 };
 
-const EMPTY: State = { ready: false, error: null, loans: [], spending: null, rating: null };
+const EMPTY: State = { ready: false, error: null, loans: [], spending: null, rating: null, calendar: null };
 
 export function useCreditBook(customerId: string | null) {
   const [state, setState] = useState<State>(EMPTY);
@@ -33,10 +41,11 @@ export function useCreditBook(customerId: string | null) {
      * que un 404 suyo es un estado normal del producto —cliente nuevo— y no puede tumbar el tablero
      * de gastos. Con `all`, la pantalla entera se caeria por la pieza mas opcional de las tres.
      */
-    const [loans, spending, rating] = await Promise.allSettled([
+    const [loans, spending, rating, calendar] = await Promise.allSettled([
       loansApi.listLoans(customerId),
       loansApi.getSpendingByCategory(customerId),
       loansApi.getCreditRating(customerId),
+      loansApi.getPaymentCalendar(customerId),
     ]);
 
     setState({
@@ -46,6 +55,7 @@ export function useCreditBook(customerId: string | null) {
       loans: loans.status === 'fulfilled' ? loans.value.items : [],
       spending: spending.status === 'fulfilled' ? spending.value : null,
       rating: rating.status === 'fulfilled' ? rating.value : null,
+      calendar: calendar.status === 'fulfilled' ? calendar.value : null,
     });
   }, [customerId]);
 

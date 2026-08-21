@@ -70,9 +70,63 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   IDENTITY_ALREADY_VERIFIED: 'Tu identidad ya fue verificada.',
   DOCUMENT_NUMBER_MISMATCH: 'El número de documento no coincide con el que registraste.',
   IDENTITY_PACKAGE_REQUIRED: 'Primero debes subir tu documento de identidad.',
-  INVALID_CREDENTIALS: 'Usuario o contrasena incorrectos.',
-  ACCOUNT_LOCKED: 'Tu cuenta está bloqueada temporalmente por intentos fallidos. Intenta más tarde.',
+  INVALID_CREDENTIALS: 'Correo o contraseña incorrectos.',
+  ACCOUNT_LOCKED: 'Tu cuenta está bloqueada temporalmente por varios intentos fallidos.',
+
+  /*
+   * Empezar el registro y no terminarlo NO puede dejar a nadie fuera.
+   *
+   * Quien rellena el formulario y cierra la app antes de acabar el alta ya tiene cuenta: se creó al
+   * enviar el primer paso. Al volver e intentar registrarse otra vez, el servidor responde
+   * `CUSTOMER_ALREADY_EXISTS` — correctamente, porque dos cuentas con el mismo correo serían dos
+   * expedientes crediticios de la misma persona. Lo que fallaba es que este código NO estaba en esta
+   * tabla, así que la pantalla mostraba «Revisa los datos ingresados» y no había nada que revisar:
+   * los datos estaban bien. Era una pared sin puerta.
+   *
+   * El mensaje ahora dice lo que pasa y `RECOVERY_BY_CODE` pone la salida al lado.
+   */
+  CUSTOMER_ALREADY_EXISTS: 'Ya existe una cuenta con este correo o teléfono. Si la empezaste tú, ingresa y sigues donde lo dejaste.',
+  CONTACT_ALREADY_REGISTERED: 'Ese correo o teléfono ya está registrado en otra cuenta.',
+  CONTACT_ALREADY_VERIFIED: 'Ese contacto ya estaba verificado. Puedes continuar.',
+  IDENTITY_FIELDS_LOCKED: 'Tu identidad ya fue verificada con tu documento. Para corregir tu nombre o tu fecha de nacimiento, escríbenos.',
 };
+
+/**
+ * La salida que acompaña a un error sin salida.
+ *
+ * Un mensaje que explica el problema y no dice qué hacer deja a la persona exactamente donde
+ * estaba. Estos son los códigos donde el camino de vuelta existe y es corto.
+ */
+export type ErrorRecovery = { label: string; href: string };
+
+const RECOVERY_BY_CODE: Record<string, ErrorRecovery[]> = {
+  CUSTOMER_ALREADY_EXISTS: [
+    { label: 'Ingresar con mi cuenta', href: '/(auth)/ingresar' },
+    { label: 'Olvidé mi contraseña', href: '/(auth)/recuperar' },
+  ],
+  CONTACT_ALREADY_REGISTERED: [
+    { label: 'Ingresar con mi cuenta', href: '/(auth)/ingresar' },
+    { label: 'Olvidé mi contraseña', href: '/(auth)/recuperar' },
+  ],
+  ACCOUNT_LOCKED: [{ label: 'Olvidé mi contraseña', href: '/(auth)/recuperar' }],
+};
+
+/**
+ * Hasta cuándo dura un bloqueo, dicho en hora de reloj.
+ *
+ * El backend manda `lockedUntil`; decir «intenta más tarde» a secas garantiza una de dos conductas,
+ * las dos malas: no volver nunca, o reintentar cada diez segundos. Una hora concreta se puede
+ * esperar.
+ */
+function lockedUntilOf(error: AtlasApiError): string | null {
+  const envelope = error.details as { error?: { details?: { lockedUntil?: unknown } } } | undefined;
+  const value = envelope?.error?.details?.lockedUntil;
+  if (typeof value !== 'string') return null;
+
+  const at = new Date(value);
+  if (Number.isNaN(at.getTime())) return null;
+  return at.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
+}
 
 const MESSAGE_BY_KIND: Record<AtlasErrorKind, string> = {
   network: 'Sin conexion. Revisa tu internet e intenta de nuevo.',
@@ -88,28 +142,41 @@ const MESSAGE_BY_KIND: Record<AtlasErrorKind, string> = {
   unknown: 'No pudimos completar la operacion.',
 };
 
-export function describeError(error: unknown): { title: string; detail: string; canRetry: boolean; reference: string | null } {
+export function describeError(error: unknown): {
+  title: string;
+  detail: string;
+  canRetry: boolean;
+  reference: string | null;
+  recovery: ErrorRecovery[];
+} {
   if (error instanceof AtlasApiError) {
-    const detail = MESSAGE_BY_CODE[error.code] ?? MESSAGE_BY_KIND[error.kind];
+    const base = MESSAGE_BY_CODE[error.code] ?? MESSAGE_BY_KIND[error.kind];
+    const until = error.code === 'ACCOUNT_LOCKED' ? lockedUntilOf(error) : null;
     return {
-      title: titleFor(error.kind),
-      detail,
+      title: titleFor(error.kind, error.code),
+      detail: until ? `${base} Podrás volver a intentarlo a las ${until}.` : base,
       canRetry: error.kind === 'network' || error.kind === 'timeout' || error.kind === 'server' || error.kind === 'unavailable',
       reference: error.requestId,
+      recovery: RECOVERY_BY_CODE[error.code] ?? [],
     };
   }
-  return { title: 'Algo no salio bien', detail: MESSAGE_BY_KIND.unknown, canRetry: true, reference: null };
+  return { title: 'Algo no salió bien', detail: MESSAGE_BY_KIND.unknown, canRetry: true, reference: null, recovery: [] };
 }
 
-function titleFor(kind: AtlasErrorKind): string {
+function titleFor(kind: AtlasErrorKind, code?: string): string {
+  // Un titulo por codigo cuando el codigo dice algo mas util que su familia. «Revisa los datos» sobre
+  // un formulario correcto manda a la persona a buscar un error que no existe.
+  if (code === 'CUSTOMER_ALREADY_EXISTS' || code === 'CONTACT_ALREADY_REGISTERED') return 'Ya tienes una cuenta';
+  if (code === 'ACCOUNT_LOCKED') return 'Cuenta bloqueada temporalmente';
+
   switch (kind) {
     case 'network':
     case 'timeout':
-      return 'Sin conexion';
+      return 'Sin conexión';
     case 'auth':
       return 'Sesión expirada';
     case 'permission':
-      return 'Accion no permitida';
+      return 'Acción no permitida';
     case 'not_found':
       return 'No encontrado';
     case 'validation':
@@ -119,6 +186,6 @@ function titleFor(kind: AtlasErrorKind): string {
     case 'unavailable':
       return 'Servicio no disponible';
     default:
-      return 'Algo no salio bien';
+      return 'Algo no salió bien';
   }
 }

@@ -14,7 +14,7 @@ import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useSession } from '../../../src/session/session';
 import { color, space } from '../../../src/theme/tokens';
 import { Icon } from '../../../src/ui/icons';
-import { Gap, Screen } from '../../../src/ui/layout';
+import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Card, Divider, EmptyState, ListRow, Skeleton } from '../../../src/ui/primitives';
 
 export default function MerchantCredits() {
@@ -36,7 +36,7 @@ export default function MerchantCredits() {
   if (!book.ready) {
     return (
       <Screen>
-        <Gap size="lg" />
+        <ScreenHeader title="Comercio" onBack="auto" />
         <Card>
           <Skeleton height={18} width="60%" />
           <Skeleton height={14} width="40%" />
@@ -48,17 +48,16 @@ export default function MerchantCredits() {
   return (
     <Screen>
       <Gap size="sm" />
-      <View style={styles.header}>
-        <View style={styles.icon}>
-          <Icon name={look.icon} size={26} tint={color.action.primary} />
-        </View>
-        <View style={styles.headerText}>
-          <AtlasText variant="h1">{merchant?.displayName ?? 'Compra sin comercio'}</AtlasText>
-          <AtlasText variant="body" tone="secondary">
-            {look.label}
-          </AtlasText>
-        </View>
-      </View>
+      <ScreenHeader
+        title={merchant?.displayName ?? 'Compra sin comercio'}
+        subtitle={look.label}
+        onBack="auto"
+        leading={
+          <View style={styles.icon}>
+            <Icon name={look.icon} size={26} tint={color.action.primary} />
+          </View>
+        }
+      />
 
       <Card>
         <AtlasText variant="caption" tone="tertiary">

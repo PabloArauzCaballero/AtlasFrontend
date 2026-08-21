@@ -17,18 +17,32 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import type { LoanSummary, SpendingByCategory } from '../../../src/api/endpoints/loans';
+import type { LoanSummary, PaymentCalendar, SpendingByCategory } from '../../../src/api/endpoints/loans';
 import { amountTone, categoryLook, dueCopy, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useSession } from '../../../src/session/session';
 import { color, radius, space } from '../../../src/theme/tokens';
 import { Icon, type IconName } from '../../../src/ui/icons';
 import { Appear, PressSurface } from '../../../src/ui/motion';
+import { PaymentCalendarView } from '../../../src/ui/payment-calendar';
 import { Gap, Screen } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, Divider, EmptyState, ErrorState, ListRow, Skeleton } from '../../../src/ui/primitives';
 
 type Filter = 'todos' | 'mora' | 'proximos' | 'pagados';
-type Layout = 'lista' | 'cuadricula';
+type Layout = 'lista' | 'cuadricula' | 'calendario';
+
+/*
+ * Tres vistas del mismo dinero, y se rota entre ellas en este orden a proposito: lista (a quien le
+ * debo), cuadricula (lo mismo de un vistazo) y calendario (cuando me toca). El calendario va al
+ * final porque responde otra pregunta, no una version mas bonita de la primera.
+ */
+const LAYOUT_ORDER: Layout[] = ['lista', 'cuadricula', 'calendario'];
+const LAYOUT_ICON: Record<Layout, IconName> = { lista: 'lista', cuadricula: 'cuadricula', calendario: 'pagos' };
+const LAYOUT_LABEL: Record<Layout, string> = {
+  lista: 'Ver en lista',
+  cuadricula: 'Ver en cuadrícula',
+  calendario: 'Ver en calendario',
+};
 
 /** Un comercio con todo lo suyo junto: es la unidad con la que el cliente piensa sus compras. */
 type MerchantGroup = {
@@ -37,7 +51,7 @@ type MerchantGroup = {
   category: string;
   loans: LoanSummary[];
   outstanding: number;
-  /** Importe VENCIDO del comercio, medido contra el calendario y no contra el contador del prestamo. */
+  /** Importe VENCIDO de los creditos QUE SE ESTAN VIENDO, medido contra el calendario. */
   overdueAmount: number;
 };
 
@@ -47,6 +61,30 @@ const FILTERS: Array<{ key: Filter; label: string; icon: IconName }> = [
   { key: 'proximos', label: 'Próximos', icon: 'reloj' },
   { key: 'pagados', label: 'Pagados', icon: 'check' },
 ];
+
+/**
+ * Que creditos tienen alguna cuota POR VENCER y ninguna vencida.
+ *
+ * El filtro «Proximos» hacia `loan.status === 'active'`, es decir: TODOS los creditos vivos. Salia
+ * lo mismo que en «En mora» mas los que estaban al dia, asi que los dos filtros contestaban a la
+ * misma pregunta y ninguno contestaba la suya. «Proximo» no es «activo»: es «no me he pasado
+ * todavia, pero me toca».
+ *
+ * Se resuelve por CUOTA y no por prestamo porque es la cuota la que vence. El calendario ya las
+ * trae clasificadas por el servidor, asi que aqui solo se agrupan.
+ */
+function loansWithUpcomingOnly(calendar: PaymentCalendar | null): Set<string> {
+  const upcoming = new Set<string>();
+  const overdue = new Set<string>();
+
+  for (const entry of calendar?.entries ?? []) {
+    if (entry.state === 'overdue') overdue.add(entry.loanId);
+    else if (entry.state === 'upcoming') upcoming.add(entry.loanId);
+  }
+
+  for (const loanId of overdue) upcoming.delete(loanId);
+  return upcoming;
+}
 
 /**
  * Que comercios tienen algo VENCIDO, segun el calendario.
@@ -67,7 +105,25 @@ function overdueByPartner(spending: SpendingByCategory | null): Map<string, numb
   return map;
 }
 
-function groupByMerchant(loans: readonly LoanSummary[], overdue: Map<string, number>): MerchantGroup[] {
+/**
+ * Lo vencido de cada CREDITO, no de cada comercio.
+ *
+ * Hace falta porque la insignia del grupo tiene que hablar de los creditos que se estan viendo. Con
+ * el filtro «Proximos» los creditos en mora quedan fuera de la lista, y la insignia seguia diciendo
+ * «Bs 900,00 en mora» encima de un credito que no debe nada: la fila se contradecia a si misma.
+ *
+ * Sale del calendario, que ya trae cada cuota clasificada por el servidor.
+ */
+function overdueByLoan(calendar: PaymentCalendar | null): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const entry of calendar?.entries ?? []) {
+    if (entry.state !== 'overdue') continue;
+    map.set(entry.loanId, (map.get(entry.loanId) ?? 0) + entry.pendingAmount);
+  }
+  return map;
+}
+
+function groupByMerchant(loans: readonly LoanSummary[], overdueOfLoan: Map<string, number>): MerchantGroup[] {
   const groups = new Map<string, MerchantGroup>();
 
   for (const loan of loans) {
@@ -80,9 +136,13 @@ function groupByMerchant(loans: readonly LoanSummary[], overdue: Map<string, num
     const existing = groups.get(key);
     const outstanding = Number(loan.outstandingPrincipal ?? 0);
 
+    // La mora del grupo se suma de los creditos que entran en el, no del comercio entero.
+    const loanOverdue = overdueOfLoan.get(loan.loanId) ?? 0;
+
     if (existing) {
       existing.loans.push(loan);
       existing.outstanding += outstanding;
+      existing.overdueAmount += loanOverdue;
     } else {
       groups.set(key, {
         key,
@@ -90,7 +150,7 @@ function groupByMerchant(loans: readonly LoanSummary[], overdue: Map<string, num
         category: loan.merchant?.businessCategory ?? 'sin_comercio',
         loans: [loan],
         outstanding,
-        overdueAmount: overdue.get(key) ?? 0,
+        overdueAmount: loanOverdue,
       });
     }
   }
@@ -114,7 +174,9 @@ export default function Payments() {
   const [layout, setLayout] = useState<Layout>('lista');
 
   const spending = book.spending;
+  const calendar = book.calendar;
   const overdue = useMemo(() => overdueByPartner(spending), [spending]);
+  const upcomingLoans = useMemo(() => loansWithUpcomingOnly(calendar), [calendar]);
 
   const visible = useMemo(() => {
     const active = book.loans;
@@ -126,12 +188,13 @@ export default function Payments() {
     if (filter === 'mora') {
       return active.filter((loan) => (overdue.get(loan.merchant?.partnerProfileId ?? 'sin_comercio') ?? 0) > 0);
     }
-    if (filter === 'proximos') return active.filter((loan) => loan.status === 'active');
+    if (filter === 'proximos') return active.filter((loan) => upcomingLoans.has(loan.loanId));
     if (filter === 'pagados') return active.filter((loan) => loan.status === 'paid_off');
     return active;
-  }, [book.loans, filter, overdue]);
+  }, [book.loans, filter, overdue, upcomingLoans]);
 
-  const groups = useMemo(() => groupByMerchant(visible, overdue), [visible, overdue]);
+  const overdueOfLoan = useMemo(() => overdueByLoan(calendar), [calendar]);
+  const groups = useMemo(() => groupByMerchant(visible, overdueOfLoan), [visible, overdueOfLoan]);
   const currency = spending?.currencyCode ?? 'BOB';
 
   if (!book.ready) {
@@ -172,12 +235,16 @@ export default function Payments() {
           </AtlasText>
         </View>
         <Pressable
-          onPress={() => setLayout(layout === 'lista' ? 'cuadricula' : 'lista')}
+          onPress={() => setLayout(LAYOUT_ORDER[(LAYOUT_ORDER.indexOf(layout) + 1) % LAYOUT_ORDER.length] ?? 'lista')}
           style={styles.layoutToggle}
           accessibilityRole="button"
-          accessibilityLabel={layout === 'lista' ? 'Ver en cuadricula' : 'Ver en lista'}
+          accessibilityLabel={LAYOUT_LABEL[LAYOUT_ORDER[(LAYOUT_ORDER.indexOf(layout) + 1) % LAYOUT_ORDER.length] ?? 'lista']}
         >
-          <Icon name={layout === 'lista' ? 'cuadricula' : 'lista'} size={20} tint={color.text.primary} />
+          <Icon
+            name={LAYOUT_ICON[LAYOUT_ORDER[(LAYOUT_ORDER.indexOf(layout) + 1) % LAYOUT_ORDER.length] ?? 'lista']}
+            size={20}
+            tint={color.text.primary}
+          />
         </Pressable>
       </View>
 
@@ -220,7 +287,30 @@ export default function Payments() {
         </Card>
       ) : null}
 
-      {/* 3. Filtros. */}
+      {/*
+        3. EL CALENDARIO. Cuando esta activo reemplaza a los filtros y a la lista de comercios: es
+        otra forma de mirar el mismo dinero, no un bloque que se apila debajo. Dejar las dos vistas
+        a la vez obligaria a decidir cual de las dos manda.
+      */}
+      {layout === 'calendario' ? (
+        calendar && calendar.entries.length > 0 ? (
+          <Card>
+            <PaymentCalendarView
+              calendar={calendar}
+              onOpenEntry={(entry) => router.push(`/(app)/cuota/${entry.loanId}/${entry.installmentNumber}`)}
+            />
+          </Card>
+        ) : (
+          <EmptyState
+            title="Todavía no hay cuotas que mostrar"
+            detail="Cuando compres con Atlas, aquí verás en qué día te toca cada pago."
+            action={<Button label="Ver en lista" variant="secondary" onPress={() => setLayout('lista')} />}
+          />
+        )
+      ) : null}
+
+      {/* 4. Filtros. */}
+      {layout !== 'calendario' ? (
       <View style={styles.filters}>
         {FILTERS.map((option) => {
           const active = filter === option.key;
@@ -241,9 +331,10 @@ export default function Payments() {
           );
         })}
       </View>
+      ) : null}
 
-      {/* 4. Los comercios. */}
-      {groups.length === 0 ? (
+      {/* 5. Los comercios. */}
+      {layout === 'calendario' ? null : groups.length === 0 ? (
         <EmptyState
           title={filter === 'todos' ? 'Todavía no tienes créditos' : 'Nada en este filtro'}
           detail={
@@ -314,7 +405,7 @@ export default function Payments() {
         </Card>
       )}
 
-      {/* 5. El resumen por rubro, AL FINAL: es informativo, no accionable. */}
+      {/* 6. El resumen por rubro, AL FINAL: es informativo, no accionable. */}
       {spending && spending.categories.length > 0 ? (
         <Card>
           <View style={styles.rowCenter}>

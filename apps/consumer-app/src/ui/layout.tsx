@@ -108,11 +108,21 @@ export function ScreenHeader({
   subtitle,
   onBack,
   action,
+  leading,
 }: {
   title: string;
   subtitle?: string;
   onBack?: (() => void) | 'auto';
   action?: React.ReactNode;
+  /**
+   * Un adorno propio de la pantalla ANTES del titulo: el icono del rubro, el avatar del comercio.
+   *
+   * Existe para que las pantallas que ya tenian su cabecera hecha a mano puedan usar esta sin
+   * perder ese icono. Tres de ellas —comercio, credito y politica de mora— se habian escrito con
+   * su propio encabezado justo por eso, y el precio fue quedarse SIN boton de volver: se entraba y
+   * solo salia quien conociera el gesto del sistema.
+   */
+  leading?: React.ReactNode;
 }) {
   const router = useRouter();
   const handleBack = onBack === 'auto' ? () => (router.canGoBack() ? router.back() : router.replace('/')) : onBack;
@@ -130,6 +140,8 @@ export function ScreenHeader({
           <Icon name="atras" size={22} />
         </Pressable>
       ) : null}
+
+      {leading}
 
       <View style={styles.headerText}>
         <AtlasText variant="h1">{title}</AtlasText>
@@ -153,7 +165,7 @@ export function Gap({ size = 'base' }: { size?: keyof typeof space }) {
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: color.surface.primary },
   content: { paddingHorizontal: space.lg, paddingTop: space.base, gap: space.base },
-  header: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, marginBottom: space.sm },
+  header: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm },
   headerText: { flex: 1, gap: space.xs },
   backButton: {
     width: touch.minSize,

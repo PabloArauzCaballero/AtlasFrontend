@@ -176,3 +176,122 @@ Dos cosas mas que salieron de mirar la pantalla en vez del codigo:
 Y el nombre del comercio en la base tambien llevaba el problema: `CPA Centro de Preparacion
 Academica` pasa a `CPA Centro de Preparación Académica`, en la fila del partner y en el script que lo
 aprovisiona, para que un entorno nuevo nazca bien escrito.
+
+## El calendario, los filtros que se contradecían y las pantallas sin salida
+
+### Una vista calendario, con el color decidido por el servidor
+
+La lista de pagos responde «qué debo». Un calendario responde «cuándo», que es otra pregunta: la de
+quien cobra el día 15 y necesita saber si llega. Se añade como TERCERA vista del botón de la esquina
+—lista, cuadrícula, calendario—, y cuando está activa reemplaza a los filtros y a la lista de
+comercios en vez de apilarse debajo: es otra forma de mirar el mismo dinero, no un bloque más.
+
+Rojo lo vencido, ámbar lo que está por vencer, verde lo pagado. El estado **no se calcula en el
+teléfono**: cada cuota llega ya clasificada por `GET /customers/:id/payment-calendar`, comparada
+contra el reloj del SERVIDOR. Un dispositivo con la fecha corrida pintaría de rojo una cuota que no
+ha vencido, y en una app de crédito eso es acusar a alguien de una mora que no tiene. El día de HOY
+también se marca con el `today` de la respuesta, no con el reloj local.
+
+Cada día lleva su punto de color **y** su cifra, y la leyenda nombra los tres estados: una rejilla
+que solo se distingue por color deja fuera a quien no distingue rojo de verde, que aquí son justo
+«me pasé» y «voy bien».
+
+| # | Archivo | Qué prueba |
+|---|---|---|
+| 34 | `34-calendario-agosto-mora.png` | Agosto: el 12 con punto rojo, el 21 (hoy) marcado, leyenda y la cuota vencida con sus 9 días |
+| 35 | `35-calendario-septiembre-porvencer.png` | Septiembre: el 21 en ámbar, «2 cuotas», con las dos por vencer listadas |
+
+### «Próximos» mostraba lo mismo que «En mora»
+
+El filtro hacía `loan.status === 'active'`, es decir: **todos** los créditos vivos. Salía lo mismo
+que en «En mora» más los que estaban al día, así que los dos filtros contestaban la misma pregunta y
+ninguno contestaba la suya. «Próximo» no es «activo»: es «no me he pasado todavía, pero me toca».
+
+Ahora se resuelve por CUOTA sobre el calendario: un crédito es «próximo» si tiene alguna cuota por
+vencer y **ninguna** vencida.
+
+De paso salió una segunda incoherencia: la insignia del comercio decía «Bs 900,00 en mora» encima de
+un crédito que no debía nada, porque se calculaba sobre el comercio entero mientras la lista ya había
+filtrado fuera el crédito moroso. La fila se contradecía a sí misma. La mora del grupo pasa a sumarse
+de los créditos **que se están viendo**.
+
+| # | Archivo | Qué prueba |
+|---|---|---|
+| 38 | `38-filtro-en-mora.png` | Solo CPA, con sus 2 créditos y su mora real |
+| 39 | `39-filtro-proximos.png` | Tecno Andina y el OTRO crédito de CPA, sin insignia de mora |
+
+### Las cuotas eran botones muertos
+
+Las filas del cronograma se pintaban con `ListRow` —que dibuja una fila con su flecha de «abrir»—
+pero **sin `onPress`**. Tenían el aspecto de llevar a algún sitio y no llevaban a ninguno. Existía
+`pago/[itemId]`, pero opera sobre el simulador local y no sabe nada de las cuotas reales del backend.
+
+Ahora hay una pantalla de cuota de verdad, con el desglose entre capital, interés y mora —que es
+justo lo que se viene a discutir de una cuota vencida, y verlo sumado no deja discutir nada— y con
+el «dónde la pago», que siempre es el QR bancario del comercio.
+
+| # | Archivo | Qué prueba |
+|---|---|---|
+| 36 | `36-cuota-detalle-desde-calendario.png` | Se abre desde el calendario |
+| 37 | `37-cuota-detalle-desde-credito.png` | Y desde el cronograma del crédito |
+
+### Tres pantallas en las que se entraba y no se salía
+
+`comercio/[partnerId]`, `credito/[loanId]` y `politica-mora` se habían escrito con su propia
+cabecera —para conservar el icono del rubro— y el precio fue quedarse **sin botón de volver**: de
+ahí solo salía quien conociera el gesto del sistema. `ScreenHeader` gana un hueco `leading` para el
+icono, así que las tres usan la cabecera común y recuperan el botón sin perder nada. También lo
+tienen sus estados de carga y de error: si la política no carga, quedarse encerrado en el error es
+peor que el error.
+
+| # | Archivo | Qué prueba |
+|---|---|---|
+| 40 | `40-comercio-con-atras.png` | Comercio: atrás + icono del rubro |
+| 41 | `41-credito-con-atras.png` | Crédito: atrás, cuotas pulsables y «¿Cómo se decidió?» |
+| 42 | `42-politica-con-atras-y-pregunta.png` | Política: atrás y «¿Qué ocurre si te atrasas?» |
+
+### Las preguntas ahora se ven como preguntas
+
+«Cómo funciona Atlas», «Dónde pago mis cuotas», «Cómo se calcula», «Cómo se decidió» eran
+afirmaciones truncadas. Llevan sus signos —`¿…?`— y el icono de interrogación. Los encabezados de la
+política también, en la migración y en la base.
+
+### Empezar el registro y no terminarlo ya no deja a nadie fuera
+
+Quien rellena el formulario y cierra la app antes de acabar el alta **ya tiene cuenta**: se creó al
+enviar el primer paso. Al volver e intentar registrarse otra vez, el servidor responde
+`CUSTOMER_ALREADY_EXISTS` —correctamente, porque dos cuentas con el mismo correo son dos expedientes
+crediticios de la misma persona—. Lo que fallaba es que ese código **no estaba en la tabla de
+mensajes de la app**, así que la pantalla decía «Revisa los datos ingresados» y no había nada que
+revisar: los datos estaban bien. Una pared sin puerta.
+
+No se bloquea unos minutos (a los cinco minutos se encuentra la misma pared) ni se permite duplicar
+la cuenta. Se la reconoce y se la devuelve a su cuenta: «Ya tienes una cuenta» con **Ingresar** y
+**Olvidé mi contraseña** al lado.
+
+Y el bloqueo por intentos fallidos ahora dice **hasta cuándo**. Antes el backend lanzaba una frase
+suelta sin código —así que la app ni siquiera podía distinguirla de «contraseña incorrecta»— y decía
+«intenta más tarde», que garantiza una de dos conductas, las dos malas: no volver nunca, o reintentar
+cada diez segundos. Comprobado sobre el stack real:
+
+```json
+{"error":{"code":"ACCOUNT_LOCKED",
+          "message":"Cuenta bloqueada temporalmente por múltiples intentos fallidos.",
+          "details":{"lockedUntil":"2026-08-21T22:19:14.993Z","retryAfterSeconds":900}}}
+```
+
+Para que ese código llegue, el filtro de errores del backend pasa a respetar el código de negocio que
+declara la excepción en vez de derivarlo solo del estado HTTP. La forma antigua —el código dentro del
+mensaje, `CODIGO: detalle`— se sigue admitiendo.
+
+De paso, la pantalla de ingresar reescribía **todo** 401 como «contraseña incorrecta», incluido el de
+la cuenta bloqueada: mandaba a probar contraseñas, que es justo lo que alarga el bloqueo. Y titulaba
+«Sesión expirada» en una pantalla donde todavía no hay sesión que expirar.
+
+### Un agujero que salió por el camino
+
+`GET /loans/:loanId` comprobaba el rol pero **no la propiedad**: con el rol `customer` bastaba cambiar
+el número de la URL para leer el crédito de cualquier otro cliente del tenant —su importe, su
+comercio, su cronograma y su mora—. Es el mismo hallazgo que ya se había corregido en
+`customers/:customerId/loans`; a esta ruta se le había pasado, y es la que la app abre al tocar un
+crédito.

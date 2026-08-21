@@ -106,7 +106,7 @@ export default function PurchaseDetail() {
       ) : null}
 
       <Card>
-        <AtlasText variant="h3">Cómo se divide</AtlasText>
+        <AtlasText variant="h3">¿Cómo se divide?</AtlasText>
         <Divider />
         <View style={styles.rowBetween}>
           <AtlasText variant="body" tone="secondary">

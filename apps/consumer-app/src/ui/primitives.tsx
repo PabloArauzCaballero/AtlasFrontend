@@ -350,11 +350,20 @@ export function ErrorState({
   detail,
   reference,
   onRetry,
+  actions,
 }: {
   title: string;
   detail: string;
   reference?: string | null;
   onRetry?: () => void;
+  /**
+   * La salida, cuando el error tiene una.
+   *
+   * «Reintentar» solo sirve si el problema es pasajero. Hay errores que NO se arreglan repitiendo
+   * —ya tienes cuenta, estas bloqueado hasta las 21:14— y para esos el boton correcto es otro. Sin
+   * este hueco, esos errores se quedaban en un texto rojo y un callejon.
+   */
+  actions?: React.ReactNode;
 }) {
   return (
     <View style={[styles.stateBox, styles.stateBoxError]}>
@@ -374,6 +383,7 @@ export function ErrorState({
           <Button label="Reintentar" variant="secondary" onPress={onRetry} />
         </View>
       ) : null}
+      {actions ? <View style={styles.stateAction}>{actions}</View> : null}
     </View>
   );
 }
@@ -502,7 +512,7 @@ const styles = StyleSheet.create({
   stateBoxError: { borderColor: color.feedbackBorder.danger },
   stateDetail: { marginTop: space.xs },
   stateReference: { marginTop: space.sm },
-  stateAction: { marginTop: space.base, alignSelf: 'flex-start' },
+  stateAction: { marginTop: space.base, alignSelf: 'stretch', gap: space.sm },
 
   row: {
     minHeight: touch.minSize,

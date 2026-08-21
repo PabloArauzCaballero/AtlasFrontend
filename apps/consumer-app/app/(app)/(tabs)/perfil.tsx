@@ -108,7 +108,7 @@ export default function Profile() {
               ? 'Tu peor atraso registrado es de ' + rating.worstDaysPastDue + ' días. Ponerte al día mejora tu categoría.'
               : 'No tienes atrasos registrados. Pagar a tiempo mantiene tu categoría.'}
           </AtlasText>
-          <Button label="Cómo se calcula" variant="secondary" onPress={() => router.push('/(app)/politica-mora')} />
+          <Button label="¿Cómo se calcula?" variant="secondary" onPress={() => router.push('/(app)/politica-mora')} />
         </Card>
       ) : null}
 
@@ -170,9 +170,9 @@ export default function Profile() {
       <Card>
         <AtlasText variant="h3">Ayuda</AtlasText>
         <Divider />
-        <ListRow title="Cómo funciona Atlas" subtitle="Pagas 60% hoy y el resto en 3 cuotas cada 14 días" />
+        <ListRow icon="ayuda" title="¿Cómo funciona Atlas?" subtitle="Pagas 60% hoy y el resto en 3 cuotas cada 14 días" />
         <Divider />
-        <ListRow title="Dónde pago mis cuotas" subtitle="Siempre al QR bancario del comercio donde compraste" />
+        <ListRow icon="ayuda" title="¿Dónde pago mis cuotas?" subtitle="Siempre al QR bancario del comercio donde compraste" />
         <Divider />
         {/*
           El recorrido tiene que poder repetirse. Quien lo salto el primer día porque tenia prisa no

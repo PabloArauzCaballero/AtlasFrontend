@@ -149,7 +149,27 @@ export default function Register() {
     <Screen footer={<Button label="Crear mi cuenta" onPress={submit} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
       <ScreenHeader title="Crear cuenta" subtitle="Necesitamos estos datos para abrir tu expediente." onBack="auto" />
 
-      {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
+      {described ? (
+        <ErrorState
+          title={described.title}
+          detail={described.detail}
+          reference={described.reference}
+          actions={
+            described.recovery.length > 0 ? (
+              <>
+                {described.recovery.map((option, index) => (
+                  <Button
+                    key={option.href}
+                    label={option.label}
+                    variant={index === 0 ? 'primary' : 'ghost'}
+                    onPress={() => router.replace(option.href as never)}
+                  />
+                ))}
+              </>
+            ) : null
+          }
+        />
+      ) : null}
 
       {/*
         Tres bloques y no una lista de siete campos.

@@ -17,7 +17,7 @@ import { useDelinquencyPolicy } from '../../src/features/use-credit-book';
 import { color, radius, space } from '../../src/theme/tokens';
 import { Icon } from '../../src/ui/icons';
 import { Appear } from '../../src/ui/motion';
-import { Gap, Screen } from '../../src/ui/layout';
+import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Badge, Card, ErrorState, Skeleton } from '../../src/ui/primitives';
 
 type PolicySection = { heading: string; paragraphs: string[] };
@@ -81,7 +81,7 @@ export default function DelinquencyPolicyScreen() {
   if (error) {
     return (
       <Screen>
-        <Gap size="lg" />
+        <ScreenHeader title="Política de mora" onBack="auto" />
         <ErrorState title="No pudimos cargar la política" detail={error} />
       </Screen>
     );
@@ -90,7 +90,7 @@ export default function DelinquencyPolicyScreen() {
   if (!policy) {
     return (
       <Screen>
-        <Gap size="lg" />
+        <ScreenHeader title="Política de mora" onBack="auto" />
         <Card>
           <Skeleton height={20} width="60%" />
           <Skeleton height={14} />
@@ -102,8 +102,7 @@ export default function DelinquencyPolicyScreen() {
 
   return (
     <Screen>
-      <Gap size="sm" />
-      <AtlasText variant="h1">{policy.title}</AtlasText>
+      <ScreenHeader title={policy.title} onBack="auto" />
       <View style={styles.metaRow}>
         <Badge label={`Versión ${policy.versionCode}`} tone="neutral" />
         <Badge label={policy.source.kind === 'regulatorio' ? 'Normativa' : 'Política de Atlas'} tone="info" />

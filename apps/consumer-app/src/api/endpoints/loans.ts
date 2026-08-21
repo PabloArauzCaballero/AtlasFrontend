@@ -97,6 +97,50 @@ export type SpendingByCategory = {
 export const getSpendingByCategory = (customerId: string) =>
   request<SpendingByCategory>(`/customers/${customerId}/spending-by-category`);
 
+/**
+ * Una cuota en la linea de tiempo del cliente, con su estado YA resuelto por el servidor.
+ *
+ * El estado no se deduce aqui a proposito: comparar la fecha contra el reloj del telefono haria que
+ * un dispositivo con la fecha corrida pintara una mora que no existe —o escondiera una que si—.
+ */
+export type CalendarEntry = {
+  loanId: string;
+  loanCode: string;
+  installmentNumber: number;
+  dueDate: string;
+  state: 'overdue' | 'upcoming' | 'paid' | 'written_off';
+  daysPastDue: number;
+  totalAmount: number;
+  paidAmount: number;
+  pendingAmount: number;
+  principalAmount: number;
+  interestAmount: number;
+  lateFeeAmount: number;
+  currencyCode: string;
+  merchant: { partnerProfileId: string | null; displayName: string; businessCategory: string | null };
+};
+
+export type PaymentCalendar = {
+  customerId: string;
+  currencyCode: string;
+  generatedAt: string;
+  /** El HOY del servidor. La pantalla marca el dia de hoy con este, no con el reloj del telefono. */
+  today: string;
+  nextDueDate: string | null;
+  totals: {
+    overdue: number;
+    upcoming: number;
+    paid: number;
+    overdueCount: number;
+    upcomingCount: number;
+    paidCount: number;
+  };
+  entries: CalendarEntry[];
+};
+
+export const getPaymentCalendar = (customerId: string) =>
+  request<PaymentCalendar>(`/customers/${customerId}/payment-calendar`);
+
 /** Un tramo de la escala de mora, tal y como lo publica la politica vigente. */
 export type DelinquencyStage = {
   code: string;

@@ -50,11 +50,22 @@ export default function SignIn() {
   };
 
   const described = error ? describeError(error) : null;
-  // 401 en login es credencial incorrecta, no sesion expirada: el copy generico confundiria.
-  const detail =
-    error instanceof AtlasApiError && error.status === 401
-      ? 'Correo, teléfono o contraseña incorrectos.'
-      : (described?.detail ?? '');
+  /*
+   * 401 en login es credencial incorrecta, no sesion expirada: el copy generico confundiria.
+   *
+   * Pero NO todo 401 aqui es una contrasena mal escrita. La cuenta bloqueada tambien responde 401, y
+   * reescribir su mensaje como «contrasena incorrecta» mandaba a la persona a probar contrasenas
+   * —que es justo lo que suma intentos fallidos y alarga el bloqueo que ya tiene—. Solo se sustituye
+   * el texto cuando el error NO trae un codigo de negocio propio que decir.
+   */
+  const credentialsRejected = error instanceof AtlasApiError && error.status === 401 && error.code === 'UNAUTHORIZED';
+  const detail = credentialsRejected ? 'Correo, teléfono o contraseña incorrectos.' : (described?.detail ?? '');
+  /*
+   * «Sesion expirada» sobre la pantalla de INGRESAR no significa nada: aqui todavia no hay sesion
+   * que expirar. El titulo salia de la familia del error —todo 401 es `auth`— y se leia como si la
+   * app hubiera perdido algo, cuando lo que pasa es que la contrasena no coincide.
+   */
+  const title = credentialsRejected ? 'No pudimos ingresar' : (described?.title ?? '');
 
   return (
     <Screen
@@ -67,7 +78,27 @@ export default function SignIn() {
     >
       <ScreenHeader title="Ingresar" subtitle="Usa el correo o teléfono con el que te registraste." onBack="auto" />
 
-      {described ? <ErrorState title={described.title} detail={detail} reference={described.reference} /> : null}
+      {described ? (
+        <ErrorState
+          title={title}
+          detail={detail}
+          reference={described.reference}
+          actions={
+            described.recovery.length > 0 ? (
+              <>
+                {described.recovery.map((option, index) => (
+                  <Button
+                    key={option.href}
+                    label={option.label}
+                    variant={index === 0 ? 'primary' : 'ghost'}
+                    onPress={() => router.replace(option.href as never)}
+                  />
+                ))}
+              </>
+            ) : null
+          }
+        />
+      ) : null}
 
       <IconField
         label="Correo o teléfono"
