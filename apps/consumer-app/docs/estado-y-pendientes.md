@@ -65,12 +65,16 @@ expediente a medias sin avisar.
 
 | Cliente | Cómo se creó | Credenciales |
 |---|---|---|
-| `customerId 23` · Valeria Méndez | **Registro completo desde las pantallas** (2026-08-20) | `valeria.mendez@atlas.bo` / `AtlasDemo-2026!` |
-| `customerId 22` · Pablo Arauz | Aprovisionador | `demo.presenta@atlas.bo` / `AtlasDemo-2026!` |
+| `customerId 23` · Valeria Méndez | **Registro completo desde las pantallas** (2026-08-20) | `valeria.mendez@atlas.bo` |
+| `customerId 22` · Pablo Arauz | Aprovisionador | `demo.presenta@atlas.bo` |
 | `customerId 20` | Aprovisionador | `pabliarca@gmail.com` — **contraseña no registrada** |
 
 El de Valeria es el que demuestra el producto: cada paso se tecleó en la app y se verificó contra
 `GET /customer-onboarding/23/status`. Ver `verificacion.md` §5.
+
+**Las contraseñas no están en el repositorio, a propósito.** Viven en el equipo que levanta el
+entorno. Si no se saben, no se buscan: se aprovisiona otro cliente con
+`tools/dev-backend/provision-demo-customer.mjs`, que tarda un minuto y recorre la API real.
 
 ---
 
@@ -306,7 +310,9 @@ Nada ejecutado: exige macOS con Xcode. El código no usa ninguna API exclusiva d
 
 ### TODO-7 · Higiene de credenciales de desarrollo `[bajo]`
 
-- La contraseña del admin interno se sembró como `AtlasDev-2026!local`. Cambiarla si molesta.
+- La contraseña del admin interno se siembra con `DEV_ADMIN_PASSWORD` y **no se escribe aquí**.
+  Este repositorio es público: una contraseña en un documento acaba indexada, y da igual que sea «de
+  desarrollo» el día que alguien la reutiliza en un entorno desplegado.
 - En el motor se crearon dos credenciales de integración (`dev-qa-analyst`, `dev-risk-approver`)
   **insertándolas directamente en la base**, porque el motor exige separación de funciones y no
   expone endpoint para darlas de alta. Conviene un camino soportado para crearlas.
