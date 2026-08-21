@@ -7,7 +7,7 @@
  */
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { apiConfig, purchaseDataSource } from '../../../src/api/config';
 import { useSandbox } from '../../../src/sandbox/store';
 import { describeCustomerStatus } from '../../../src/features/onboarding-map';
@@ -15,7 +15,10 @@ import { useSession } from '../../../src/session/session';
 import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS } from '../../../src/features/tour-inicio';
 import { resetTour, useTour } from '../../../src/ui/tour';
 import { Gap, Screen } from '../../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, ListRow } from '../../../src/ui/primitives';
+import { AtlasText, Badge, Button, Card, Divider, ListRow, ProgressBar } from '../../../src/ui/primitives';
+import { Icon } from '../../../src/ui/icons';
+import { useCreditBook } from '../../../src/features/use-credit-book';
+import { color, radius, space } from '../../../src/theme/tokens';
 
 export default function Profile() {
   const router = useRouter();
@@ -23,6 +26,9 @@ export default function Profile() {
   const sandbox = useSandbox();
   const [signingOut, setSigningOut] = useState(false);
   const tour = useTour();
+
+  const book = useCreditBook(session.customerId);
+  const rating = book.rating;
 
   const me = session.me;
   const fullName = [me?.profile.firstName, me?.profile.lastName].filter(Boolean).join(' ') || 'Tu cuenta';
@@ -51,6 +57,60 @@ export default function Profile() {
       <AtlasText variant="body" tone="secondary">
         Cliente {me?.customer.customerCode ?? ''}
       </AtlasText>
+
+      {/*
+        La calificacion crediticia, del modulo `credit-rating` del backend.
+
+        Se ensena la POSICION en la escala y no solo la letra: «A» no significa nada para quien no
+        conoce la matriz, «1 de 6» si. Y no se muestra ni la exposicion ni la prevision, que son la
+        medida del riesgo que asume Atlas y no un dato del cliente.
+      */}
+      {rating ? (
+        <Card>
+          <View style={styles.rowBetween}>
+            <View style={styles.rowCenter}>
+              <Icon name="estrella" size={20} tint={color.action.primary} />
+              <AtlasText variant="h3">Tu calificacion</AtlasText>
+            </View>
+            <Badge label={rating.gradeLabel} tone={rating.worstDaysPastDue > 0 ? 'warning' : 'success'} />
+          </View>
+          <Divider />
+
+          <View style={styles.gradeRow}>
+            <View style={styles.gradeBox}>
+              <AtlasText variant="amount">{rating.grade}</AtlasText>
+            </View>
+            <View style={styles.gradeText}>
+              <AtlasText variant="bodyStrong">
+                {rating.position && rating.scaleSize
+                  ? 'Categoria ' + rating.position + ' de ' + rating.scaleSize
+                  : rating.gradeLabel}
+              </AtlasText>
+              {/*
+                La barra se invierte a proposito: la mejor categoria llena la barra. Una barra que
+                sube cuando el cliente empeora se lee al reves de como todo el mundo lee una barra.
+              */}
+              {rating.position && rating.scaleSize ? (
+                <ProgressBar
+                  value={((rating.scaleSize - rating.position + 1) / rating.scaleSize) * 100}
+                  label={'Calificacion ' + rating.position + ' de ' + rating.scaleSize}
+                />
+              ) : null}
+              <AtlasText variant="caption" tone="tertiary">
+                {rating.ratedLoanCount} {rating.ratedLoanCount === 1 ? 'credito calificado' : 'creditos calificados'} ·
+                actualizada el {new Date(rating.ratedAt).toLocaleDateString('es-BO')}
+              </AtlasText>
+            </View>
+          </View>
+
+          <AtlasText variant="caption" tone="secondary">
+            {rating.worstDaysPastDue > 0
+              ? 'Tu peor atraso registrado es de ' + rating.worstDaysPastDue + ' dias. Ponerte al dia mejora tu categoria.'
+              : 'No tienes atrasos registrados. Pagar a tiempo mantiene tu categoria.'}
+          </AtlasText>
+          <Button label="Como se calcula" variant="secondary" onPress={() => router.push('/(app)/politica-mora')} />
+        </Card>
+      ) : null}
 
       <Card>
         <AtlasText variant="h3">Tu cuenta</AtlasText>
@@ -133,3 +193,18 @@ export default function Profile() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
+  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  gradeRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  gradeBox: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: color.surface.raisedStrong,
+  },
+  gradeText: { flex: 1, gap: space.xxs },
+});

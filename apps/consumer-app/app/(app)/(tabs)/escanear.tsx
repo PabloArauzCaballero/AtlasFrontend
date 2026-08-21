@@ -12,6 +12,8 @@ import * as Haptics from 'expo-haptics';
 import { useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { isSandboxPurchase } from '../../../src/api/config';
+import { resolveMerchantQr } from '../../../src/api/endpoints/loans';
 import { DEMO_TOKEN, REVOKED_DEMO_TOKEN } from '../../../src/sandbox/fixtures';
 import { useSandbox } from '../../../src/sandbox/store';
 import { color, radius, space } from '../../../src/theme/tokens';
@@ -67,27 +69,70 @@ export default function ScanScreen() {
     }
   }, [isFocused]);
 
+  /**
+   * Quien decide de que comercio es este QR es el SERVIDOR.
+   *
+   * Antes lo resolvia `sandbox.scan` en el telefono. Un identificador de comercio que decide el
+   * dispositivo no identifica a nadie: basta editar la respuesta local para comprar «en» cualquier
+   * comercio, y de ese identificador cuelga despues la categoria del gasto y quien tiene que
+   * aceptar la operacion.
+   *
+   * `merchant-qr/resolve` comprueba tres cosas que aqui no se pueden comprobar: que el terminal
+   * existe, que esta ACTIVO y que el expediente del comercio esta aprobado. Los tres codigos de
+   * rechazo que devuelve son los que esta pantalla ya sabe explicar.
+   *
+   * El motor local sigue llevando la SESION de compra —el dominio V3 no existe todavia en el
+   * backend—, pero ya no decide a quien se le paga.
+   */
   const handleToken = useCallback(
-    (token: string) => {
+    async (token: string) => {
       if (locked.current) return;
       locked.current = true;
 
-      const result = sandbox.scan(token);
-      if (!result.ok) {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        setRejection(result.rejection.code);
+      const release = (delayMs: number) =>
         setTimeout(() => {
           locked.current = false;
-        }, 1500);
+        }, delayMs);
+
+      const reject = (code: string) => {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        setRejection(code);
+        release(1500);
+      };
+
+      try {
+        await resolveMerchantQr(token.trim());
+      } catch (error) {
+        /*
+         * Los dos codigos de demostracion no existen como terminal en el backend, y no deberian:
+         * son fixtures del motor local para recorrer el flujo sin un QR fisico. Se les deja pasar
+         * SOLO cuando la compra corre en sandbox, que es donde esos botones estan disponibles. Un
+         * QR real que el servidor rechace se rechaza siempre, tambien en sandbox.
+         */
+        const isDemoFixture = token === DEMO_TOKEN || token === REVOKED_DEMO_TOKEN;
+        if (!(isSandboxPurchase && isDemoFixture)) {
+          /*
+           * El backend manda el codigo en el mensaje del error. Si no se reconoce ninguno, se trata
+           * como QR no reconocido: es el mensaje con salida —«pide al comercio el codigo vigente»—
+           * y el unico honesto cuando no sabemos por que fallo.
+           */
+          const raw = error instanceof Error ? error.message : '';
+          const known = Object.keys(REJECTION_COPY).find((code) => raw.includes(code));
+          reject(known ?? 'QR_NOT_RECOGNIZED');
+          return;
+        }
+      }
+
+      const result = sandbox.scan(token);
+      if (!result.ok) {
+        reject(result.rejection.code);
         return;
       }
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setRejection(null);
       router.push(`/(app)/compra/monto?sessionId=${result.sessionId}`);
-      setTimeout(() => {
-        locked.current = false;
-      }, 1200);
+      release(1200);
     },
     [router, sandbox],
   );
@@ -116,7 +161,7 @@ export default function ScanScreen() {
               style={styles.camera}
               facing="back"
               barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-              onBarcodeScanned={({ data }) => handleToken(data)}
+              onBarcodeScanned={({ data }) => void handleToken(data)}
             />
           ) : null}
           <View style={styles.reticle} pointerEvents="none" />

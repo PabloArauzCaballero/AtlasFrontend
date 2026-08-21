@@ -53,7 +53,28 @@ export type IconName =
   | 'ubicacion'
   | 'billetera'
   | 'chispa'
-  | 'refrescar';
+  | 'refrescar'
+  // Rubros de comercio. Uno por categoria del expediente del partner, y `comercio` para lo que no
+  // encaje: un rubro sin icono propio es mejor con la tienda generica que con el de otro rubro.
+  | 'educacion'
+  | 'electronica'
+  | 'celulares'
+  | 'ropa'
+  | 'hogar'
+  | 'salud'
+  | 'supermercado'
+  | 'transporte'
+  | 'servicios'
+  | 'comercio'
+  // Controles de las pantallas de gasto y pagos.
+  | 'grafico'
+  | 'filtro'
+  | 'lista'
+  | 'cuadricula'
+  | 'descargar'
+  | 'tendencia'
+  | 'etiqueta'
+  | 'estrella';
 
 export type IconProps = {
   name: IconName;
@@ -191,6 +212,138 @@ const PATHS: Record<IconName, (stroke: string, width: number) => React.ReactNode
       <Path d="M20 12a8 8 0 1 1-2.6-5.9" stroke={s} strokeWidth={w} strokeLinecap="round" />
       <Path d="M20.5 3.5v4.2h-4.2" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
     </>
+  ),
+  // --- Rubros ---
+  // Birrete: la tapa y la borla. Es el simbolo de estudiar, no de un libro.
+  educacion: (s, w) => (
+    <>
+      <Path d="M2.8 9.2 12 5l9.2 4.2L12 13.4z" stroke={s} strokeWidth={w} strokeLinejoin="round" />
+      <Path d="M6.5 11v4.6c0 1.6 2.5 2.9 5.5 2.9s5.5-1.3 5.5-2.9V11" stroke={s} strokeWidth={w} strokeLinecap="round" />
+      <Path d="M21.2 9.6v4.2" stroke={s} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  // Pantalla sobre pie: lo que distingue un televisor de una caja es el pie.
+  electronica: (s, w) => (
+    <>
+      <Rect x={3} y={4.5} width={18} height={11.5} rx={2} stroke={s} strokeWidth={w} />
+      <Path d="M9 20h6M12 16v4" stroke={s} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  celulares: (s, w) => (
+    <>
+      <Rect x={6.5} y={2.5} width={11} height={19} rx={2.5} stroke={s} strokeWidth={w} />
+      <Path d="M10.5 18.5h3" stroke={s} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  // Camiseta: los hombros y el cuerpo. El cuello es lo que la hace legible a 20 px.
+  ropa: (s, w) => (
+    <Path
+      d="M9 3.5 5 5.6 3.5 9.4l2.6 1.2V20a1 1 0 0 0 1 1h9.8a1 1 0 0 0 1-1v-9.4l2.6-1.2L19 5.6l-4-2.1a3 3 0 0 1-6 0z"
+      stroke={s}
+      strokeWidth={w}
+      strokeLinejoin="round"
+    />
+  ),
+  // Sofa: respaldo, asiento y dos brazos.
+  hogar: (s, w) => (
+    <>
+      <Path d="M4.5 11V8a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3" stroke={s} strokeWidth={w} strokeLinecap="round" />
+      <Path d="M3 13.5a2 2 0 0 1 4 0v2.5h10v-2.5a2 2 0 0 1 4 0V18a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z" stroke={s} strokeWidth={w} strokeLinejoin="round" />
+    </>
+  ),
+  // Cruz sanitaria dentro del marco: la cruz sola se confunde con «cerrar».
+  salud: (s, w) => (
+    <>
+      <Rect x={3.5} y={3.5} width={17} height={17} rx={4} stroke={s} strokeWidth={w} />
+      <Path d="M12 8v8M8 12h8" stroke={s} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  // Carrito: la cesta, el mango y las ruedas.
+  supermercado: (s, w) => (
+    <>
+      <Path d="M2.5 4h2.2l2.4 10.5a1.5 1.5 0 0 0 1.46 1.15h8.1a1.5 1.5 0 0 0 1.46-1.14L19.8 7.5H6" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+      <Circle cx={9.5} cy={19.5} r={1.3} stroke={s} strokeWidth={w} />
+      <Circle cx={16.5} cy={19.5} r={1.3} stroke={s} strokeWidth={w} />
+    </>
+  ),
+  transporte: (s, w) => (
+    <>
+      <Path d="M3.5 16.5v-4l1.9-4.4A2 2 0 0 1 7.24 7h9.52a2 2 0 0 1 1.84 1.1l1.9 4.4v4" stroke={s} strokeWidth={w} strokeLinejoin="round" />
+      <Path d="M3.5 12.5h17" stroke={s} strokeWidth={w} strokeLinecap="round" />
+      <Circle cx={7.5} cy={16.5} r={1.4} stroke={s} strokeWidth={w} />
+      <Circle cx={16.5} cy={16.5} r={1.4} stroke={s} strokeWidth={w} />
+    </>
+  ),
+  // Llave inglesa: servicios es «alguien viene y lo arregla».
+  servicios: (s, w) => (
+    <Path
+      d="M15.6 3.6a5 5 0 0 0-5.9 6.6l-6 6a1.8 1.8 0 0 0 2.55 2.55l6-6a5 5 0 0 0 6.6-5.9l-3 3-2.7-.55-.55-2.7z"
+      stroke={s}
+      strokeWidth={w}
+      strokeLinejoin="round"
+    />
+  ),
+  // Tienda: el toldo y la puerta.
+  comercio: (s, w) => (
+    <>
+      <Path d="M3.5 9.5 5 4.5h14l1.5 5a3 3 0 0 1-5.67 1.5 3 3 0 0 1-5.66 0A3 3 0 0 1 3.5 9.5z" stroke={s} strokeWidth={w} strokeLinejoin="round" />
+      <Path d="M5 11.8V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-7.2" stroke={s} strokeWidth={w} strokeLinecap="round" />
+      <Path d="M10 20.5v-4.2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v4.2" stroke={s} strokeWidth={w} strokeLinejoin="round" />
+    </>
+  ),
+  // --- Controles ---
+  grafico: (s, w) => (
+    <>
+      <Path d="M4 20.5V4" stroke={s} strokeWidth={w} strokeLinecap="round" />
+      <Path d="M4 20.5h16" stroke={s} strokeWidth={w} strokeLinecap="round" />
+      <Path d="M8 17.5v-5M12.5 17.5v-9M17 17.5v-6" stroke={s} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  filtro: (s, w) => (
+    <Path d="M3.5 5.5h17l-6.6 7.4v5.6l-3.8 2v-7.6z" stroke={s} strokeWidth={w} strokeLinejoin="round" />
+  ),
+  lista: (s, w) => (
+    <>
+      <Path d="M8.5 6.5h12M8.5 12h12M8.5 17.5h12" stroke={s} strokeWidth={w} strokeLinecap="round" />
+      <Circle cx={4.5} cy={6.5} r={1} fill={s} />
+      <Circle cx={4.5} cy={12} r={1} fill={s} />
+      <Circle cx={4.5} cy={17.5} r={1} fill={s} />
+    </>
+  ),
+  cuadricula: (s, w) => (
+    <>
+      <Rect x={3.5} y={3.5} width={7.5} height={7.5} rx={2} stroke={s} strokeWidth={w} />
+      <Rect x={13} y={3.5} width={7.5} height={7.5} rx={2} stroke={s} strokeWidth={w} />
+      <Rect x={3.5} y={13} width={7.5} height={7.5} rx={2} stroke={s} strokeWidth={w} />
+      <Rect x={13} y={13} width={7.5} height={7.5} rx={2} stroke={s} strokeWidth={w} />
+    </>
+  ),
+  descargar: (s, w) => (
+    <>
+      <Path d="M12 3.5v11" stroke={s} strokeWidth={w} strokeLinecap="round" />
+      <Path d="M7.8 10.5 12 14.7l4.2-4.2" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M4 17v2a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-2" stroke={s} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  tendencia: (s, w) => (
+    <>
+      <Path d="M3.5 16.5 9 11l3.5 3.5L20.5 6.5" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M15.5 6.5h5v5" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  etiqueta: (s, w) => (
+    <>
+      <Path d="M11.6 3.5H19a1.5 1.5 0 0 1 1.5 1.5v7.4a2 2 0 0 1-.59 1.42l-6.6 6.6a2 2 0 0 1-2.83 0l-6.4-6.4a2 2 0 0 1 0-2.83l6.6-6.6a2 2 0 0 1 1.42-.59z" stroke={s} strokeWidth={w} strokeLinejoin="round" />
+      <Circle cx={16} cy={8} r={1.3} stroke={s} strokeWidth={w} />
+    </>
+  ),
+  estrella: (s, w) => (
+    <Path
+      d="m12 3.8 2.6 5.28 5.83.85-4.22 4.11 1 5.81L12 17.11l-5.21 2.74 1-5.81L3.57 9.93l5.83-.85z"
+      stroke={s}
+      strokeWidth={w}
+      strokeLinejoin="round"
+    />
   ),
 };
 
