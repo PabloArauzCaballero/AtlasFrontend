@@ -83,7 +83,7 @@ export default function Address() {
 
   return (
     <Screen footer={<Button label="Guardar domicilio" onPress={save} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
-      <ScreenHeader title="Tu domicilio" subtitle="Donde vives actualmente." onBack="auto" />
+      <ScreenHeader title="Tu domicilio" subtitle="Dónde vives actualmente." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
@@ -94,7 +94,7 @@ export default function Address() {
       <Card>
         <AtlasText variant="bodyStrong">Confirmar con tu ubicacion (opcional)</AtlasText>
         <AtlasText variant="caption" tone="secondary">
-          Nos ayuda a validar tu domicilio mas rapido. No compartimos tu ubicacion con comercios ni la usamos para
+          Nos ayuda a validar tu domicilio más rápido. No compartimos tu ubicacion con comercios ni la usamos para
           seguirte.
         </AtlasText>
 
@@ -119,7 +119,7 @@ export default function Address() {
 
       <Gap size="sm" />
       <AtlasText variant="caption" tone="tertiary">
-        La direccion exacta se guarda cifrada y solo se usa para verificacion y cobranza.
+        La direccion exacta se guarda cifrada y solo se usa para verificación y cobranza.
       </AtlasText>
     </Screen>
   );

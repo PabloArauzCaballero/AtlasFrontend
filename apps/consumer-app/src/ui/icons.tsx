@@ -79,7 +79,9 @@ export type IconName =
   | 'ojo'
   | 'ojo-tachado'
   // Correo. El documento generico servia de relleno y no dice «correo» a nadie.
-  | 'sobre';
+  | 'sobre'
+  // Telefono. La chincheta de mapa decia «donde vives», que es otro dato distinto del perfil.
+  | 'telefono';
 
 export type IconProps = {
   name: IconName;
@@ -368,6 +370,21 @@ const PATHS: Record<IconName, (stroke: string, width: number) => React.ReactNode
       <Rect x={2.5} y={5} width={19} height={14} rx={2.5} stroke={s} strokeWidth={w} />
       <Path d="m3.2 6.6 8.03 5.36a1.4 1.4 0 0 0 1.54 0L20.8 6.6" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
     </>
+  ),
+  /*
+   * Un auricular, no una chincheta.
+   *
+   * La fila del telefono llevaba el icono de ubicacion. Los dos son datos de contacto y estan uno
+   * encima del otro en el perfil, asi que el icono equivocado no se lee como un descuido: se lee
+   * como si la fila fuera la direccion.
+   */
+  telefono: (s, w) => (
+    <Path
+      d="M7.4 3.5h-.9A2.6 2.6 0 0 0 4 6.3c.3 3.6 1.9 7 4.4 9.5s5.9 4.1 9.5 4.4a2.6 2.6 0 0 0 2.8-2.5v-.9a1.7 1.7 0 0 0-1.4-1.7l-2.2-.4a1.7 1.7 0 0 0-1.7.7l-.6.9a12.4 12.4 0 0 1-5.1-5.1l.9-.6a1.7 1.7 0 0 0 .7-1.7l-.4-2.2a1.7 1.7 0 0 0-1.5-1.2z"
+      stroke={s}
+      strokeWidth={w}
+      strokeLinejoin="round"
+    />
   ),
   ojo: (s, w) => (
     <>

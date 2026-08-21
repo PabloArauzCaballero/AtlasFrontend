@@ -19,13 +19,13 @@ import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, Divider, ErrorState, ListRow, Skeleton } from '../../../src/ui/primitives';
 
 const COMMIT_FAILURE_COPY: Record<string, string> = {
-  ORDER_EXPIRED: 'La compra expiro antes de confirmarse. Pide al comercio iniciar una nueva.',
-  ORDER_NOT_ACCEPTED: 'El comercio todavia no confirmo la venta.',
-  DECISION_EXPIRED: 'La aprobacion vencio. Hay que volver a evaluar la compra.',
+  ORDER_EXPIRED: 'La compra expiró antes de confirmarse. Pide al comercio iniciar una nueva.',
+  ORDER_NOT_ACCEPTED: 'El comercio todavía no confirmó la venta.',
+  DECISION_EXPIRED: 'La aprobación venció. Hay que volver a evaluar la compra.',
   DECISION_DOES_NOT_COVER: 'El monto aprobado no cubre lo que se quiere financiar.',
-  DECISION_MISSING: 'Falta la evaluacion de credito de esta compra.',
-  RESERVATION_NOT_ACTIVE: 'La reserva de tu linea ya no esta vigente.',
-  CONTENT_HASH_MISMATCH: 'El monto cambio despues de que el comercio lo acepto. Hay que confirmarlo de nuevo.',
+  DECISION_MISSING: 'Falta la evaluación de crédito de esta compra.',
+  RESERVATION_NOT_ACTIVE: 'La reserva de tu línea ya no está vigente.',
+  CONTENT_HASH_MISMATCH: 'El monto cambió después de que el comercio lo aceptó. Hay que confirmarlo de nuevo.',
   ALREADY_COMMITTED: 'Esta compra ya estaba confirmada.',
 };
 
@@ -106,7 +106,7 @@ export default function PurchaseDetail() {
       ) : null}
 
       <Card>
-        <AtlasText variant="h3">Como se divide</AtlasText>
+        <AtlasText variant="h3">Cómo se divide</AtlasText>
         <Divider />
         <View style={styles.rowBetween}>
           <AtlasText variant="body" tone="secondary">
@@ -124,7 +124,7 @@ export default function PurchaseDetail() {
 
       {order.decision ? (
         <Card>
-          <AtlasText variant="h3">Evaluacion</AtlasText>
+          <AtlasText variant="h3">Evaluación</AtlasText>
           <Divider />
           <ListRow
             title={decisionTitle(order.decision.decision)}
@@ -147,7 +147,7 @@ export default function PurchaseDetail() {
             <>
               <Divider />
               <AtlasText variant="caption" tone="tertiary">
-                Decidido por el motor local de demostracion. No es una decision de credito real.
+                Decidido por el motor local de demostracion. No es una decision de crédito real.
               </AtlasText>
             </>
           ) : null}
@@ -198,15 +198,15 @@ const styles = StyleSheet.create({
  * expediente que sigue vivo.
  */
 function decisionTitle(decision: 'APPROVED' | 'DECLINED' | 'REVIEW'): string {
-  if (decision === 'APPROVED') return 'Credito aprobado';
-  if (decision === 'DECLINED') return 'Credito no aprobado';
-  return 'Tu compra esta en revision';
+  if (decision === 'APPROVED') return 'Crédito aprobado';
+  if (decision === 'DECLINED') return 'Crédito no aprobado';
+  return 'Tu compra está en revisión';
 }
 
 function decisionBadge(decision: 'APPROVED' | 'DECLINED' | 'REVIEW'): string {
   if (decision === 'APPROVED') return 'aprobado';
   if (decision === 'DECLINED') return 'rechazado';
-  return 'en revision';
+  return 'en revisión';
 }
 
 function decisionTone(decision: 'APPROVED' | 'DECLINED' | 'REVIEW'): 'success' | 'danger' | 'warning' {

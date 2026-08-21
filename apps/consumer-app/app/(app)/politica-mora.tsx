@@ -124,7 +124,7 @@ export default function DelinquencyPolicyScreen() {
       {sections.map((section, index) => (
         /*
           Escalonadas: los temas llegan en el orden en que hay que leerlos. Sobre un texto largo el
-          escalonado hace mas que decorar — reparte la llegada y quita la sensacion de pared.
+          escalonado hace más que decorar — reparte la llegada y quita la sensacion de pared.
         */
         <Appear key={section.heading || index} index={index}>
         <View style={styles.section}>

@@ -71,9 +71,9 @@ export function describeAmountRejection(rejection: AmountRejection, policy: Prod
     case 'AMOUNT_REQUIRED':
       return 'Ingresa el monto total de tu compra.';
     case 'AMOUNT_BELOW_MINIMUM':
-      return `El monto minimo financiable es ${formatMoney(rejection.minAmount, policy.currency)}.`;
+      return `El monto mínimo financiable es ${formatMoney(rejection.minAmount, policy.currency)}.`;
     case 'AMOUNT_ABOVE_MAXIMUM':
-      return `El monto maximo por compra es ${formatMoney(rejection.maxAmount, policy.currency)}.`;
+      return `El monto máximo por compra es ${formatMoney(rejection.maxAmount, policy.currency)}.`;
   }
 }
 

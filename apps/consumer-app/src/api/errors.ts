@@ -61,30 +61,30 @@ export function kindFromStatus(status: number): AtlasErrorKind {
  * antifraude (seccion 31 del documento maestro: reason codes comprensibles, no explotables).
  */
 const MESSAGE_BY_CODE: Record<string, string> = {
-  VERIFICATION_CHANNEL_UNAVAILABLE: 'El canal de verificacion no esta disponible ahora mismo. Intenta con otro canal o vuelve en unos minutos.',
+  VERIFICATION_CHANNEL_UNAVAILABLE: 'El canal de verificación no está disponible ahora mismo. Intenta con otro canal o vuelve en unos minutos.',
   DOCUMENT_STORAGE_NOT_CONFIGURED: 'No podemos recibir documentos en este momento. Ya estamos trabajando en ello.',
-  ONBOARDING_INCOMPLETE: 'Todavia falta informacion para enviar tu solicitud.',
-  ONBOARDING_ALREADY_SUBMITTED: 'Tu solicitud ya fue enviada y esta en revision.',
-  CUSTOMER_NOT_ELIGIBLE: 'Aun no cumples los requisitos para solicitar credito.',
+  ONBOARDING_INCOMPLETE: 'Todavía falta información para enviar tu solicitud.',
+  ONBOARDING_ALREADY_SUBMITTED: 'Tu solicitud ya fue enviada y está en revisión.',
+  CUSTOMER_NOT_ELIGIBLE: 'Aún no cumples los requisitos para solicitar crédito.',
   CREDIT_APPLICATION_ALREADY_OPEN: 'Ya tienes una solicitud en curso.',
   IDENTITY_ALREADY_VERIFIED: 'Tu identidad ya fue verificada.',
-  DOCUMENT_NUMBER_MISMATCH: 'El numero de documento no coincide con el que registraste.',
+  DOCUMENT_NUMBER_MISMATCH: 'El número de documento no coincide con el que registraste.',
   IDENTITY_PACKAGE_REQUIRED: 'Primero debes subir tu documento de identidad.',
   INVALID_CREDENTIALS: 'Usuario o contrasena incorrectos.',
-  ACCOUNT_LOCKED: 'Tu cuenta esta bloqueada temporalmente por intentos fallidos. Intenta mas tarde.',
+  ACCOUNT_LOCKED: 'Tu cuenta está bloqueada temporalmente por intentos fallidos. Intenta más tarde.',
 };
 
 const MESSAGE_BY_KIND: Record<AtlasErrorKind, string> = {
   network: 'Sin conexion. Revisa tu internet e intenta de nuevo.',
   timeout: 'La conexion tardo demasiado. Intenta de nuevo.',
   server: 'Tuvimos un problema de nuestro lado. Intenta en unos minutos.',
-  auth: 'Tu sesion expiro. Vuelve a ingresar.',
+  auth: 'Tu sesión expiró. Vuelve a ingresar.',
   permission: 'No tienes permiso para hacer esta accion.',
   not_found: 'No encontramos lo que buscabas.',
   validation: 'Revisa los datos ingresados.',
   conflict: 'Esta operacion ya fue registrada.',
   rate_limited: 'Demasiados intentos. Espera un momento antes de reintentar.',
-  unavailable: 'El servicio no esta disponible ahora mismo.',
+  unavailable: 'El servicio no está disponible ahora mismo.',
   unknown: 'No pudimos completar la operacion.',
 };
 
@@ -107,7 +107,7 @@ function titleFor(kind: AtlasErrorKind): string {
     case 'timeout':
       return 'Sin conexion';
     case 'auth':
-      return 'Sesion expirada';
+      return 'Sesión expirada';
     case 'permission':
       return 'Accion no permitida';
     case 'not_found':

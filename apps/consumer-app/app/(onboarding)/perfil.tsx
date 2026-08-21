@@ -54,7 +54,7 @@ export default function PersonalData() {
 
   return (
     <Screen footer={<Button label="Guardar" onPress={save} loading={busy} disabled={busy} />}>
-      <ScreenHeader title="Tus datos" subtitle="Asi te identificamos en tu expediente." onBack="auto" />
+      <ScreenHeader title="Tus datos" subtitle="Así te identificamos en tu expediente." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
@@ -78,7 +78,7 @@ export default function PersonalData() {
         value={language}
         onChange={setLanguage}
         options={[
-          { value: 'es', label: 'Espanol' },
+          { value: 'es', label: 'Español' },
           { value: 'qu', label: 'Quechua' },
           { value: 'ay', label: 'Aymara' },
           { value: 'en', label: 'Ingles' },
@@ -94,7 +94,7 @@ export default function PersonalData() {
 
       <Gap size="sm" />
       <AtlasText variant="caption" tone="tertiary">
-        Tu fecha de nacimiento se registro al crear la cuenta y no puede modificarse desde aqui.
+        Tu fecha de nacimiento se registro al crear la cuenta y no puede modificarse desde aquí.
       </AtlasText>
     </Screen>
   );

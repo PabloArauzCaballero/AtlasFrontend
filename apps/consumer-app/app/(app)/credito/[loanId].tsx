@@ -39,7 +39,7 @@ export default function LoanDetail() {
         if (!cancelled) setLoan(value);
       })
       .catch(() => {
-        if (!cancelled) setError('No pudimos cargar este credito.');
+        if (!cancelled) setError('No pudimos cargar este crédito.');
       });
     return () => {
       cancelled = true;
@@ -50,7 +50,7 @@ export default function LoanDetail() {
     return (
       <Screen>
         <Gap size="lg" />
-        <ErrorState title="Credito no disponible" detail={error} />
+        <ErrorState title="Crédito no disponible" detail={error} />
       </Screen>
     );
   }
@@ -116,11 +116,11 @@ export default function LoanDetail() {
           </View>
         </View>
         {overdueInstallments.length > 0 ? (
-          <Badge label={`${worstOverdueDays} dias de atraso`} tone="danger" />
+          <Badge label={`${worstOverdueDays} días de atraso`} tone="danger" />
         ) : loan.status === 'paid_off' ? (
           <Badge label="Pagado" tone="success" />
         ) : (
-          <Badge label="Al dia" tone="success" />
+          <Badge label="Al día" tone="success" />
         )}
       </Card>
 
@@ -161,11 +161,11 @@ export default function LoanDetail() {
         <Card>
           <View style={styles.rowCenter}>
             <Icon name="escudo" size={18} tint={color.text.secondary} />
-            <AtlasText variant="h3">Como se decidio</AtlasText>
+            <AtlasText variant="h3">Cómo se decidió</AtlasText>
           </View>
           <AtlasText variant="caption" tone="secondary">
             Este credito lo aprobo el motor de decision de Atlas. Ejecucion {loan.decision.executionId}
-            {loan.decision.artifactVersionId ? ` · politica ${loan.decision.artifactVersionId}` : ''}.
+            {loan.decision.artifactVersionId ? ` · política ${loan.decision.artifactVersionId}` : ''}.
           </AtlasText>
         </Card>
       ) : null}

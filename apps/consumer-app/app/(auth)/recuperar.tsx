@@ -52,7 +52,7 @@ export default function RecoverPassword() {
       footer={
         step === 'request' ? (
           <Button
-            label="Enviarme el codigo"
+            label="Enviarme el código"
             loading={busy}
             disabled={!email.includes('@') || busy}
             blockedReason={firstBlocker([[email.includes('@'), 'Escribe el correo de tu cuenta.']])}
@@ -69,7 +69,7 @@ export default function RecoverPassword() {
             loading={busy}
             disabled={code.length !== 6 || newPassword.length < 10 || busy}
             blockedReason={firstBlocker([
-              [code.length === 6, 'El codigo tiene 6 digitos.'],
+              [code.length === 6, 'El código tiene 6 dígitos.'],
               [newPassword.length >= 10, 'La contrasena nueva necesita al menos 10 caracteres.'],
             ])}
             onPress={() =>
@@ -84,7 +84,7 @@ export default function RecoverPassword() {
     >
       <ScreenHeader
         title="Recuperar acceso"
-        subtitle={step === 'request' ? 'Te enviamos un codigo de 6 digitos por correo.' : 'Escribe el codigo que recibiste.'}
+        subtitle={step === 'request' ? 'Te enviamos un código de 6 dígitos por correo.' : 'Escribe el código que recibiste.'}
         onBack="auto"
       />
 
@@ -104,7 +104,7 @@ export default function RecoverPassword() {
       ) : (
         <>
           <Field
-            label="Codigo de 6 digitos"
+            label="Código de 6 dígitos"
             value={code}
             onChangeText={(next) => setCode(next.replace(/\D/g, '').slice(0, 6))}
             keyboardType="number-pad"
@@ -120,7 +120,7 @@ export default function RecoverPassword() {
             secureTextEntry
             textContentType="newPassword"
             autoComplete="new-password"
-            hint="Minimo 10 caracteres."
+            hint="Mínimo 10 caracteres."
             required
           />
         </>

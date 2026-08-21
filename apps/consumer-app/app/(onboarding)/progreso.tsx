@@ -103,7 +103,7 @@ export default function OnboardingProgress() {
       </Card>
 
       <Gap size="sm" />
-      <Button label="Cerrar sesion" variant="ghost" onPress={() => void session.signOut()} />
+      <Button label="Cerrar sesión" variant="ghost" onPress={() => void session.signOut()} />
     </Screen>
   );
 }

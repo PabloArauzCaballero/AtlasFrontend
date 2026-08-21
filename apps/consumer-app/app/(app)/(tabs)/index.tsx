@@ -98,16 +98,16 @@ export default function Home() {
           <AtlasText variant="caption" tone="secondary">
             Hola{firstName ? `, ${firstName}` : ''}
           </AtlasText>
-          <AtlasText variant="h1">Tu linea Atlas</AtlasText>
+          <AtlasText variant="h1">Tu línea Atlas</AtlasText>
         </View>
         {isSandboxPurchase ? <DataSourceBadge /> : null}
       </View>
 
       {/*
-        LO PRIMERO cuando hay mora, por encima incluso de la linea disponible.
+        LO PRIMERO cuando hay mora, por encima incluso de la línea disponible.
 
         Quien abre la app debiendo dinero vencido no entro a ver cuanto puede gastar. Ensenarle
-        primero el disponible seria invitarle a aumentar una deuda que ya no esta pagando.
+        primero el disponible sería invitarle a aumentar una deuda que ya no está pagando.
       */}
       {spending && spending.totals.overdue > 0 ? (
         <Card style={styles.moraCard}>
@@ -119,11 +119,11 @@ export default function Home() {
             {formatAmount(spending.totals.overdue, currency)}
           </AtlasText>
           <AtlasText variant="body" tone="secondary">
-            Si no regularizas, empezaran a correr intereses sobre el capital vencido. Incumplir nuestras politicas
-            puede llevar a la suspension de tu cuenta.
+            Si no regularizas, empezarán a correr intereses sobre el capital vencido. Incumplir nuestras políticas
+            puede llevar a la suspensión de tu cuenta.
           </AtlasText>
-          <Button label="Ver que debo pagar" onPress={() => router.push('/(app)/(tabs)/pagos')} />
-          <Button label="Leer terminos y condiciones" variant="secondary" onPress={() => router.push('/(app)/politica-mora')} />
+          <Button label="Ver qué debo pagar" onPress={() => router.push('/(app)/(tabs)/pagos')} />
+          <Button label="Leer términos y condiciones" variant="secondary" onPress={() => router.push('/(app)/politica-mora')} />
         </Card>
       ) : null}
 
@@ -137,7 +137,7 @@ export default function Home() {
           <View style={styles.lineMeta}>
             <View style={styles.lineMetaItem}>
               <AtlasText variant="caption" tone="tertiary">
-                Limite aprobado
+                Límite aprobado
               </AtlasText>
               <AtlasText variant="amountSmall">{formatMoney(sandbox.state.creditLine.approvedLimit)}</AtlasText>
             </View>
@@ -159,7 +159,7 @@ export default function Home() {
         {sandbox.nextDue ? (
           <Card>
             <View style={styles.rowBetween}>
-              <AtlasText variant="h3">Tu proximo pago</AtlasText>
+              <AtlasText variant="h3">Tu próximo pago</AtlasText>
               <Badge label={statusLabel(sandbox.nextDue.item.status)} tone={statusTone(sandbox.nextDue.item.status)} />
             </View>
             <Divider />
@@ -175,15 +175,15 @@ export default function Home() {
           </Card>
         ) : (
           /*
-            Sin proximo pago el paso del recorrido necesita igual algo a lo que apuntar. En vez de un
+            Sin próximo pago el paso del recorrido necesita igual algo a lo que apuntar. En vez de un
             hueco vacio se explica el invariante que va a nombrar, que ademas es justo lo que alguien
-            sin compras se esta preguntando: donde se paga esto.
+            sin compras se está preguntando: donde se paga esto.
           */
           <Card>
             <AtlasText variant="h3">Tus pagos</AtlasText>
             <Divider />
             <AtlasText variant="body" tone="secondary">
-              Cuando tengas una compra activa, aqui aparece tu proxima cuota y el QR bancario del comercio donde
+              Cuando tengas una compra activa, aquí aparece tu próxima cuota y el QR bancario del comercio donde
               pagarla.
             </AtlasText>
           </Card>
@@ -237,13 +237,13 @@ export default function Home() {
                     <AtlasText variant="bodyStrong">{formatAmount(item.financed, currency)}</AtlasText>
                   </View>
                   {/*
-                    La barra usa el porcentaje que YA calculo el servidor: recalcularlo aqui haria
+                    La barra usa el porcentaje que YA calculo el servidor: recalcularlo aquí haria
                     que la pantalla y el PDF discreparan por redondeo.
                   */}
                   <ProgressBar value={item.share} label={look.label + ': ' + item.share.toFixed(0) + ' por ciento'} />
                   <AtlasText variant="caption" tone="tertiary">
                     {item.share.toFixed(0)} % · {item.merchants[0]?.displayName ?? 'sin comercio'}
-                    {others > 0 ? ' y ' + others + ' mas' : ''}
+                    {others > 0 ? ' y ' + others + ' más' : ''}
                   </AtlasText>
                 </View>
               </PressSurface>
@@ -253,7 +253,7 @@ export default function Home() {
           <Divider />
           {/*
             El informe lo compone el SERVIDOR y se abre en el visor del sistema. Traerlo a memoria
-            para reescribirlo en disco no anade nada y deja una copia del documento en el telefono.
+            para reescribirlo en disco no anade nada y deja una copia del documento en el teléfono.
           */}
           <Button
             label={reportBusy ? 'Preparando informe...' : 'Descargar informe en PDF'}
@@ -275,8 +275,8 @@ export default function Home() {
 
       {activeOrders.length === 0 ? (
         <EmptyState
-          title="Todavia no tienes compras"
-          detail="Cuando compres en un comercio Atlas, aqui veras el detalle y tus cuotas."
+          title="Todavía no tienes compras"
+          detail="Cuando compres en un comercio Atlas, aquí verás el detalle y tus cuotas."
           action={<Button label="Escanear un QR" variant="secondary" onPress={() => router.push('/(app)/(tabs)/escanear')} />}
         />
       ) : (

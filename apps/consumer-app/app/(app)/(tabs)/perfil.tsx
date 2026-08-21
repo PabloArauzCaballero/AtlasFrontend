@@ -70,7 +70,7 @@ export default function Profile() {
           <View style={styles.rowBetween}>
             <View style={styles.rowCenter}>
               <Icon name="estrella" size={20} tint={color.action.primary} />
-              <AtlasText variant="h3">Tu calificacion</AtlasText>
+              <AtlasText variant="h3">Tu calificación</AtlasText>
             </View>
             <Badge label={rating.gradeLabel} tone={rating.worstDaysPastDue > 0 ? 'warning' : 'success'} />
           </View>
@@ -83,21 +83,21 @@ export default function Profile() {
             <View style={styles.gradeText}>
               <AtlasText variant="bodyStrong">
                 {rating.position && rating.scaleSize
-                  ? 'Categoria ' + rating.position + ' de ' + rating.scaleSize
+                  ? 'Categoría ' + rating.position + ' de ' + rating.scaleSize
                   : rating.gradeLabel}
               </AtlasText>
               {/*
-                La barra se invierte a proposito: la mejor categoria llena la barra. Una barra que
+                La barra se invierte a proposito: la mejor categoría llena la barra. Una barra que
                 sube cuando el cliente empeora se lee al reves de como todo el mundo lee una barra.
               */}
               {rating.position && rating.scaleSize ? (
                 <ProgressBar
                   value={((rating.scaleSize - rating.position + 1) / rating.scaleSize) * 100}
-                  label={'Calificacion ' + rating.position + ' de ' + rating.scaleSize}
+                  label={'Calificación ' + rating.position + ' de ' + rating.scaleSize}
                 />
               ) : null}
               <AtlasText variant="caption" tone="tertiary">
-                {rating.ratedLoanCount} {rating.ratedLoanCount === 1 ? 'credito calificado' : 'creditos calificados'} ·
+                {rating.ratedLoanCount} {rating.ratedLoanCount === 1 ? 'crédito calificado' : 'créditos calificados'} ·
                 actualizada el {new Date(rating.ratedAt).toLocaleDateString('es-BO')}
               </AtlasText>
             </View>
@@ -105,10 +105,10 @@ export default function Profile() {
 
           <AtlasText variant="caption" tone="secondary">
             {rating.worstDaysPastDue > 0
-              ? 'Tu peor atraso registrado es de ' + rating.worstDaysPastDue + ' dias. Ponerte al dia mejora tu categoria.'
-              : 'No tienes atrasos registrados. Pagar a tiempo mantiene tu categoria.'}
+              ? 'Tu peor atraso registrado es de ' + rating.worstDaysPastDue + ' días. Ponerte al día mejora tu categoría.'
+              : 'No tienes atrasos registrados. Pagar a tiempo mantiene tu categoría.'}
           </AtlasText>
-          <Button label="Como se calcula" variant="secondary" onPress={() => router.push('/(app)/politica-mora')} />
+          <Button label="Cómo se calcula" variant="secondary" onPress={() => router.push('/(app)/politica-mora')} />
         </Card>
       ) : null}
 
@@ -128,12 +128,30 @@ export default function Profile() {
         />
         <Divider />
         <ListRow
-          icon="ubicacion"
+          icon="telefono"
           title="Teléfono" subtitle={me?.customer.phoneLast4 ? `Termina en ${me.customer.phoneLast4}` : 'Sin registrar'} />
         <Divider />
+        {/*
+          «@atlas.bo» a secas se lee como un valor cortado a medias, no como una decision.
+
+          El backend guarda solo el dominio del correo a proposito —minimizacion de datos— y esa
+          decision esta bien; lo que estaba mal era enseñarla sin decirla. Con «Termina en» la fila
+          queda en paralelo con la del telefono y se entiende que falta el principio porque no se
+          guarda, no porque se haya roto algo.
+        */}
         <ListRow
           icon="sobre"
-          title="Correo" subtitle={me?.customer.emailDomain ? `@${me.customer.emailDomain}` : 'Sin registrar'} />
+          title="Correo"
+          subtitle={me?.customer.emailDomain ? `Termina en @${me.customer.emailDomain}` : 'Sin registrar'}
+        />
+        <Divider />
+        <ListRow
+          icon="editar"
+          title="Editar mis datos"
+          subtitle="Idioma, género y avisos"
+          onPress={() => router.push('/(app)/editar-perfil')}
+          accessibilityHint="Abrir para cambiar tus preferencias"
+        />
       </Card>
 
       <Card>
@@ -146,18 +164,18 @@ export default function Profile() {
           onPress={() => router.push('/(auth)/recuperar')}
         />
         <Divider />
-        <ListRow title="Sesion" subtitle="Tus tokens se guardan cifrados en este dispositivo" />
+        <ListRow title="Sesión" subtitle="Tus tokens se guardan cifrados en este dispositivo" />
       </Card>
 
       <Card>
         <AtlasText variant="h3">Ayuda</AtlasText>
         <Divider />
-        <ListRow title="Como funciona Atlas" subtitle="Pagas 60% hoy y el resto en 3 cuotas cada 14 dias" />
+        <ListRow title="Cómo funciona Atlas" subtitle="Pagas 60% hoy y el resto en 3 cuotas cada 14 días" />
         <Divider />
-        <ListRow title="Donde pago mis cuotas" subtitle="Siempre al QR bancario del comercio donde compraste" />
+        <ListRow title="Dónde pago mis cuotas" subtitle="Siempre al QR bancario del comercio donde compraste" />
         <Divider />
         {/*
-          El recorrido tiene que poder repetirse. Quien lo salto el primer dia porque tenia prisa no
+          El recorrido tiene que poder repetirse. Quien lo salto el primer día porque tenia prisa no
           deberia quedarse sin el para siempre; y quien lo vio, lo necesita justo cuando le surge la
           duda, no cuando instalo la app.
 

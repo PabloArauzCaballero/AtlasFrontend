@@ -24,7 +24,7 @@ import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, ErrorState } from '../../src/ui/primitives';
 
 const STEPS: { kind: EvidenceKind; title: string; hint: string; facing: 'back' | 'front' }[] = [
-  { kind: 'identity_front', title: 'Anverso del carnet', hint: 'Que se lea el numero y tu nombre.', facing: 'back' },
+  { kind: 'identity_front', title: 'Anverso del carnet', hint: 'Que se lea el número y tu nombre.', facing: 'back' },
   { kind: 'identity_back', title: 'Reverso del carnet', hint: 'Sin reflejos ni sombras.', facing: 'back' },
   { kind: 'selfie', title: 'Selfie', hint: 'Mira de frente, sin lentes oscuros ni gorra.', facing: 'front' },
 ];
@@ -59,9 +59,9 @@ export default function Identity() {
     [Boolean(evidence.identity_front), 'Falta la foto del anverso del carnet.'],
     [Boolean(evidence.identity_back), 'Falta la foto del reverso del carnet.'],
     [Boolean(evidence.selfie), 'Falta la selfie.'],
-    [documentOk, 'Falta el numero de tu carnet.'],
+    [documentOk, 'Falta el número de tu carnet.'],
     [isIsoDate(expiresAt), 'Falta la fecha de vencimiento del carnet, en formato AAAA-MM-DD.'],
-    [expiryOk, 'El carnet esta vencido: solo aceptamos documentos vigentes.'],
+    [expiryOk, 'El carnet está vencido: solo aceptamos documentos vigentes.'],
   ]);
 
   const capture = async () => {
@@ -133,7 +133,7 @@ export default function Identity() {
           </Card>
           {permission?.canAskAgain === false ? (
             <AtlasText variant="caption" tone="warning">
-              El permiso esta bloqueado. Habilitalo desde los ajustes del sistema para continuar.
+              El permiso está bloqueado. Habilitalo desde los ajustes del sistema para continuar.
             </AtlasText>
           ) : null}
         </Screen>
@@ -216,12 +216,12 @@ export default function Identity() {
       })}
 
       <Field
-        label="Numero de carnet"
+        label="Número de carnet"
         value={documentNumber}
         onChangeText={setDocumentNumber}
         keyboardType="number-pad"
         required
-        error={documentNumber && !documentOk ? 'Revisa el numero de tu carnet.' : null}
+        error={documentNumber && !documentOk ? 'Revisa el número de tu carnet.' : null}
       />
       <Field label="Expedido en" value={issuedIn} onChangeText={setIssuedIn} />
       <Field
@@ -238,7 +238,7 @@ export default function Identity() {
 
       <Gap size="sm" />
       <AtlasText variant="caption" tone="tertiary">
-        No guardamos tu numero de carnet en claro: se usa para consultar el registro y se descarta.
+        No guardamos tu número de carnet en claro: se usa para consultar el registro y se descarta.
       </AtlasText>
     </Screen>
   );

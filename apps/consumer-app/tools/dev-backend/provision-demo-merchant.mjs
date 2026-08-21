@@ -25,8 +25,8 @@ for (let i = 2; i < process.argv.length; i += 2) args.set(process.argv[i].replac
 
 const EMAIL = args.get('email');
 const PASSWORD = args.get('password');
-const LEGAL_NAME = args.get('legalName') ?? 'Centro de Preparacion Academica CPA S.R.L.';
-const TRADE_NAME = args.get('tradeName') ?? 'CPA Centro de Preparacion Academica';
+const LEGAL_NAME = args.get('legalName') ?? 'Centro de Preparación Académica CPA S.R.L.';
+const TRADE_NAME = args.get('tradeName') ?? 'CPA Centro de Preparación Académica';
 const CATEGORY = args.get('category') ?? 'educacion';
 const TAX_ID = args.get('taxId') ?? String(Math.floor(1000000 + Math.random() * 8999999));
 const TERMINAL = args.get('terminal') ?? 'CPA-POS-' + Math.floor(1000 + Math.random() * 8999);

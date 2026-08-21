@@ -116,3 +116,63 @@ app — sin tocar una linea de codigo del telefono.
 Una nota de honestidad: el calendario de Android es el dialogo del SISTEMA, asi que sigue el tema
 del dispositivo. En el emulador, con tema claro, sale blanco. En un telefono en modo oscuro sale
 oscuro. Se deja el control nativo a proposito: es el que la gente ya sabe usar.
+
+## Editar mis datos, y las tildes
+
+### El cliente activo ya puede corregirse
+
+La edicion del perfil solo existia durante el alta. En cuanto la cuenta quedaba `active` el endpoint
+respondia `PROFILE_NOT_EDITABLE_IN_STATUS` y no habia ningun otro camino: un idioma equivocado se
+quedaba equivocado y la unica salida era soporte.
+
+Ahora `active` edita. Lo que sigue bloqueado son **nombre, apellido y fecha de nacimiento** cuando la
+identidad ya se verifico contra el carnet — son los tres campos que se contrastaron con el documento,
+y dejar que el titular los reescriba despues convierte una verificacion en una declaracion. Se
+muestran igual, con candado y con el motivo, porque esconderlos dejaria a la persona buscando donde
+se cambia su nombre.
+
+| # | Archivo | Que prueba |
+|---|---|---|
+| 30 | `30-editar-datos-bloqueados.png` | Los campos verificados, visibles y con candado, con el motivo escrito |
+| 31 | `31-editar-preferencias.png` | Idioma, genero y avisos: lo que si se edita |
+| 32 | `32-editar-guardado.png` | Guardado confirmado desde el telefono contra el backend real |
+
+Comprobado en la base despues de guardar desde el emulador: la version 44 del perfil del cliente 23
+queda con `gender_declared=female`, `marketing_opt_in=true`, `source_type=customer_self_service` y
+`supersedes_version_id=43`; la 43 se cierra con su `valid_until`. El versionado funciona desde el
+telefono, no solo desde curl.
+
+Y la regla se comprobo por los dos lados: `{"firstName":"Otra"}` devuelve
+`IDENTITY_FIELDS_LOCKED: firstName` sobre el mismo cliente.
+
+### Las tildes no eran la fuente: era el codigo
+
+El texto salia sin tildes —«Tu linea Atlas», «Tu calificacion», «Como se calcula»— porque estaba
+escrito asi en el propio codigo fuente. La fuente siempre las tuvo. En castellano una palabra sin
+tilde no es un detalle tipografico: es una falta de ortografia, y en un producto financiero se lee
+como descuido.
+
+Se repaso todo el texto visible de la app —28 ficheros entre pantallas y copys— distinguiendo lo que
+es prosa de lo que es codigo: los identificadores, las claves de rubro (`educacion`, `electronica`) y
+las rutas se quedan como estan, porque ahi la palabra no se lee, se compara.
+
+| # | Archivo | Que prueba |
+|---|---|---|
+| 26 | `26-inicio-tildes.png` | «Tu línea Atlas», «empezarán», «políticas», «suspensión», «Ver qué debo pagar», «Límite aprobado» |
+| 27 | `27-pagos-tildes.png` | «1 crédito con cuotas vencidas», «Próximos», «Educación · 2 créditos» |
+| 28 | `28-perfil-calificacion.png` | «Tu calificación», «Categoría 3 de 6», «40 días», «Cómo se calcula» |
+| 29 | `29-perfil-cuenta-iconos.png` | «Teléfono» con auricular —no con la chincheta de ubicacion— y «Termina en @atlas.bo» |
+| 33 | `33-politica-mora-secciones.png` | La politica por secciones, con su marca a la izquierda, sin muro de texto |
+
+Dos cosas mas que salieron de mirar la pantalla en vez del codigo:
+
+- **El icono del telefono era una chincheta de mapa.** Los dos son datos de contacto y estan uno
+  encima del otro en el perfil, asi que el icono equivocado no se leia como un descuido: se leia
+  como si la fila fuera la direccion. Ahora hay un icono `telefono` propio.
+- **«@atlas.bo» a secas parecia un valor cortado.** El backend guarda solo el dominio del correo a
+  proposito —minimizacion de datos—; lo que estaba mal era enseñar esa decision sin decirla. Con
+  «Termina en @atlas.bo» la fila queda en paralelo con la del telefono y se entiende.
+
+Y el nombre del comercio en la base tambien llevaba el problema: `CPA Centro de Preparacion
+Academica` pasa a `CPA Centro de Preparación Académica`, en la fila del partner y en el script que lo
+aprovisiona, para que un entorno nuevo nazca bien escrito.

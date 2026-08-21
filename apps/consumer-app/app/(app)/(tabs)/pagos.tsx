@@ -44,7 +44,7 @@ type MerchantGroup = {
 const FILTERS: Array<{ key: Filter; label: string; icon: IconName }> = [
   { key: 'todos', label: 'Todos', icon: 'lista' },
   { key: 'mora', label: 'En mora', icon: 'alerta' },
-  { key: 'proximos', label: 'Proximos', icon: 'reloj' },
+  { key: 'proximos', label: 'Próximos', icon: 'reloj' },
   { key: 'pagados', label: 'Pagados', icon: 'check' },
 ];
 
@@ -190,7 +190,7 @@ export default function Payments() {
             <View style={styles.flex}>
               <AtlasText variant="bodyStrong">Tienes pagos en mora</AtlasText>
               <AtlasText variant="caption" tone="secondary">
-                {spending.totals.overdueLoanCount} {spending.totals.overdueLoanCount === 1 ? 'credito' : 'creditos'} con cuotas vencidas
+                {spending.totals.overdueLoanCount} {spending.totals.overdueLoanCount === 1 ? 'crédito' : 'créditos'} con cuotas vencidas
               </AtlasText>
             </View>
           </View>
@@ -245,11 +245,11 @@ export default function Payments() {
       {/* 4. Los comercios. */}
       {groups.length === 0 ? (
         <EmptyState
-          title={filter === 'todos' ? 'Todavia no tienes creditos' : 'Nada en este filtro'}
+          title={filter === 'todos' ? 'Todavía no tienes créditos' : 'Nada en este filtro'}
           detail={
             filter === 'todos'
-              ? 'Cuando compres con Atlas, aqui apareceran tus cuotas agrupadas por comercio.'
-              : 'Prueba con otro filtro para ver el resto de tus creditos.'
+              ? 'Cuando compres con Atlas, aquí aparecerán tus cuotas agrupadas por comercio.'
+              : 'Prueba con otro filtro para ver el resto de tus créditos.'
           }
           action={
             filter === 'todos' ? (
@@ -296,7 +296,7 @@ export default function Payments() {
                 {index > 0 ? <Divider /> : null}
                 <ListRow
                   title={group.displayName}
-                  subtitle={`${look.label} · ${group.loans.length} ${group.loans.length === 1 ? 'credito' : 'creditos'}`}
+                  subtitle={`${look.label} · ${group.loans.length} ${group.loans.length === 1 ? 'crédito' : 'créditos'}`}
                   icon={look.icon}
                   right={
                     group.overdueAmount > 0 ? (
@@ -306,7 +306,7 @@ export default function Payments() {
                     )
                   }
                   onPress={() => router.push(`/(app)/comercio/${group.key}`)}
-                  accessibilityHint="Abrir para ver los creditos de este comercio"
+                  accessibilityHint="Abrir para ver los créditos de este comercio"
                 />
               </View>
             );

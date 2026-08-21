@@ -282,7 +282,7 @@ export default function Register() {
               <ConsentRow
                 /*
                   El titulo viene del BACKEND. Antes lo adivinaba una funcion local a partir del
-                  codigo del documento, asi que publicar uno nuevo significaba tocar la app —y hasta
+                  código del documento, así que publicar uno nuevo significaba tocar la app —y hasta
                   entonces salia «Acepto privacy-policy-dev».
                 */
                 title={document.title ?? titleForConsent(document.documentCode)}

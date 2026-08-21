@@ -26,13 +26,13 @@ import { AtlasText, Button, Card, ErrorState } from '../../../src/ui/primitives'
 const REJECTION_COPY: Record<string, { title: string; detail: string }> = {
   QR_NOT_RECOGNIZED: {
     title: 'Este QR no es de Atlas',
-    detail: 'Pide al comercio el codigo QR de Atlas que esta pegado en la caja. El QR del banco se usa despues.',
+    detail: 'Pide al comercio el código QR de Atlas que está pegado en la caja. El QR del banco se usa después.',
   },
   QR_REVOKED: {
     title: 'QR dado de baja',
-    detail: 'Este codigo fue revocado por seguridad. Pide al comercio el codigo vigente.',
+    detail: 'Este código fue revocado por seguridad. Pide al comercio el código vigente.',
   },
-  QR_EXPIRED: { title: 'QR vencido', detail: 'Este codigo ya no esta activo. Pide al comercio el codigo vigente.' },
+  QR_EXPIRED: { title: 'QR vencido', detail: 'Este código ya no está activo. Pide al comercio el código vigente.' },
 };
 
 export default function ScanScreen() {
@@ -146,7 +146,7 @@ export default function ScanScreen() {
         <View style={styles.headerText}>
           <AtlasText variant="h1">Escanear</AtlasText>
           <AtlasText variant="body" tone="secondary">
-            Apunta al codigo QR de Atlas del comercio.
+            Apunta al código QR de Atlas del comercio.
           </AtlasText>
         </View>
         <DataSourceBadge />
@@ -175,24 +175,24 @@ export default function ScanScreen() {
           <Button label="Permitir camara" onPress={() => void requestPermission()} />
           {permission?.canAskAgain === false ? (
             <AtlasText variant="caption" tone="warning">
-              El permiso esta bloqueado. Habilitalo desde los ajustes del sistema o ingresa el codigo manualmente.
+              El permiso está bloqueado. Habilitalo desde los ajustes del sistema o ingresa el código manualmente.
             </AtlasText>
           ) : null}
         </Card>
       )}
 
       <Card>
-        <AtlasText variant="bodyStrong">Ingresar el codigo a mano</AtlasText>
+        <AtlasText variant="bodyStrong">Ingresar el código a mano</AtlasText>
         <AtlasText variant="caption" tone="secondary">
-          Si el QR no se lee, el comercio puede dictarte el codigo que aparece debajo del QR.
+          Si el QR no se lee, el comercio puede dictarte el código que aparece debajo del QR.
         </AtlasText>
-        <Field label="Codigo del comercio" value={manual} onChangeText={setManual} autoCapitalize="none" autoCorrect={false} />
+        <Field label="Código del comercio" value={manual} onChangeText={setManual} autoCapitalize="none" autoCorrect={false} />
         <Button
           label="Continuar"
           variant="secondary"
           disabled={manual.trim().length < 8}
           blockedReason={firstBlocker([
-            [manual.trim().length >= 8, 'El codigo del comercio tiene al menos 8 caracteres.'],
+            [manual.trim().length >= 8, 'El código del comercio tiene al menos 8 caracteres.'],
           ])}
           onPress={() => {
             locked.current = false;
@@ -202,12 +202,12 @@ export default function ScanScreen() {
       </Card>
 
       <Card>
-        <AtlasText variant="bodyStrong">Codigos de prueba</AtlasText>
+        <AtlasText variant="bodyStrong">Códigos de prueba</AtlasText>
         <AtlasText variant="caption" tone="secondary">
           Disponibles solo en el entorno sandbox, para recorrer el flujo sin un QR fisico.
         </AtlasText>
         <Button
-          label="Comercio valido"
+          label="Comercio válido"
           variant="ghost"
           onPress={() => {
             locked.current = false;

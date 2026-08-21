@@ -43,8 +43,8 @@ export default function PurchaseAmount() {
       <Screen>
         <ScreenHeader title="Compra" onBack="auto" />
         <ErrorState
-          title="Sesion no encontrada"
-          detail="Vuelve a escanear el codigo QR del comercio para empezar de nuevo."
+          title="Sesión no encontrada"
+          detail="Vuelve a escanear el código QR del comercio para empezar de nuevo."
           onRetry={() => router.replace('/(app)/(tabs)/escanear')}
         />
       </Screen>
@@ -54,9 +54,9 @@ export default function PurchaseAmount() {
   if (session.status === 'EXPIRED') {
     return (
       <Screen footer={<Button label="Escanear de nuevo" onPress={() => router.replace('/(app)/(tabs)/escanear')} />}>
-        <ScreenHeader title="El codigo expiro" onBack="auto" />
+        <ScreenHeader title="El código expiró" onBack="auto" />
         <ErrorState
-          title="Pasaron mas de 10 minutos"
+          title="Pasaron más de 10 minutos"
           detail="Por seguridad, el escaneo caduca. Vuelve a escanear el QR del comercio."
         />
       </Screen>
@@ -147,7 +147,7 @@ export default function PurchaseAmount() {
 
       {breakdown && !exceedsAvailable ? (
         <Card>
-          <AtlasText variant="h3">Asi quedaria tu plan</AtlasText>
+          <AtlasText variant="h3">Así quedaría tu plan</AtlasText>
           <Divider />
 
           <View style={styles.row}>
@@ -184,7 +184,7 @@ export default function PurchaseAmount() {
 
       <Gap size="sm" />
       <AtlasText variant="caption" tone="tertiary">
-        Todavia no se cobra nada. Al continuar evaluamos tu credito y el comercio confirma la venta.
+        Todavía no se cobra nada. Al continuar evaluamos tu crédito y el comercio confirma la venta.
       </AtlasText>
     </Screen>
   );

@@ -76,9 +76,9 @@ export function daysUntil(date: string, now = new Date()): number {
 
 export function dueCopy(date: string, now = new Date()): string {
   const days = daysUntil(date, now);
-  if (days < -1) return `Vencio hace ${Math.abs(days)} dias`;
-  if (days === -1) return 'Vencio ayer';
+  if (days < -1) return `Venció hace ${Math.abs(days)} días`;
+  if (days === -1) return 'Venció ayer';
   if (days === 0) return 'Vence hoy';
-  if (days === 1) return 'Vence manana';
-  return `Vence en ${days} dias`;
+  if (days === 1) return 'Vence mañana';
+  return `Vence en ${days} días`;
 }

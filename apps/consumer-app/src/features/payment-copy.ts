@@ -39,9 +39,9 @@ export function dueLabel(item: ScheduleItem, now: number = Date.now()): string {
   const due = new Date(item.dueAt).getTime();
   const diffDays = Math.round((due - now) / DAY_MS);
 
-  if (diffDays < 0) return `Vencio hace ${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'dia' : 'dias'}`;
+  if (diffDays < 0) return `Venció hace ${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'día' : 'días'}`;
   if (due - now < DAY_MS && diffDays === 0) return `Vence hoy a las ${formatTime(item.dueAt)}`;
-  if (diffDays === 1) return 'Vence manana';
+  if (diffDays === 1) return 'Vence mañana';
   return `Vence el ${formatDate(item.dueAt)}`;
 }
 
@@ -59,17 +59,17 @@ export function formatTime(iso: string): string {
 
 const ORDER_STATUS_COPY: Record<OrderStatus, { label: string; tone: BadgeTone; detail: string }> = {
   CREATED: { label: 'iniciada', tone: 'neutral', detail: 'Estamos preparando tu compra.' },
-  UNDER_EVALUATION: { label: 'evaluando', tone: 'info', detail: 'Estamos evaluando tu credito para esta compra.' },
+  UNDER_EVALUATION: { label: 'evaluando', tone: 'info', detail: 'Estamos evaluando tu crédito para esta compra.' },
   DECLINED: { label: 'no aprobada', tone: 'danger', detail: 'No pudimos aprobar esta compra.' },
-  REVIEW: { label: 'en revision', tone: 'info', detail: 'Un analista esta revisando esta compra.' },
-  CREDIT_APPROVED: { label: 'aprobada', tone: 'success', detail: 'Credito aprobado.' },
+  REVIEW: { label: 'en revisión', tone: 'info', detail: 'Un analista está revisando esta compra.' },
+  CREDIT_APPROVED: { label: 'aprobada', tone: 'success', detail: 'Crédito aprobado.' },
   PENDING_MERCHANT_ACCEPTANCE: { label: 'esperando comercio', tone: 'warning', detail: 'El comercio debe confirmar la venta.' },
   REJECTED_BY_MERCHANT: { label: 'rechazada', tone: 'danger', detail: 'El comercio rechazo la operacion.' },
-  EXPIRED: { label: 'expirada', tone: 'neutral', detail: 'La compra expiro sin confirmarse.' },
+  EXPIRED: { label: 'expirada', tone: 'neutral', detail: 'La compra expiró sin confirmarse.' },
   CANCELLED: { label: 'cancelada', tone: 'neutral', detail: 'Cancelaste esta compra.' },
   COMMITTED: { label: 'confirmada', tone: 'success', detail: 'La compra quedo registrada.' },
   WAITING_INITIAL_PAYMENT: { label: 'falta el inicial', tone: 'warning', detail: 'Paga el 60% inicial para activar tus cuotas.' },
-  ACTIVE: { label: 'activa', tone: 'success', detail: 'Tus cuotas estan en curso.' },
+  ACTIVE: { label: 'activa', tone: 'success', detail: 'Tus cuotas están en curso.' },
   COMPLETED: { label: 'completada', tone: 'success', detail: 'Terminaste de pagar esta compra.' },
 };
 
@@ -83,8 +83,8 @@ export const orderStatusCopy = (status: OrderStatus) => ORDER_STATUS_COPY[status
  */
 const REASON_COPY: Record<string, string> = {
   INSUFFICIENT_AVAILABLE_LINE: 'El monto supera tu disponible actual.',
-  LINE_UTILIZATION_HIGH: 'Estas usando buena parte de tu linea.',
+  LINE_UTILIZATION_HIGH: 'Estás usando buena parte de tu línea.',
   WITHIN_AVAILABLE_LINE: 'Dentro de tu disponible.',
 };
 
-export const reasonCopy = (code: string): string => REASON_COPY[code] ?? 'Evaluacion de riesgo.';
+export const reasonCopy = (code: string): string => REASON_COPY[code] ?? 'Evaluación de riesgo.';

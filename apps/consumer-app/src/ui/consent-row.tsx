@@ -61,7 +61,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
     <View style={styles.row}>
       {/*
         La casilla y el texto son DOS objetivos tactiles distintos. Antes tocar el texto marcaba la
-        casilla, asi que quien iba a leer terminaba aceptando sin querer — el error que mas caro sale
+        casilla, así que quien iba a leer terminaba aceptando sin querer — el error que más caro sale
         en una pantalla de consentimiento.
       */}
       <Pressable
@@ -124,7 +124,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
           <ScrollView contentContainerStyle={styles.sheetBody}>{renderBody(bodyMarkdown ?? '')}</ScrollView>
 
           {/*
-            Aceptar desde el propio documento. Quien acaba de leerlo esta en el momento exacto de
+            Aceptar desde el propio documento. Quien acaba de leerlo está en el momento exacto de
             decidir; obligarle a cerrar y buscar la casilla es perder esa decision por el camino.
           */}
           <View style={styles.sheetFoot}>

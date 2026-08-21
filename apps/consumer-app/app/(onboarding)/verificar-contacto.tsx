@@ -77,21 +77,21 @@ export default function VerifyContact() {
         sent && !deliveryFailed ? (
           <>
             <Button
-              label="Confirmar codigo"
+              label="Confirmar código"
               onPress={confirmCode}
               loading={busy}
               disabled={code.length < 4 || busy}
-              blockedReason={firstBlocker([[code.length >= 4, 'Escribe el codigo que recibiste.']])}
+              blockedReason={firstBlocker([[code.length >= 4, 'Escribe el código que recibiste.']])}
               haptic="success"
             />
-            <Button label="Enviar otro codigo" variant="ghost" onPress={sendCode} disabled={busy} />
+            <Button label="Enviar otro código" variant="ghost" onPress={sendCode} disabled={busy} />
           </>
         ) : (
-          <Button label="Enviarme el codigo" onPress={sendCode} loading={busy} disabled={busy} />
+          <Button label="Enviarme el código" onPress={sendCode} loading={busy} disabled={busy} />
         )
       }
     >
-      <ScreenHeader title="Verifica tu contacto" subtitle="Confirmamos que el numero o correo es tuyo." onBack="auto" />
+      <ScreenHeader title="Verifica tu contacto" subtitle="Confirmamos que el número o correo es tuyo." onBack="auto" />
 
       {described ? (
         <ErrorState
@@ -107,14 +107,14 @@ export default function VerifyContact() {
 
       {deliveryFailed ? (
         <ErrorState
-          title="No pudimos entregar el codigo"
-          detail="El codigo se genero pero el proveedor no lo entrego. Intenta de nuevo o cambia de canal."
+          title="No pudimos entregar el código"
+          detail="El código se generó pero el proveedor no lo entregó. Intenta de nuevo o cambia de canal."
           onRetry={sendCode}
         />
       ) : null}
 
       <OptionGroup<Channel>
-        label="Como quieres recibir el codigo"
+        label="Cómo quieres recibir el código"
         value={channel}
         onChange={(next) => {
           setChannel(next);
@@ -122,8 +122,8 @@ export default function VerifyContact() {
           setError(null);
         }}
         options={[
-          { value: 'sms', label: 'SMS', detail: 'A tu numero registrado.' },
-          { value: 'whatsapp', label: 'WhatsApp', detail: 'Al mismo numero.' },
+          { value: 'sms', label: 'SMS', detail: 'A tu número registrado.' },
+          { value: 'whatsapp', label: 'WhatsApp', detail: 'Al mismo número.' },
           { value: 'email', label: 'Correo', detail: 'A tu correo registrado.' },
         ]}
       />
@@ -131,14 +131,14 @@ export default function VerifyContact() {
       {sent && !deliveryFailed ? (
         <>
           <Card>
-            <AtlasText variant="bodyStrong">Codigo enviado</AtlasText>
+            <AtlasText variant="bodyStrong">Código enviado</AtlasText>
             <AtlasText variant="caption" tone="secondary">
               Vence a las {new Date(sent.expiresAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}.
             </AtlasText>
           </Card>
 
           <Field
-            label="Codigo recibido"
+            label="Código recibido"
             value={code}
             onChangeText={(next) => setCode(next.replace(/\D/g, '').slice(0, 8))}
             keyboardType="number-pad"
@@ -153,7 +153,7 @@ export default function VerifyContact() {
 
       <Gap size="sm" />
       <AtlasText variant="caption" tone="tertiary">
-        Nunca te pediremos este codigo por telefono ni por redes sociales.
+        Nunca te pediremos este código por teléfono ni por redes sociales.
       </AtlasText>
     </Screen>
   );

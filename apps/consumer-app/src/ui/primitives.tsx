@@ -190,7 +190,7 @@ export function Button({
 
 export function Card({ style, children, ...rest }: ViewProps & { style?: ViewStyle }) {
   /*
-    El filo superior es 1 px mas claro que el resto del contorno.
+    El filo superior es 1 px más claro que el resto del contorno.
 
     Es como se lee una superficie fisica: la luz viene de arriba y el canto la recoge. Sin el, una
     tarjeta oscura sobre un fondo oscuro es un rectangulo con borde, y toda la pantalla se aplana
@@ -291,8 +291,8 @@ export function ProgressBar({ value, label }: { value: number; label?: string })
     >
       <View style={styles.progressTrack}>
         {/*
-          El relleno lleva el degradado de la marca, no un menta plano. Es el unico elemento que el
-          cliente vuelve a ver entre paso y paso del registro, asi que es donde el avance se siente
+          El relleno lleva el degradado de la marca, no un menta plano. Es el único elemento que el
+          cliente vuelve a ver entre paso y paso del registro, así que es donde el avance se siente
           como avance y no como una barra de sistema.
         */}
         <LinearGradient
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
 
     Con `marginVertical: space.md` a cada lado, cada fila quedaba flotando en su propio bloque y la
     tarjeta se leia como un menu de ajustes del sistema. Lo que agrupa una lista es la proximidad;
-    la linea solo tiene que separar, no abrir un hueco.
+    la línea solo tiene que separar, no abrir un hueco.
   */
   divider: { height: 1, backgroundColor: color.border.subtle, marginVertical: space.sm },
 

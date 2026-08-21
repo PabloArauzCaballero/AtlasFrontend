@@ -15,7 +15,7 @@ export default function NotFound() {
     <Screen>
       <ScreenHeader title="No encontramos esa pantalla" />
       <EmptyState
-        title="El enlace no es valido"
+        title="El enlace no es válido"
         detail="Puede que haya vencido o que ya no exista. Vuelve al inicio y continua desde ahi."
         action={<Button label="Ir al inicio" onPress={() => router.replace('/')} />}
       />

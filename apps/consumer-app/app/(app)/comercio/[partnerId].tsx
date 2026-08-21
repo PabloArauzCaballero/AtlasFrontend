@@ -66,12 +66,12 @@ export default function MerchantCredits() {
         </AtlasText>
         <AtlasText variant="amountSmall">{formatAmount(outstanding, currency)}</AtlasText>
         <AtlasText variant="caption" tone="secondary">
-          {loans.length} {loans.length === 1 ? 'credito' : 'creditos'}
+          {loans.length} {loans.length === 1 ? 'crédito' : 'créditos'}
         </AtlasText>
       </Card>
 
       {loans.length === 0 ? (
-        <EmptyState title="Sin creditos aqui" detail="No encontramos creditos de este comercio en tu cuenta." />
+        <EmptyState title="Sin créditos aquí" detail="No encontramos créditos de este comercio en tu cuenta." />
       ) : (
         <Card>
           {loans.map((loan, index) => {
@@ -95,7 +95,7 @@ export default function MerchantCredits() {
                     )
                   }
                   onPress={() => router.push(`/(app)/credito/${loan.loanId}`)}
-                  accessibilityHint="Abrir para ver las cuotas de este credito"
+                  accessibilityHint="Abrir para ver las cuotas de este crédito"
                 />
               </View>
             );

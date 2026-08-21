@@ -31,7 +31,7 @@ function fileNameFor(now: Date): string {
 export async function downloadSpendingReport(customerId: string, now = new Date()): Promise<ReportOutcome> {
   try {
     const token = await readAccessToken();
-    if (!token) return { ok: false, reason: 'Tu sesion expiro. Vuelve a ingresar.' };
+    if (!token) return { ok: false, reason: 'Tu sesión expiró. Vuelve a ingresar.' };
 
     /*
      * En la cache y no en documentos: es un documento DERIVADO, se puede volver a pedir en un

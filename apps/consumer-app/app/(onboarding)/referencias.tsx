@@ -48,8 +48,8 @@ export default function References() {
     [
       completed >= REQUIRED_REFERENCES,
       completed === 0
-        ? `Falta completar ${REQUIRED_REFERENCES} referencias con relacion, nombre y telefono.`
-        : `Falta completar ${REQUIRED_REFERENCES - completed} referencia mas: relacion, nombre y telefono.`,
+        ? `Falta completar ${REQUIRED_REFERENCES} referencias con relación, nombre y teléfono.`
+        : `Falta completar ${REQUIRED_REFERENCES - completed} referencia más: relación, nombre y teléfono.`,
     ],
   ]);
 
@@ -91,7 +91,7 @@ export default function References() {
           <Divider />
 
           <OptionGroup<Relationship>
-            label="Que relacion tienen"
+            label="Qué relación tienen"
             value={draft.relationshipType}
             onChange={(next) => update(index, { relationshipType: next })}
             options={[

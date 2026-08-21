@@ -26,10 +26,10 @@ export const SECTION_ROUTE: Record<OnboardingSectionCode, OnboardingRoute> = {
 };
 
 export const SECTION_LABEL: Record<OnboardingSectionCode, { title: string; detail: string }> = {
-  contact_verification: { title: 'Verifica tu telefono', detail: 'Te enviamos un codigo para confirmar que es tuyo.' },
+  contact_verification: { title: 'Verifica tu teléfono', detail: 'Te enviamos un código para confirmar que es tuyo.' },
   personal_data: { title: 'Tus datos personales', detail: 'Nombre, apellido y fecha de nacimiento.' },
-  financial_profile: { title: 'Tu situacion economica', detail: 'Trabajo, ingresos y gastos declarados.' },
-  address: { title: 'Tu domicilio', detail: 'Donde vives actualmente.' },
+  financial_profile: { title: 'Tu situacion económica', detail: 'Trabajo, ingresos y gastos declarados.' },
+  address: { title: 'Tu domicilio', detail: 'Dónde vives actualmente.' },
   identity_documents: { title: 'Tu documento de identidad', detail: 'Foto del carnet por ambos lados y una selfie.' },
   reference_contacts: { title: 'Tus referencias', detail: 'Dos personas que puedan dar referencia de ti.' },
 };
@@ -49,15 +49,15 @@ export function routeForNextStep(nextStep: string): OnboardingRoute {
  * cual y que tampoco conviene detallar.
  */
 const BLOCKER_COPY: Record<string, { title: string; detail: string; actionable: boolean }> = {
-  ACCOUNT_NOT_ACTIVE: { title: 'Cuenta en proceso', detail: 'Tu cuenta todavia no esta activa.', actionable: false },
-  CONTACT_NOT_VERIFIED: { title: 'Telefono sin verificar', detail: 'Confirma el codigo que te enviamos.', actionable: true },
-  FINANCIAL_PROFILE_INCOMPLETE: { title: 'Falta tu informacion economica', detail: 'Completa trabajo, ingresos y gastos.', actionable: true },
+  ACCOUNT_NOT_ACTIVE: { title: 'Cuenta en proceso', detail: 'Tu cuenta todavía no está activa.', actionable: false },
+  CONTACT_NOT_VERIFIED: { title: 'Teléfono sin verificar', detail: 'Confirma el código que te enviamos.', actionable: true },
+  FINANCIAL_PROFILE_INCOMPLETE: { title: 'Falta tu información económica', detail: 'Completa trabajo, ingresos y gastos.', actionable: true },
   ADDRESS_MISSING: { title: 'Falta tu domicilio', detail: 'Indica donde vives.', actionable: true },
   REFERENCES_INSUFFICIENT: { title: 'Faltan referencias', detail: 'Necesitamos dos contactos de referencia.', actionable: true },
   IDENTITY_DOCUMENT_MISSING: { title: 'Falta tu documento', detail: 'Sube tu carnet de identidad.', actionable: true },
-  IDENTITY_NOT_VERIFIED: { title: 'Documento en verificacion', detail: 'Estamos validando tu identidad.', actionable: false },
-  EVIDENCE_PENDING_REVIEW: { title: 'Documentos en revision', detail: 'Un analista esta revisando lo que enviaste.', actionable: false },
-  RISK_NOT_APPROVED: { title: 'Evaluacion en curso', detail: 'Estamos evaluando tu solicitud.', actionable: false },
+  IDENTITY_NOT_VERIFIED: { title: 'Documento en verificación', detail: 'Estamos validando tu identidad.', actionable: false },
+  EVIDENCE_PENDING_REVIEW: { title: 'Documentos en revisión', detail: 'Un analista está revisando lo que enviaste.', actionable: false },
+  RISK_NOT_APPROVED: { title: 'Evaluación en curso', detail: 'Estamos evaluando tu solicitud.', actionable: false },
 };
 
 export function describeBlocker(blocker: Blocker): { title: string; detail: string; actionable: boolean } {
@@ -70,12 +70,12 @@ export function actionableBlockers(blockers: Blocker[]): Blocker[] {
 }
 
 const LIFECYCLE_COPY: Record<string, { title: string; detail: string }> = {
-  registered: { title: 'Cuenta creada', detail: 'Termina de completar tus datos para pedir tu linea.' },
+  registered: { title: 'Cuenta creada', detail: 'Termina de completar tus datos para pedir tu línea.' },
   onboarding_in_progress: { title: 'Registro en curso', detail: 'Te falta poco para terminar.' },
-  under_review: { title: 'Solicitud en revision', detail: 'Estamos validando tu informacion. Te avisamos apenas tengamos respuesta.' },
+  under_review: { title: 'Solicitud en revisión', detail: 'Estamos validando tu información. Te avisamos apenas tengamos respuesta.' },
   observed: { title: 'Necesitamos una correccion', detail: 'Revisa las observaciones y vuelve a enviar.' },
   active: { title: 'Cuenta activa', detail: 'Ya puedes comprar con Atlas.' },
-  rejected: { title: 'Solicitud no aprobada', detail: 'Por ahora no podemos habilitar tu linea.' },
+  rejected: { title: 'Solicitud no aprobada', detail: 'Por ahora no podemos habilitar tu línea.' },
   suspended: { title: 'Cuenta suspendida', detail: 'Comunicate con soporte para revisar tu caso.' },
 };
 
@@ -98,7 +98,7 @@ const CUSTOMER_STATUS_COPY: Record<string, string> = {
   active: 'activa',
   pending: 'pendiente',
   pending_verification: 'por verificar',
-  under_review: 'en revision',
+  under_review: 'en revisión',
   suspended: 'suspendida',
   blocked: 'bloqueada',
   closed: 'cerrada',

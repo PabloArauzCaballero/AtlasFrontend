@@ -26,13 +26,13 @@ export const TOUR_INICIO_STEPS: TourStep[] = [
     title: 'Esto es lo que puedes gastar hoy',
     // Se nombra la diferencia entre limite y disponible porque es la unica cifra de la pantalla que
     // se puede malinterpretar, y hacerlo termina en una compra rechazada en la caja del comercio.
-    body: 'Tu disponible es lo que te queda libre ahora mismo: el limite aprobado menos lo que aun debes. Es la cifra que manda cuando compras.',
+    body: 'Tu disponible es lo que te queda libre ahora mismo: el límite aprobado menos lo que aún debes. Es la cifra que manda cuando compras.',
   },
   {
     target: TOUR_INICIO_TARGETS.escanear,
     icon: 'escanear',
     title: 'Comprar es escanear el QR del comercio',
-    body: 'En la caja, escaneas su codigo y escribes el monto. Antes de confirmar nada te mostramos cuanto pagas hoy y como quedan tus cuotas.',
+    body: 'En la caja, escaneas su código y escribes el monto. Antes de confirmar nada te mostramos cuánto pagas hoy y cómo quedan tus cuotas.',
   },
   {
     target: TOUR_INICIO_TARGETS.pagos,
@@ -40,6 +40,6 @@ export const TOUR_INICIO_STEPS: TourStep[] = [
     title: 'Tus cuotas se pagan al comercio',
     // Es el invariante del producto y la pregunta de confianza que trae todo el mundo. Si la app no
     // lo dice, lo deduce cada quien por su cuenta y casi siempre lo deduce mal.
-    body: 'Atlas nunca recibe tu dinero: cada cuota se paga al QR bancario del comercio donde compraste. Aqui te decimos cual y cuando.',
+    body: 'Atlas nunca recibe tu dinero: cada cuota se paga al QR bancario del comercio donde compraste. Aquí te decimos cuál y cuándo.',
   },
 ];

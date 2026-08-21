@@ -227,8 +227,8 @@ const styles = StyleSheet.create({
   /*
     El foco no solo cambia el borde: lo engorda y lo tine.
 
-    Con un unico pixel de color, en una pantalla oscura y a la luz del sol, no se distingue cual de
-    los seis campos tiene el cursor. Es la senal mas util del formulario y la mas barata de dar.
+    Con un único pixel de color, en una pantalla oscura y a la luz del sol, no se distingue cual de
+    los seis campos tiene el cursor. Es la senal más util del formulario y la más barata de dar.
   */
   inputFocused: { borderColor: color.border.focus, borderWidth: 1.5 },
   inputError: { borderColor: color.feedback.danger },

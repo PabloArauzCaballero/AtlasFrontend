@@ -104,7 +104,7 @@ export async function requestLiveDecision(input: {
     return {
       kind: 'unavailable',
       code: 'NO_PRODUCT_FOR_AMOUNT',
-      message: 'Ningun producto de credito activo admite este importe.',
+      message: 'Ningún producto de crédito activo admite este importe.',
     };
   }
 

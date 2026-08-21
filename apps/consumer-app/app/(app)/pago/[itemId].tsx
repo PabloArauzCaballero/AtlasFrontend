@@ -127,7 +127,7 @@ export default function PaymentScreen() {
         <Card>
           <AtlasText variant="h3">Paga con el QR del comercio</AtlasText>
           <AtlasText variant="caption" tone="secondary">
-            Abre la app de tu banco, escanea este codigo y paga el monto exacto.
+            Abre la app de tu banco, escanea este código y paga el monto exacto.
           </AtlasText>
 
           <View style={styles.qrBox}>
@@ -154,7 +154,7 @@ export default function PaymentScreen() {
             <AtlasText variant="bodyStrong">{formatTime(instruction.expiresAt)}</AtlasText>
           </View>
 
-          <Button label={copied ? 'Codigo copiado' : 'Copiar codigo de pago'} variant="secondary" onPress={copyEndpoint} />
+          <Button label={copied ? 'Código copiado' : 'Copiar código de pago'} variant="secondary" onPress={copyEndpoint} />
         </Card>
       ) : (
         <ErrorState
@@ -166,7 +166,7 @@ export default function PaymentScreen() {
 
       {reported || claim ? (
         <Card>
-          <Badge label="en verificacion" tone="info" />
+          <Badge label="en verificación" tone="info" />
           <AtlasText variant="bodyStrong">Recibimos tu reporte</AtlasText>
           <AtlasText variant="body" tone="secondary">
             Tu comprobante es evidencia, no confirma el pago por si solo. Lo damos por pagado cuando el comercio confirma
@@ -177,10 +177,10 @@ export default function PaymentScreen() {
         <Card>
           <AtlasText variant="h3">Ya pagaste</AtlasText>
           <AtlasText variant="caption" tone="secondary">
-            Cuentanos los datos del pago para acelerar la verificacion. Es opcional.
+            Cuentanos los datos del pago para acelerar la verificación. Es opcional.
           </AtlasText>
           <Field
-            label="Numero de transaccion"
+            label="Número de transacción"
             value={reference}
             onChangeText={setReference}
             autoCapitalize="characters"
@@ -193,7 +193,7 @@ export default function PaymentScreen() {
       <Card>
         <AtlasText variant="bodyStrong">Algo no cuadra</AtlasText>
         <AtlasText variant="caption" tone="secondary">
-          Si pagaste y sigue apareciendo pendiente, abre una revision. No se borra el vencimiento mientras la revisamos.
+          Si pagaste y sigue apareciendo pendiente, abre una revisión. No se borra el vencimiento mientras la revisamos.
         </AtlasText>
         <Button
           label="Reportar un problema con este pago"
@@ -211,7 +211,7 @@ export default function PaymentScreen() {
           <AtlasText variant="bodyStrong">Simular la confirmacion del comercio</AtlasText>
           <AtlasText variant="caption" tone="secondary">
             En produccion esta confirmacion llega desde el portal del comercio y es la unica que resuelve la cuota como
-            pagada. Aqui se dispara a mano para poder recorrer el ciclo completo.
+            pagada. Aquí se dispara a mano para poder recorrer el ciclo completo.
           </AtlasText>
           <Button
             label="El comercio confirma que recibio el pago"

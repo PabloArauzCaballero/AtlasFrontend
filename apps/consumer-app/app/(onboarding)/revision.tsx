@@ -81,7 +81,7 @@ export default function Review() {
   const pending = (status?.sections ?? []).filter((section) => section.status !== 'completed');
 
   /*
-    Aqui el motivo no lo decide la pantalla sino el servidor, que es el unico que valida completitud.
+    Aquí el motivo no lo decide la pantalla sino el servidor, que es el único que valida completitud.
     Se nombra la primera seccion pendiente —la misma que aparece en la lista de abajo, tocable— para
     que el aviso y la lista digan lo mismo y no haya que elegir a cual creerle.
   */
@@ -92,7 +92,7 @@ export default function Review() {
       status?.canSubmit ?? false,
       firstPending
         ? `Falta completar ${(SECTION_LABEL[firstPending.code]?.title ?? firstPending.code).toLowerCase()}.`
-        : 'Todavia falta completar una parte de tu expediente.',
+        : 'Todavía falta completar una parte de tu expediente.',
     ],
   ]);
 
@@ -121,7 +121,7 @@ export default function Review() {
 
       {pending.length > 0 ? (
         <Card>
-          <AtlasText variant="h3">Todavia falta</AtlasText>
+          <AtlasText variant="h3">Todavía falta</AtlasText>
           <Divider />
           {pending.map((section) => (
             <ListRow
@@ -137,7 +137,7 @@ export default function Review() {
 
       {status && status.blockers.length > 0 ? (
         <Card>
-          <AtlasText variant="h3">Estado de tu evaluacion</AtlasText>
+          <AtlasText variant="h3">Estado de tu evaluación</AtlasText>
           <Divider />
           {status.blockers.map((blocker) => {
             const copy = describeBlocker(blocker);
@@ -165,7 +165,7 @@ export default function Review() {
 
       <Gap size="sm" />
       <AtlasText variant="caption" tone="tertiary">
-        Al enviar confirmas que la informacion declarada es correcta.
+        Al enviar confirmas que la información declarada es correcta.
       </AtlasText>
     </Screen>
   );

@@ -88,7 +88,7 @@ export default function FinancialProfile() {
 
   return (
     <Screen footer={<Button label="Guardar" onPress={save} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
-      <ScreenHeader title="Tu situacion economica" subtitle="Con esto calculamos cuanto puedes pagar comodamente." onBack="auto" />
+      <ScreenHeader title="Tu situacion económica" subtitle="Con esto calculamos cuánto puedes pagar cómodamente." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
@@ -97,7 +97,7 @@ export default function FinancialProfile() {
         value={employmentStatus}
         onChange={setEmploymentStatus}
         options={[
-          { value: 'employee', label: 'Trabajo en relacion de dependencia' },
+          { value: 'employee', label: 'Trabajo en relación de dependencia' },
           { value: 'self_employed', label: 'Trabajo por mi cuenta' },
           { value: 'business_owner', label: 'Tengo un negocio' },
           { value: 'student', label: 'Estudio' },
@@ -142,7 +142,7 @@ export default function FinancialProfile() {
       />
 
       <Field
-        label="Actividad economica"
+        label="Actividad económica"
         value={activity}
         onChangeText={setActivity}
         placeholder="comercio, salud, transporte..."
@@ -164,7 +164,7 @@ export default function FinancialProfile() {
 
       <Gap size="sm" />
       <AtlasText variant="caption" tone="tertiary">
-        Declarar informacion falsa puede anular tu linea de credito.
+        Declarar información falsa puede anular tu línea de crédito.
       </AtlasText>
     </Screen>
   );

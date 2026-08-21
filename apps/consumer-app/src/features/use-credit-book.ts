@@ -42,7 +42,7 @@ export function useCreditBook(customerId: string | null) {
     setState({
       ready: true,
       // Solo se reporta error si falla lo que sostiene la pantalla; la calificacion ausente no lo es.
-      error: loans.status === 'rejected' && spending.status === 'rejected' ? 'No pudimos cargar tus creditos.' : null,
+      error: loans.status === 'rejected' && spending.status === 'rejected' ? 'No pudimos cargar tus créditos.' : null,
       loans: loans.status === 'fulfilled' ? loans.value.items : [],
       spending: spending.status === 'fulfilled' ? spending.value : null,
       rating: rating.status === 'fulfilled' ? rating.value : null,
@@ -52,7 +52,7 @@ export function useCreditBook(customerId: string | null) {
   useEffect(() => {
     let cancelled = false;
     void load().catch(() => {
-      if (!cancelled) setState({ ...EMPTY, ready: true, error: 'No pudimos cargar tus creditos.' });
+      if (!cancelled) setState({ ...EMPTY, ready: true, error: 'No pudimos cargar tus créditos.' });
     });
     return () => {
       cancelled = true;
@@ -82,7 +82,7 @@ export function useDelinquencyPolicy(enabled: boolean) {
         if (!cancelled) setPolicy(value);
       })
       .catch(() => {
-        if (!cancelled) setError('No pudimos cargar la politica.');
+        if (!cancelled) setError('No pudimos cargar la política.');
       });
     return () => {
       cancelled = true;
