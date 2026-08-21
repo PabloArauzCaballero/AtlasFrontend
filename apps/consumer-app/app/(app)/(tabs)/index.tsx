@@ -16,6 +16,7 @@ import { DataSourceBadge } from '../../../src/ui/brand';
 import { Gap, Screen } from '../../../src/ui/layout';
 import { AtlasText, Badge, BrandPanel, Button, Card, Divider, EmptyState, ListRow, ProgressBar, Skeleton } from '../../../src/ui/primitives';
 import { Icon } from '../../../src/ui/icons';
+import { PressSurface } from '../../../src/ui/motion';
 import { PartnerBanner } from '../../../src/ui/partner-banner';
 import { downloadSpendingReport } from '../../../src/features/spending-report';
 import { categoryLook, formatAmount } from '../../../src/features/spending-copy';
@@ -220,7 +221,7 @@ export default function Home() {
             const look = categoryLook(item.category);
             const others = item.merchants.length - 1;
             return (
-              <Pressable
+              <PressSurface
                 key={item.category}
                 style={styles.categoryRow}
                 onPress={() => router.push('/(app)/(tabs)/pagos')}
@@ -245,7 +246,7 @@ export default function Home() {
                     {others > 0 ? ' y ' + others + ' mas' : ''}
                   </AtlasText>
                 </View>
-              </Pressable>
+              </PressSurface>
             );
           })}
 

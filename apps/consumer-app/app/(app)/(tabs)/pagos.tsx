@@ -23,6 +23,7 @@ import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useSession } from '../../../src/session/session';
 import { color, radius, space } from '../../../src/theme/tokens';
 import { Icon, type IconName } from '../../../src/ui/icons';
+import { Appear, PressSurface } from '../../../src/ui/motion';
 import { Gap, Screen } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, Divider, EmptyState, ErrorState, ListRow, Skeleton } from '../../../src/ui/primitives';
 
@@ -182,6 +183,7 @@ export default function Payments() {
 
       {/* 1. LO VENCIDO. Va primero y solo, para que no compita con nada. */}
       {spending && spending.totals.overdue > 0 ? (
+        <Appear index={0}>
         <Card style={styles.overdueCard}>
           <View style={styles.rowCenter}>
             <Icon name="alerta" size={22} tint={color.feedback.danger} />
@@ -195,8 +197,9 @@ export default function Payments() {
           <AtlasText variant="amountSmall" style={{ color: color.feedback.danger }}>
             {formatAmount(spending.totals.overdue, currency)}
           </AtlasText>
-          <Button label="Ver que debo regularizar" onPress={() => setFilter('mora')} />
+          <Button label="Ver qué debo regularizar" onPress={() => setFilter('mora')} />
         </Card>
+        </Appear>
       ) : null}
 
       {/* 2. LO QUE VENCE PRONTO. Ambar: exige atencion, no alarma. */}
@@ -261,12 +264,12 @@ export default function Payments() {
           {groups.map((group) => {
             const look = categoryLook(group.category);
             return (
-              <Pressable
+              <PressSurface
                 key={group.key}
                 style={styles.gridCell}
                 onPress={() => router.push(`/(app)/comercio/${group.key}`)}
                 accessibilityRole="button"
-                accessibilityLabel={`Ver creditos de ${group.displayName}`}
+                accessibilityLabel={`Ver créditos de ${group.displayName}`}
               >
                 <View style={styles.gridIcon}>
                   <Icon name={look.icon} size={22} tint={group.overdueAmount > 0 ? color.feedback.danger : color.action.primary} />
@@ -280,7 +283,7 @@ export default function Payments() {
                 <AtlasText variant="bodyStrong" style={{ color: group.overdueAmount > 0 ? color.feedback.danger : color.text.primary }}>
                   {formatAmount(group.outstanding, currency)}
                 </AtlasText>
-              </Pressable>
+              </PressSurface>
             );
           })}
         </View>

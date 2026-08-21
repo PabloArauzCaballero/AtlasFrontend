@@ -12,7 +12,7 @@ import { AtlasText, Button } from '../../src/ui/primitives';
 import { color, radius, space } from '../../src/theme/tokens';
 
 const VALUE_PROPS = [
-  { title: 'Pagas 60% hoy', detail: 'El resto se divide en 3 cuotas cada 14 dias.' },
+  { title: 'Pagas 60% hoy', detail: 'El resto se divide en 3 cuotas cada 14 días.' },
   { title: 'Sin tarjeta', detail: 'Escaneas el QR del comercio y listo.' },
   { title: 'Pagas al comercio', detail: 'El dinero va directo a la cuenta del negocio.' },
 ];
@@ -36,7 +36,7 @@ export default function Welcome() {
 
       <AtlasText variant="hero">Compra hoy.{'\n'}Paga en cuotas.</AtlasText>
       <AtlasText variant="body" tone="secondary">
-        Credito al instante en los comercios de Santa Cruz, sin tramites y sin tarjeta.
+        Crédito al instante en los comercios de Santa Cruz, sin trámites y sin tarjeta.
       </AtlasText>
 
       <Gap size="lg" />

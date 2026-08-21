@@ -300,7 +300,7 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
           onPress={() => setPicking(true)}
           style={styles.dial}
           accessibilityRole="button"
-          accessibilityLabel={`Codigo de pais: ${country.name} ${country.dial}. Tocar para cambiar`}
+          accessibilityLabel={`Código de país: ${country.name} ${country.dial}. Tocar para cambiar`}
         >
           <AtlasText variant="body" style={styles.flag}>
             {country.flag}
@@ -334,7 +334,7 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
         <Pressable style={styles.backdrop} onPress={() => setPicking(false)} />
         <View style={styles.sheet}>
           <View style={styles.sheetHead}>
-            <AtlasText variant="bodyStrong">Codigo de pais</AtlasText>
+            <AtlasText variant="bodyStrong">Código de país</AtlasText>
             <Pressable onPress={() => setPicking(false)} accessibilityRole="button" accessibilityLabel="Cerrar">
               <AtlasText variant="bodyStrong" style={{ color: color.action.primary }}>
                 Listo

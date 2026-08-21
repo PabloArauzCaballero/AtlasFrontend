@@ -34,11 +34,11 @@ export default function Profile() {
   const fullName = [me?.profile.firstName, me?.profile.lastName].filter(Boolean).join(' ') || 'Tu cuenta';
 
   const confirmSignOut = () => {
-    // Cerrar sesion es reversible pero interrumpe: se confirma antes, con el patron nativo.
-    Alert.alert('Cerrar sesion', 'Tendras que ingresar de nuevo con tu contrasena.', [
+    // Cerrar sesión es reversible pero interrumpe: se confirma antes, con el patron nativo.
+    Alert.alert('Cerrar sesión', 'Tendrás que ingresar de nuevo con tu contraseña.', [
       { text: 'Cancelar', style: 'cancel' },
       {
-        text: 'Cerrar sesion',
+        text: 'Cerrar sesión',
         style: 'destructive',
         onPress: async () => {
           setSigningOut(true);
@@ -117,7 +117,8 @@ export default function Profile() {
         <Divider />
         <ListRow
           title="Estado"
-          subtitle="Determina que puedes hacer en la app"
+          icon="escudo"
+          subtitle="Determina qué puedes hacer en la app"
           right={
             <Badge
               label={describeCustomerStatus(me?.customer.status)}
@@ -126,17 +127,22 @@ export default function Profile() {
           }
         />
         <Divider />
-        <ListRow title="Telefono" subtitle={me?.customer.phoneLast4 ? `Termina en ${me.customer.phoneLast4}` : 'Sin registrar'} />
+        <ListRow
+          icon="ubicacion"
+          title="Teléfono" subtitle={me?.customer.phoneLast4 ? `Termina en ${me.customer.phoneLast4}` : 'Sin registrar'} />
         <Divider />
-        <ListRow title="Correo" subtitle={me?.customer.emailDomain ? `@${me.customer.emailDomain}` : 'Sin registrar'} />
+        <ListRow
+          icon="sobre"
+          title="Correo" subtitle={me?.customer.emailDomain ? `@${me.customer.emailDomain}` : 'Sin registrar'} />
       </Card>
 
       <Card>
         <AtlasText variant="h3">Seguridad</AtlasText>
         <Divider />
         <ListRow
-          title="Cambiar contrasena"
-          subtitle="Te enviamos un codigo por correo"
+          title="Cambiar contraseña"
+          icon="candado"
+          subtitle="Te enviamos un código por correo"
           onPress={() => router.push('/(auth)/recuperar')}
         />
         <Divider />
@@ -189,7 +195,7 @@ export default function Profile() {
         ) : null}
       </Card>
 
-      <Button label="Cerrar sesion" variant="destructive" onPress={confirmSignOut} loading={signingOut} haptic="warning" />
+      <Button label="Cerrar sesión" variant="destructive" onPress={confirmSignOut} loading={signingOut} haptic="warning" />
     </Screen>
   );
 }

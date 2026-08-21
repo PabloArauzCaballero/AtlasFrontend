@@ -87,11 +87,11 @@ export default function Register() {
     birthDate: !isIsoDate(form.birthDate)
       ? 'Elige tu fecha de nacimiento.'
       : age !== null && age < MIN_AGE
-        ? `Debes tener al menos ${MIN_AGE} anos.`
+        ? `Debes tener al menos ${MIN_AGE} años.`
         : null,
-    phone: form.phone.length < 7 ? 'Escribe tu numero, sin el codigo de pais.' : null,
-    email: !form.email.includes('@') ? 'Escribe un correo valido.' : null,
-    password: form.password.length < 10 ? 'Minimo 10 caracteres.' : null,
+    phone: form.phone.length < 7 ? 'Escribe tu número, sin el código de país.' : null,
+    email: !form.email.includes('@') ? 'Escribe un correo válido.' : null,
+    password: form.password.length < 10 ? 'Mínimo 10 caracteres.' : null,
   };
 
   const requiredConsents = (documents ?? []).filter((document) => document.requiresExplicitAction);
@@ -109,9 +109,9 @@ export default function Register() {
     [errors.firstName === null, 'Falta tu nombre.'],
     [errors.lastName === null, 'Falta tu apellido.'],
     [errors.birthDate === null, errors.birthDate ?? 'Falta tu fecha de nacimiento.'],
-    [errors.phone === null, 'Falta tu numero de telefono.'],
-    [errors.email === null, 'Falta tu correo electronico.'],
-    [errors.password === null, 'La contrasena necesita al menos 10 caracteres.'],
+    [errors.phone === null, 'Falta tu número de teléfono.'],
+    [errors.email === null, 'Falta tu correo electrónico.'],
+    [errors.password === null, 'La contraseña necesita al menos 10 caracteres.'],
     [consentsOk, 'Falta aceptar las autorizaciones obligatorias.'],
   ]);
 
@@ -158,7 +158,7 @@ export default function Register() {
         entro». Agrupar por lo que significa cada dato acorta la pantalla percibida sin quitar un
         solo campo, y es lo que hace que un formulario parezca una ficha y no un cuestionario.
       */}
-      <FormSection icon="perfil" title="Quien eres">
+      <FormSection icon="perfil" title="Quién eres">
         <IconField
           label="Nombre"
           icon="perfil"
@@ -188,26 +188,26 @@ export default function Register() {
           minimumDate={earliestBirth}
           maximumDate={latestBirth}
           initialDate={latestBirth}
-          hint={`Debes tener al menos ${MIN_AGE} anos.`}
+          hint={`Debes tener al menos ${MIN_AGE} años.`}
           required
           error={form.birthDate ? errors.birthDate : null}
         />
       </FormSection>
 
-      <FormSection icon="ubicacion" title="Como te contactamos">
+      <FormSection icon="ubicacion" title="Cómo te contactamos">
         <PhoneField
-          label="Telefono"
+          label="Teléfono"
           value={form.phone}
           onChangeText={(v) => setForm({ ...form, phone: v })}
           country={country}
           onChangeCountry={setCountry}
-          hint="Ahi te enviamos el codigo de verificacion."
+          hint="Ahí te enviamos el código de verificación."
           required
           error={form.phone ? errors.phone : null}
         />
         <IconField
-          label="Correo electronico"
-          icon="documento"
+          label="Correo electrónico"
+          icon="sobre"
           value={form.email}
           onChangeText={(v) => setForm({ ...form, email: v })}
           keyboardType="email-address"
@@ -221,33 +221,38 @@ export default function Register() {
         />
       </FormSection>
 
-      <FormSection icon="candado" title="Como entras">
+      <FormSection icon="candado" title="Cómo entras">
         <IconField
-          label="Contrasena"
+          label="Contraseña"
           icon="candado"
           value={form.password}
           onChangeText={(v) => setForm({ ...form, password: v })}
           secureTextEntry={!showPassword}
           textContentType="newPassword"
           autoComplete="new-password"
-          placeholder="Minimo 10 caracteres"
+          placeholder="Mínimo 10 caracteres"
           required
           error={form.password ? errors.password : null}
-          hint="Minimo 10 caracteres."
+          hint="Mínimo 10 caracteres."
           trailing={
             /*
-              Ver lo que se escribe reduce los errores de tecleo mas que cualquier mensaje. Va como
-              texto y no como icono de ojo porque el ojo tachado y sin tachar se confunden.
+              Un icono, no la palabra «Ver».
+
+              El texto competia con la etiqueta del campo y con el mensaje de ayuda: tres cosas
+              escritas en la misma fila. El ojo TACHADO frente al ojo abierto se distingue de un
+              vistazo y no se lee, que es lo que se quiere de un control secundario.
             */
             <Pressable
               onPress={() => setShowPassword(!showPassword)}
               accessibilityRole="button"
-              accessibilityLabel={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
-              hitSlop={8}
+              accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              hitSlop={10}
             >
-              <AtlasText variant="caption" style={{ color: color.action.primary }}>
-                {showPassword ? 'Ocultar' : 'Ver'}
-              </AtlasText>
+              <Icon
+                name={showPassword ? 'ojo-tachado' : 'ojo'}
+                size={20}
+                tint={showPassword ? color.action.primary : color.text.tertiary}
+              />
             </Pressable>
           }
         />
@@ -294,15 +299,15 @@ export default function Register() {
       )}
 
       <AtlasText variant="caption" tone="tertiary">
-        Guardamos que version aceptaste y cuando, tal como exige la normativa de proteccion de datos.
+        Guardamos qué versión aceptaste y cuándo, tal como exige la normativa de protección de datos.
       </AtlasText>
     </Screen>
   );
 }
 
 function titleForConsent(code: string): string {
-  if (code.includes('privacy')) return 'Acepto la politica de privacidad';
-  if (code.includes('terms')) return 'Acepto los terminos y condiciones';
+  if (code.includes('privacy')) return 'Acepto la política de privacidad';
+  if (code.includes('terms')) return 'Acepto los términos y condiciones';
   if (code.includes('bureau') || code.includes('credit')) return 'Autorizo la consulta de mi historial crediticio';
   return `Acepto ${code}`;
 }

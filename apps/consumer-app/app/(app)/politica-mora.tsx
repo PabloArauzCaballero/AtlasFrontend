@@ -16,61 +16,73 @@ import { StyleSheet, View } from 'react-native';
 import { useDelinquencyPolicy } from '../../src/features/use-credit-book';
 import { color, radius, space } from '../../src/theme/tokens';
 import { Icon } from '../../src/ui/icons';
+import { Appear } from '../../src/ui/motion';
 import { Gap, Screen } from '../../src/ui/layout';
-import { AtlasText, Badge, Card, Divider, ErrorState, Skeleton } from '../../src/ui/primitives';
+import { AtlasText, Badge, Card, ErrorState, Skeleton } from '../../src/ui/primitives';
+
+type PolicySection = { heading: string; paragraphs: string[] };
 
 /**
- * Un markdown minimo: encabezados `##`, negritas `**` y parrafos.
+ * El texto, partido en SECCIONES y no en parrafos sueltos.
  *
- * No entra una libreria de markdown por dos lineas de formato: pesaria mas que el texto que
- * renderiza y traeria su propia tipografia, que es justo lo que el sistema de diseno evita.
+ * Antes se pintaba bloque a bloque: encabezado, parrafo, encabezado, parrafo… y el resultado era un
+ * muro. La informacion ya venia estructurada en el markdown —cada `##` abre un tema— y no se estaba
+ * usando esa estructura para nada visual.
+ *
+ * Agrupar cada tema con sus parrafos permite darle el mismo tratamiento que a los tramos de mora:
+ * un bloque con su marca a la izquierda, que se puede saltar de un vistazo hasta encontrar el que
+ * interesa. Nadie lee una politica entera; se busca dentro de ella.
  */
-function renderBody(markdown: string) {
-  return markdown.split('\n\n').map((block, index) => {
+function parseSections(markdown: string): PolicySection[] {
+  const sections: PolicySection[] = [];
+  for (const block of markdown.split('\n\n')) {
     const trimmed = block.trim();
-    if (trimmed.length === 0) return null;
+    if (trimmed.length === 0) continue;
 
     if (trimmed.startsWith('## ')) {
-      return (
-        <AtlasText key={index} variant="h3" style={styles.heading}>
-          {trimmed.slice(3)}
-        </AtlasText>
-      );
+      sections.push({ heading: trimmed.slice(3), paragraphs: [] });
+      continue;
     }
 
     // Las negritas se marcan quitando los asteriscos: el enfasis lo da el peso de la primera frase.
     const plain = trimmed.replace(/\n/g, ' ').replace(/\*\*/g, '');
-    return (
-      <AtlasText key={index} variant="body" tone="secondary" style={styles.paragraph}>
-        {plain}
-      </AtlasText>
-    );
-  });
+    if (sections.length === 0) sections.push({ heading: '', paragraphs: [] });
+    sections[sections.length - 1]!.paragraphs.push(plain);
+  }
+  return sections;
 }
 
-const TONE_BADGE: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
-  ok: 'success',
-  info: 'info',
-  warn: 'warning',
-  danger: 'danger',
+/**
+ * El color de cada tramo.
+ *
+ * Se usa en el punto del raíl y en el rango de días, no en un fondo: un bloque coloreado por tramo
+ * convertiría la escalera en un semáforo de seis luces, y con seis luces ninguna destaca.
+ */
+const TONE_COLOR: Record<string, string> = {
+  ok: color.feedback.success,
+  info: color.feedback.info,
+  warn: color.feedback.warning,
+  danger: color.feedback.danger,
 };
 
 function stageRange(from: number | null, to: number | null): string {
-  if (from === null && to !== null) return `Hasta ${to} dias`;
-  if (from !== null && to === null) return `Desde ${from} dias`;
-  if (from !== null && to !== null) return from === to ? `Dia ${from}` : `Dias ${from} a ${to}`;
+  // «Sin atraso» y no «Al día»: el tramo ya se llama «Al día», y repetirlo dos veces en la misma
+  // fila hace que el rango parezca un titulo duplicado en vez de un plazo.
+  if (from === null && to !== null) return to === 0 ? 'Sin atraso' : `Hasta ${to} días`;
+  if (from !== null && to === null) return `Desde el día ${from}`;
+  if (from !== null && to !== null) return from === to ? `Día ${from}` : `Días ${from} a ${to}`;
   return 'Sin plazo';
 }
 
 export default function DelinquencyPolicyScreen() {
   const { policy, error } = useDelinquencyPolicy(true);
-  const body = useMemo(() => (policy ? renderBody(policy.bodyMarkdown) : null), [policy]);
+  const sections = useMemo(() => (policy ? parseSections(policy.bodyMarkdown) : []), [policy]);
 
   if (error) {
     return (
       <Screen>
         <Gap size="lg" />
-        <ErrorState title="No pudimos cargar la politica" detail={error} />
+        <ErrorState title="No pudimos cargar la política" detail={error} />
       </Screen>
     );
   }
@@ -93,8 +105,8 @@ export default function DelinquencyPolicyScreen() {
       <Gap size="sm" />
       <AtlasText variant="h1">{policy.title}</AtlasText>
       <View style={styles.metaRow}>
-        <Badge label={`Version ${policy.versionCode}`} tone="neutral" />
-        <Badge label={policy.source.kind === 'regulatorio' ? 'Normativa' : 'Politica de Atlas'} tone="info" />
+        <Badge label={`Versión ${policy.versionCode}`} tone="neutral" />
+        <Badge label={policy.source.kind === 'regulatorio' ? 'Normativa' : 'Política de Atlas'} tone="info" />
       </View>
       <AtlasText variant="caption" tone="tertiary">
         Vigente desde {new Date(`${policy.effectiveFrom}T00:00:00`).toLocaleDateString('es-BO')}
@@ -104,27 +116,73 @@ export default function DelinquencyPolicyScreen() {
         <AtlasText variant="bodyStrong">{policy.summary}</AtlasText>
       </Card>
 
-      <Card>{body}</Card>
+      {/*
+        Un bloque por tema, con su barra de color a la izquierda: el mismo lenguaje que la escalera
+        de tramos. Una tarjeta unica con todo el texto dentro obliga a leerlo entero para encontrar
+        una frase.
+      */}
+      {sections.map((section, index) => (
+        /*
+          Escalonadas: los temas llegan en el orden en que hay que leerlos. Sobre un texto largo el
+          escalonado hace mas que decorar — reparte la llegada y quita la sensacion de pared.
+        */
+        <Appear key={section.heading || index} index={index}>
+        <View style={styles.section}>
+          <View style={styles.sectionAccent} />
+          <View style={styles.sectionBody}>
+            {section.heading ? <AtlasText variant="h3">{section.heading}</AtlasText> : null}
+            {section.paragraphs.map((paragraph, position) => (
+              <AtlasText key={position} variant="body" tone="secondary" style={styles.paragraph}>
+                {paragraph}
+              </AtlasText>
+            ))}
+          </View>
+        </View>
+        </Appear>
+      ))}
 
       <Card>
         <View style={styles.rowCenter}>
           <Icon name="reloj" size={18} tint={color.text.secondary} />
-          <AtlasText variant="h3">Que pasa segun los dias de atraso</AtlasText>
+          <AtlasText variant="h3">Qué pasa según los días de atraso</AtlasText>
         </View>
-        {policy.stages.map((stage, index) => (
-          <View key={stage.code}>
-            {index > 0 ? <Divider /> : null}
-            <View style={styles.stage}>
-              <View style={styles.stageHead}>
-                <AtlasText variant="bodyStrong">{stage.label}</AtlasText>
-                <Badge label={stageRange(stage.fromDay, stage.toDay)} tone={TONE_BADGE[stage.tone] ?? 'neutral'} />
+        <AtlasText variant="caption" tone="tertiary">
+          De arriba abajo, según pasan los días sin pagar.
+        </AtlasText>
+
+        {/*
+          Una ESCALERA, no una lista.
+
+          Los tramos no son opciones sueltas: son un recorrido en el tiempo, y cada uno es peor que
+          el anterior. Una lista de filas iguales con una insignia a la derecha no dice eso —se lee
+          como un menú—. El raíl vertical y el punto de color cuentan la progresión sin una sola
+          palabra de más, que es justo lo que hace falta cuando alguien mira esto asustado.
+        */}
+        <View style={styles.timeline}>
+          {policy.stages.map((stage, index) => {
+            const tone = TONE_COLOR[stage.tone] ?? color.text.tertiary;
+            const last = index === policy.stages.length - 1;
+            return (
+              <View key={stage.code} style={styles.stageRow}>
+                <View style={styles.rail}>
+                  <View style={[styles.dot, { borderColor: tone, backgroundColor: tone }]} />
+                  {/* El raíl no baja del último punto: si bajara, prometería un tramo que no existe. */}
+                  {!last ? <View style={styles.railLine} /> : null}
+                </View>
+
+                <View style={styles.stageBody}>
+                  <AtlasText variant="caption" style={{ color: tone, letterSpacing: 0.8 }}>
+                    {stageRange(stage.fromDay, stage.toDay).toUpperCase()}
+                  </AtlasText>
+                  <AtlasText variant="bodyStrong">{stage.label}</AtlasText>
+                  <AtlasText variant="caption" tone="secondary">
+                    {stage.detail}
+                  </AtlasText>
+                </View>
               </View>
-              <AtlasText variant="caption" tone="secondary">
-                {stage.detail}
-              </AtlasText>
-            </View>
-          </View>
-        ))}
+            );
+          })}
+        </View>
       </Card>
 
       {policy.source.reference ? (
@@ -146,10 +204,23 @@ export default function DelinquencyPolicyScreen() {
 const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', gap: space.xs, marginTop: space.xs },
   rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  heading: { marginTop: space.sm },
-  paragraph: { marginTop: space.xxs },
-  stage: { gap: space.xxs, paddingVertical: space.xs },
-  stageHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
+  section: {
+    flexDirection: 'row',
+    gap: space.md,
+    padding: space.lg,
+    borderRadius: radius.lg,
+    backgroundColor: color.surface.raised,
+  },
+  // La barra hereda el color de marca: marca el tema sin pintar el bloque entero.
+  sectionAccent: { width: 3, borderRadius: 2, backgroundColor: color.action.primary },
+  sectionBody: { flex: 1, gap: space.xs },
+  paragraph: { lineHeight: 22 },
+  timeline: { marginTop: space.xs },
+  stageRow: { flexDirection: 'row', gap: space.md },
+  rail: { width: 14, alignItems: 'center' },
+  dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, marginTop: 6 },
+  railLine: { flex: 1, width: 2, backgroundColor: color.border.subtle, marginTop: 2 },
+  stageBody: { flex: 1, gap: 2, paddingBottom: space.lg },
   sourceBox: {
     gap: space.xxs,
     padding: space.md,

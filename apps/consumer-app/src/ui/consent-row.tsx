@@ -110,7 +110,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
               <AtlasText variant="h3">{title}</AtlasText>
               {versionCode ? (
                 <AtlasText variant="caption" tone="tertiary">
-                  Version {versionCode}
+                  Versión {versionCode}
                 </AtlasText>
               ) : null}
             </View>

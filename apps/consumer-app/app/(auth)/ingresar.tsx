@@ -9,7 +9,10 @@ import { useState } from 'react';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { Field } from '../../src/ui/fields';
+import { Pressable } from 'react-native';
+import { IconField } from '../../src/ui/form-controls';
+import { Icon } from '../../src/ui/icons';
+import { color } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 
@@ -21,12 +24,15 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  // El mismo interruptor que el registro: quien se equivoca al teclear aqui vuelve a la pantalla
+  // de recuperar contrasena, que es el camino mas caro de todos.
+  const [showPassword, setShowPassword] = useState(false);
 
   const canSubmit = identifier.trim().length >= 3 && password.length >= 1 && !submitting;
 
   const blockedReason = firstBlocker([
-    [identifier.trim().length >= 3, 'Escribe el correo o telefono con el que te registraste.'],
-    [password.length >= 1, 'Falta tu contrasena.'],
+    [identifier.trim().length >= 3, 'Escribe el correo o teléfono con el que te registraste.'],
+    [password.length >= 1, 'Falta tu contraseña.'],
   ]);
 
   const submit = async () => {
@@ -47,7 +53,7 @@ export default function SignIn() {
   // 401 en login es credencial incorrecta, no sesion expirada: el copy generico confundiria.
   const detail =
     error instanceof AtlasApiError && error.status === 401
-      ? 'Correo, telefono o contrasena incorrectos.'
+      ? 'Correo, teléfono o contraseña incorrectos.'
       : (described?.detail ?? '');
 
   return (
@@ -59,12 +65,13 @@ export default function SignIn() {
         </>
       }
     >
-      <ScreenHeader title="Ingresar" subtitle="Usa el correo o telefono con el que te registraste." onBack="auto" />
+      <ScreenHeader title="Ingresar" subtitle="Usa el correo o teléfono con el que te registraste." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={detail} reference={described.reference} /> : null}
 
-      <Field
-        label="Correo o telefono"
+      <IconField
+        label="Correo o teléfono"
+        icon="sobre"
         value={identifier}
         onChangeText={setIdentifier}
         autoCapitalize="none"
@@ -76,20 +83,35 @@ export default function SignIn() {
         required
       />
 
-      <Field
-        label="Contrasena"
+      <IconField
+        label="Contraseña"
+        icon="candado"
         value={password}
         onChangeText={setPassword}
-        secureTextEntry
+        secureTextEntry={!showPassword}
         textContentType="password"
         autoComplete="current-password"
         returnKeyType="go"
         onSubmitEditing={submit}
         required
+        trailing={
+          <Pressable
+            onPress={() => setShowPassword(!showPassword)}
+            accessibilityRole="button"
+            accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            hitSlop={10}
+          >
+            <Icon
+              name={showPassword ? 'ojo-tachado' : 'ojo'}
+              size={20}
+              tint={showPassword ? color.action.primary : color.text.tertiary}
+            />
+          </Pressable>
+        }
       />
 
       <Gap size="xs" />
-      <Button label="Olvide mi contrasena" variant="ghost" onPress={() => router.push('/(auth)/recuperar')} />
+      <Button label="Olvidé mi contraseña" variant="ghost" onPress={() => router.push('/(auth)/recuperar')} />
 
       <Gap size="base" />
       <AtlasText variant="caption" tone="tertiary">

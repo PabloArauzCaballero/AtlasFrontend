@@ -34,7 +34,7 @@ export function AtlasLogo({ style }: { style?: ViewStyle }) {
       <View>
         <AtlasText variant="h2">ATLAS</AtlasText>
         <AtlasText variant="micro" tone="brand">
-          COMPRA HOY, PAGA DESPUES
+          COMPRA HOY, PAGA DESPUÉS
         </AtlasText>
       </View>
     </View>

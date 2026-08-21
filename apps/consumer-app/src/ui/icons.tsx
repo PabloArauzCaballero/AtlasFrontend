@@ -74,7 +74,12 @@ export type IconName =
   | 'descargar'
   | 'tendencia'
   | 'etiqueta'
-  | 'estrella';
+  | 'estrella'
+  // Mostrar y ocultar lo que se escribe en un campo protegido.
+  | 'ojo'
+  | 'ojo-tachado'
+  // Correo. El documento generico servia de relleno y no dice «correo» a nadie.
+  | 'sobre';
 
 export type IconProps = {
   name: IconName;
@@ -344,6 +349,39 @@ const PATHS: Record<IconName, (stroke: string, width: number) => React.ReactNode
       strokeWidth={w}
       strokeLinejoin="round"
     />
+  ),
+  /*
+   * Ojo abierto y ojo TACHADO, no dos ojos parecidos.
+   *
+   * El par «ojo / ojo con la pupila un poco distinta» es el error clasico de este control: a 20 px
+   * los dos estados se ven iguales y nadie sabe si esta mostrando u ocultando. La barra diagonal es
+   * lo unico que se distingue de un vistazo.
+   */
+  /*
+   * Un sobre, no una hoja.
+   *
+   * El campo de correo llevaba el icono de documento porque era lo que habia. Un icono aproximado es
+   * peor que ninguno: se lee antes que la etiqueta y deja al lector corrigiendose solo.
+   */
+  sobre: (s, w) => (
+    <>
+      <Rect x={2.5} y={5} width={19} height={14} rx={2.5} stroke={s} strokeWidth={w} />
+      <Path d="m3.2 6.6 8.03 5.36a1.4 1.4 0 0 0 1.54 0L20.8 6.6" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  ojo: (s, w) => (
+    <>
+      <Path d="M2.5 12s3.6-6 9.5-6 9.5 6 9.5 6-3.6 6-9.5 6-9.5-6-9.5-6z" stroke={s} strokeWidth={w} strokeLinejoin="round" />
+      <Circle cx={12} cy={12} r={2.9} stroke={s} strokeWidth={w} />
+    </>
+  ),
+  'ojo-tachado': (s, w) => (
+    <>
+      <Path d="M2.5 12s3.6-6 9.5-6c1.4 0 2.68.34 3.82.87M21.5 12s-1.3 2.16-3.7 3.93" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M9.9 9.9a2.9 2.9 0 0 0 4.2 4.2" stroke={s} strokeWidth={w} strokeLinecap="round" />
+      <Path d="M17.8 15.93A9.6 9.6 0 0 1 12 18c-5.9 0-9.5-6-9.5-6" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M3.6 3.6l16.8 16.8" stroke={s} strokeWidth={w} strokeLinecap="round" />
+    </>
   ),
 };
 
