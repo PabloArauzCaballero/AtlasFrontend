@@ -6,7 +6,6 @@
  * calcularlo en el telefono haria que dos versiones de la app ensenaran dos repartos del mismo
  * dinero. El unico calculo local es de presentacion —agrupar por comercio lo que ya viene marcado.
  */
-import { apiConfig } from '../config';
 import { request } from '../client';
 
 /** El comercio donde nacio el credito. `null` en los anteriores al vinculo: no se puede inventar. */
@@ -137,14 +136,6 @@ export type CreditRating = {
 };
 
 export const getCreditRating = (customerId: string) => request<CreditRating>(`/customers/${customerId}/credit-rating`);
-
-/**
- * La direccion del informe, no su contenido.
- *
- * El PDF lo abre el visor del sistema con la sesion del usuario; traerlo a memoria para volver a
- * escribirlo en disco no anade nada y obliga a mantener una copia del documento en el telefono.
- */
-export const spendingReportUrl = (customerId: string) => `${apiConfig.baseUrl}/customers/${customerId}/spending-report.pdf`;
 
 /** Lo que el servidor sabe del comercio detras de un QR de caja. */
 export type ResolvedMerchant = {

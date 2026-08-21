@@ -17,7 +17,7 @@
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
-import type { LoanSummary } from '../../../src/api/endpoints/loans';
+import type { LoanSummary, SpendingByCategory } from '../../../src/api/endpoints/loans';
 import { amountTone, categoryLook, dueCopy, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useSession } from '../../../src/session/session';
@@ -36,7 +36,8 @@ type MerchantGroup = {
   category: string;
   loans: LoanSummary[];
   outstanding: number;
-  overdueLoans: number;
+  /** Importe VENCIDO del comercio, medido contra el calendario y no contra el contador del prestamo. */
+  overdueAmount: number;
 };
 
 const FILTERS: Array<{ key: Filter; label: string; icon: IconName }> = [
@@ -46,7 +47,26 @@ const FILTERS: Array<{ key: Filter; label: string; icon: IconName }> = [
   { key: 'pagados', label: 'Pagados', icon: 'check' },
 ];
 
-function groupByMerchant(loans: readonly LoanSummary[]): MerchantGroup[] {
+/**
+ * Que comercios tienen algo VENCIDO, segun el calendario.
+ *
+ * No se usa `loan.daysPastDue`: ese contador lo actualiza un barrido periodico, y entre barrido y
+ * barrido una cuota puede haber vencido sin que el prestamo lo diga. Se vio en la propia demo — el
+ * total de arriba marcaba mora y la lista de abajo no—. El reparto por rubro ya trae lo vencido POR
+ * COMERCIO calculado contra las fechas, asi que esa es la unica fuente que usa esta pantalla.
+ */
+function overdueByPartner(spending: SpendingByCategory | null): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const category of spending?.categories ?? []) {
+    for (const merchant of category.merchants) {
+      const key = merchant.partnerProfileId ?? 'sin_comercio';
+      map.set(key, (map.get(key) ?? 0) + merchant.overdue);
+    }
+  }
+  return map;
+}
+
+function groupByMerchant(loans: readonly LoanSummary[], overdue: Map<string, number>): MerchantGroup[] {
   const groups = new Map<string, MerchantGroup>();
 
   for (const loan of loans) {
@@ -58,12 +78,10 @@ function groupByMerchant(loans: readonly LoanSummary[]): MerchantGroup[] {
     const key = loan.merchant?.partnerProfileId ?? 'sin_comercio';
     const existing = groups.get(key);
     const outstanding = Number(loan.outstandingPrincipal ?? 0);
-    const overdue = loan.daysPastDue > 0 ? 1 : 0;
 
     if (existing) {
       existing.loans.push(loan);
       existing.outstanding += outstanding;
-      existing.overdueLoans += overdue;
     } else {
       groups.set(key, {
         key,
@@ -71,7 +89,7 @@ function groupByMerchant(loans: readonly LoanSummary[]): MerchantGroup[] {
         category: loan.merchant?.businessCategory ?? 'sin_comercio',
         loans: [loan],
         outstanding,
-        overdueLoans: overdue,
+        overdueAmount: overdue.get(key) ?? 0,
       });
     }
   }
@@ -81,7 +99,7 @@ function groupByMerchant(loans: readonly LoanSummary[]): MerchantGroup[] {
    * debo y cuanto», que es la pregunta con la que se abre esta pantalla.
    */
   return [...groups.values()].sort((left, right) => {
-    if (left.overdueLoans !== right.overdueLoans) return right.overdueLoans - left.overdueLoans;
+    if (left.overdueAmount !== right.overdueAmount) return right.overdueAmount - left.overdueAmount;
     return right.outstanding - left.outstanding;
   });
 }
@@ -94,16 +112,25 @@ export default function Payments() {
   const [filter, setFilter] = useState<Filter>('todos');
   const [layout, setLayout] = useState<Layout>('lista');
 
+  const spending = book.spending;
+  const overdue = useMemo(() => overdueByPartner(spending), [spending]);
+
   const visible = useMemo(() => {
     const active = book.loans;
-    if (filter === 'mora') return active.filter((loan) => loan.daysPastDue > 0);
-    if (filter === 'proximos') return active.filter((loan) => loan.daysPastDue === 0 && loan.status === 'active');
+    /*
+     * El filtro de mora se resuelve por COMERCIO y no por prestamo: lo vencido llega agregado por
+     * comercio, que es el nivel al que esta pantalla agrupa. Un comercio con algo vencido muestra
+     * todos sus creditos, porque para regularizar hay que verlos juntos.
+     */
+    if (filter === 'mora') {
+      return active.filter((loan) => (overdue.get(loan.merchant?.partnerProfileId ?? 'sin_comercio') ?? 0) > 0);
+    }
+    if (filter === 'proximos') return active.filter((loan) => loan.status === 'active');
     if (filter === 'pagados') return active.filter((loan) => loan.status === 'paid_off');
     return active;
-  }, [book.loans, filter]);
+  }, [book.loans, filter, overdue]);
 
-  const groups = useMemo(() => groupByMerchant(visible), [visible]);
-  const spending = book.spending;
+  const groups = useMemo(() => groupByMerchant(visible, overdue), [visible, overdue]);
   const currency = spending?.currencyCode ?? 'BOB';
 
   if (!book.ready) {
@@ -242,7 +269,7 @@ export default function Payments() {
                 accessibilityLabel={`Ver creditos de ${group.displayName}`}
               >
                 <View style={styles.gridIcon}>
-                  <Icon name={look.icon} size={22} tint={group.overdueLoans > 0 ? color.feedback.danger : color.action.primary} />
+                  <Icon name={look.icon} size={22} tint={group.overdueAmount > 0 ? color.feedback.danger : color.action.primary} />
                 </View>
                 <AtlasText variant="bodyStrong" numberOfLines={2}>
                   {group.displayName}
@@ -250,7 +277,7 @@ export default function Payments() {
                 <AtlasText variant="caption" tone="tertiary">
                   {look.label}
                 </AtlasText>
-                <AtlasText variant="bodyStrong" style={{ color: group.overdueLoans > 0 ? color.feedback.danger : color.text.primary }}>
+                <AtlasText variant="bodyStrong" style={{ color: group.overdueAmount > 0 ? color.feedback.danger : color.text.primary }}>
                   {formatAmount(group.outstanding, currency)}
                 </AtlasText>
               </Pressable>
@@ -269,8 +296,8 @@ export default function Payments() {
                   subtitle={`${look.label} · ${group.loans.length} ${group.loans.length === 1 ? 'credito' : 'creditos'}`}
                   icon={look.icon}
                   right={
-                    group.overdueLoans > 0 ? (
-                      <Badge label="En mora" tone="danger" />
+                    group.overdueAmount > 0 ? (
+                      <Badge label={formatAmount(group.overdueAmount, currency) + ' en mora'} tone="danger" />
                     ) : (
                       <AtlasText variant="bodyStrong">{formatAmount(group.outstanding, currency)}</AtlasText>
                     )

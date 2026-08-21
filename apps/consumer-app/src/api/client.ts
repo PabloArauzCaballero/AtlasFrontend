@@ -148,3 +148,15 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     return retried.data;
   }
 }
+
+/**
+ * El token de acceso vigente, para las descargas que no pasan por `request`.
+ *
+ * Se expone en vez de duplicar el almacen de credenciales en otro modulo: dos sitios leyendo y
+ * escribiendo las mismas claves es como se acaba con una sesion renovada en uno y caducada en el
+ * otro. Quien lo use solo LEE; renovar sigue siendo cosa de `request`.
+ */
+export async function readAccessToken(): Promise<string | null> {
+  const tokens = (await tokenStore?.read()) ?? null;
+  return tokens?.accessToken ?? null;
+}

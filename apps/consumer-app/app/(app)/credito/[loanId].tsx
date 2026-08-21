@@ -70,6 +70,21 @@ export default function LoanDetail() {
   const look = categoryLook(loan.merchant?.businessCategory ?? 'sin_comercio');
   const today = new Date().toISOString().slice(0, 10);
 
+  /*
+   * El estado del credito se deduce del CALENDARIO, no de `loan.daysPastDue`.
+   *
+   * Ese contador lo actualiza un barrido periodico y puede ir por detras: en la propia demo, un
+   * credito con dos cuotas vencidas seguia declarandose «al dia». Una insignia que contradice a la
+   * lista que tiene debajo destruye la confianza en las dos.
+   */
+  const overdueInstallments = loan.schedule.filter(
+    (installment) => installment.status !== 'paid' && installment.status !== 'written_off' && installment.dueDate < today && pendingOf(installment) > 0,
+  );
+  const worstOverdueDays = overdueInstallments.reduce((worst, installment) => {
+    const days = Math.round((Date.parse(`${today}T00:00:00`) - Date.parse(`${installment.dueDate}T00:00:00`)) / 86_400_000);
+    return Math.max(worst, days);
+  }, 0);
+
   return (
     <Screen>
       <Gap size="sm" />
@@ -100,8 +115,8 @@ export default function LoanDetail() {
             <AtlasText variant="amountSmall">{loan.termMonths} m</AtlasText>
           </View>
         </View>
-        {loan.daysPastDue > 0 ? (
-          <Badge label={`${loan.daysPastDue} dias de atraso`} tone="danger" />
+        {overdueInstallments.length > 0 ? (
+          <Badge label={`${worstOverdueDays} dias de atraso`} tone="danger" />
         ) : loan.status === 'paid_off' ? (
           <Badge label="Pagado" tone="success" />
         ) : (

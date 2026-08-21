@@ -4,10 +4,9 @@
  * Responde en un vistazo las tres preguntas que trae quien abre la app: cuanto puedo gastar, cuanto
  * debo y que me vence primero. Todo lo demas baja en la jerarquia.
  */
-import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Alert, Pressable, StyleSheet, View } from 'react-native';
 import { isSandboxPurchase } from '../../../src/api/config';
 import { formatMoney } from '../../../src/domain/money';
 import { useSandbox } from '../../../src/sandbox/store';
@@ -18,7 +17,7 @@ import { Gap, Screen } from '../../../src/ui/layout';
 import { AtlasText, Badge, BrandPanel, Button, Card, Divider, EmptyState, ListRow, ProgressBar, Skeleton } from '../../../src/ui/primitives';
 import { Icon } from '../../../src/ui/icons';
 import { PartnerBanner } from '../../../src/ui/partner-banner';
-import { spendingReportUrl } from '../../../src/api/endpoints/loans';
+import { downloadSpendingReport } from '../../../src/features/spending-report';
 import { categoryLook, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { color, radius } from '../../../src/theme/tokens';
@@ -38,6 +37,8 @@ export default function Home() {
    * que se debe, su reparto por rubro y la mora salen de `loans`, que es lo que de verdad se cobra.
    */
   const book = useCreditBook(session.customerId);
+  // El informe tarda: sin este estado el boton parece no responder y la gente lo pulsa dos veces.
+  const [reportBusy, setReportBusy] = useState(false);
   const spending = book.spending;
   const currency = spending?.currencyCode ?? 'BOB';
   const activeOrders = sandbox.state.orders.filter((order) => order.status === 'ACTIVE' || order.status === 'WAITING_INITIAL_PAYMENT');
@@ -54,6 +55,12 @@ export default function Home() {
     sobre un esqueleto deja el recorte en el sitio equivocado.
   */
   useEffect(() => {
+    /*
+     * Y tampoco con MORA. La condicion miraba solo el motor local, asi que un cliente con cuotas
+     * vencidas de verdad —que ahora vienen del backend— recibia el tutorial encima del aviso rojo.
+     * Se vio en la primera captura de la demo: el paso 1 tapaba «tienes pagos pendientes».
+     */
+    if (!book.ready || (spending?.totals.overdue ?? 0) > 0) return;
     if (!sandbox.ready || activeOrders.length > 0 || sandbox.nextDue) return;
     let cancelled = false;
     void shouldAutoStart(TOUR_INICIO_KEY).then((should) => {
@@ -63,7 +70,7 @@ export default function Home() {
       cancelled = true;
     };
     // `tour.start` es estable y las dependencias reales son las tres condiciones de arranque.
-  }, [sandbox.ready, sandbox.nextDue, activeOrders.length, tour]);
+  }, [sandbox.ready, sandbox.nextDue, activeOrders.length, tour, book.ready, spending]);
 
   if (!sandbox.ready) {
     return (
@@ -248,10 +255,16 @@ export default function Home() {
             para reescribirlo en disco no anade nada y deja una copia del documento en el telefono.
           */}
           <Button
-            label="Descargar informe en PDF"
+            label={reportBusy ? 'Preparando informe...' : 'Descargar informe en PDF'}
             variant="secondary"
+            disabled={reportBusy}
             onPress={() => {
-              if (session.customerId) void Linking.openURL(spendingReportUrl(session.customerId));
+              if (!session.customerId || reportBusy) return;
+              setReportBusy(true);
+              void downloadSpendingReport(session.customerId).then((outcome) => {
+                setReportBusy(false);
+                if (!outcome.ok) Alert.alert('Informe no disponible', outcome.reason);
+              });
             }}
           />
         </Card>
