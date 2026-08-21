@@ -37,6 +37,11 @@ no editando la base: las cuotas vencidas son cuotas de verdad.
 | 12 | `12-pdf-en-dispositivo.png` | El informe descargado **dentro de la app** y entregado al sistema |
 | 13 | `13-informe-gastos.pdf` | El PDF tal cual lo emite el servidor |
 | 14 | `14-pdf-en-navegador.png` | El mismo PDF abierto en el navegador del equipo — **cuadra con la app** |
+| 15 | `15-portal-consentimientos.png` | El portal interno editando los documentos de consentimiento (verificado con Playwright) |
+| 16 | `16-signup-nuevo.png` | Registro rehecho: secciones agrupadas, iconos dentro de los campos |
+| 17 | `17-signup-datepicker.png` | Calendario nativo, abierto en el ultimo dia valido — no deja elegir a un menor |
+| 18 | `18-signup-consentimientos.png` | Autorizaciones con titulo, resumen y enlace para leer |
+| 19 | `19-signup-documento.png` | El documento completo, servido por el backend y aceptable desde ahi |
 
 ### Que el PDF y la app coinciden
 
@@ -89,3 +94,25 @@ node tools/dev-backend/merchant-portal-check.mjs \
 ```
 
 El APK se compila desde `C:\Ap` por el límite de rutas de Windows: ver `docs/` y la nota de build.
+
+## El registro, rehecho
+
+Lo que habia: siete campos sueltos, sin iconos, la fecha como texto con formato `AAAA-MM-DD`, el
+prefijo `+591` dentro del campo de telefono —editable y borrable— y una casilla que decia
+«privacy-policy-dev · Version v1-dev» sin forma de leer lo que se aceptaba.
+
+Lo que hay: tres secciones agrupadas, iconos dentro de cada campo, **calendario nativo** con el
+maximo puesto en el dia en que se cumplen 18 anos, **selector de pais con bandera** separado del
+numero, y autorizaciones con titulo, resumen y el texto completo a un toque.
+
+### El consentimiento se configura, no se despliega
+
+El texto vive en `privacy.consent_documents` con titulo, resumen y cuerpo versionados, y se edita
+desde **Portal interno → Configuracion → Consentimientos**. Verificado con Playwright de punta a
+punta: se entro al portal con el PIN real leido del sumidero, se edito el resumen de la politica de
+privacidad y el cambio aparecio en `/consent-documents/active`, que es el endpoint que consume la
+app — sin tocar una linea de codigo del telefono.
+
+Una nota de honestidad: el calendario de Android es el dialogo del SISTEMA, asi que sigue el tema
+del dispositivo. En el emulador, con tema claro, sale blanco. En un telefono en modo oscuro sale
+oscuro. Se deja el control nativo a proposito: es el que la gente ya sabe usar.

@@ -14,9 +14,13 @@ import * as customerApi from '../../src/api/endpoints/customer';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { CheckRow, Field } from '../../src/ui/fields';
+import { StyleSheet, View, Pressable } from 'react-native';
+import { ConsentRow } from '../../src/ui/consent-row';
+import { type Country, DEFAULT_COUNTRY, DateField, IconField, PhoneField } from '../../src/ui/form-controls';
+import { Icon, type IconName } from '../../src/ui/icons';
+import { color, space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
-import { AtlasText, Button, Card, ErrorState, Skeleton } from '../../src/ui/primitives';
+import { AtlasText, Button, Card, Divider, ErrorState, Skeleton } from '../../src/ui/primitives';
 
 /** Edad minima exigida por la regla de habilitacion del backend. */
 const MIN_AGE = 18;
@@ -40,7 +44,13 @@ export default function Register() {
 
   const [documents, setDocuments] = useState<customerApi.ConsentDocument[] | null>(null);
   const [accepted, setAccepted] = useState<Record<string, boolean>>({});
-  const [form, setForm] = useState({ firstName: '', lastName: '', birthDate: '', phone: '+591', email: '', password: '' });
+  const [form, setForm] = useState({ firstName: '', lastName: '', birthDate: '', phone: '', email: '', password: '' });
+  /*
+   * Bolivia por defecto: es donde opera el producto. Preseleccionar el pais mas probable ahorra
+   * un toque a casi todo el mundo y no le quita la opcion a nadie.
+   */
+  const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
@@ -58,16 +68,28 @@ export default function Register() {
 
   useEffect(loadConsents, []);
 
+  /*
+   * Los limites del calendario. El maximo es el dia en que se cumple la edad minima: asi la fecha
+   * que no vale directamente NO se puede elegir, en vez de elegirse y rechazarse despues.
+   */
+  const today = new Date();
+  const latestBirth = new Date(today.getFullYear() - MIN_AGE, today.getMonth(), today.getDate());
+  const earliestBirth = new Date(today.getFullYear() - 100, today.getMonth(), today.getDate());
+
   const age = ageFrom(form.birthDate);
   const errors = {
     firstName: form.firstName.trim().length === 0 ? 'Escribe tu nombre.' : null,
     lastName: form.lastName.trim().length === 0 ? 'Escribe tu apellido.' : null,
+    /*
+     * El formato ya no puede fallar: lo pone el calendario. Lo unico que queda por comprobar es la
+     * edad, que es una regla de negocio y no de escritura.
+     */
     birthDate: !isIsoDate(form.birthDate)
-      ? 'Usa el formato AAAA-MM-DD.'
+      ? 'Elige tu fecha de nacimiento.'
       : age !== null && age < MIN_AGE
         ? `Debes tener al menos ${MIN_AGE} anos.`
         : null,
-    phone: form.phone.trim().length < 8 ? 'Escribe tu numero con codigo de pais.' : null,
+    phone: form.phone.length < 7 ? 'Escribe tu numero, sin el codigo de pais.' : null,
     email: !form.email.includes('@') ? 'Escribe un correo valido.' : null,
     password: form.password.length < 10 ? 'Minimo 10 caracteres.' : null,
   };
@@ -87,7 +109,7 @@ export default function Register() {
     [errors.firstName === null, 'Falta tu nombre.'],
     [errors.lastName === null, 'Falta tu apellido.'],
     [errors.birthDate === null, errors.birthDate ?? 'Falta tu fecha de nacimiento.'],
-    [errors.phone === null, 'Falta tu telefono con codigo de pais.'],
+    [errors.phone === null, 'Falta tu numero de telefono.'],
     [errors.email === null, 'Falta tu correo electronico.'],
     [errors.password === null, 'La contrasena necesita al menos 10 caracteres.'],
     [consentsOk, 'Falta aceptar las autorizaciones obligatorias.'],
@@ -102,7 +124,8 @@ export default function Register() {
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         birthDate: form.birthDate,
-        phone: form.phone.trim(),
+        // El prefijo se une aqui: el campo guarda solo los digitos nacionales.
+        phone: `${country.dial}${form.phone}`,
         email: form.email.trim().toLowerCase(),
         password: form.password,
         consents: documents.map((document) => ({
@@ -128,54 +151,107 @@ export default function Register() {
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
-      <Field label="Nombre" value={form.firstName} onChangeText={(v) => setForm({ ...form, firstName: v })} autoComplete="given-name" textContentType="givenName" required error={form.firstName ? errors.firstName : null} />
-      <Field label="Apellido" value={form.lastName} onChangeText={(v) => setForm({ ...form, lastName: v })} autoComplete="family-name" textContentType="familyName" required error={form.lastName ? errors.lastName : null} />
-      <Field
-        label="Fecha de nacimiento"
-        value={form.birthDate}
-        onChangeText={(v) => setForm({ ...form, birthDate: v })}
-        placeholder="1996-04-12"
-        keyboardType="numbers-and-punctuation"
-        inputMode="numeric"
-        maxLength={10}
-        hint="Formato AAAA-MM-DD."
-        required
-        error={form.birthDate ? errors.birthDate : null}
-      />
-      <Field
-        label="Telefono"
-        value={form.phone}
-        onChangeText={(v) => setForm({ ...form, phone: v })}
-        keyboardType="phone-pad"
-        textContentType="telephoneNumber"
-        autoComplete="tel"
-        hint="Ahi te enviamos el codigo de verificacion."
-        required
-        error={form.phone.length > 4 ? errors.phone : null}
-      />
-      <Field
-        label="Correo electronico"
-        value={form.email}
-        onChangeText={(v) => setForm({ ...form, email: v })}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        autoComplete="email"
-        textContentType="emailAddress"
-        required
-        error={form.email ? errors.email : null}
-      />
-      <Field
-        label="Contrasena"
-        value={form.password}
-        onChangeText={(v) => setForm({ ...form, password: v })}
-        secureTextEntry
-        textContentType="newPassword"
-        autoComplete="new-password"
-        hint="Minimo 10 caracteres."
-        required
-        error={form.password ? errors.password : null}
-      />
+      {/*
+        Tres bloques y no una lista de siete campos.
+
+        Quien abre esto no ve «siete cosas que rellenar», ve «quien soy, como te contacto, como
+        entro». Agrupar por lo que significa cada dato acorta la pantalla percibida sin quitar un
+        solo campo, y es lo que hace que un formulario parezca una ficha y no un cuestionario.
+      */}
+      <FormSection icon="perfil" title="Quien eres">
+        <IconField
+          label="Nombre"
+          icon="perfil"
+          value={form.firstName}
+          onChangeText={(v) => setForm({ ...form, firstName: v })}
+          autoComplete="given-name"
+          textContentType="givenName"
+          placeholder="Valeria"
+          required
+          error={form.firstName ? errors.firstName : null}
+        />
+        <IconField
+          label="Apellido"
+          icon="perfil"
+          value={form.lastName}
+          onChangeText={(v) => setForm({ ...form, lastName: v })}
+          autoComplete="family-name"
+          textContentType="familyName"
+          placeholder="Mendez"
+          required
+          error={form.lastName ? errors.lastName : null}
+        />
+        <DateField
+          label="Fecha de nacimiento"
+          value={form.birthDate}
+          onChange={(iso) => setForm({ ...form, birthDate: iso })}
+          minimumDate={earliestBirth}
+          maximumDate={latestBirth}
+          initialDate={latestBirth}
+          hint={`Debes tener al menos ${MIN_AGE} anos.`}
+          required
+          error={form.birthDate ? errors.birthDate : null}
+        />
+      </FormSection>
+
+      <FormSection icon="ubicacion" title="Como te contactamos">
+        <PhoneField
+          label="Telefono"
+          value={form.phone}
+          onChangeText={(v) => setForm({ ...form, phone: v })}
+          country={country}
+          onChangeCountry={setCountry}
+          hint="Ahi te enviamos el codigo de verificacion."
+          required
+          error={form.phone ? errors.phone : null}
+        />
+        <IconField
+          label="Correo electronico"
+          icon="documento"
+          value={form.email}
+          onChangeText={(v) => setForm({ ...form, email: v })}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          textContentType="emailAddress"
+          placeholder="tu@correo.com"
+          required
+          error={form.email ? errors.email : null}
+        />
+      </FormSection>
+
+      <FormSection icon="candado" title="Como entras">
+        <IconField
+          label="Contrasena"
+          icon="candado"
+          value={form.password}
+          onChangeText={(v) => setForm({ ...form, password: v })}
+          secureTextEntry={!showPassword}
+          textContentType="newPassword"
+          autoComplete="new-password"
+          placeholder="Minimo 10 caracteres"
+          required
+          error={form.password ? errors.password : null}
+          hint="Minimo 10 caracteres."
+          trailing={
+            /*
+              Ver lo que se escribe reduce los errores de tecleo mas que cualquier mensaje. Va como
+              texto y no como icono de ojo porque el ojo tachado y sin tachar se confunden.
+            */
+            <Pressable
+              onPress={() => setShowPassword(!showPassword)}
+              accessibilityRole="button"
+              accessibilityLabel={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+              hitSlop={8}
+            >
+              <AtlasText variant="caption" style={{ color: color.action.primary }}>
+                {showPassword ? 'Ocultar' : 'Ver'}
+              </AtlasText>
+            </Pressable>
+          }
+        />
+      </FormSection>
 
       <Gap size="sm" />
       <AtlasText variant="h3">Autorizaciones</AtlasText>
@@ -195,14 +271,24 @@ export default function Register() {
         </Card>
       ) : (
         <Card>
-          {documents.map((document) => (
-            <CheckRow
-              key={document.id}
-              label={titleForConsent(document.documentCode)}
-              detail={`Version ${document.versionCode}`}
-              checked={Boolean(accepted[document.id])}
-              onToggle={(next) => setAccepted({ ...accepted, [document.id]: next })}
-            />
+          {documents.map((document, index) => (
+            <View key={document.id}>
+              {index > 0 ? <Divider /> : null}
+              <ConsentRow
+                /*
+                  El titulo viene del BACKEND. Antes lo adivinaba una funcion local a partir del
+                  codigo del documento, asi que publicar uno nuevo significaba tocar la app —y hasta
+                  entonces salia «Acepto privacy-policy-dev».
+                */
+                title={document.title ?? titleForConsent(document.documentCode)}
+                summary={document.summary}
+                bodyMarkdown={document.bodyMarkdown}
+                versionCode={document.versionCode}
+                required={document.requiresExplicitAction}
+                checked={Boolean(accepted[document.id])}
+                onToggle={(next) => setAccepted({ ...accepted, [document.id]: next })}
+              />
+            </View>
           ))}
         </Card>
       )}
@@ -220,3 +306,29 @@ function titleForConsent(code: string): string {
   if (code.includes('bureau') || code.includes('credit')) return 'Autorizo la consulta de mi historial crediticio';
   return `Acepto ${code}`;
 }
+
+/**
+ * Un bloque del formulario, con su titulo y su icono.
+ *
+ * El icono va en el ENCABEZADO y no repetido en cada campo: dentro de los campos indica que dato se
+ * pide, aqui indica de que trata el grupo. Dos jerarquias distintas con el mismo lenguaje grafico.
+ */
+function FormSection({ icon, title, children }: { icon: IconName; title: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHead}>
+        <Icon name={icon} size={16} tint={color.text.tertiary} />
+        <AtlasText variant="caption" tone="tertiary" style={styles.sectionTitle}>
+          {title.toUpperCase()}
+        </AtlasText>
+      </View>
+      <Card>{children}</Card>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  section: { gap: space.xs },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.xxs },
+  sectionTitle: { letterSpacing: 1.1 },
+});

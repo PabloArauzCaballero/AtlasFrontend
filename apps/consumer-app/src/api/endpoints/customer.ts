@@ -34,8 +34,17 @@ export type ConsentDocument = {
   documentCode: string;
   versionCode: string;
   language: string;
-  contentUrl: string;
-  contentHash: string;
+  contentUrl: string | null;
+  contentHash: string | null;
+  /**
+   * El TEXTO del documento, no solo su direccion.
+   *
+   * Antes solo llegaba `contentUrl` y la app no tenia nada que ensenar: la casilla pedia aceptar
+   * algo que no se podia leer. El backend guarda ahora el texto versionado y lo publica aqui.
+   */
+  title: string | null;
+  summary: string | null;
+  bodyMarkdown: string | null;
   requiresExplicitAction: boolean;
   effectiveFrom: string;
   status: string;
