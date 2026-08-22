@@ -59,7 +59,7 @@ export default function SignIn() {
    * el texto cuando el error NO trae un codigo de negocio propio que decir.
    */
   const credentialsRejected = error instanceof AtlasApiError && error.status === 401 && error.code === 'UNAUTHORIZED';
-  const detail = credentialsRejected ? 'Correo, teléfono o contraseña incorrectos.' : (described?.detail ?? '');
+  const detail = credentialsRejected ? 'Correo, teléfono o PIN incorrectos.' : (described?.detail ?? '');
   /*
    * «Sesion expirada» sobre la pantalla de INGRESAR no significa nada: aqui todavia no hay sesion
    * que expirar. El titulo salia de la familia del error —todo 401 es `auth`— y se leia como si la
@@ -129,7 +129,7 @@ export default function SignIn() {
           <Pressable
             onPress={() => setShowPassword(!showPassword)}
             accessibilityRole="button"
-            accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            accessibilityLabel={showPassword ? 'Ocultar PIN' : 'Mostrar PIN'}
             hitSlop={10}
           >
             <Icon
@@ -142,7 +142,7 @@ export default function SignIn() {
       />
 
       <Gap size="xs" />
-      <Button label="Olvidé mi contraseña" variant="ghost" onPress={() => router.push('/(auth)/recuperar')} />
+      <Button label="Olvidé mi PIN" variant="ghost" onPress={() => router.push('/(auth)/recuperar')} />
 
       <Gap size="base" />
       <AtlasText variant="caption" tone="tertiary">

@@ -18,17 +18,19 @@
  * temprana convierte «tomar la foto del carnet» en un viaje a los ajustes del sistema. Cada permiso
  * se pide donde se usa; aqui solo se lee lo que ya haya decidido.
  *
- * ## Los que faltan
+ * ## Los cinco del contrato
  *
- * `contacts` y `notifications` estan en el contrato del backend y no se consultan aqui porque sus
- * modulos —`expo-contacts`, `expo-notifications`— no son dependencias del proyecto. Añadirlos exige
- * recompilar el binario, no basta con recargar el JS. Mientras tanto se informa de lo que se sabe:
- * decir «denegado» sobre un permiso que ni siquiera se ha consultado seria peor que callar, porque
- * el riesgo lee esa negativa como una decision de la persona.
+ * Se informan los cinco codigos que acepta el backend: `camera`, `location`, `storage`, `contacts`
+ * y `notifications`. Los dos ultimos entraron despues, al añadir `expo-contacts` y
+ * `expo-notifications`; hasta entonces no se consultaban y el expediente nacia sin saber si esta
+ * persona acepta que le avisemos de sus cuotas, que es justo la señal que explica por que a alguien
+ * no le llegan los avisos.
  */
 import { Camera } from 'expo-camera';
+import * as Contacts from 'expo-contacts';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 
 /** Los codigos que acepta el backend (`ALLOWED_PERMISSION_CODES`). */
 export type PermissionCode = 'location' | 'camera' | 'contacts' | 'notifications' | 'storage';
@@ -62,6 +64,17 @@ export async function permisosDecididos(): Promise<PermissionReport[]> {
       .catch(() => undefined),
     ImagePicker.getMediaLibraryPermissionsAsync()
       .then((estado) => añadir('storage', estado))
+      .catch(() => undefined),
+    Contacts.getPermissionsAsync()
+      .then((estado) => añadir('contacts', estado))
+      .catch(() => undefined),
+    /*
+      Las notificaciones traen su propia forma: no hay `granted` booleano sino un `status` y, en
+      iOS, un detalle de que se autorizo exactamente —alerta, sonido, insignia—. Se normaliza a lo
+      que el backend entiende: concedido si el sistema dice `granted`.
+    */
+    Notifications.getPermissionsAsync()
+      .then((estado) => añadir('notifications', { granted: estado.granted, status: estado.status }))
       .catch(() => undefined),
   ]);
 

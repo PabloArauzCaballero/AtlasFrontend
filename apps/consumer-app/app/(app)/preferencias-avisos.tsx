@@ -26,11 +26,12 @@ import { StyleSheet, View } from 'react-native';
 import * as notificationsApi from '../../src/api/endpoints/notifications';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
+import { activarAvisos, estadoAvisos, type EstadoAvisos } from '../../src/device/push';
 import { color, radius, space } from '../../src/theme/tokens';
 import { Icon, type IconName } from '../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Switch } from '../../src/ui/fields';
-import { AtlasText, Badge, Card, Divider, EmptyState, ErrorState, Skeleton } from '../../src/ui/primitives';
+import { AtlasText, Badge, Button, Card, Divider, EmptyState, ErrorState, Skeleton } from '../../src/ui/primitives';
 
 /** El canal, dicho como lo diria la persona. Es lo unico que sigue aqui: son cinco y no cambian. */
 const CHANNEL_LABEL: Record<string, { label: string; icon: IconName }> = {
@@ -114,6 +115,23 @@ export default function PreferenciasAvisos() {
 
   const described = error ? describeError(error) : null;
 
+  const [avisos, setAvisos] = useState<EstadoAvisos>('no-disponible');
+  const [pidiendoAvisos, setPidiendoAvisos] = useState(false);
+
+  useEffect(() => {
+    void estadoAvisos().then(setAvisos);
+  }, []);
+
+  const pedirAvisos = async () => {
+    if (!session.customerId) return;
+    setPidiendoAvisos(true);
+    try {
+      setAvisos(await activarAvisos(session.customerId));
+    } finally {
+      setPidiendoAvisos(false);
+    }
+  };
+
   /** Agrupado por evento dentro de su categoria: es la unidad sobre la que la persona decide. */
   const byCategory = new Map<string, Map<string, Preference[]>>();
   for (const preference of items) {
@@ -127,6 +145,29 @@ export default function PreferenciasAvisos() {
   return (
     <Screen>
       <ScreenHeader title="Cómo te avisamos" subtitle="Elige por dónde quieres recibir cada aviso." onBack="auto" />
+
+      {/*
+        El permiso del sistema, dicho antes que las preferencias.
+
+        Sin el, todos los interruptores de push de esta pantalla son promesas que el sistema
+        operativo no va a cumplir: la preferencia se guarda y el aviso no sale de aqui. Se enseña
+        arriba porque es la condicion de todo lo demas, y se pide con un boton —no al abrir la
+        pantalla— para que la pregunta llegue cuando ya se entiende para que sirve.
+      */}
+      {avisos === 'denegado' ? (
+        <ErrorState
+          title="Los avisos están desactivados en tu teléfono"
+          detail="Aunque los enciendas aquí, tu teléfono no los va a mostrar. Actívalos para Atlas en los ajustes del sistema."
+        />
+      ) : avisos === 'no-disponible' ? (
+        <Card>
+          <AtlasText variant="bodyStrong">Recibir avisos en este teléfono</AtlasText>
+          <AtlasText variant="caption" tone="secondary">
+            Te avisamos cuando vence una cuota y cuando se aprueba una compra. Nada más.
+          </AtlasText>
+          <Button label="Activar avisos" variant="secondary" onPress={pedirAvisos} loading={pidiendoAvisos} />
+        </Card>
+      ) : null}
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 

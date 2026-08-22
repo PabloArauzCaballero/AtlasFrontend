@@ -12,7 +12,8 @@ import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { Field, OptionGroup } from '../../src/ui/fields';
+import { Field } from '../../src/ui/fields';
+import { SelectField } from '../../src/ui/form-controls';
 import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Button, Card, ErrorState } from '../../src/ui/primitives';
 
@@ -206,7 +207,7 @@ export default function VerifyContact() {
         />
       ) : null}
 
-      <OptionGroup<Channel>
+      <SelectField<Channel>
         label="Cómo quieres recibir el código"
         value={channel}
         onChange={(next) => {
@@ -214,10 +215,10 @@ export default function VerifyContact() {
           setSent(null);
           setError(null);
         }}
-        options={[
-          { value: 'sms', label: 'SMS', detail: 'A tu número registrado.' },
-          { value: 'whatsapp', label: 'WhatsApp', detail: 'Al mismo número.' },
-          { value: 'email', label: 'Correo', detail: 'A tu correo registrado.' },
+        opciones={[
+          { valor: 'sms', etiqueta: 'SMS', detalle: 'A tu número registrado.' },
+          { valor: 'whatsapp', etiqueta: 'WhatsApp', detalle: 'Al mismo número.' },
+          { valor: 'email', etiqueta: 'Correo', detalle: 'A tu correo registrado.' },
         ]}
       />
 

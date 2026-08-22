@@ -12,8 +12,10 @@ import { View, type ScrollView } from 'react-native';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
+import { elegirContacto } from '../../src/device/contacts';
 import { firstBlocker } from '../../src/ui/blocked';
-import { CheckRow, Field, OptionGroup } from '../../src/ui/fields';
+import { CheckRow, Field } from '../../src/ui/fields';
+import { SelectField } from '../../src/ui/form-controls';
 import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Button, Card, Divider, ErrorState } from '../../src/ui/primitives';
 import { TRUST_REFERENCIAS } from '../../src/features/trust-copy';
@@ -98,16 +100,42 @@ export default function References() {
           <AtlasText variant="h3">Referencia {index + 1}</AtlasText>
           <Divider />
 
-          <OptionGroup<Relationship>
+          <SelectField<Relationship>
             label="Qué relación tienen"
             value={draft.relationshipType}
             onChange={(next) => update(index, { relationshipType: next })}
-            options={[
-              { value: 'family', label: 'Familiar' },
-              { value: 'friend', label: 'Amistad' },
-              { value: 'coworker', label: 'Companero de trabajo' },
-              { value: 'employer', label: 'Empleador' },
+            opciones={[
+              { valor: 'family', etiqueta: 'Familiar' },
+              { valor: 'friend', etiqueta: 'Amistad' },
+              { valor: 'coworker', etiqueta: 'Compañero de trabajo' },
+              { valor: 'employer', etiqueta: 'Empleador' },
             ]}
+          />
+
+          {/*
+            Traerlo de la agenda en vez de teclearlo.
+
+            Un telefono copiado a mano de la memoria sale mal una de cada tres veces, y una
+            referencia con un numero equivocado no es una referencia: es una llamada perdida el dia
+            que hace falta. El permiso se pide AQUI, al tocar el boton, no al arrancar la app: iOS
+            pregunta una sola vez y una negativa temprana —cuando la persona todavia no sabe para
+            que— cierra la puerta para siempre.
+
+            Se lee UN contacto, el que la persona elige en la hoja del sistema. La app no recorre la
+            agenda ni la guarda.
+          */}
+          <Button
+            label="Elegir de mis contactos"
+            variant="secondary"
+            haptic="none"
+            onPress={async () => {
+              const contacto = await elegirContacto();
+              if (!contacto) return;
+              update(index, {
+                fullName: contacto.nombre ?? draft.fullName,
+                phone: contacto.telefono ?? draft.phone,
+              });
+            }}
           />
 
           <Field
@@ -125,7 +153,7 @@ export default function References() {
           />
 
           <CheckRow
-            label="Le avise que lo pondria como referencia"
+            label="Le avisé que lo pondría como referencia"
             detail="Si no le avisaste, igual puedes continuar."
             checked={draft.informed}
             onToggle={(next) => update(index, { informed: next })}

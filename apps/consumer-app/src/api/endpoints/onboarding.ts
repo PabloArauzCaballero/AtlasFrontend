@@ -136,7 +136,18 @@ export const updateFinancialProfile = (customerId: string, body: FinancialProfil
 export const saveAddressPackage = (
   customerId: string,
   body: {
-    address: { countryCode: string; department: string; city: string; zone?: string };
+    address: {
+      countryCode: string;
+      department: string;
+      city: string;
+      zone?: string;
+      /**
+       * Calle y numero. Viaja EN CLARO por TLS y el servidor la cifra antes de guardarla, igual que
+       * el telefono y el correo. Cifrarla aqui exigiria repartir una llave a cada telefono, que es
+       * justo lo que la convertiria en no-llave.
+       */
+      addressLine?: string;
+    };
     gpsObservation?: { lat: number; lng: number; accuracyMeters?: number };
   },
 ) =>

@@ -299,7 +299,13 @@ export type PhoneFieldProps = {
  */
 /* ------------------------------------------------------------- seleccion */
 
-export type OpcionSelect = { valor: string; etiqueta: string };
+/**
+ * `detalle` es la linea de apoyo de una opcion —«A tu numero registrado.»—. Vive en la hoja, bajo
+ * la etiqueta, y se repite bajo el control cuando esa opcion queda elegida: si el matiz solo se ve
+ * mientras la hoja esta abierta, se pierde justo cuando hay que decidir si la eleccion fue la
+ * correcta.
+ */
+export type OpcionSelect<T extends string = string> = { valor: T; etiqueta: string; detalle?: string };
 
 /**
  * Elegir UNO de una lista larga, en una hoja.
@@ -322,7 +328,7 @@ export type OpcionSelect = { valor: string; etiqueta: string };
  * `deshabilitadoPorque` existe para la ciudad: sin departamento elegido no hay lista que ofrecer, y
  * un control que no responde sin decir por que se lee como roto. Dice lo que falta, en su sitio.
  */
-export function SelectField({
+export function SelectField<T extends string = string>({
   label,
   value,
   opciones,
@@ -334,9 +340,9 @@ export function SelectField({
   deshabilitadoPorque,
 }: {
   label: string;
-  value: string | null;
-  opciones: OpcionSelect[];
-  onChange: (valor: string) => void;
+  value: T | null;
+  opciones: OpcionSelect<T>[];
+  onChange: (valor: T) => void;
   placeholder?: string;
   hint?: string;
   error?: string | null;
@@ -376,7 +382,10 @@ export function SelectField({
         <Icon name="adelante" size={16} tint={color.text.tertiary} />
       </PressSurface>
 
-      <FieldFoot error={error} hint={bloqueado ? (deshabilitadoPorque ?? undefined) : hint} />
+      <FieldFoot
+        error={error}
+        hint={bloqueado ? (deshabilitadoPorque ?? undefined) : (hint ?? elegida?.detalle)}
+      />
 
       <Modal visible={abierto} transparent animationType="slide" onRequestClose={() => setAbierto(false)}>
         <Pressable style={styles.backdrop} onPress={() => setAbierto(false)} />
@@ -405,9 +414,14 @@ export function SelectField({
                   accessibilityState={{ selected: seleccionada }}
                   accessibilityLabel={opcion.etiqueta}
                 >
-                  <AtlasText variant="body" style={styles.countryName}>
-                    {opcion.etiqueta}
-                  </AtlasText>
+                  <View style={styles.countryName}>
+                    <AtlasText variant="body">{opcion.etiqueta}</AtlasText>
+                    {opcion.detalle ? (
+                      <AtlasText variant="caption" tone="tertiary">
+                        {opcion.detalle}
+                      </AtlasText>
+                    ) : null}
+                  </View>
                   {seleccionada ? <Icon name="check" size={18} tint={color.action.primary} /> : null}
                 </PressSurface>
               );

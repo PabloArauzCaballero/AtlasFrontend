@@ -35,6 +35,7 @@ export default function Address() {
   const [department, setDepartment] = useState<string | null>(null);
   const [city, setCity] = useState<string | null>(null);
   const [zone, setZone] = useState('');
+  const [addressLine, setAddressLine] = useState('');
   const [enlace, setEnlace] = useState('');
   const [enlaceEstado, setEnlaceEstado] = useState<'vacio' | 'leyendo' | 'ok' | 'no-entendido'>('vacio');
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracyMeters?: number } | null>(null);
@@ -106,6 +107,7 @@ export default function Address() {
           department: nombreDepartamento(department)!,
           city: nombreCiudad(department, city)!,
           zone: zone.trim() || undefined,
+          addressLine: addressLine.trim() || undefined,
         },
         gpsObservation: gps ?? undefined,
       });
@@ -155,6 +157,22 @@ export default function Address() {
         required
       />
       <Field label="Zona o barrio" value={zone} onChangeText={setZone} placeholder="Equipetrol" />
+
+      {/*
+        La calle y el numero: opcional, y con el motivo delante.
+
+        Es el dato mas sensible de la pantalla y el unico que sirve para presentarse en una puerta,
+        asi que se pide con su para-que a la vista y sin obligar. El servidor lo guarda cifrado —lo
+        cifra el, no la app: una llave repartida a cada telefono deja de ser una llave—.
+      */}
+      <Field
+        label="Calle y número (opcional)"
+        value={addressLine}
+        onChangeText={setAddressLine}
+        placeholder="Av. San Martín 123, entre 2do y 3er anillo"
+        hint="Se guarda cifrada. Solo se usa para verificar tu domicilio y para cobranza."
+        multiline
+      />
 
       {/*
         El enlace de Maps es la alternativa al permiso de ubicacion, no un extra suyo: quien lo pega

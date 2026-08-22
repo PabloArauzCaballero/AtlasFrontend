@@ -93,15 +93,15 @@ export const TRUST_ECONOMIA: TrustItem[] = [
 export const TRUST_DOMICILIO: TrustItem[] = [
   {
     icon: 'ubicacion',
-    dato: 'Departamento, ciudad y zona',
+    dato: 'Dónde vives',
     /*
-      Decia «la direccion exacta se guarda cifrada» —heredado de la letra pequena de la pantalla— y
-      no era verdad: la app no pide calle ni numero. El backend tiene el campo (`addressLineEncrypted`)
-      y espera recibirlo ya cifrado por el cliente, cosa que hoy no ocurre. Hasta que exista esa
-      pieza, aqui se dice lo que si pasa.
+      Esta promesa estuvo un rato sin ser verdad: la pantalla decia «la direccion exacta se guarda
+      cifrada» y la app no pedia calle ni numero, porque el backend esperaba recibirlos ya cifrados
+      por el cliente y esa pieza no existia. Se resolvio por donde correspondia —el servidor los
+      cifra al guardarlos, igual que el telefono— y ahora el texto vuelve a describir lo que pasa.
     */
     porque: 'Es requisito del expediente y por donde te buscamos si no contestas.',
-    garantias: [{ icon: 'documento', label: 'Solo cobranza' }, SOLO_ATLAS],
+    garantias: [CIFRADO, { icon: 'documento', label: 'Solo cobranza' }, SOLO_ATLAS],
   },
   {
     icon: 'chispa',

@@ -12,7 +12,8 @@ import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { Field, OptionGroup } from '../../src/ui/fields';
+import { Field } from '../../src/ui/fields';
+import { SelectField } from '../../src/ui/form-controls';
 import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 import { TRUST_ECONOMIA } from '../../src/features/trust-copy';
@@ -101,15 +102,15 @@ export default function FinancialProfile() {
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
-      <OptionGroup<Employment>
+      <SelectField<Employment>
         label="Situación laboral"
         value={employmentStatus}
         onChange={setEmploymentStatus}
-        options={[
-          { value: 'employee', label: 'Trabajo en relación de dependencia' },
-          { value: 'self_employed', label: 'Trabajo por mi cuenta' },
-          { value: 'business_owner', label: 'Tengo un negocio' },
-          { value: 'student', label: 'Estudio' },
+        opciones={[
+          { valor: 'employee', etiqueta: 'Trabajo en relación de dependencia' },
+          { valor: 'self_employed', etiqueta: 'Trabajo por mi cuenta' },
+          { valor: 'business_owner', etiqueta: 'Tengo un negocio' },
+          { valor: 'student', etiqueta: 'Estudio' },
         ]}
       />
 
@@ -159,15 +160,15 @@ export default function FinancialProfile() {
         required
       />
 
-      <OptionGroup<SourceOfFunds>
+      <SelectField<SourceOfFunds>
         label="Origen principal de tus ingresos"
         value={sourceOfFunds}
         onChange={setSourceOfFunds}
-        options={[
-          { value: 'salary', label: 'Salario' },
-          { value: 'business', label: 'Mi negocio' },
-          { value: 'freelance', label: 'Trabajos independientes' },
-          { value: 'family_support', label: 'Apoyo familiar' },
+        opciones={[
+          { valor: 'salary', etiqueta: 'Salario' },
+          { valor: 'business', etiqueta: 'Mi negocio' },
+          { valor: 'freelance', etiqueta: 'Trabajos independientes' },
+          { valor: 'family_support', etiqueta: 'Apoyo familiar' },
         ]}
       />
 

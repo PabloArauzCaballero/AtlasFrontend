@@ -10,7 +10,8 @@ import { useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
-import { CheckRow, Field, OptionGroup } from '../../src/ui/fields';
+import { CheckRow, Field } from '../../src/ui/fields';
+import { SelectField } from '../../src/ui/form-controls';
 import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 
@@ -68,27 +69,27 @@ export default function PersonalData() {
       <Field label="Nombre" value={firstName} onChangeText={setFirstName} autoComplete="given-name" />
       <Field label="Apellido" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
 
-      <OptionGroup<Gender>
+      <SelectField<Gender>
         label="Genero declarado"
         value={gender}
         onChange={setGender}
-        options={[
-          { value: 'female', label: 'Femenino' },
-          { value: 'male', label: 'Masculino' },
-          { value: 'other', label: 'Otro' },
-          { value: 'undisclosed', label: 'Prefiero no decirlo' },
+        opciones={[
+          { valor: 'female', etiqueta: 'Femenino' },
+          { valor: 'male', etiqueta: 'Masculino' },
+          { valor: 'other', etiqueta: 'Otro' },
+          { valor: 'undisclosed', etiqueta: 'Prefiero no decirlo' },
         ]}
       />
 
-      <OptionGroup<Language>
+      <SelectField<Language>
         label="Idioma preferido"
         value={language}
         onChange={setLanguage}
-        options={[
-          { value: 'es', label: 'Español' },
-          { value: 'qu', label: 'Quechua' },
-          { value: 'ay', label: 'Aymara' },
-          { value: 'en', label: 'Ingles' },
+        opciones={[
+          { valor: 'es', etiqueta: 'Español' },
+          { valor: 'qu', etiqueta: 'Quechua' },
+          { valor: 'ay', etiqueta: 'Aymara' },
+          { valor: 'en', etiqueta: 'Ingles' },
         ]}
       />
 

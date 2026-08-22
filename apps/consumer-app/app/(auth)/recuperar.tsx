@@ -11,6 +11,7 @@ import * as authApi from '../../src/api/endpoints/auth';
 import { describeError } from '../../src/api/errors';
 import { firstBlocker } from '../../src/ui/blocked';
 import { Field } from '../../src/ui/fields';
+import { PinField } from '../../src/ui/pin-field';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 
@@ -42,7 +43,7 @@ export default function RecoverPassword() {
   if (step === 'done') {
     return (
       <Screen footer={<Button label="Ir a ingresar" onPress={() => router.replace('/(auth)/ingresar')} />}>
-        <ScreenHeader title="Contraseña actualizada" subtitle="Ya puedes ingresar con tu nueva contraseña." />
+        <ScreenHeader title="PIN actualizado" subtitle="Ya puedes ingresar con tu PIN nuevo." />
       </Screen>
     );
   }
@@ -65,12 +66,12 @@ export default function RecoverPassword() {
           />
         ) : (
           <Button
-            label="Guardar contraseña"
+            label="Guardar mi PIN"
             loading={busy}
-            disabled={code.length !== 6 || newPassword.length < 10 || busy}
+            disabled={code.length !== 6 || newPassword.length !== 4 || busy}
             blockedReason={firstBlocker([
               [code.length === 6, 'El código tiene 6 dígitos.'],
-              [newPassword.length >= 10, 'La contraseña nueva necesita al menos 10 caracteres.'],
+              [newPassword.length === 4, 'Tu PIN nuevo debe ser de 4 dígitos.'],
             ])}
             onPress={() =>
               run(async () => {
@@ -113,15 +114,21 @@ export default function RecoverPassword() {
             maxLength={6}
             required
           />
-          <Field
-            label="Nueva contraseña"
+          {/*
+            Un PIN, no una contrasena: lo mismo que se creo al registrarse y lo mismo que pide el
+            acceso.
+
+            Esta pantalla se quedo en el modelo viejo cuando el alta paso al PIN de cuatro digitos, y
+            el resultado era una incoherencia con consecuencias: quien olvidaba su PIN solo podia
+            recuperarlo convirtiendolo en una contrasena larga, en una pantalla cuyo campo de acceso
+            sigue llamandose «PIN». El servidor ya aplicaba la regla correcta por tipo de actor; lo
+            que faltaba era pedir aqui lo que alli se acepta.
+          */}
+          <PinField
+            label="Tu PIN nuevo"
             value={newPassword}
             onChangeText={setNewPassword}
-            secureTextEntry
-            textContentType="newPassword"
-            autoComplete="new-password"
-            hint="Mínimo 10 caracteres."
-            required
+            hint="Cuatro dígitos que recuerdes. Evita 1234, tu año de nacimiento o cuatro iguales."
           />
         </>
       )}
