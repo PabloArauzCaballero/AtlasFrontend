@@ -17,7 +17,11 @@ Es la regla del playbook («un solo sistema») portada a React Native. Se puede 
 grep -rnE "#[0-9a-fA-F]{6}|rgba\(" src app --include=*.tsx | grep -v theme/tokens
 ```
 
-Debe devolver **cero líneas**. Si devuelve una, o falta un token o alguien se lo saltó.
+Debe devolver **cero líneas**, con una única excepción documentada: `WHATSAPP_INK` en
+`src/ui/content.tsx`. Es el verde de una marca ajena —quien busca ayuda no lee, busca el verde— y
+está fuera de los tokens precisamente para que no pueda usarse para ninguna otra cosa.
+
+Cualquier otra línea significa que falta un token o que alguien se lo saltó.
 
 ---
 

@@ -14,10 +14,11 @@
  * publica contenido nuevo antes de que la version con el icono llegue a las tiendas. Cae a uno
  * generico en lugar de reventar la pantalla.
  */
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import type { ContentAction, ContentBullet } from '../api/endpoints/app-content';
-import { color, radius, space } from '../theme/tokens';
+import { color, press, radius, space } from '../theme/tokens';
 import { Icon, ICON_NAMES, type IconName } from './icons';
+import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
 
 function iconOr(name: string | null | undefined, fallback: IconName): IconName {
@@ -73,7 +74,7 @@ export function ContentActionButton({
   if (action.kind === 'screen' && !onScreen) return null;
   if (action.kind === 'tour' && !onTour) return null;
 
-  const press = () => {
+  const abrir = () => {
     if (action.kind === 'screen') onScreen?.(action.url);
     else if (action.kind === 'tour') onTour?.(action.url);
     else void Linking.openURL(action.url);
@@ -83,17 +84,26 @@ export function ContentActionButton({
   const isWhatsApp = action.kind === 'whatsapp';
 
   return (
-    <Pressable
-      onPress={press}
+    /*
+      El mismo hundimiento que el resto de la app, no un salto de opacidad.
+
+      `pressed` de `Pressable` entra y sale en un fotograma; en una app donde TODO lo tocable se
+      hunde con muelle, el unico control que se limita a apagarse se nota aunque nadie sepa decir
+      por que. La regla esta en `docs/identidad-visual.md` §6 y se comprueba buscando el estado
+      `pressed` de `Pressable` en `src` y `app`: no debe aparecer en ninguna pantalla.
+    */
+    <PressSurface
+      onPress={abrir}
       accessibilityRole="button"
       accessibilityLabel={action.label}
-      style={({ pressed }) => [styles.action, isWhatsApp && styles.actionWhatsApp, pressed && styles.actionPressed]}
+      scaleTo={press.scaleSubtle}
+      style={[styles.action, isWhatsApp && styles.actionWhatsApp]}
     >
       <Icon name={icon} size={18} tint={isWhatsApp ? WHATSAPP_INK : color.action.primary} />
       <AtlasText variant="bodyStrong" style={{ color: isWhatsApp ? WHATSAPP_INK : color.action.primary }}>
         {action.label}
       </AtlasText>
-    </Pressable>
+    </PressSurface>
   );
 }
 
@@ -122,5 +132,4 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface.raised,
   },
   actionWhatsApp: { borderColor: WHATSAPP_INK, backgroundColor: `${WHATSAPP_INK}14` },
-  actionPressed: { opacity: 0.7 },
 });
