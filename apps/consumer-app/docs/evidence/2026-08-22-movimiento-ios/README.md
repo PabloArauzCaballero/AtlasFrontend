@@ -203,18 +203,33 @@ bloqueado no se distingue de una app rota.
 El corte de marca pasó de 560 a **900 ms** repartidos al revés (380 cubrir / 520 atravesar): a la
 velocidad anterior el zoom no daba tiempo a leerse y lo que quedaba era un destello verde.
 
+## 4-quinquies. Integración con `dev`
+
+Todo lo anterior está mezclado con `origin/dev` en los tres repositorios. Un solo choque, en
+`bienvenida.tsx`: `dev` hizo que las páginas del carrusel vengan del servidor y aquí el punto
+indicador pasó a ser animado. Se resolvieron las dos cosas —el punto animado, contando
+`pasos.length` en vez de la constante del bundle—.
+
+**Aviso para quien mezcle `dev`:** `test/e2e/loans/loan-book.spec.ts` falla con 17 casos por
+`LoanSpendingService` sin registrar en el módulo de pruebas. Se comprobó en un árbol limpio de
+`origin/dev`, sin nada local: **ya venía roto de allí**.
+
 ## 5. Lo que queda abierto
 
 1. **El error de envío es invisible** (§2.3). El `ErrorState` debería traer la vista hasta él, o el
    fallo debería aparecer junto al botón, donde está mirando la persona.
 2. **La pantalla del carnet sigue sin llamar al motor** (§4-bis): es lo único que queda para que el
    camino que ya funciona llegue al cliente.
-3. **`DateTimePicker` avisa de que `onChange` está deprecado** — hay que migrar a `onValueChange` /
-   `onDismiss` (`src/ui/form-controls.tsx`).
-4. **Departamento y ciudad se escriben a mano.** Cuatro opciones fijas y un campo libre; deberían
-   salir de un catálogo. Las tablas `catalog.*` del backend existen pero están **vacías**.
-5. **El correo del código sale con identidad corporativa.** Debería ser un remitente y una plantilla
-   de la plataforma de clientes.
+3. **La dirección exacta.** El backend tiene `addressLineEncrypted` y **espera recibirlo ya cifrado
+   por el cliente**; esa pieza no existe, así que la app no pide calle ni número. Hasta que se
+   defina cómo se cifra, la tarjeta de confianza dice lo que sí pasa y no promete cifrado de un dato
+   que no se recoge.
+4. **`contacts` y `notifications`**: el backend acepta esos permisos y la app no los consulta porque
+   `expo-contacts` y `expo-notifications` no son dependencias. Añadirlos exige recompilar el
+   binario. Decir «denegado» sobre un permiso que no se ha consultado sería peor que callar.
+5. **El buzón del remitente.** Ya sale como **ATLAS** y no como una dirección suelta
+   (`GMAIL_FROM_NAME`), pero la dirección sigue siendo una cuenta personal: hace falta un buzón de
+   la plataforma. Eso es alta de infraestructura, no código.
 6. **La recuperación se quedó en el modelo viejo.** El enlace dice «Olvidé mi contraseña» en una
    pantalla cuyo campo se llama «PIN», y no es solo la etiqueta: `POST /auth/password-reset/confirm`
    exige **10 caracteres** (`auth.schemas.ts`) para todos los tipos de actor, así que quien olvide su
