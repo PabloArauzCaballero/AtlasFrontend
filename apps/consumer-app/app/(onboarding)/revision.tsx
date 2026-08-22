@@ -9,13 +9,14 @@
  * "listo". Prometer una aprobacion que no ocurrio es el peor final posible para un onboarding.
  */
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { type ScrollView } from 'react-native';
+import { useCallback, useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { SECTION_LABEL, SECTION_ROUTE, describeBlocker, describeLifecycle } from '../../src/features/onboarding-map';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
+import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, Divider, ErrorState, ListRow } from '../../src/ui/primitives';
 
 export default function Review() {
@@ -78,6 +79,12 @@ export default function Review() {
   };
 
   const described = error ? describeError(error) : null;
+
+  // El fallo se pinta arriba y el boton esta abajo: hay que llevar la vista hasta el.
+
+  const scroll = useRef<ScrollView>(null);
+
+  useScrollToError(error, scroll);
   const pending = (status?.sections ?? []).filter((section) => section.status !== 'completed');
 
   /*
@@ -97,7 +104,7 @@ export default function Review() {
   ]);
 
   return (
-    <Screen
+    <Screen scrollRef={scroll}
       onRefresh={onRefresh}
       refreshing={refreshing}
       footer={

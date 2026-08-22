@@ -6,9 +6,51 @@
  * El degradado teal -> menta es el mismo de `AtlasLandingPage`.
  */
 import { StyleSheet, View, type ViewStyle } from 'react-native';
-import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { color, palette, radius, space } from '../theme/tokens';
 import { AtlasText } from './primitives';
+
+/**
+ * Halo de marca: la atmosfera del fondo.
+ *
+ * ## Por que no es una `View` con `borderRadius`
+ *
+ * Lo era, y se veia. Un circulo de color plano al 16 % sobre el navy no es un resplandor: es un
+ * CIRCULO, con su borde perfectamente definido, y en la pantalla de bienvenida se leian dos discos
+ * verdes recortados detras del logotipo. El ojo detecta un borde duro incluso a opacidades muy
+ * bajas —justo lo que un degradado difumina—, asi que el efecto conseguia lo contrario de lo que
+ * buscaba: en vez de dar profundidad, aplanaba la pantalla contra dos formas geometricas.
+ *
+ * Un degradado radial que termina en alfa cero no tiene borde que detectar. Es la misma idea que
+ * `radial-gradient()` en la web, que es como esta resuelto en `AtlasLandingPage`.
+ *
+ * ## Por que SVG y no `expo-linear-gradient`
+ *
+ * `LinearGradient` solo interpola en linea recta. Un halo es radial por definicion, y aproximarlo
+ * con capas lineales deja bandas. `react-native-svg` ya es dependencia del proyecto —dibuja la
+ * marca y todos los iconos—, asi que no anade peso.
+ */
+export function BrandHalo({ size, style }: { size: number; style?: ViewStyle }) {
+  return (
+    <View pointerEvents="none" style={[{ width: size, height: size }, style]}>
+      <Svg width={size} height={size} viewBox="0 0 100 100">
+        <Defs>
+          <RadialGradient id="atlas-halo" cx="50%" cy="50%" r="50%">
+            {/*
+              Tres paradas, no dos. Con solo centro y borde la caida es lineal y se ve el disco
+              igual, solo que con el contorno emborronado; la parada intermedia al 45 % es la que
+              concentra el color en el nucleo y deja que el resto se apague despacio.
+            */}
+            <Stop offset="0" stopColor={palette.brand400} stopOpacity="0.30" />
+            <Stop offset="0.45" stopColor={palette.brand500} stopOpacity="0.12" />
+            <Stop offset="1" stopColor={palette.brand500} stopOpacity="0" />
+          </RadialGradient>
+        </Defs>
+        <Rect x="0" y="0" width="100" height="100" fill="url(#atlas-halo)" />
+      </Svg>
+    </View>
+  );
+}
 
 export function AtlasMark({ size = 40 }: { size?: number }) {
   return (

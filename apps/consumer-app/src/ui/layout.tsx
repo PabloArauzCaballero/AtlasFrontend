@@ -10,7 +10,6 @@ import React from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -20,7 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, radius, space, touch } from '../theme/tokens';
 import { Icon } from './icons';
-import { Appear } from './motion';
+import { Appear, PressSurface } from './motion';
 import { AtlasText } from './primitives';
 
 export function Screen({
@@ -32,6 +31,7 @@ export function Screen({
   onRefresh,
   refreshing = false,
   contentStyle,
+  scrollRef,
 }: {
   children: React.ReactNode;
   scroll?: boolean;
@@ -52,9 +52,31 @@ export function Screen({
   onRefresh?: () => void;
   refreshing?: boolean;
   contentStyle?: ViewStyle;
+  /**
+   * Acceso al desplazamiento de la pantalla, para poder LLEVAR la vista a algun sitio.
+   *
+   * Existe por un caso concreto y feo: el fallo de envio. Las pantallas del alta pintan el error del
+   * servidor arriba del todo —que es donde debe estar, porque es el estado de la pantalla entera— y
+   * el boton que lo provoca esta al final de un formulario de mil pixeles. Sin esto, el servidor
+   * rechaza el alta, la pantalla lo dice, y la persona ve que no pasa nada: el boton parece roto.
+   */
+  scrollRef?: React.RefObject<ScrollView | null>;
 }) {
   const insets = useSafeAreaInsets();
-  const body = padded ? [styles.content, contentStyle] : contentStyle;
+  /*
+    El area segura de ARRIBA, que faltaba.
+
+    `Screen` respetaba el borde inferior —el pie se levanta sobre el indicador de inicio— y no el
+    superior. En Android no se notaba porque la barra de estado no es translucida y la ventana ya
+    empieza por debajo; en iOS el contenido va de borde a borde, asi que en las veinte pantallas que
+    usan `Screen` el titulo se dibujaba ENCIMA del reloj y el boton de volver quedaba cortado por la
+    isla dinamica. Se vio en la primera captura del simulador de iOS: hasta ahora toda la evidencia
+    se habia tomado en Android.
+
+    Solo cuando `padded`: una pantalla a sangre —la camara del escaner— coloca sus propios controles
+    y meterle un hueco arriba le partiria el visor.
+  */
+  const body = padded ? [styles.content, { paddingTop: insets.top + space.base }, contentStyle] : contentStyle;
 
   /*
     Se envuelve cada hijo por separado, no el conjunto: escalonar exige que cada bloque tenga su
@@ -74,10 +96,20 @@ export function Screen({
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+      /*
+        Cero, no `insets.top`.
+
+        `keyboardVerticalOffset` es la distancia entre el borde superior de la PANTALLA y el de esta
+        vista. Esta vista es la pantalla entera —empieza en 0—, asi que declarar el area segura como
+        desfase hacia que el hueco reservado al teclado fuera 59 px mas alto que el teclado, y con el
+        teclado abierto quedaba una franja negra entre el pie y las teclas. El area segura de arriba
+        se paga con el `paddingTop` del contenido, que es donde corresponde.
+      */
+      keyboardVerticalOffset={0}
     >
       {scroll ? (
         <ScrollView
+          ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={[body, { paddingBottom: space.xxl + insets.bottom }]}
           keyboardShouldPersistTaps="handled"
@@ -96,6 +128,25 @@ export function Screen({
       {footer ? <View style={[styles.footer, { paddingBottom: Math.max(space.base, insets.bottom) }]}>{footer}</View> : null}
     </KeyboardAvoidingView>
   );
+}
+
+/**
+ * Lleva la pantalla arriba cuando aparece un error.
+ *
+ * Se usa junto a `Screen scrollRef`. Salta solo en el flanco —de «sin error» a «con error»—: si se
+ * disparara con cada render, un error persistente devolveria la vista al principio cada vez que la
+ * persona intenta desplazarse para leer otra cosa, y eso es peor que no moverla.
+ *
+ * `animated` a proposito: un salto instantaneo al principio de un formulario largo no se lee como
+ * «mira arriba», se lee como que la pantalla se ha reiniciado y ha perdido lo escrito.
+ */
+export function useScrollToError(error: unknown, scrollRef: React.RefObject<ScrollView | null>) {
+  const habia = React.useRef(false);
+  React.useEffect(() => {
+    const hay = Boolean(error);
+    if (hay && !habia.current) scrollRef.current?.scrollTo({ y: 0, animated: true });
+    habia.current = hay;
+  }, [error, scrollRef]);
 }
 
 /**
@@ -130,15 +181,23 @@ export function ScreenHeader({
   return (
     <View style={styles.header}>
       {handleBack ? (
-        <Pressable
+        /*
+          El mismo hundimiento que cualquier otra superficie tocable de la app.
+
+          Antes era un salto de opacidad a 0.7 con el `pressed` de `Pressable`: instantaneo, sin
+          fotogramas intermedios y con un temperamento distinto al de los botones y las filas que
+          tiene al lado. Es un control que aparece en veinte pantallas, asi que era la
+          inconsistencia de movimiento mas repetida de la app.
+        */
+        <PressSurface
           accessibilityRole="button"
           accessibilityLabel="Volver"
           onPress={handleBack}
           hitSlop={12}
-          style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+          style={styles.backButton}
         >
           <Icon name="atras" size={22} />
-        </Pressable>
+        </PressSurface>
       ) : null}
 
       {leading}
@@ -176,7 +235,6 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface.raised,
     marginLeft: -space.sm,
   },
-  pressed: { opacity: 0.7 },
   footer: {
     paddingHorizontal: space.lg,
     paddingTop: space.md,

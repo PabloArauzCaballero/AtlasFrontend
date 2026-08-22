@@ -4,13 +4,14 @@
  * El backend guarda cada cambio como una VERSION de perfil, no como una sobrescritura. Por eso la
  * pantalla puede enviar solo lo que cambio: el guardado parcial es parte del contrato.
  */
+import { type ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { CheckRow, Field, OptionGroup } from '../../src/ui/fields';
-import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
+import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 
 type Gender = 'female' | 'male' | 'other' | 'undisclosed';
@@ -52,8 +53,14 @@ export default function PersonalData() {
 
   const described = error ? describeError(error) : null;
 
+  // El fallo se pinta arriba y el boton esta abajo: hay que llevar la vista hasta el.
+
+  const scroll = useRef<ScrollView>(null);
+
+  useScrollToError(error, scroll);
+
   return (
-    <Screen footer={<Button label="Guardar" onPress={save} loading={busy} disabled={busy} />}>
+    <Screen scrollRef={scroll} footer={<Button label="Guardar" onPress={save} loading={busy} disabled={busy} />}>
       <ScreenHeader title="Tus datos" subtitle="Así te identificamos en tu expediente." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}

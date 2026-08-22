@@ -23,7 +23,7 @@
  * tirones justo en el momento en que el usuario mas atento esta.
  */
 import React from 'react';
-import { Pressable, type PressableProps, type ViewStyle } from 'react-native';
+import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   FadeInUp,
@@ -31,11 +31,35 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { easing, motion, press } from '../theme/tokens';
+import { easing, motion, press, spring } from '../theme/tokens';
 
 const CURVE = Easing.bezier(easing.decelerate[0], easing.decelerate[1], easing.decelerate[2], easing.decelerate[3]);
+
+/**
+ * Un `Pressable` que se anima en el hilo de UI.
+ *
+ * El `pressed` que expone `Pressable` es estado de React: entra y sale de golpe, sin fotogramas
+ * intermedios, y se pierde si algo re-renderiza en medio del toque —que es justo lo que pasa cuando
+ * el control dispara una peticion—. Con un valor compartido el hundimiento tiene recorrido y
+ * sobrevive al re-render.
+ *
+ * Se anima el propio pulsable y no una vista interior a proposito: asi el elemento que lleva los
+ * estilos ES el que recibe el toque. Con la envoltura, un estilo de reparto —un ancho en
+ * porcentaje, un `flex`— se aplicaba a un hijo dentro de un padre sin medidas, y la celda de una
+ * rejilla acababa midiendo lo que midiera su contenido.
+ */
+export const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+/** La curva simetrica de `easing.emphasized`, lista para pasar a `withTiming`. */
+export const EMPHASIZED = Easing.bezier(
+  easing.emphasized[0],
+  easing.emphasized[1],
+  easing.emphasized[2],
+  easing.emphasized[3],
+);
 
 /**
  * Entrada de un elemento de contenido: sube unos pixeles mientras aparece.
@@ -77,26 +101,34 @@ export function Appear({
  * Es lo que separa una tarjeta que se puede tocar de una que no: sin realimentacion tactil el
  * usuario toca dos veces «por si acaso», y en una pantalla de pago eso importa.
  *
- * La escala vuelve con `withTiming` corto en vez de un muelle. Un rebote en una lista de cuotas se
- * lee como juguete; aqui se quiere precision, no simpatia.
+ * ## Por que muelle y no `withTiming`
+ *
+ * Antes la escala volvia con una curva de 140 ms, por miedo a que un muelle metiera rebote en una
+ * lista de cuotas. El miedo era correcto y la conclusion no: lo que hace juguete a un muelle es
+ * estar SUBAMORTIGUADO, no ser un muelle. `spring.press` esta sobreamortiguado —llega a 1 y se
+ * queda, sin rebasarlo—, y a cambio la desaceleracion deja de ser una rampa.
+ *
+ * La diferencia se nota justo donde importa: al soltar el dedo. Con la curva, el elemento sube a
+ * velocidad constante y se para en seco; con el muelle, frena solo. Es la misma distancia recorrida
+ * y se lee como un material distinto.
  */
 export function PressSurface({
   children,
   style,
   scaleTo = press.scale,
   ...rest
-}: Omit<PressableProps, 'style'> & { style?: ViewStyle; scaleTo?: number; children: React.ReactNode }) {
+}: Omit<PressableProps, 'style'> & { style?: StyleProp<ViewStyle>; scaleTo?: number; children: React.ReactNode }) {
   const reduced = useReducedMotion();
   const scale = useSharedValue(1);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   const settle = (to: number) => {
     if (reduced) return;
-    scale.value = withTiming(to, { duration: motion.fast, easing: CURVE });
+    scale.value = withSpring(to, spring.press);
   };
 
   return (
-    <Pressable
+    <AnimatedPressable
       {...rest}
       onPressIn={(event) => {
         settle(scaleTo);
@@ -106,9 +138,10 @@ export function PressSurface({
         settle(1);
         rest.onPressOut?.(event);
       }}
+      style={[style, animated]}
     >
-      <Animated.View style={[animated, style]}>{children}</Animated.View>
-    </Pressable>
+      {children}
+    </AnimatedPressable>
   );
 }
 

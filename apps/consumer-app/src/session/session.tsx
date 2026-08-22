@@ -4,12 +4,13 @@
  * Es la unica pieza que decide si la persona entra al area autenticada, sigue en onboarding o ve la
  * bienvenida. Las rutas consultan este estado; no lo reimplementan.
  */
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { configureClient } from '../api/client';
 import * as authApi from '../api/endpoints/auth';
 import * as customerApi from '../api/endpoints/customer';
 import * as onboardingApi from '../api/endpoints/onboarding';
 import { deviceIdentity } from '../device/device';
+import { permisosDecididos } from '../device/permissions';
 import { profileStorage, secureTokenStore, type StoredProfile } from './token-storage';
 
 export type SessionStatus = 'restoring' | 'anonymous' | 'authenticated';
@@ -43,6 +44,9 @@ const SessionContext = createContext<SessionValue | null>(null);
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>('restoring');
   const [profile, setProfile] = useState<StoredProfile | null>(null);
+  // El identificador de la sesion de telemetria abierta, para poder cerrarla al salir. En una
+  // referencia y no en estado: cambiarlo no tiene que repintar nada.
+  const sesionTelemetria = useRef<string | null>(null);
   const [onboarding, setOnboarding] = useState<onboardingApi.OnboardingStatus | null>(null);
   const [me, setMe] = useState<customerApi.CustomerMe | null>(null);
 
@@ -91,6 +95,39 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     void restore();
   }, [restore]);
 
+  /*
+    La sesion de telemetria: se abre al entrar y se cierra al salir.
+
+    `startSession` existia en la capa de API desde el principio y **no lo llamaba nadie**. La unica
+    fila de `telemetry.customer_sessions` que tenia un cliente era la que crea el alta, asi que de
+    todo lo que hace despues —cuantas veces entra, desde que dispositivo, cuanto dura— no quedaba
+    rastro. Eso no es telemetria de producto: es el registro con el que se reconstruye un fraude o
+    se responde a un reclamo, y sin el la respuesta a «¿desde donde se hizo esta compra?» es que no
+    se sabe.
+
+    Falla en silencio a proposito. Abrir sesion es una anotacion, y una anotacion que no se puede
+    escribir no puede impedir que alguien entre a ver cuanto debe.
+  */
+  const abrirSesionTelemetria = useCallback(async (customerId: string, authMethod: string) => {
+    try {
+      const device = await deviceIdentity();
+      const permisos = await permisosDecididos();
+      const { sessionId } = await customerApi.startSession(customerId, {
+        device: {
+          deviceFingerprintHash: device.deviceFingerprintHash,
+          fingerprintVersion: device.fingerprintVersion,
+          channel: device.channel,
+          userAgent: device.userAgent,
+        },
+        authMethod,
+        locationPermissionGranted: permisos.find((permiso) => permiso.permissionCode === 'location')?.granted,
+      });
+      sesionTelemetria.current = sessionId;
+    } catch {
+      sesionTelemetria.current = null;
+    }
+  }, []);
+
   const signIn = useCallback<SessionValue['signIn']>(
     async (identifier, password) => {
       const tokens = await authApi.login(identifier, password);
@@ -103,8 +140,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       setProfile(stored);
       await loadCustomerState(customerId);
       setStatus('authenticated');
+      void abrirSesionTelemetria(customerId, 'password');
     },
-    [loadCustomerState],
+    [abrirSesionTelemetria, loadCustomerState],
   );
 
   const register = useCallback<SessionValue['register']>(
@@ -121,7 +159,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         password: input.password,
         consents: input.consents,
         device,
-        permissions: input.permissions,
+        /*
+          Los permisos del sistema, consultados —no pedidos— en el momento del alta. Lo que llegara
+          por `input.permissions` son los que la pantalla haya solicitado explicitamente; lo demas
+          es el estado real del dispositivo, que hasta ahora no viajaba y dejaba
+          `telemetry.permission_events` vacia para todos los clientes creados desde la app.
+        */
+        permissions: [...(input.permissions ?? []), ...(await permisosDecididos())],
         onboarding: { sourceType: 'mobile_app', startedStepCode: 'register' },
       });
 
@@ -134,6 +178,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback<SessionValue['signOut']>(async () => {
+    const abierta = sesionTelemetria.current;
+    const salienteId = profile?.customerId;
+    if (abierta && salienteId) {
+      // Cerrarla antes de revocar el token: despues ya no hay con que autenticar la llamada, y una
+      // sesion que nunca se cierra se queda «activa» para siempre en la auditoria.
+      await customerApi.endSession(salienteId, abierta).catch(() => undefined);
+      sesionTelemetria.current = null;
+    }
     const tokens = await secureTokenStore.read();
     if (tokens) {
       // Si la revocacion falla, la sesion local se cierra igual: dejar tokens en el dispositivo
@@ -145,7 +197,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setOnboarding(null);
     setMe(null);
     setStatus('anonymous');
-  }, []);
+  }, [profile?.customerId]);
 
   const refresh = useCallback(async () => {
     if (!profile) return;

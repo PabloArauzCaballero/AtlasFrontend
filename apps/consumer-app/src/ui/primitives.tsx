@@ -16,7 +16,6 @@ import {
   Animated,
   Easing,
   Platform,
-  Pressable,
   type PressableProps,
   StyleSheet,
   Text,
@@ -26,9 +25,10 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
-import { color, palette, press, radius, shadow, space, touch, type } from '../theme/tokens';
+import { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
+import { color, palette, press, radius, shadow, space, spring, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
-import { PressSurface } from './motion';
+import { AnimatedPressable, PressSurface } from './motion';
 
 /* ------------------------------------------------------------------ texto */
 
@@ -120,8 +120,27 @@ export function Button({
   */
   const isLitPrimary = variant === 'primary' && !isBlocked;
 
+  /*
+    El hundimiento: escala y opacidad juntas, con muelle sobreamortiguado.
+
+    Van juntas porque solas se leen mal. La escala sola, a 0.97, casi no se ve en un boton ancho
+    —el desplazamiento del borde es de un pixel—; la opacidad sola parece que el boton se apaga en
+    vez de recibir el toque. Combinadas, el boton se lee como una superficie que CEDE.
+  */
+  const reduced = useReducedMotion();
+  const pressProgress = useSharedValue(0);
+  const pressStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 - pressProgress.value * (1 - press.scale) }],
+    opacity: 1 - pressProgress.value * 0.12,
+  }));
+
+  const setPressed = (down: boolean) => {
+    if (reduced || isBlocked) return;
+    pressProgress.value = withSpring(down ? 1 : 0, spring.press);
+  };
+
   const pressable = (
-    <Pressable
+    <AnimatedPressable
       {...rest}
       accessibilityRole="button"
       accessibilityLabel={rest.accessibilityLabel ?? label}
@@ -129,15 +148,23 @@ export function Button({
       accessibilityState={{ disabled: isBlocked, busy: loading }}
       disabled={isBlocked}
       onPress={handlePress}
-      style={({ pressed }) => [
+      onPressIn={(event) => {
+        setPressed(true);
+        rest.onPressIn?.(event);
+      }}
+      onPressOut={(event) => {
+        setPressed(false);
+        rest.onPressOut?.(event);
+      }}
+      style={[
         styles.button,
         variant === 'secondary' && styles.buttonSecondary,
         variant === 'ghost' && styles.buttonGhost,
         variant === 'destructive' && styles.buttonDestructive,
         isLitPrimary && styles.buttonLit,
-        pressed && !isBlocked && styles.buttonPressed,
         isBlocked && styles.buttonDisabled,
         showReason ? undefined : style,
+        pressStyle,
       ]}
     >
       {isLitPrimary ? (
@@ -163,7 +190,7 @@ export function Button({
           </AtlasText>
         </View>
       )}
-    </Pressable>
+    </AnimatedPressable>
   );
 
   if (!showReason) return pressable;
@@ -461,7 +488,6 @@ const styles = StyleSheet.create({
   buttonDestructive: { backgroundColor: 'transparent', borderWidth: 1, borderColor: color.feedback.danger },
   // `overflow: hidden` recorta el degradado al radio de la pildora; sin el, asoma por las esquinas.
   buttonLit: { backgroundColor: color.action.primary, overflow: 'hidden', ...shadow.brandGlow },
-  buttonPressed: { opacity: 0.9, transform: [{ scale: 0.985 }] },
   buttonDisabled: { backgroundColor: color.action.disabled },
   buttonLabelDisabled: { color: color.text.tertiary },
 

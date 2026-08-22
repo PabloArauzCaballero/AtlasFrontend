@@ -13,19 +13,52 @@
  * "estas aqui" sino "esto es lo que la app hace".
  */
 import { Tabs } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
-import { color, radius, space, touch, type } from '../../../src/theme/tokens';
+import { useEffect } from 'react';
+import { StyleSheet } from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
+import { color, radius, space, spring, touch, type } from '../../../src/theme/tokens';
 import { Icon, type IconName } from '../../../src/ui/icons';
 
+/**
+ * El icono de la pestana activa se asienta; no aparece ya colocado.
+ *
+ * El cambio de color al enfocar era instantaneo, y en una barra de cinco destinos eso hace que
+ * cambiar de pestana se lea como un corte de camara: la pantalla nueva entra y, a la vez, un icono
+ * de abajo se ha vuelto verde sin haber pasado por ningun sitio.
+ *
+ * El realce es deliberadamente pequeno —un 8 % de escala— porque la barra esta siempre en pantalla.
+ * Lo que se busca no es que se note la animacion, sino que la mirada tenga a donde volver despues
+ * de que el contenido haya cambiado entero.
+ */
 function TabIcon({ name, focused, highlighted }: { name: IconName; focused: boolean; highlighted?: boolean }) {
+  const reduced = useReducedMotion();
+  const activo = useSharedValue(focused ? 1 : 0);
+
+  useEffect(() => {
+    if (reduced) {
+      activo.value = focused ? 1 : 0;
+      return;
+    }
+    activo.value = withSpring(focused ? 1 : 0, spring.settle);
+  }, [focused, reduced, activo]);
+
+  const animado = useAnimatedStyle(() => ({ transform: [{ scale: 1 + activo.value * 0.08 }] }));
+
   return (
-    <View style={[styles.icon, highlighted && styles.iconHighlighted, highlighted && focused && styles.iconHighlightedActive]}>
+    <Animated.View
+      style={[
+        styles.icon,
+        highlighted && styles.iconHighlighted,
+        highlighted && focused && styles.iconHighlightedActive,
+        animado,
+      ]}
+    >
       <Icon
         name={name}
         size={highlighted ? 20 : 22}
         tint={highlighted ? (focused ? color.text.onBrand : color.text.secondary) : focused ? color.action.primary : color.text.tertiary}
       />
-    </View>
+    </Animated.View>
   );
 }
 

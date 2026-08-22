@@ -25,7 +25,10 @@ export default function OnboardingLayout() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: color.surface.primary },
-        animation: 'slide_from_right',
+        // Misma correccion que en la raiz: `slide_from_right` es solo Android en Expo 57 y renuncia
+        // al empuje nativo de iOS. En un formulario de ocho pasos es donde mas se nota, porque el
+        // gesto interactivo de volver es como se corrige un dato del paso anterior.
+        animation: 'default',
       }}
     />
   );

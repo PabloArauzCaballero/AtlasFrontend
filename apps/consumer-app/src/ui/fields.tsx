@@ -5,9 +5,10 @@
  * foco visible. Un formulario movil que no contempla el teclado es un formulario web encogido.
  */
 import { forwardRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, type TextInputProps, View, type ViewStyle, Switch as RNSwitch } from 'react-native';
+import { StyleSheet, TextInput, type TextInputProps, View, type ViewStyle, Switch as RNSwitch } from 'react-native';
 import { type Currency, type Minor, formatMoney, parseAmountInput } from '../domain/money';
-import { color, radius, space, touch, type } from '../theme/tokens';
+import { color, press, radius, space, touch, type } from '../theme/tokens';
+import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
 
 export type FieldProps = TextInputProps & {
@@ -143,13 +144,22 @@ export function OptionGroup<T extends string>({
         {options.map((option) => {
           const selected = option.value === value;
           return (
-            <Pressable
+            /*
+              El mismo hundimiento que las filas de lista, no un salto de opacidad.
+
+              Estas filas son el control mas repetido del registro —ocho pasos casi todos de
+              opciones— y no tenian recorrido ninguno: la opacidad bajaba a 0.8 en un fotograma y
+              volvia en otro. `scaleSubtle` y no `press.scale` porque en una fila ancha el 3 %
+              desplaza el borde lo bastante como para leerse como un salto.
+            */
+            <PressSurface
               key={option.value}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
               accessibilityLabel={option.label}
               onPress={() => onChange(option.value)}
-              style={({ pressed }) => [styles.option, selected && styles.optionSelected, pressed && styles.optionPressed]}
+              scaleTo={press.scaleSubtle}
+              style={[styles.option, selected && styles.optionSelected]}
             >
               <AtlasText variant="bodyStrong" tone={selected ? 'brand' : 'primary'}>
                 {option.label}
@@ -159,7 +169,7 @@ export function OptionGroup<T extends string>({
                   {option.detail}
                 </AtlasText>
               ) : null}
-            </Pressable>
+            </PressSurface>
           );
         })}
       </View>
@@ -185,12 +195,13 @@ export function CheckRow({
   onToggle: (next: boolean) => void;
 }) {
   return (
-    <Pressable
+    <PressSurface
       accessibilityRole="checkbox"
       accessibilityState={{ checked }}
       accessibilityLabel={label}
       onPress={() => onToggle(!checked)}
-      style={({ pressed }) => [styles.checkRow, pressed && styles.optionPressed]}
+      scaleTo={press.scaleSubtle}
+      style={styles.checkRow}
     >
       <View style={[styles.checkBox, checked && styles.checkBoxChecked]}>
         {checked ? (
@@ -207,7 +218,7 @@ export function CheckRow({
           </AtlasText>
         ) : null}
       </View>
-    </Pressable>
+    </PressSurface>
   );
 }
 
@@ -288,7 +299,6 @@ const styles = StyleSheet.create({
     borderColor: color.action.primary,
     borderWidth: 1.5,
   },
-  optionPressed: { opacity: 0.8 },
 
   checkRow: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start', minHeight: touch.minSize, paddingVertical: space.sm },
   checkBox: {

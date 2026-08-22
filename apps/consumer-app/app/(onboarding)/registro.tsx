@@ -9,19 +9,21 @@
  * version se acepto.
  */
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import * as customerApi from '../../src/api/endpoints/customer';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { StyleSheet, View, Pressable } from 'react-native';
+import { StyleSheet, View, Pressable, type ScrollView } from 'react-native';
 import { ConsentRow } from '../../src/ui/consent-row';
 import { type Country, DEFAULT_COUNTRY, DateField, IconField, PhoneField } from '../../src/ui/form-controls';
 import { Icon, type IconName } from '../../src/ui/icons';
 import { color, space } from '../../src/theme/tokens';
-import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
+import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { PinField } from '../../src/ui/pin-field';
 import { AtlasText, Button, Card, Divider, ErrorState, Skeleton } from '../../src/ui/primitives';
+import { TRUST_REGISTRO } from '../../src/features/trust-copy';
+import { TrustCard } from '../../src/ui/trust-card';
 
 /** Edad minima exigida por la regla de habilitacion del backend. */
 const MIN_AGE = 18;
@@ -163,10 +165,16 @@ export default function Register() {
   };
 
   const described = error ? describeError(error) : null;
+
+  // El fallo se pinta arriba y el boton esta abajo: hay que llevar la vista hasta el.
+
+  const scroll = useRef<ScrollView>(null);
+
+  useScrollToError(error, scroll);
   const describedLoad = loadError ? describeError(loadError) : null;
 
   return (
-    <Screen footer={<Button label="Crear mi cuenta" onPress={submit} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
+    <Screen scrollRef={scroll} footer={<Button label="Crear mi cuenta" onPress={submit} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
       <ScreenHeader title="Crear cuenta" subtitle="Necesitamos estos datos para abrir tu expediente." onBack="auto" />
 
       {described ? (
@@ -275,7 +283,7 @@ export default function Register() {
           value={form.password}
           onChangeText={(v) => setForm({ ...form, password: v })}
           error={form.password ? errors.password : null}
-          hint="Cuatro digitos que recuerdes. Evita 1234, tu ano de nacimiento o cuatro iguales."
+          hint="Cuatro dígitos que recuerdes. Evita 1234, tu año de nacimiento o cuatro iguales."
         />
       </FormSection>
 
@@ -322,6 +330,8 @@ export default function Register() {
       <AtlasText variant="caption" tone="tertiary">
         Guardamos qué versión aceptaste y cuándo, tal como exige la normativa de protección de datos.
       </AtlasText>
+      {/* Al final del formulario: ver `ui/trust-card.tsx`. */}
+      <TrustCard items={TRUST_REGISTRO} />
     </Screen>
   );
 }

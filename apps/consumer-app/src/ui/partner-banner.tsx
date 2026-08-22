@@ -14,10 +14,11 @@
  * recomendacion de Atlas. La etiqueta «Espacio de partner» es lo que separa lo que la app afirma de
  * lo que un tercero paga por decir.
  */
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
-import { color, radius, space } from '../theme/tokens';
+import { color, palette, press, radius, space } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
+import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
 
 export type PartnerBannerContent = {
@@ -49,18 +50,19 @@ export function PartnerBanner({ content = SAMPLE_PARTNER_BANNER, onPress }: { co
         ESPACIO DE PARTNER
       </AtlasText>
 
-      <Pressable
+      <PressSurface
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={`Publicidad de ${content.partnerName}: ${content.headline}`}
         style={styles.card}
+        scaleTo={press.scaleSubtle}
       >
         {/* El degradado va en SVG: React Native no admite gradientes en `backgroundColor`. */}
         <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
           <Defs>
             <LinearGradient id="partnerBanner" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor="#0E7377" />
-              <Stop offset="1" stopColor="#0C2C50" />
+              <Stop offset="0" stopColor={palette.brand700} />
+              <Stop offset="1" stopColor={palette.navy} />
             </LinearGradient>
           </Defs>
           <Rect x="0" y="0" width="100%" height="100%" rx={radius.lg} fill="url(#partnerBanner)" />
@@ -68,7 +70,7 @@ export function PartnerBanner({ content = SAMPLE_PARTNER_BANNER, onPress }: { co
 
         <View style={styles.content}>
           <View style={styles.iconBox}>
-            <Icon name={content.icon} size={24} tint="#2BE0A8" />
+            <Icon name={content.icon} size={24} tint={palette.brand400} />
           </View>
           <View style={styles.text}>
             <AtlasText variant="caption" style={styles.partnerName}>
@@ -81,9 +83,9 @@ export function PartnerBanner({ content = SAMPLE_PARTNER_BANNER, onPress }: { co
               {content.detail}
             </AtlasText>
           </View>
-          <Icon name="adelante" size={18} tint="#7FEFD6" />
+          <Icon name="adelante" size={18} tint={palette.tint} />
         </View>
-      </Pressable>
+      </PressSurface>
     </View>
   );
 }
@@ -104,10 +106,18 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: palette.ink10,
   },
   text: { flex: 1, gap: 2 },
-  partnerName: { color: '#7FEFD6', letterSpacing: 0.6 },
-  headline: { color: '#FFFFFF' },
-  detail: { color: 'rgba(237,243,249,0.78)' },
+  /*
+    Estos tres son los unicos colores de la app que se declaran contra un fondo que no es el de la
+    app: el banner trae su propio degradado, asi que los tonos del sistema para texto —pensados
+    sobre el navy— no valen aqui. Salen igualmente del palette, que es lo que pide §1: lo que no
+    puede haber es un literal.
+  */
+  partnerName: { color: palette.tint, letterSpacing: 0.6 },
+  headline: { color: palette.white },
+  // El cuerpo va al 78 % en vez de con un tono propio: sobre un degradado, un gris fijo se aclara o
+  // se ensucia segun la zona de la tarjeta donde caiga.
+  detail: { color: palette.text1, opacity: 0.78 },
 });

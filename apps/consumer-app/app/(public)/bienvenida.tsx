@@ -29,19 +29,23 @@
  */
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Dimensions, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Dimensions, Pressable, type ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   Extrapolation,
   interpolate,
+  interpolateColor,
+  runOnJS,
   type SharedValue,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AtlasMark } from '../../src/ui/brand';
+import { AtlasMark, BrandHalo } from '../../src/ui/brand';
+import { useBrandCut } from '../../src/ui/brand-cut';
 import { color, radius, space } from '../../src/theme/tokens';
 import { Icon, type IconName } from '../../src/ui/icons';
 import { AtlasText, Button } from '../../src/ui/primitives';
@@ -86,6 +90,7 @@ export default function Welcome() {
   const scroll = useRef<ScrollView>(null);
   const [pagina, setPagina] = useState(0);
   const reduced = useReducedMotion();
+  const cortar = useBrandCut();
 
   /*
    * La entrada de la marca: escala 1.3 -> 1 y opacidad 0 -> 1.
@@ -115,12 +120,26 @@ export default function Welcome() {
     transform: [{ translateY: interpolate(entrada.value, [0.35, 1], [14, 0], Extrapolation.CLAMP) }],
   }));
 
-  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const x = event.nativeEvent.contentOffset.x;
-    progreso.value = x / SCREEN_WIDTH;
-    const next = Math.round(x / SCREEN_WIDTH);
-    if (next !== pagina) setPagina(next);
-  };
+  /*
+    El progreso se calcula en el hilo de UI, no en el de JS.
+
+    Con `onScroll` normal, cada fotograma del paralaje dependia de que el hilo de JS estuviera libre
+    para leer el evento y escribir el valor compartido. En el arranque de la app —fuentes, sesion,
+    primera peticion— no lo esta, y el deslizamiento se veia a tirones justo en la primera pantalla
+    que ve un cliente. `useAnimatedScrollHandler` corre en el hilo de UI y el paralaje ya no depende
+    de nada de eso.
+
+    Lo unico que vuelve a JS es el numero de pagina, y solo cuando CAMBIA: es estado de React —de el
+    dependen los botones del pie— y ahi si hace falta un re-render, pero uno cada pagina y no uno
+    por fotograma.
+  */
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      progreso.value = event.contentOffset.x / SCREEN_WIDTH;
+      const next = Math.round(event.contentOffset.x / SCREEN_WIDTH);
+      if (next !== pagina) runOnJS(setPagina)(next);
+    },
+  });
 
   const irA = (indice: number) => scroll.current?.scrollTo({ x: indice * SCREEN_WIDTH, animated: true });
   const ultima = pagina === PASOS.length;
@@ -133,11 +152,14 @@ export default function Welcome() {
         Un degradado plano se ve como un fondo; dos focos descentrados dan profundidad y hacen que el
         contenido parezca estar POR ENCIMA de algo. Es lo que separa una pantalla oscura de una
         pantalla con atmosfera.
-      */}
-      <View pointerEvents="none" style={[styles.halo, styles.haloTop]} />
-      <View pointerEvents="none" style={[styles.halo, styles.haloBottom]} />
 
-      <ScrollView
+        Son `BrandHalo` —degradado radial— y no vistas redondeadas: ver el porque en `ui/brand.tsx`.
+        En corto: un circulo de color plano al 16 % sigue teniendo un borde, y aqui se veian los dos.
+      */}
+      <BrandHalo size={560} style={styles.haloTop} />
+      <BrandHalo size={620} style={styles.haloBottom} />
+
+      <Animated.ScrollView
         ref={scroll}
         horizontal
         pagingEnabled
@@ -167,30 +189,42 @@ export default function Welcome() {
         {PASOS.map((paso, indice) => (
           <PasoView key={paso.titulo} paso={paso} indice={indice} progreso={progreso} reduced={reduced} />
         ))}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Los puntos: donde estoy y cuanto queda. Tocables, porque verlos invita a tocarlos. */}
       <View style={styles.dots}>
         {Array.from({ length: PASOS.length + 1 }, (_, indice) => (
-          <Pressable
+          <Punto
             key={indice}
+            indice={indice}
+            total={PASOS.length + 1}
+            progreso={progreso}
+            reduced={reduced}
+            activo={pagina === indice}
             onPress={() => irA(indice)}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel={`Ir a la pantalla ${indice + 1} de ${PASOS.length + 1}`}
-          >
-            <View style={[styles.dot, pagina === indice && styles.dotActive]} />
-          </Pressable>
+          />
         ))}
       </View>
 
       <View style={[styles.footer, { paddingBottom: Math.max(space.lg, insets.bottom) }]}>
+        {/*
+          Salir de la bienvenida pasa por el corte de marca; pasar de pagina, no.
+
+          «Siguiente» no sale de esta pantalla: mueve el carrusel. Atravesar la marca para volver a
+          la misma pantalla contaria un viaje que no ocurrio, y ademas taparia el unico movimiento
+          que ahi importa —el paralaje de la pagina que entra—. El corte marca un LIMITE, y usarlo
+          en cada toque lo convertiria en un peaje de medio segundo repetido cuatro veces.
+        */}
         {ultima ? (
-          <Button label="Crear mi cuenta" onPress={() => router.push('/(onboarding)/registro')} />
+          <Button label="Crear mi cuenta" onPress={() => cortar(() => router.push('/(onboarding)/registro'))} />
         ) : (
           <Button label="Siguiente" onPress={() => irA(pagina + 1)} />
         )}
-        <Button label="Ya tengo cuenta" variant="ghost" onPress={() => router.push('/(auth)/ingresar')} />
+        <Button
+          label="Ya tengo cuenta"
+          variant="ghost"
+          onPress={() => cortar(() => router.push('/(auth)/ingresar'))}
+        />
       </View>
     </View>
   );
@@ -248,14 +282,83 @@ function PasoView({
   );
 }
 
+/**
+ * Un punto del indicador.
+ *
+ * ## Por que se estira con el dedo y no al llegar
+ *
+ * El punto activo mide 22 px y los demas 8. Cuando ese cambio ocurria al soltar —cuando `pagina` ya
+ * habia cambiado— el indicador iba un paso por detras del contenido: la pagina nueva ya estaba a
+ * medio entrar y abajo seguia marcado el punto de la anterior, hasta que de golpe saltaba. Es el
+ * detalle que hace que un carrusel se sienta «de plantilla».
+ *
+ * Atado a `progreso`, el punto que se deja se encoge y el que llega se alarga **a la vez que el
+ * dedo**, y a mitad de camino los dos estan a medias. Ademas eso informa de algo que el salto no
+ * decia: que el gesto se puede cancelar volviendo atras.
+ *
+ * Con movimiento reducido no se interpola nada: el punto activo se pinta ancho y ya.
+ */
+function Punto({
+  indice,
+  total,
+  progreso,
+  reduced,
+  activo,
+  onPress,
+}: {
+  indice: number;
+  total: number;
+  progreso: SharedValue<number>;
+  reduced: boolean;
+  activo: boolean;
+  onPress: () => void;
+}) {
+  const animado = useAnimatedStyle(() => {
+    if (reduced) return {};
+    const cercania = interpolate(Math.abs(progreso.value - indice), [0, 1], [1, 0], Extrapolation.CLAMP);
+    return {
+      width: interpolate(cercania, [0, 1], [8, 22]),
+      // `interpolateColor` y no un umbral: con `cercania > 0.5` el ancho viajaba y el color saltaba
+      // en mitad del recorrido, que es peor que si saltaran los dos a la vez.
+      backgroundColor: interpolateColor(cercania, [0, 1], [color.border.subtle, color.action.primary]),
+    };
+  });
+
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={10}
+      accessibilityRole="button"
+      accessibilityLabel={`Ir a la pantalla ${indice + 1} de ${total}`}
+    >
+      <Animated.View style={[styles.dot, reduced && activo && styles.dotActive, animado]} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: color.surface.primary },
   flex: { flex: 1 },
-  page: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xl, gap: space.lg },
+  /*
+    `overflow: hidden` recorta cada pagina a su propio ancho.
 
-  halo: { position: 'absolute', width: 460, height: 460, borderRadius: 230, opacity: 0.16 },
-  haloTop: { top: -190, right: -150, backgroundColor: color.action.primary },
-  haloBottom: { bottom: -220, left: -170, backgroundColor: color.action.primary, opacity: 0.1 },
+    Sin el, el paralaje del contenido —que se desplaza 0.35 del recorrido— sacaba el titular y el
+    cuerpo de la pagina vecina FUERA de su pagina, y se leian a media opacidad sobre la que estaba
+    en pantalla. En la bienvenida se veia el «Escaneas y listo» de la pagina 2 flotando junto al
+    logotipo. El paralaje solo funciona si cada capa esta contenida en su marco: lo que le da el
+    efecto de profundidad es que asome menos, no que se salga.
+  */
+  page: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: space.xl,
+    gap: space.lg,
+    overflow: 'hidden',
+  },
+
+  haloTop: { position: 'absolute', top: -240, right: -200 },
+  haloBottom: { position: 'absolute', bottom: -280, left: -220, opacity: 0.7 },
 
   marcaWrap: { alignItems: 'center', gap: space.md },
   marcaTexto: { letterSpacing: 6, textAlign: 'center' },

@@ -36,6 +36,8 @@ export const palette = {
 
   ink04: 'rgba(255,255,255,0.04)',
   ink07: 'rgba(255,255,255,0.07)',
+  /** Lavado sobre una superficie que ya es de color, donde 0.07 se pierde. Hoy: el banner de partner. */
+  ink10: 'rgba(255,255,255,0.10)',
   line: 'rgba(255,255,255,0.09)',
   line2: 'rgba(255,255,255,0.16)',
 
@@ -251,6 +253,20 @@ export const motion = {
   slow: 380,
   /** Retardo entre elementos de una misma entrada escalonada. */
   stagger: 45,
+  /**
+   * El paso de una pantalla a otra a traves de la marca.
+   *
+   * Es el unico movimiento de la app que se sale del cuarto de segundo, y se lo puede permitir
+   * porque ocurre UNA vez —al salir de la bienvenida— y porque durante el la app no esta
+   * esperando nada: el destino se monta detras mientras la marca cubre.
+   *
+   * Estuvo en 560 ms y el zoom no se apreciaba: a esa velocidad la marca pasa de tamano normal a
+   * salirse del encuadre en poco mas de un parpadeo, y lo que queda en la retina es un destello
+   * verde, no un recorrido. 900 ms es lo que tarda el ojo en seguir un objeto que se acerca y
+   * reconocerlo mientras lo hace. Sigue siendo corto para una transicion que ocurre una vez por
+   * sesion: la referencia son los ~800 ms de las aperturas de app del sistema.
+   */
+  brandCut: 900,
 } as const;
 
 /**
@@ -264,6 +280,34 @@ export const easing = {
   standard: [0.2, 0, 0, 1] as const,
   decelerate: [0.05, 0.7, 0.1, 1] as const,
   accelerate: [0.3, 0, 1, 1] as const,
+  /**
+   * Entrada y salida simetricas, para lo que CUBRE y luego DESCUBRE.
+   *
+   * `standard` arranca de golpe: perfecto para algo que responde al dedo, y justo lo contrario de
+   * lo que necesita una capa que tapa la pantalla entera. Aqui el arranque tiene que ser suave
+   * —si no, la marca da un tiron en el primer fotograma— y el final tambien.
+   */
+  emphasized: [0.4, 0, 0.2, 1] as const,
+} as const;
+
+/**
+ * Muelles.
+ *
+ * Un muelle no es «lo mismo pero rebotando»: es la diferencia entre un elemento que se DETIENE y
+ * uno que se ASIENTA, y el ojo distingue las dos cosas aunque nadie sepa nombrarlas. Por eso el
+ * movimiento que responde al dedo va con muelle y el que cubre la pantalla con curva.
+ *
+ * Los tres estan **sobreamortiguados a proposito**: llegan y se quedan, sin rebasar el destino.
+ * El rebote es lo que hace que una app parezca un juguete, y esta es una app donde la gente mira
+ * cuanto debe. La ganancia no es el rebote: es que la desaceleracion no sea lineal.
+ */
+export const spring = {
+  /** Respuesta bajo el dedo: hundirse y volver. Rapido y seco. */
+  press: { damping: 26, stiffness: 420, mass: 0.7 } as const,
+  /** Un elemento que se coloca en su sitio: seleccion, aparicion de un bloque. */
+  settle: { damping: 24, stiffness: 260, mass: 0.9 } as const,
+  /** Recorridos amplios que deben sentirse conducidos, no disparados. */
+  glide: { damping: 30, stiffness: 170, mass: 1 } as const,
 } as const;
 
 /** Escala del elemento presionado. Suficiente para notarse en el pulgar, no para saltar a la vista. */

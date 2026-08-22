@@ -113,3 +113,16 @@ export async function uploadEvidence(input: {
     mimeType,
   };
 }
+
+/**
+ * El contenido de una foto en base64, para lo que no se sube a ningun sitio.
+ *
+ * Lo usa la verificacion por el motor: alli las imagenes viajan en el cuerpo de la peticion y no se
+ * guardan en ninguna parte, asi que no hay clave de almacenamiento que pasar —hay que mandar la
+ * imagen—. Sin cabecera `data:`: el backend valida que sea base64 puro y una cadena con prefijo se
+ * lee como imagen corrupta.
+ */
+export async function leerBase64(localUri: string): Promise<string> {
+  const file = new File(localUri);
+  return file.base64();
+}

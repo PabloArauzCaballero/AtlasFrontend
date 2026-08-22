@@ -12,33 +12,59 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SandboxProvider } from '../src/sandbox/store';
+import { AnimatedSplash } from '../src/ui/splash';
 import { SessionProvider, useSession } from '../src/session/session';
 import { color } from '../src/theme/tokens';
+import { BrandCutProvider } from '../src/ui/brand-cut';
 import { TourProvider } from '../src/ui/tour';
 
 void SplashScreen.preventAutoHideAsync();
 
 function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
   const session = useSession();
+  const [arranqueVisible, setArranqueVisible] = useState(true);
 
-  // El splash se retira cuando coinciden las DOS esperas: sesion restaurada y tipografia cargada.
-  // Descontar solo la sesion dejaba entrar la app dibujada con la fuente del sistema y cambiarla
-  // a Sora un instante despues, con el consiguiente salto de todos los textos.
+  /*
+    El splash NATIVO se retira en cuanto hay algo que dibujar, y lo que se ve debajo es la capa
+    animada —misma marca, mismo navy—, no la app. El relevo no se percibe porque no cambia nada en
+    pantalla; lo que cambia es que a partir de ese fotograma la marca ya se puede mover, cosa que
+    una imagen nativa no puede hacer.
+
+    Las DOS esperas siguen mandando sobre cuando ARRANCA la animacion de salida: sesion restaurada y
+    tipografia cargada. Descontar solo la sesion dejaba entrar la app dibujada con la fuente del
+    sistema y cambiarla a Sora un instante despues, con el salto de todos los textos a la vista.
+  */
+  const listo = session.status !== 'restoring' && fontsReady;
+
   useEffect(() => {
-    if (session.status !== 'restoring' && fontsReady) void SplashScreen.hideAsync();
-  }, [session.status, fontsReady]);
+    void SplashScreen.hideAsync();
+  }, []);
 
   return (
+    <>
     <Stack
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: color.surface.primary },
-        // Transicion nativa por plataforma: deslizar en iOS, entrada desde abajo en Android.
-        animation: 'slide_from_right',
+        /*
+          `default`, no `slide_from_right`.
+
+          `slide_from_right` esta documentado como **solo Android** en Expo 57
+          (https://docs.expo.dev/versions/v57.0.0/sdk/router/). Forzarlo aqui no daba «deslizar en
+          iOS» como decia este comentario: renunciaba al empuje nativo de UIKit, que es bastante
+          mas que un deslizamiento —la pantalla de abajo acompana con paralaje a un tercio de la
+          distancia, la de arriba proyecta sombra sobre ella y el gesto de volver es INTERACTIVO,
+          con la animacion enganchada al dedo y cancelable a medio camino—.
+
+          Nada de eso se puede reimplementar con una animacion declarada, y es justo lo que un
+          usuario de iOS reconoce como «nativo» sin saber nombrarlo. `default` lo devuelve, y en
+          Android sigue dando la transicion propia del sistema.
+        */
+        animation: 'default',
       }}
     >
       <Stack.Screen name="index" />
@@ -47,6 +73,8 @@ function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
       <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(app)" />
     </Stack>
+    {arranqueVisible ? <AnimatedSplash listo={listo} onDone={() => setArranqueVisible(false)} /> : null}
+    </>
   );
 }
 
@@ -79,7 +107,15 @@ export default function RootLayout() {
               que senala— y una capa montada dentro de una pantalla queda recortada por ella.
             */}
             <TourProvider>
-              <NavigationTree fontsReady={fontsLoaded || Boolean(fontError)} />
+              {/*
+                El corte de marca envuelve a la navegacion por el mismo motivo que el recorrido
+                guiado: su capa tiene que cubrir la ventana COMPLETA. Montado dentro de la
+                bienvenida quedaria recortado por ella y, peor, se desmontaria con la propia
+                pantalla justo a la mitad de la animacion —que es exactamente cuando se navega—.
+              */}
+              <BrandCutProvider>
+                <NavigationTree fontsReady={fontsLoaded || Boolean(fontError)} />
+              </BrandCutProvider>
             </TourProvider>
           </SandboxProvider>
         </SessionProvider>

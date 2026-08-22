@@ -5,17 +5,68 @@
  * pantalla lo dice tal cual y ofrece el otro canal: un codigo que nunca se envio y una pantalla que
  * dice "revisa tus mensajes" es la peor combinacion posible.
  */
+import { type ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { Field, OptionGroup } from '../../src/ui/fields';
-import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
+import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Button, Card, ErrorState } from '../../src/ui/primitives';
 
 type Channel = 'sms' | 'whatsapp' | 'email';
+
+/**
+ * Cuanto le queda de vida al codigo, en segundos, contando de verdad.
+ *
+ * ## Por que un contador y no la hora de vencimiento
+ *
+ * La pantalla decia «Vence a las 11:30» y ahi se quedaba: a las 11:31 seguia diciendo lo mismo, con
+ * el campo abierto invitando a teclear un codigo que el servidor ya no acepta. La persona se entera
+ * del vencimiento **fallando**, y un fallo de codigo se lee como «lo escribi mal», que es justo la
+ * conclusion equivocada: lo que hay que hacer no es reintentar, es pedir otro.
+ *
+ * ## Por que se recalcula desde `Date.now()` en cada tic
+ *
+ * Y no restando uno al valor anterior. Un contador que se decrementa se queda congelado mientras la
+ * app esta en segundo plano —que es exactamente donde va a estar la persona: en su bandeja de
+ * correo o en sus mensajes— y al volver muestra un tiempo que no existe. Restar contra el reloj da
+ * el valor correcto al primer fotograma despues de volver.
+ *
+ * La hora de vencimiento la manda el SERVIDOR (`expiresAt`). Aqui no se inventa ninguna duracion:
+ * si el backend cambia la ventana, esta pantalla la sigue sin tocar una linea.
+ */
+function useRestante(expiresAt: string | null): number {
+  const calcular = () => (expiresAt ? Math.max(0, Math.round((new Date(expiresAt).getTime() - Date.now()) / 1000)) : 0);
+  const [restante, setRestante] = useState(calcular);
+
+  useEffect(() => {
+    if (!expiresAt) {
+      setRestante(0);
+      return;
+    }
+    setRestante(calcular());
+    const id = setInterval(() => {
+      const quedan = Math.max(0, Math.round((new Date(expiresAt).getTime() - Date.now()) / 1000));
+      setRestante(quedan);
+      // Llegado a cero el intervalo se apaga solo: seguir despertando cada segundo para recalcular
+      // un cero no cambia nada en pantalla y mantiene vivo un temporizador por pantalla abierta.
+      if (quedan === 0) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+
+  return restante;
+}
+
+/** `4:07`, no `247 s`. Un codigo se espera en minutos y segundos, como cualquier cuenta atras. */
+function comoReloj(segundos: number): string {
+  const min = Math.floor(segundos / 60);
+  const seg = segundos % 60;
+  return `${min}:${String(seg).padStart(2, '0')}`;
+}
 
 export default function VerifyContact() {
   const router = useRouter();
@@ -34,6 +85,9 @@ export default function VerifyContact() {
     if (!customerId) return;
     setBusy(true);
     setError(null);
+    // El codigo viejo se borra al pedir otro: dejarlo escrito hace que el primer toque de
+    // «Confirmar» gaste un intento con el codigo que acaba de quedar invalidado.
+    setCode('');
     try {
       const result = await onboardingApi.requestContactVerification(customerId, {
         contactType,
@@ -67,25 +121,64 @@ export default function VerifyContact() {
   };
 
   const described = error ? describeError(error) : null;
+
+  // El fallo se pinta arriba y el boton esta abajo: hay que llevar la vista hasta el.
+
+  const scroll = useRef<ScrollView>(null);
+
+  useScrollToError(error, scroll);
   const channelUnavailable = error instanceof AtlasApiError && error.code === 'VERIFICATION_CHANNEL_UNAVAILABLE';
   // El servidor registra el intento aunque el proveedor falle: hay que decirlo, no fingir exito.
   const deliveryFailed = sent?.deliveryStatus === 'delivery_failed';
 
+  const restante = useRestante(sent && !deliveryFailed ? sent.expiresAt : null);
+  /*
+    Vencido por dos caminos, y hacen falta los dos.
+
+    El contador cubre el caso normal —la persona esta mirando la pantalla cuando se acaba el
+    tiempo—. El error del servidor cubre el resto: el reloj del telefono adelantado, la app dormida
+    durante el ultimo minuto, o un codigo que el backend invalido antes de tiempo. Fiarse solo del
+    contador seria confiar en el reloj del dispositivo para decidir algo que decide el servidor.
+  */
+  const vencidoPorServidor = error instanceof AtlasApiError && error.code === 'VERIFICATION_CODE_EXPIRED';
+  const vencido = Boolean(sent) && !deliveryFailed && (restante === 0 || vencidoPorServidor);
+
   return (
-    <Screen
+    <Screen scrollRef={scroll}
       footer={
         sent && !deliveryFailed ? (
-          <>
-            <Button
-              label="Confirmar código"
-              onPress={confirmCode}
-              loading={busy}
-              disabled={code.length < 4 || busy}
-              blockedReason={firstBlocker([[code.length >= 4, 'Escribe el código que recibiste.']])}
-              haptic="success"
-            />
-            <Button label="Enviar otro código" variant="ghost" onPress={sendCode} disabled={busy} />
-          </>
+          /*
+            Vencido, los dos botones INTERCAMBIAN su papel.
+
+            Mientras el codigo vale, la accion es confirmarlo y reenviar es la salida de emergencia.
+            Cuando vence, lo unico que se puede hacer es pedir otro: dejar «Confirmar» encendido y
+            en primer lugar invita a gastar un intento en un codigo que el servidor ya rechaza —y
+            los intentos fallidos bloquean la cuenta temporalmente—.
+          */
+          vencido ? (
+            <>
+              <Button label="Enviarme otro código" onPress={sendCode} loading={busy} disabled={busy} />
+              <Button
+                label="Confirmar código"
+                variant="ghost"
+                onPress={confirmCode}
+                disabled
+                blockedReason="Ese código venció. Pide uno nuevo."
+              />
+            </>
+          ) : (
+            <>
+              <Button
+                label="Confirmar código"
+                onPress={confirmCode}
+                loading={busy}
+                disabled={code.length < 4 || busy}
+                blockedReason={firstBlocker([[code.length >= 4, 'Escribe el código que recibiste.']])}
+                haptic="success"
+              />
+              <Button label="Enviar otro código" variant="ghost" onPress={sendCode} disabled={busy} />
+            </>
+          )
         ) : (
           <Button label="Enviarme el código" onPress={sendCode} loading={busy} disabled={busy} />
         )
@@ -130,12 +223,29 @@ export default function VerifyContact() {
 
       {sent && !deliveryFailed ? (
         <>
-          <Card>
-            <AtlasText variant="bodyStrong">Código enviado</AtlasText>
-            <AtlasText variant="caption" tone="secondary">
-              Vence a las {new Date(sent.expiresAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}.
-            </AtlasText>
-          </Card>
+          {vencido ? (
+            <Card>
+              <AtlasText variant="bodyStrong" tone="danger">
+                El código venció
+              </AtlasText>
+              <AtlasText variant="caption" tone="secondary">
+                Por seguridad los códigos duran poco. Pide otro y te lo enviamos al mismo{' '}
+                {channel === 'email' ? 'correo' : 'número'}.
+              </AtlasText>
+            </Card>
+          ) : (
+            <Card>
+              <AtlasText variant="bodyStrong">Código enviado</AtlasText>
+              {/*
+                El tiempo que queda, no la hora a la que vence. «Vence a las 11:30» obliga a mirar el
+                reloj y restar; «Vence en 4:07» ya es la respuesta a la unica pregunta que se hace
+                quien esta esperando un codigo: si le da tiempo a ir a buscarlo.
+              */}
+              <AtlasText variant="caption" tone="secondary">
+                Vence en {comoReloj(restante)}.
+              </AtlasText>
+            </Card>
+          )}
 
           <Field
             label="Código recibido"
@@ -145,6 +255,8 @@ export default function VerifyContact() {
             textContentType="oneTimeCode"
             autoComplete="one-time-code"
             maxLength={8}
+            // Vencido, el campo se cierra: teclear ahi solo puede acabar en un intento fallido.
+            editable={!vencido}
             autoFocus
             required
           />

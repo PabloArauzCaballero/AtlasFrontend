@@ -5,15 +5,18 @@
  * importes se capturan con teclado numerico y se envian como numero: aqui el backend espera un
  * decimal, no centavos, y se respeta su contrato en lugar de imponerle el nuestro.
  */
+import { type ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { Field, OptionGroup } from '../../src/ui/fields';
-import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
+import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
+import { TRUST_ECONOMIA } from '../../src/features/trust-copy';
+import { TrustCard } from '../../src/ui/trust-card';
 
 type Employment = 'employee' | 'self_employed' | 'business_owner' | 'unemployed' | 'retired' | 'student';
 type SourceOfFunds = 'salary' | 'business' | 'freelance' | 'pension' | 'family_support' | 'other';
@@ -52,7 +55,7 @@ export default function FinancialProfile() {
     !busy;
 
   const blockedReason = firstBlocker([
-    [employmentStatus !== null, 'Falta elegir tu situacion laboral.'],
+    [employmentStatus !== null, 'Falta elegir tu situación laboral.'],
     [!employerRequired, 'Falta el nombre de tu empleador.'],
     [toNumber(income) !== undefined, 'Falta tu ingreso mensual.'],
     [toNumber(expenses) !== undefined, 'Faltan tus gastos mensuales.'],
@@ -86,14 +89,20 @@ export default function FinancialProfile() {
 
   const described = error ? describeError(error) : null;
 
+  // El fallo se pinta arriba y el boton esta abajo: hay que llevar la vista hasta el.
+
+  const scroll = useRef<ScrollView>(null);
+
+  useScrollToError(error, scroll);
+
   return (
-    <Screen footer={<Button label="Guardar" onPress={save} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
-      <ScreenHeader title="Tu situacion económica" subtitle="Con esto calculamos cuánto puedes pagar cómodamente." onBack="auto" />
+    <Screen scrollRef={scroll} footer={<Button label="Guardar" onPress={save} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
+      <ScreenHeader title="Tu situación económica" subtitle="Con esto calculamos cuánto puedes pagar cómodamente." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
       <OptionGroup<Employment>
-        label="Situacion laboral"
+        label="Situación laboral"
         value={employmentStatus}
         onChange={setEmploymentStatus}
         options={[
@@ -115,11 +124,11 @@ export default function FinancialProfile() {
       ) : null}
 
       <Field
-        label="Antiguedad en meses"
+        label="Antigüedad en meses"
         value={seniority}
         onChangeText={(v) => setSeniority(v.replace(/\D/g, ''))}
         keyboardType="number-pad"
-        hint="Cuanto tiempo llevas en tu trabajo o actividad actual."
+        hint="Cuánto tiempo llevas en tu trabajo o actividad actual."
       />
 
       <Field
@@ -166,6 +175,8 @@ export default function FinancialProfile() {
       <AtlasText variant="caption" tone="tertiary">
         Declarar información falsa puede anular tu línea de crédito.
       </AtlasText>
+      {/* Al final del formulario: ver `ui/trust-card.tsx`. */}
+      <TrustCard items={TRUST_ECONOMIA} />
     </Screen>
   );
 }

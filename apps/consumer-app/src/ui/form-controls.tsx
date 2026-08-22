@@ -15,11 +15,12 @@
  * ficha; esa sensacion es exactamente lo que separa un formulario que parece nativo de uno que
  * parece una pagina web encogida.
  */
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import DateTimePicker, { type DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { forwardRef, useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
-import { color, radius, space, touch, type } from '../theme/tokens';
+import { color, press, radius, space, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
+import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
 
 const CONTROL_HEIGHT = 56;
@@ -156,15 +157,24 @@ export function DateField({
   }, [value, initialDate]);
 
   /*
+   * `onValueChange` + `onDismiss`, no `onChange`.
+   *
+   * `onChange` esta deprecado en esta version del selector y lo avisa por consola en cada apertura
+   * —se veia en la corrida del simulador—. No es solo el aviso: `onChange` mezclaba dos sucesos
+   * distintos en una firma, «eligio una fecha» y «cerro sin elegir», y obligaba a mirar
+   * `event.type` para saber cual habia ocurrido. Separados, cada uno hace una cosa.
+   *
    * En Android el dialogo es del sistema y se cierra solo; en iOS el selector se queda montado y
    * necesita su propia hoja con un boton de cierre. Se distingue aqui y no en la pantalla porque es
    * un detalle del control, no del formulario.
    */
-  const handleChange = (event: DateTimePickerEvent, picked?: Date) => {
+  const handleValueChange = (_event: DateTimePickerChangeEvent, picked: Date) => {
     if (Platform.OS !== 'ios') setOpen(false);
-    if (event.type === 'dismissed' || !picked) return;
+    if (!picked) return;
     onChange(toIsoDate(picked));
   };
+
+  const handleDismiss = () => setOpen(false);
 
   return (
     <View style={styles.block}>
@@ -173,18 +183,19 @@ export function DateField({
         {required ? ' *' : ''}
       </AtlasText>
 
-      <Pressable
+      <PressSurface
         onPress={() => setOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={value ? `${label}: ${readableDate(value)}. Tocar para cambiar` : `${label}. Tocar para elegir`}
         style={[styles.control, error ? styles.controlError : null]}
+        scaleTo={press.scaleSubtle}
       >
         <Icon name="pagos" size={20} tint={color.text.tertiary} />
         <AtlasText variant="body" style={[styles.controlText, !value && { color: color.text.placeholder }]}>
           {value ? readableDate(value) : placeholder}
         </AtlasText>
         <Icon name="adelante" size={16} tint={color.text.tertiary} />
-      </Pressable>
+      </PressSurface>
 
       <FieldFoot error={error} hint={hint} />
 
@@ -193,7 +204,8 @@ export function DateField({
           value={current}
           mode="date"
           display="spinner"
-          onChange={handleChange}
+          onValueChange={handleValueChange}
+          onDismiss={handleDismiss}
           minimumDate={minimumDate}
           maximumDate={maximumDate}
         />
@@ -215,7 +227,8 @@ export function DateField({
               value={current}
               mode="date"
               display="spinner"
-              onChange={handleChange}
+              onValueChange={handleValueChange}
+              onDismiss={handleDismiss}
               minimumDate={minimumDate}
               maximumDate={maximumDate}
               themeVariant="dark"
@@ -284,6 +297,130 @@ export type PhoneFieldProps = {
  * Separarlos hace imposible ese error —el prefijo ya no es texto editable— y de paso permite
  * teclear el numero como se dicta, sin el codigo delante.
  */
+/* ------------------------------------------------------------- seleccion */
+
+export type OpcionSelect = { valor: string; etiqueta: string };
+
+/**
+ * Elegir UNO de una lista larga, en una hoja.
+ *
+ * ## Por que no es `OptionGroup`
+ *
+ * `OptionGroup` pinta todas las opciones como filas tocables, y eso funciona hasta cuatro o cinco:
+ * a partir de ahi la pantalla se convierte en una lista donde el formulario desaparece. Nueve
+ * departamentos —o las diez ciudades de Santa Cruz— pertenecen a una hoja que se abre, se elige y
+ * se cierra.
+ *
+ * ## Por que no es un campo de texto
+ *
+ * Porque lo que se escribe a mano no se puede agrupar despues. «Santa Cruz de la Sierra», «santa
+ * cruz» y «SCZ» son la misma ciudad para una persona y tres para una consulta, y una cartera de
+ * credito que no puede contar por ciudad no puede decidir donde abrir el siguiente comercio.
+ *
+ * ## El estado vacio importa
+ *
+ * `deshabilitadoPorque` existe para la ciudad: sin departamento elegido no hay lista que ofrecer, y
+ * un control que no responde sin decir por que se lee como roto. Dice lo que falta, en su sitio.
+ */
+export function SelectField({
+  label,
+  value,
+  opciones,
+  onChange,
+  placeholder = 'Elige una opción',
+  hint,
+  error,
+  required,
+  deshabilitadoPorque,
+}: {
+  label: string;
+  value: string | null;
+  opciones: OpcionSelect[];
+  onChange: (valor: string) => void;
+  placeholder?: string;
+  hint?: string;
+  error?: string | null;
+  required?: boolean;
+  deshabilitadoPorque?: string | null;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const elegida = opciones.find((opcion) => opcion.valor === value) ?? null;
+  const bloqueado = Boolean(deshabilitadoPorque);
+
+  return (
+    <View style={styles.block}>
+      <AtlasText variant="caption" tone="secondary">
+        {label}
+        {required ? ' *' : ''}
+      </AtlasText>
+
+      <PressSurface
+        onPress={() => setAbierto(true)}
+        disabled={bloqueado}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: bloqueado }}
+        accessibilityLabel={
+          bloqueado
+            ? `${label}. ${deshabilitadoPorque}`
+            : elegida
+              ? `${label}: ${elegida.etiqueta}. Tocar para cambiar`
+              : `${label}. Tocar para elegir`
+        }
+        style={[styles.control, error ? styles.controlError : null, bloqueado ? styles.controlBloqueado : null]}
+        scaleTo={press.scaleSubtle}
+      >
+        <Icon name="lista" size={20} tint={color.text.tertiary} />
+        <AtlasText variant="body" style={[styles.controlText, !elegida && { color: color.text.placeholder }]}>
+          {elegida?.etiqueta ?? placeholder}
+        </AtlasText>
+        <Icon name="adelante" size={16} tint={color.text.tertiary} />
+      </PressSurface>
+
+      <FieldFoot error={error} hint={bloqueado ? (deshabilitadoPorque ?? undefined) : hint} />
+
+      <Modal visible={abierto} transparent animationType="slide" onRequestClose={() => setAbierto(false)}>
+        <Pressable style={styles.backdrop} onPress={() => setAbierto(false)} />
+        <View style={styles.sheet}>
+          <View style={styles.sheetHead}>
+            <AtlasText variant="bodyStrong">{label}</AtlasText>
+            <Pressable onPress={() => setAbierto(false)} accessibilityRole="button" accessibilityLabel="Cerrar">
+              <AtlasText variant="bodyStrong" style={{ color: color.action.primary }}>
+                Listo
+              </AtlasText>
+            </Pressable>
+          </View>
+          <ScrollView style={styles.sheetList}>
+            {opciones.map((opcion) => {
+              const seleccionada = opcion.valor === value;
+              return (
+                <PressSurface
+                  key={opcion.valor}
+                  onPress={() => {
+                    onChange(opcion.valor);
+                    setAbierto(false);
+                  }}
+                  style={[styles.countryRow, seleccionada && styles.countryRowSelected]}
+                  scaleTo={press.scaleSubtle}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: seleccionada }}
+                  accessibilityLabel={opcion.etiqueta}
+                >
+                  <AtlasText variant="body" style={styles.countryName}>
+                    {opcion.etiqueta}
+                  </AtlasText>
+                  {seleccionada ? <Icon name="check" size={18} tint={color.action.primary} /> : null}
+                </PressSurface>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------- telefono */
+
 export function PhoneField({ label, value, onChangeText, country, onChangeCountry, hint, error, required }: PhoneFieldProps) {
   const [focused, setFocused] = useState(false);
   const [picking, setPicking] = useState(false);
@@ -296,7 +433,7 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
       </AtlasText>
 
       <View style={[styles.control, styles.phoneControl, focused && styles.controlFocused, error ? styles.controlError : null]}>
-        <Pressable
+        <PressSurface
           onPress={() => setPicking(true)}
           style={styles.dial}
           accessibilityRole="button"
@@ -307,7 +444,7 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
           </AtlasText>
           <AtlasText variant="bodyStrong">{country.dial}</AtlasText>
           <Icon name="adelante" size={14} tint={color.text.tertiary} />
-        </Pressable>
+        </PressSurface>
 
         <View style={styles.dialSeparator} />
 
@@ -345,13 +482,14 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
             {COUNTRIES.map((item) => {
               const selected = item.code === country.code;
               return (
-                <Pressable
+                <PressSurface
                   key={item.code}
                   onPress={() => {
                     onChangeCountry(item);
                     setPicking(false);
                   }}
                   style={[styles.countryRow, selected && styles.countryRowSelected]}
+                  scaleTo={press.scaleSubtle}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   accessibilityLabel={`${item.name} ${item.dial}`}
@@ -366,7 +504,7 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
                     {item.dial}
                   </AtlasText>
                   {selected ? <Icon name="check" size={18} tint={color.action.primary} /> : null}
-                </Pressable>
+                </PressSurface>
               );
             })}
           </ScrollView>
@@ -411,6 +549,9 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface.sunken,
   },
   controlFocused: { borderColor: color.border.focus },
+  // Bloqueado: se apaga, no se esconde. Un control que desaparece hasta que rellenas otro campo
+  // hace que la pantalla cambie de forma mientras la lees.
+  controlBloqueado: { opacity: 0.5 },
   controlError: { borderColor: color.feedback.danger },
   controlText: { flex: 1 },
   input: {
@@ -423,7 +564,9 @@ const styles = StyleSheet.create({
   dial: { flexDirection: 'row', alignItems: 'center', gap: space.xxs, paddingHorizontal: space.xs, minHeight: touch.minSize },
   dialSeparator: { width: 1, height: 24, backgroundColor: color.border.subtle },
   flag: { fontSize: 20 },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
+  // El mismo velo que el recorrido guiado (`color.overlay.scrim`): negro puro al 55 % era un
+  // segundo oscurecedor, mas claro y sin el tinte navy, en una app que ya tenia el suyo.
+  backdrop: { flex: 1, backgroundColor: color.overlay.scrim },
   sheet: {
     backgroundColor: color.surface.sheet,
     borderTopLeftRadius: radius.xxl,

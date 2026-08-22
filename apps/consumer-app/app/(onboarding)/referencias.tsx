@@ -7,15 +7,17 @@
  * persona escribe.
  */
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { View } from 'react-native';
+import { useState, useRef } from 'react';
+import { View, type ScrollView } from 'react-native';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { CheckRow, Field, OptionGroup } from '../../src/ui/fields';
-import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
+import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Button, Card, Divider, ErrorState } from '../../src/ui/primitives';
+import { TRUST_REFERENCIAS } from '../../src/features/trust-copy';
+import { TrustCard } from '../../src/ui/trust-card';
 
 type Relationship = onboardingApi.ReferenceContact['relationshipType'];
 
@@ -79,8 +81,14 @@ export default function References() {
 
   const described = error ? describeError(error) : null;
 
+  // El fallo se pinta arriba y el boton esta abajo: hay que llevar la vista hasta el.
+
+  const scroll = useRef<ScrollView>(null);
+
+  useScrollToError(error, scroll);
+
   return (
-    <Screen footer={<Button label="Guardar referencias" onPress={save} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
+    <Screen scrollRef={scroll} footer={<Button label="Guardar referencias" onPress={save} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
       <ScreenHeader title="Tus referencias" subtitle={`Necesitamos ${REQUIRED_REFERENCES} personas que puedan dar referencia de ti.`} onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
@@ -109,7 +117,7 @@ export default function References() {
             required
           />
           <Field
-            label="Telefono"
+            label="Teléfono"
             value={draft.phone}
             onChangeText={(value) => update(index, { phone: value })}
             keyboardType="phone-pad"
@@ -128,11 +136,8 @@ export default function References() {
       <View>
         <Button label="Agregar otra referencia" variant="ghost" onPress={() => setDrafts([...drafts, emptyDraft()])} />
       </View>
-
-      <Gap size="sm" />
-      <AtlasText variant="caption" tone="tertiary">
-        Solo contactamos a tus referencias si no logramos comunicarnos contigo.
-      </AtlasText>
+      {/* Al final del formulario: ver `ui/trust-card.tsx`. */}
+      <TrustCard items={TRUST_REFERENCIAS} />
     </Screen>
   );
 }

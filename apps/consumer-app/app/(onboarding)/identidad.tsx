@@ -11,17 +11,20 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View, type ScrollView } from 'react-native';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
+import * as identityEngine from '../../src/api/endpoints/identity-engine';
 import { describeError } from '../../src/api/errors';
 import { hashSensitiveText } from '../../src/device/device';
-import { uploadEvidence, type EvidenceKind, type PreparedEvidence } from '../../src/features/evidence-upload';
+import { leerBase64, uploadEvidence, type EvidenceKind, type PreparedEvidence } from '../../src/features/evidence-upload';
 import { useSession } from '../../src/session/session';
 import { color, radius, space } from '../../src/theme/tokens';
 import { firstBlocker } from '../../src/ui/blocked';
 import { Field } from '../../src/ui/fields';
-import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
+import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, ErrorState } from '../../src/ui/primitives';
+import { TRUST_IDENTIDAD } from '../../src/features/trust-copy';
+import { TrustCard } from '../../src/ui/trust-card';
 
 const STEPS: { kind: EvidenceKind; title: string; hint: string; facing: 'back' | 'front' }[] = [
   { kind: 'identity_front', title: 'Anverso del carnet', hint: 'Que se lea el número y tu nombre.', facing: 'back' },
@@ -44,6 +47,8 @@ export default function Identity() {
   const [issuedIn, setIssuedIn] = useState('Santa Cruz');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  /** El veredicto del motor, cuando lo hay. `null` mientras no se ha preguntado. */
+  const [veredicto, setVeredicto] = useState<identityEngine.IdentityVerificationView | null>(null);
 
   const activeStep = STEPS.find((step) => step.kind === capturing) ?? null;
   const allCaptured = STEPS.every((step) => evidence[step.kind]);
@@ -81,6 +86,48 @@ export default function Identity() {
     }
   };
 
+  /*
+    Le pregunta al MOTOR si esta persona es quien dice ser.
+
+    ## Por que no bloquea el envio
+
+    El expediente tiene que quedar guardado pase lo que pase con esta llamada: las fotos ya estan
+    subidas y el numero declarado, y perder eso porque el motor no conteste seria hacerle repetir
+    todo a quien menos culpa tiene. Si el motor no esta disponible, el documento sigue su camino
+    normal —revision humana—, que es exactamente lo que ocurria antes de que esta pieza existiera.
+
+    ## Por que se pregunta en bucle y con un limite
+
+    El motor contesta `202` y resuelve por su cuenta; leer el estado una sola vez devolveria
+    `PENDING` siempre. Se pregunta cada segundo hasta ocho veces: mas que eso ya no es una espera,
+    es una pantalla colgada, y el veredicto seguira estando ahi cuando vuelva.
+  */
+  const preguntarAlMotor = async (customerId: string) => {
+    try {
+      const [frente, reverso, selfie] = await Promise.all([
+        leerBase64(evidence.identity_front!.localUri),
+        leerBase64(evidence.identity_back!.localUri),
+        leerBase64(evidence.selfie!.localUri),
+      ]);
+      let vista = await identityEngine.startIdentityVerification({
+        documentFront: frente,
+        documentBack: reverso,
+        selfie,
+        customerId,
+      });
+      for (let intento = 0; intento < 8 && !identityEngine.esFinal(vista.status); intento += 1) {
+        await new Promise((listo) => setTimeout(listo, 1000));
+        vista = await identityEngine.getIdentityVerification(vista.verificationId);
+      }
+      setVeredicto(vista);
+      return vista;
+    } catch {
+      // Silencio deliberado: el veredicto es informacion adicional, no el resultado del paso.
+      setVeredicto(null);
+      return null;
+    }
+  };
+
   const submit = async () => {
     if (!session.customerId || !canSubmit) return;
     setBusy(true);
@@ -108,7 +155,21 @@ export default function Identity() {
           };
         }),
       });
+
+      // El expediente ya esta guardado: ahora la pregunta. En este orden porque el registro no
+      // puede depender de que el motor conteste.
+      const vista = await preguntarAlMotor(session.customerId);
       await session.refresh();
+
+      /*
+        Con un rechazo NO se sale de la pantalla.
+
+        Es el unico veredicto que la persona tiene que leer aqui: si se la devuelve al indice del
+        registro, se encuentra el paso en rojo sin saber por que y sin las fotos delante para
+        entenderlo. Verificado y «lo mira una persona» si continuan, porque en los dos casos lo
+        siguiente es seguir con el registro.
+      */
+      if (vista?.status === 'REJECTED') return;
       router.replace('/(onboarding)/progreso');
     } catch (caught) {
       setError(caught);
@@ -119,12 +180,18 @@ export default function Identity() {
 
   const described = error ? describeError(error) : null;
 
+  // El fallo se pinta arriba y el boton esta abajo: hay que llevar la vista hasta el.
+
+  const scroll = useRef<ScrollView>(null);
+
+  useScrollToError(error, scroll);
+
   /* ---------------------------------------------------------------- camara */
 
   if (activeStep) {
     if (!permission?.granted) {
       return (
-        <Screen footer={<Button label="Permitir camara" onPress={() => void requestPermission()} />}>
+        <Screen scrollRef={scroll} footer={<Button label="Permitir camara" onPress={() => void requestPermission()} />}>
           <ScreenHeader title="Necesitamos tu camara" subtitle="Solo se usa para fotografiar tu documento." onBack={() => setCapturing(null)} />
           <Card>
             <AtlasText variant="body" tone="secondary">
@@ -136,6 +203,8 @@ export default function Identity() {
               El permiso está bloqueado. Habilitalo desde los ajustes del sistema para continuar.
             </AtlasText>
           ) : null}
+          {/* Al final del formulario: ver `ui/trust-card.tsx`. */}
+          <TrustCard items={TRUST_IDENTIDAD} />
         </Screen>
       );
     }
@@ -158,6 +227,40 @@ export default function Identity() {
           <CameraView ref={cameraRef} style={styles.camera} facing={activeStep.facing} />
         </View>
         {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
+
+      {/*
+        El veredicto del motor, en palabras de la persona y no del sistema.
+
+        `VERIFIED` / `REJECTED` / `IN_REVIEW` son estados del tramite; lo que hay que decir es si
+        puede seguir, si la miran, o si hay que repetir las fotos. `UNAVAILABLE` **no es un
+        rechazo** y no puede leerse como uno: significa que no se pudo preguntar, y el documento
+        sigue su camino normal.
+      */}
+      {veredicto ? (
+        <Card>
+          <AtlasText
+            variant="bodyStrong"
+            tone={veredicto.status === 'VERIFIED' ? 'success' : veredicto.status === 'REJECTED' ? 'danger' : 'primary'}
+          >
+            {veredicto.status === 'VERIFIED'
+              ? 'Identidad verificada'
+              : veredicto.status === 'REJECTED'
+                ? 'No pudimos validar tu documento'
+                : veredicto.status === 'IN_REVIEW'
+                  ? 'Lo está revisando una persona'
+                  : 'No pudimos verificarlo automáticamente'}
+          </AtlasText>
+          <AtlasText variant="caption" tone="secondary">
+            {veredicto.status === 'VERIFIED'
+              ? 'Confirmamos que el documento es tuyo. Puedes continuar.'
+              : veredicto.status === 'REJECTED'
+                ? 'Vuelve a tomar las fotos con buena luz, sin reflejos y con el carnet completo dentro del recuadro.'
+                : veredicto.status === 'IN_REVIEW'
+                  ? 'Sigue con el registro: te avisamos en cuanto termine la revisión.'
+                  : 'Tu documento quedó guardado y lo revisará una persona. No tienes que hacer nada más.'}
+          </AtlasText>
+        </Card>
+      ) : null}
       </Screen>
     );
   }
@@ -180,6 +283,40 @@ export default function Identity() {
       <ScreenHeader title="Tu documento" subtitle="Carnet de identidad vigente." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
+
+      {/*
+        El veredicto del motor, en palabras de la persona y no del sistema.
+
+        `VERIFIED` / `REJECTED` / `IN_REVIEW` son estados del tramite; lo que hay que decir es si
+        puede seguir, si la miran, o si hay que repetir las fotos. `UNAVAILABLE` **no es un
+        rechazo** y no puede leerse como uno: significa que no se pudo preguntar, y el documento
+        sigue su camino normal.
+      */}
+      {veredicto ? (
+        <Card>
+          <AtlasText
+            variant="bodyStrong"
+            tone={veredicto.status === 'VERIFIED' ? 'success' : veredicto.status === 'REJECTED' ? 'danger' : 'primary'}
+          >
+            {veredicto.status === 'VERIFIED'
+              ? 'Identidad verificada'
+              : veredicto.status === 'REJECTED'
+                ? 'No pudimos validar tu documento'
+                : veredicto.status === 'IN_REVIEW'
+                  ? 'Lo está revisando una persona'
+                  : 'No pudimos verificarlo automáticamente'}
+          </AtlasText>
+          <AtlasText variant="caption" tone="secondary">
+            {veredicto.status === 'VERIFIED'
+              ? 'Confirmamos que el documento es tuyo. Puedes continuar.'
+              : veredicto.status === 'REJECTED'
+                ? 'Vuelve a tomar las fotos con buena luz, sin reflejos y con el carnet completo dentro del recuadro.'
+                : veredicto.status === 'IN_REVIEW'
+                  ? 'Sigue con el registro: te avisamos en cuanto termine la revisión.'
+                  : 'Tu documento quedó guardado y lo revisará una persona. No tienes que hacer nada más.'}
+          </AtlasText>
+        </Card>
+      ) : null}
 
       {STEPS.map((step) => {
         const captured = evidence[step.kind];
@@ -235,11 +372,6 @@ export default function Identity() {
         required
         error={expiresAt && !expiryOk ? 'El documento debe estar vigente.' : null}
       />
-
-      <Gap size="sm" />
-      <AtlasText variant="caption" tone="tertiary">
-        No guardamos tu número de carnet en claro: se usa para consultar el registro y se descarta.
-      </AtlasText>
     </Screen>
   );
 }

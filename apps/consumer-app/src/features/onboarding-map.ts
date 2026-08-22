@@ -28,7 +28,7 @@ export const SECTION_ROUTE: Record<OnboardingSectionCode, OnboardingRoute> = {
 export const SECTION_LABEL: Record<OnboardingSectionCode, { title: string; detail: string }> = {
   contact_verification: { title: 'Verifica tu teléfono', detail: 'Te enviamos un código para confirmar que es tuyo.' },
   personal_data: { title: 'Tus datos personales', detail: 'Nombre, apellido y fecha de nacimiento.' },
-  financial_profile: { title: 'Tu situacion económica', detail: 'Trabajo, ingresos y gastos declarados.' },
+  financial_profile: { title: 'Tu situación económica', detail: 'Trabajo, ingresos y gastos declarados.' },
   address: { title: 'Tu domicilio', detail: 'Dónde vives actualmente.' },
   identity_documents: { title: 'Tu documento de identidad', detail: 'Foto del carnet por ambos lados y una selfie.' },
   reference_contacts: { title: 'Tus referencias', detail: 'Dos personas que puedan dar referencia de ti.' },

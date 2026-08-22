@@ -24,11 +24,12 @@
  * castellano son justo «me pasé» y «voy bien».
  */
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { CalendarEntry, PaymentCalendar } from '../api/endpoints/loans';
 import { formatAmount } from '../features/spending-copy';
-import { color, radius, space } from '../theme/tokens';
+import { color, press, radius, space } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
+import { PressSurface } from './motion';
 import { AtlasText, Divider } from './primitives';
 
 type EntryState = CalendarEntry['state'];
@@ -137,9 +138,9 @@ export function PaymentCalendarView({
   return (
     <View style={styles.wrapper}>
       <View style={styles.monthBar}>
-        <Pressable onPress={() => shift(-1)} style={styles.navButton} accessibilityRole="button" accessibilityLabel="Mes anterior">
+        <PressSurface onPress={() => shift(-1)} style={styles.navButton} accessibilityRole="button" accessibilityLabel="Mes anterior">
           <Icon name="atras" size={18} tint={color.text.primary} />
-        </Pressable>
+        </PressSurface>
         <View style={styles.monthLabel}>
           <AtlasText variant="bodyStrong">
             {monthName(cursor.month)} {cursor.year}
@@ -150,9 +151,9 @@ export function PaymentCalendarView({
               : `${monthEntries.length} ${monthEntries.length === 1 ? 'cuota' : 'cuotas'}`}
           </AtlasText>
         </View>
-        <Pressable onPress={() => shift(1)} style={styles.navButton} accessibilityRole="button" accessibilityLabel="Mes siguiente">
+        <PressSurface onPress={() => shift(1)} style={styles.navButton} accessibilityRole="button" accessibilityLabel="Mes siguiente">
           <Icon name="adelante" size={18} tint={color.text.primary} />
-        </Pressable>
+        </PressSurface>
       </View>
 
       <View style={styles.weekdays}>
@@ -174,7 +175,15 @@ export function PaymentCalendarView({
           const look = entries.length > 0 ? STATE_LOOK[dominantState(entries)] : null;
 
           return (
-            <Pressable
+            /*
+              La celda entera se hunde al tocarla.
+
+              Un dia con cuotas y uno sin ellas se ven casi igual —cambia un punto de color de seis
+              pixeles—, asi que sin realimentacion no habia forma de saber cual de los dos se acaba
+              de tocar: el que no tiene cuotas esta `disabled` y no pasa nada, y el que si las tiene
+              cambiaba la lista de MAS ABAJO, fuera de donde estaba mirando el dedo.
+            */
+            <PressSurface
               key={cell.key}
               style={[styles.cell, isSelected && styles.cellSelected]}
               onPress={() => setSelected(entries.length > 0 && !isSelected ? iso : null)}
@@ -195,7 +204,7 @@ export function PaymentCalendarView({
                 </AtlasText>
               </View>
               {look ? <View style={[styles.dot, { backgroundColor: look.tint }]} /> : <View style={styles.dotPlaceholder} />}
-            </Pressable>
+            </PressSurface>
           );
         })}
       </View>
@@ -254,8 +263,9 @@ export function CalendarRow({
   const at = parts(entry.dueDate);
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.row, pressed && onPress ? styles.rowPressed : null]}
+    <PressSurface
+      style={styles.row}
+      scaleTo={press.scaleSubtle}
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
@@ -278,7 +288,7 @@ export function CalendarRow({
         {formatAmount(entry.state === 'paid' ? entry.totalAmount : entry.pendingAmount, entry.currencyCode)}
       </AtlasText>
       {onPress ? <Icon name="adelante" size={16} tint={color.text.tertiary} /> : null}
-    </Pressable>
+    </PressSurface>
   );
 }
 
@@ -307,7 +317,6 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
   list: { gap: space.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.xs },
-  rowPressed: { opacity: 0.6 },
   rowIcon: { width: 32, height: 32, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   rowText: { flex: 1, gap: 2 },
 });

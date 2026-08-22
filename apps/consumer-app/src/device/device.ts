@@ -24,6 +24,15 @@ export type DeviceSnapshot = {
   osVersion?: string;
   appVersion?: string;
   isEmulator?: boolean;
+  /**
+   * Dispositivo con root o jailbreak.
+   *
+   * El backend lo acepta desde siempre (`snapshot.isRooted`) y la app no lo mandaba: la columna
+   * `telemetry.device_snapshots.is_rooted` estaba en blanco para todos los clientes. Es la señal
+   * antifraude mas directa que hay en un telefono —en un dispositivo comprometido cualquier otra
+   * señal se puede falsear— y se estaba tirando.
+   */
+  isRooted?: boolean;
   timezone?: string;
   locale?: string;
 };
@@ -32,6 +41,15 @@ export type DeviceIdentity = {
   deviceFingerprintHash: string;
   fingerprintVersion: 'v1';
   channel: 'mobile_app';
+  /**
+   * Quien dice ser la app, en una linea.
+   *
+   * `telemetry.customer_sessions.user_agent` estaba vacio en todas las sesiones porque nadie lo
+   * enviaba. En un canal movil no hay navegador que lo ponga solo, y sin el, dos sesiones de
+   * versiones distintas de la app son indistinguibles en la auditoria: cuando un fallo solo ocurre
+   * en una version, no hay forma de acotarlo.
+   */
+  userAgent: string;
   snapshot: DeviceSnapshot;
 };
 
@@ -41,6 +59,12 @@ async function installationId(): Promise<string> {
   const created = Crypto.randomUUID();
   await AsyncStorage.setItem(INSTALLATION_KEY, created);
   return created;
+}
+
+/** `Atlas/0.1.0 (ios 26.5; iPhone 17 Pro)` — version de app, sistema y modelo, que es lo que se busca. */
+export function userAgent(snapshot: DeviceSnapshot): string {
+  const partes = [snapshot.osFamily, snapshot.osVersion].filter(Boolean).join(' ');
+  return `Atlas/${snapshot.appVersion ?? '0'} (${partes}${snapshot.model ? `; ${snapshot.model}` : ''})`.slice(0, 500);
 }
 
 export function deviceSnapshot(): DeviceSnapshot {
@@ -62,9 +86,23 @@ export function deviceSnapshot(): DeviceSnapshot {
 
 export async function deviceIdentity(): Promise<DeviceIdentity> {
   const snapshot = deviceSnapshot();
+  /*
+    El root se consulta aparte porque es asincrono y puede fallar: `isRootedExperimentalAsync` lee
+    el sistema de archivos y en algunos dispositivos lanza. Un fallo aqui no puede impedir un alta
+    —el campo es opcional en el contrato— asi que se deja sin declarar antes que declararlo `false`,
+    que seria afirmar que el dispositivo esta limpio sin haberlo comprobado.
+  */
+  const isRooted = await Device.isRootedExperimentalAsync().catch(() => undefined);
+  const completo: DeviceSnapshot = { ...snapshot, ...(isRooted === undefined ? {} : { isRooted }) };
   const seed = [await installationId(), snapshot.brand, snapshot.model, snapshot.osFamily, snapshot.osVersion].join('|');
   const deviceFingerprintHash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, seed);
-  return { deviceFingerprintHash, fingerprintVersion: 'v1', channel: 'mobile_app', snapshot };
+  return {
+    deviceFingerprintHash,
+    fingerprintVersion: 'v1',
+    channel: 'mobile_app',
+    userAgent: userAgent(completo),
+    snapshot: completo,
+  };
 }
 
 /**

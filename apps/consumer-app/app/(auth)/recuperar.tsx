@@ -42,7 +42,7 @@ export default function RecoverPassword() {
   if (step === 'done') {
     return (
       <Screen footer={<Button label="Ir a ingresar" onPress={() => router.replace('/(auth)/ingresar')} />}>
-        <ScreenHeader title="Contrasena actualizada" subtitle="Ya puedes ingresar con tu nueva contrasena." />
+        <ScreenHeader title="Contraseña actualizada" subtitle="Ya puedes ingresar con tu nueva contraseña." />
       </Screen>
     );
   }
@@ -65,12 +65,12 @@ export default function RecoverPassword() {
           />
         ) : (
           <Button
-            label="Guardar contrasena"
+            label="Guardar contraseña"
             loading={busy}
             disabled={code.length !== 6 || newPassword.length < 10 || busy}
             blockedReason={firstBlocker([
               [code.length === 6, 'El código tiene 6 dígitos.'],
-              [newPassword.length >= 10, 'La contrasena nueva necesita al menos 10 caracteres.'],
+              [newPassword.length >= 10, 'La contraseña nueva necesita al menos 10 caracteres.'],
             ])}
             onPress={() =>
               run(async () => {
@@ -114,7 +114,7 @@ export default function RecoverPassword() {
             required
           />
           <Field
-            label="Nueva contrasena"
+            label="Nueva contraseña"
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry

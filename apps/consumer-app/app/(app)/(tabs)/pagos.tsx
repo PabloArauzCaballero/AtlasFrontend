@@ -16,7 +16,7 @@
  */
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { LoanSummary, PaymentCalendar, SpendingByCategory } from '../../../src/api/endpoints/loans';
 import { amountTone, categoryLook, dueCopy, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
@@ -234,7 +234,7 @@ export default function Payments() {
             Agrupados por el comercio donde compraste.
           </AtlasText>
         </View>
-        <Pressable
+        <PressSurface
           onPress={() => setLayout(LAYOUT_ORDER[(LAYOUT_ORDER.indexOf(layout) + 1) % LAYOUT_ORDER.length] ?? 'lista')}
           style={styles.layoutToggle}
           accessibilityRole="button"
@@ -245,7 +245,7 @@ export default function Payments() {
             size={20}
             tint={color.text.primary}
           />
-        </Pressable>
+        </PressSurface>
       </View>
 
       {/* 1. LO VENCIDO. Va primero y solo, para que no compita con nada. */}
@@ -315,7 +315,7 @@ export default function Payments() {
         {FILTERS.map((option) => {
           const active = filter === option.key;
           return (
-            <Pressable
+            <PressSurface
               key={option.key}
               onPress={() => setFilter(option.key)}
               style={[styles.chip, active && styles.chipActive]}
@@ -327,7 +327,7 @@ export default function Payments() {
               <AtlasText variant="caption" style={{ color: active ? color.surface.primary : color.text.secondary }}>
                 {option.label}
               </AtlasText>
-            </Pressable>
+            </PressSurface>
           );
         })}
       </View>

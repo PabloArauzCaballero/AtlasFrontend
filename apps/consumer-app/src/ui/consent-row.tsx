@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { color, radius, space, touch } from '../theme/tokens';
 import { Icon } from './icons';
+import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
 
 export type ConsentRowProps = {
@@ -64,7 +65,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
         casilla, así que quien iba a leer terminaba aceptando sin querer — el error que más caro sale
         en una pantalla de consentimiento.
       */}
-      <Pressable
+      <PressSurface
         onPress={() => onToggle(!checked)}
         accessibilityRole="checkbox"
         accessibilityState={{ checked }}
@@ -75,7 +76,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
         <View style={[styles.box, checked && styles.boxChecked]}>
           {checked ? <Icon name="check" size={14} tint={color.surface.primary} /> : null}
         </View>
-      </Pressable>
+      </PressSurface>
 
       <View style={styles.text}>
         <AtlasText variant="bodyStrong">

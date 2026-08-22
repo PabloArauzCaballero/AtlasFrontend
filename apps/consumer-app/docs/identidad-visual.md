@@ -161,19 +161,127 @@ pasar.
 
 ---
 
-## 6. Qué NO se hizo, a propósito
+## 6. Movimiento
+
+Durante un tiempo este documento decía, en §6, que **no se había añadido movimiento nuevo** a
+propósito: el playbook pide degradar con gracia y respetar «menos movimiento», y animar sin ese
+respeto instalado es deuda. El respeto ya está instalado —`useReducedMotion` se consulta en cada
+componente que anima— así que el movimiento entró, y entró como sistema, no como adornos sueltos.
+
+### Dos temperamentos, y cuándo va cada uno
+
+| | Se usa para | Token |
+|---|---|---|
+| **Curva** | Lo que ocurre solo: aparecer, cubrir, descubrir | `motion.*` + `easing.*` |
+| **Muelle** | Lo que responde al dedo: hundirse, asentarse, viajar | `spring.*` |
+
+La diferencia no es decorativa. Una duración fija reparte el mismo tiempo para un recorrido de 4 px
+y para uno que cruza la pantalla, y por eso el corto parece lento y el largo, disparado. Un muelle
+reparte la energía según la distancia. A cambio, un muelle no sirve para nada que tenga que estar
+tapando la pantalla en un instante exacto —ahí manda la curva—.
+
+**Los tres muelles están sobreamortiguados a propósito** (`press`, `settle`, `glide`): llegan y se
+quedan, sin rebasar el destino. Lo que hace que una app parezca un juguete es el rebote, no el
+muelle; ésta es una app donde la gente mira cuánto debe. Lo que se gana es que la desaceleración
+deje de ser una rampa.
+
+### La pulsación: un solo comportamiento en toda la app
+
+`PressSurface` (`src/ui/motion.tsx`) anima **el propio pulsable**, no una vista interior, con un
+valor compartido en el hilo de UI. Dos consecuencias que importan:
+
+- El estado `pressed` de `Pressable` es estado de React: entra y sale de golpe, sin fotogramas
+  intermedios, y **se pierde si algo re-renderiza en mitad del toque** —justo lo que pasa cuando el
+  control dispara una petición—.
+- Como el elemento animado es el que lleva los estilos, un ancho en porcentaje o un `flex` siguen
+  funcionando: por eso una celda de la rejilla del calendario también puede hundirse.
+
+Se comprueba con `grep -rn "pressed &&" src app`: debe devolver **cero líneas**. Cada una que
+devuelva es un control con un temperamento distinto al de sus vecinos.
+
+Las escalas: `press.scale` (0.97) para lo que se toca de uno en uno, `press.scaleSubtle` (0.985)
+para filas anchas y tarjetas, donde el 3 % desplaza el borde lo suficiente como para parecer un
+salto.
+
+### Las transiciones de pantalla son las del sistema
+
+`animation: 'default'` en las tres pilas. `slide_from_right` está documentado como **solo Android**
+en Expo 57: forzarlo no daba «deslizar en iOS», renunciaba al empuje nativo de UIKit —paralaje de
+la pantalla de abajo, sombra, y sobre todo el gesto de volver **interactivo**, enganchado al dedo y
+cancelable a medio camino—. Nada de eso se puede reimplementar con una animación declarada, y es
+justo lo que un usuario de iOS reconoce como «nativo» sin saber nombrarlo.
+
+Las pantallas de tarea acotada (`compra/monto`, `pago/[itemId]`) se declaran con
+`presentation: 'modal'` y nada más en iOS; el deslizamiento desde abajo se añade **solo en
+Android**, donde `modal` equivale a `push` y sin él no se distinguiría de un paso más del flujo.
+
+### El corte de marca
+
+Salir de la bienvenida —hacia el registro o hacia el acceso— atraviesa la marca: la cámara se
+acerca al logotipo hasta cruzarlo y la pantalla de destino queda detrás (`src/ui/brand-cut.tsx`).
+Es el único movimiento de la app que pasa del cuarto de segundo (`motion.brandCut`, 560 ms), y se
+lo puede permitir porque ocurre **una vez por sesión** y porque durante él la app no hace esperar a
+nadie: el destino se monta detrás mientras la marca cubre.
+
+No se usa para pasar de página del carrusel. El corte marca un **límite**; usarlo en cada toque lo
+convertiría en un peaje de medio segundo repetido cuatro veces.
+
+### Lo demás que se mueve, y por qué
+
+- **El foco del recorrido guiado viaja** entre pasos en vez de reaparecer en otro sitio. Cuando el
+  recorte salta, cada paso obliga a buscar dónde está ahora el hueco; cuando se desplaza, el ojo lo
+  sigue y llega al elemento nuevo ya mirándolo.
+- **Los puntos del carrusel están atados al dedo**, no al final del gesto: el que se deja se encoge
+  y el que llega se alarga a la vez que la página. Además informa de algo que el salto no decía:
+  que el gesto se puede cancelar volviendo atrás.
+- **El icono de la pestaña activa se asienta** con un realce del 8 %. Deliberadamente pequeño: la
+  barra está siempre en pantalla, y lo que se busca no es que se note la animación sino que la
+  mirada tenga a dónde volver después de que el contenido haya cambiado entero.
+- **Los halos del fondo son degradados radiales** (`BrandHalo`), no vistas redondeadas. Un círculo
+  de color plano al 16 % sobre el navy no es un resplandor: es un círculo, con su borde definido, y
+  el ojo lo detecta incluso a opacidades muy bajas. Aplanaba la pantalla contra dos formas
+  geométricas en lugar de darle profundidad.
+
+### «Menos movimiento» no es «lo mismo pero rápido»
+
+Con el ajuste del sistema activo:
+
+| | Con movimiento reducido |
+|---|---|
+| Corte de marca | **No hay corte.** La acción se ejecuta en el acto |
+| Hundimiento al tocar | No hay escala; el control responde igual |
+| Entrada de bloques (`Appear`) | Aparecen en su sitio, sin subir |
+| Paralaje y puntos del carrusel | Sin interpolación; el punto activo se pinta ancho |
+| Foco del recorrido guiado | Se coloca, no viaja |
+
+Una capa que tapa la pantalla entera es exactamente el tipo de movimiento que provoca mareo, y
+degradarla a una versión corta de sí misma no lo arregla: hay que quitarla.
+
+### El hilo en el que corre
+
+Todas las animaciones son de Reanimated y corren en el **hilo de UI**. Durante una decisión de
+crédito el hilo de JS está ocupado —petición, parseo, re-render— y con animaciones dependientes de
+JS eso se ve como tirones justo en el momento en que el usuario más atento está. Por lo mismo, el
+progreso del carrusel se lee con `useAnimatedScrollHandler` y no con `onScroll`: a JS solo vuelve
+el número de página, y solo cuando cambia.
+
+---
+
+## 7. Qué NO se hizo, a propósito
 
 - **No se movió la jerarquía de ninguna pantalla.** Los cambios de §4 son de superficie, tipografía
   y profundidad: viven en los tokens y en los primitivos, así que llegan a las veinte pantallas sin
   reordenar ninguna. Ninguna pantalla cambió de contenido ni de orden de lectura.
-- **No se añadió movimiento nuevo.** El playbook pide degradar con gracia y respetar «menos
-  movimiento»; añadir animación sin ese respeto instalado es deuda, no pulido.
+- **No se animó nada que no responda a una acción o a un cambio de estado.** No hay entradas
+  decorativas, ni contadores que se animen solos, ni la cifra de la línea de crédito subiendo cada
+  vez que se abre el inicio: animar un número que ya estaba ahí lo vuelve ilegible durante el primer
+  instante, que es justo cuando se lo quiere leer. Ver §6.
 - **No se creó un tema claro.** Los tokens semánticos ya lo permiten (`color.surface.*`), pero la
   identidad publicada es oscura y un tema claro es una decisión de producto, no de implementación.
 
 ---
 
-## 7. Si cambia la marca
+## 8. Si cambia la marca
 
 Se toca `src/theme/tokens.ts` y nada más. Ese es el contrato. Si hay que buscar y reemplazar en
 las pantallas, es que alguien escribió un literal y hay que devolverlo al sistema.
