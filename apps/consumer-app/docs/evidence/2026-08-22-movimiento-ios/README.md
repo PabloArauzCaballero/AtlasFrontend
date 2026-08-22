@@ -214,6 +214,23 @@ indicador pasó a ser animado. Se resolvieron las dos cosas —el punto animado,
 `LoanSpendingService` sin registrar en el módulo de pruebas. Se comprobó en un árbol limpio de
 `origin/dev`, sin nada local: **ya venía roto de allí**.
 
+## 4-sexies. Los pendientes, cerrados
+
+`43-selector-de-contactos.png`, `44-referencia-desde-la-agenda.png`.
+
+| Pendiente | Cómo se cerró |
+|---|---|
+| La suite e2e de préstamos, rota en `dev` | El módulo de pruebas declaraba 4 servicios y el controlador ya pedía 8: Nest no llegaba a construirlo y fallaban las 17 antes de ejecutar ninguna. Además el doble de la ficha devolvía un préstamo **sin dueño**, y la comprobación de propiedad lo rechazaba con un 403 que parecía un permiso mal puesto. **361 suites, 3632 casos en verde** |
+| La dirección exacta | El backend la esperaba ya cifrada por el cliente y esa pieza no existía. Ahora va en claro por TLS y **la cifra el servidor**, con el mismo sobre que el teléfono. Repartir una llave a cada teléfono es como una llave deja de serlo |
+| Recuperar el PIN | El esquema exigía 10 caracteres para todos los actores, así que un cliente no podía recuperar su PIN de 4 dígitos más que convirtiéndolo en una contraseña que la app sigue llamando PIN. El servicio ya distinguía por actor; sobraba el mínimo del esquema |
+| Contactos | Las referencias se tecleaban de memoria. Ahora se traen del **selector nativo**, que lee el contacto elegido y nada más. Permiso al pulsar el botón, nunca al arrancar: iOS pregunta una sola vez |
+| Notificaciones | `device-tokens` existía y no lo llamaba nadie: la pantalla de avisos dejaba elegir canal y el push no tenía a dónde llegar. Ahora se pide permiso y se registra el dispositivo, y si el sistema lo tiene denegado la pantalla lo dice |
+| El remitente | En producción ya no arranca con un buzón personal en `GMAIL_FROM_EMAIL` |
+
+Queda **rotar el `GMAIL_REFRESH_TOKEN`**: se comprobó que no está en ningún fichero versionado de
+ningún repositorio, pero apareció en una terminal y ese token permite enviar correo en nombre de la
+cuenta. Eso se hace en Google, no aquí.
+
 ## 5. Lo que queda abierto
 
 1. **El error de envío es invisible** (§2.3). El `ErrorState` debería traer la vista hasta él, o el
