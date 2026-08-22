@@ -402,6 +402,16 @@ const PATHS: Record<IconName, (stroke: string, width: number) => React.ReactNode
   ),
 };
 
+/**
+ * Los nombres que existen, comprobables en tiempo de ejecucion.
+ *
+ * Hace falta porque el contenido de las pantallas llega del servidor y puede nombrar un icono que
+ * esta version de la app todavia no tiene —pasa cada vez que se publica contenido antes de que la
+ * app nueva llegue a las tiendas—. El tipo `IconName` no sirve para eso: desaparece al compilar.
+ */
+export const ICON_NAMES = Object.keys(PATHS) as readonly IconName[];
+
+
 export function Icon({ name, size = 22, tint = color.text.secondary, label }: IconProps) {
   // El grosor se compensa contra el tamano para que el trazo mida lo mismo en pantalla a cualquier
   // escala. Sin esto, el icono pequeno adelgaza y el grande engorda.
