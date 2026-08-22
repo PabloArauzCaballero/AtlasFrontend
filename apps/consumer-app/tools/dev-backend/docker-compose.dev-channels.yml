@@ -92,6 +92,10 @@ services:
       DECISION_ENGINE_API_KEY: ${ATLAS_DEV_DECISION_ENGINE_RUNTIME_KEY:-}
       DECISION_ENGINE_OUTCOME_API_KEY: ${ATLAS_DEV_DECISION_ENGINE_MANAGEMENT_KEY:-}
       DECISION_ENGINE_CREDIT_ARTIFACT: ${ATLAS_DEV_DECISION_ENGINE_ARTIFACT:-credit_underwriting}
+      # El ENTORNO del motor contra el que se decide. En local apunta a TEST porque es donde vive
+      # la version desplegada de la politica; sin declararlo, el motor resuelve el suyo por defecto
+      # y una version publicada en TEST no se estaria usando nunca.
+      DECISION_ENGINE_ENVIRONMENT_CODE: ${ATLAS_DEV_DECISION_ENGINE_ENVIRONMENT:-}
       # Sal del identificador opaco del cliente dentro del motor. Es de DESARROLLO: rotarla parte la
       # historia del sujeto en dos, asi que en un entorno real es una migracion, no un ajuste.
       DECISION_ENGINE_SUBJECT_SALT: ${ATLAS_DEV_DECISION_ENGINE_SALT:-atlas-dev-subject-salt}
