@@ -43,21 +43,35 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AtlasMark } from '../../src/ui/brand';
 import { color, radius, space } from '../../src/theme/tokens';
-import { Icon, type IconName } from '../../src/ui/icons';
+import * as contentApi from '../../src/api/endpoints/app-content';
+import { Icon, ICON_NAMES, type IconName } from '../../src/ui/icons';
 import { AtlasText, Button } from '../../src/ui/primitives';
 
 /**
- * El eslogan.
+ * El eslogan y los pasos, POR DEFECTO.
+ *
+ * ## Por que sigue habiendo texto aqui
+ *
+ * Porque esta es la primerisima pantalla y se abre sin sesion, a veces sin red y siempre antes de
+ * que nadie haya cargado nada. Una bienvenida en blanco mientras se espera al servidor es la peor
+ * primera impresion posible, y una que falla porque el servidor no contesto es todavia peor.
+ *
+ * Esto es el suelo, no la fuente. Lo que se ensena cuando hay respuesta viene del catalogo de
+ * contenidos del servidor (`surface: 'onboarding'`), donde negocio lo edita sin publicar una version
+ * de la app. Si el catalogo trae algo, gana el catalogo.
+ *
+ * ## Sobre el eslogan
  *
  * «Compra hoy, paga despues» describe el mecanismo; no dice por que importa. Lo que hace distinto a
  * Atlas en Santa Cruz no es el plazo: es que da credito a quien ningun banco se lo da, sin tarjeta y
  * sin tramite. El eslogan tiene que decir ESO.
  */
 const ESLOGAN = 'Tu primer crédito no debería depender de un banco.';
+const ESLOGAN_PIE = 'Crédito al instante en los comercios de Santa Cruz.';
 
 type Paso = { icon: IconName; titulo: string; cuerpo: string };
 
-const PASOS: Paso[] = [
+const PASOS_POR_DEFECTO: Paso[] = [
   {
     icon: 'escanear',
     titulo: 'Escaneas y listo',
@@ -78,6 +92,23 @@ const PASOS: Paso[] = [
   },
 ];
 
+/**
+ * Convierte una pieza del catalogo en un paso pintable.
+ *
+ * El cuerpo sale del subtitulo, del cuerpo largo o de los bullets unidos, en ese orden: quien edita
+ * desde el portal no tiene por que saber cual de los tres campos lee esta pantalla en concreto, y
+ * dejar el paso vacio porque escribio en el campo «equivocado» seria culparle de nuestra estructura.
+ */
+function pasoDesdeContenido(entry: contentApi.ContentEntry, indice: number): Paso {
+  const cuerpo = entry.subtitle ?? entry.body ?? entry.bullets.map((bullet) => bullet.text).join(' ');
+  const icono = entry.bullets.find((bullet) => bullet.icon)?.icon ?? null;
+  return {
+    icon: icono && (ICON_NAMES as readonly string[]).includes(icono) ? (icono as IconName) : (PASOS_POR_DEFECTO[indice]?.icon ?? 'chispa'),
+    titulo: entry.title ?? '',
+    cuerpo,
+  };
+}
+
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function Welcome() {
@@ -86,6 +117,32 @@ export default function Welcome() {
   const scroll = useRef<ScrollView>(null);
   const [pagina, setPagina] = useState(0);
   const reduced = useReducedMotion();
+
+  /*
+   * El contenido del servidor SUSTITUYE al de por defecto cuando llega, y no antes. Arrancar en
+   * blanco a la espera de la red convertiria la primera impresion en una pantalla vacia; y como la
+   * carga es casi siempre mas rapida que la animacion de entrada, en la practica no se ve el cambio.
+   */
+  const [eslogan, setEslogan] = useState({ titulo: ESLOGAN, pie: ESLOGAN_PIE });
+  const [pasos, setPasos] = useState<Paso[]>(PASOS_POR_DEFECTO);
+
+  useEffect(() => {
+    let cancelled = false;
+    void contentApi.getContent('onboarding').then((entries) => {
+      if (cancelled || entries.length === 0) return;
+      const cabecera = entries.find((entry) => entry.contentKey === 'eslogan');
+      if (cabecera?.subtitle) setEslogan({ titulo: cabecera.subtitle, pie: cabecera.body ?? ESLOGAN_PIE });
+
+      const publicados = entries.filter((entry) => entry.contentKey !== 'eslogan').map(pasoDesdeContenido);
+      // Un paso sin titulo o sin cuerpo se descarta: media tarjeta en el recorrido de bienvenida se
+      // lee como un fallo de la app, no como contenido pendiente de escribir.
+      const utiles = publicados.filter((paso) => paso.titulo && paso.cuerpo);
+      if (utiles.length > 0) setPasos(utiles);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /*
    * La entrada de la marca: escala 1.3 -> 1 y opacidad 0 -> 1.
@@ -123,7 +180,7 @@ export default function Welcome() {
   };
 
   const irA = (indice: number) => scroll.current?.scrollTo({ x: indice * SCREEN_WIDTH, animated: true });
-  const ultima = pagina === PASOS.length;
+  const ultima = pagina === pasos.length;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -156,28 +213,28 @@ export default function Welcome() {
           </Animated.View>
           <Animated.View style={esloganStyle}>
             <AtlasText variant="h2" style={styles.eslogan}>
-              {ESLOGAN}
+              {eslogan.titulo}
             </AtlasText>
             <AtlasText variant="body" tone="secondary" style={styles.esloganPie}>
-              Crédito al instante en los comercios de Santa Cruz.
+              {eslogan.pie}
             </AtlasText>
           </Animated.View>
         </View>
 
-        {PASOS.map((paso, indice) => (
+        {pasos.map((paso, indice) => (
           <PasoView key={paso.titulo} paso={paso} indice={indice} progreso={progreso} reduced={reduced} />
         ))}
       </ScrollView>
 
       {/* Los puntos: donde estoy y cuanto queda. Tocables, porque verlos invita a tocarlos. */}
       <View style={styles.dots}>
-        {Array.from({ length: PASOS.length + 1 }, (_, indice) => (
+        {Array.from({ length: pasos.length + 1 }, (_, indice) => (
           <Pressable
             key={indice}
             onPress={() => irA(indice)}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel={`Ir a la pantalla ${indice + 1} de ${PASOS.length + 1}`}
+            accessibilityLabel={`Ir a la pantalla ${indice + 1} de ${pasos.length + 1}`}
           >
             <View style={[styles.dot, pagina === indice && styles.dotActive]} />
           </Pressable>

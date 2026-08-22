@@ -3,10 +3,17 @@
  *
  * ## Que se puede apagar y que no
  *
- * Casi todo. NO se pueden apagar los avisos que el servidor marca `isRequired`: vencimientos, mora
- * y cambios en la linea de credito. No es una limitacion tecnica —es la decision de no dejar que
- * alguien se entere tarde de una deuda suya—. La pantalla lo dice en vez de esconder el interruptor:
- * un control desactivado sin explicacion se lee como un error de la app.
+ * Casi todo. NO se pueden apagar los avisos que el servidor marca `isMandatory`: el recordatorio de
+ * cuota, el aviso de mora y las alertas de seguridad. La pantalla ensena el candado JUNTO A SU
+ * MOTIVO, que llega del servidor con cada aviso: un control desactivado sin explicacion se lee como
+ * un error de la app o como abuso, y ninguna de las dos lecturas es la que corresponde.
+ *
+ * ## Por que ya no hay un diccionario de codigos aqui
+ *
+ * Porque lo habia, y era el motivo de que un aviso nuevo saliera en pantalla como
+ * `loan.installment.due_soon` hasta que alguien publicara una version de la app con su traduccion.
+ * Ahora el nombre, la explicacion y el grupo llegan del catalogo del servidor. Anadir un aviso o
+ * reescribir una frase que se entiende mal dejo de ser un despliegue.
  *
  * ## Por que se agrupa por AVISO y no por canal
  *
@@ -25,7 +32,7 @@ import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Switch } from '../../src/ui/fields';
 import { AtlasText, Badge, Card, Divider, EmptyState, ErrorState, Skeleton } from '../../src/ui/primitives';
 
-/** El canal, dicho como lo diria la persona. */
+/** El canal, dicho como lo diria la persona. Es lo unico que sigue aqui: son cinco y no cambian. */
 const CHANNEL_LABEL: Record<string, { label: string; icon: IconName }> = {
   email: { label: 'Correo', icon: 'sobre' },
   sms: { label: 'SMS', icon: 'telefono' },
@@ -34,32 +41,25 @@ const CHANNEL_LABEL: Record<string, { label: string; icon: IconName }> = {
   in_app: { label: 'Dentro de la app', icon: 'inicio' },
 };
 
-/**
- * El evento, traducido.
- *
- * Los codigos que no esten aqui se ensenan tal cual y no se ocultan: un aviso sin traducir es feo,
- * pero uno escondido deja a la persona sin poder decidir sobre el.
- */
-const EVENT_LABEL: Record<string, string> = {
-  'loan.installment.due_soon': 'Cuando una cuota está por vencer',
-  'loan.installment.overdue': 'Cuando tienes una cuota vencida',
-  'loan.delinquency.bucket_changed': 'Cuando tu situación de mora cambia',
-  'loan.disbursed': 'Cuando se aprueba una compra',
-  'loan.paid_off': 'Cuando terminas de pagar un crédito',
-  'credit.line.updated': 'Cuando cambia tu línea de crédito',
-  'credit.application.decided': 'Cuando se decide una solicitud',
-  'customer.onboarding.completed': 'Cuando se completa tu registro',
-  'customer.identity.verified': 'Cuando se verifica tu identidad',
-  'marketing.campaign': 'Novedades y promociones',
+/** Como se llama cada grupo en pantalla. El servidor manda la clave; esto solo la titula. */
+const CATEGORY_TITLE: Record<string, string> = {
+  pagos: 'Tus pagos',
+  credito: 'Tu crédito',
+  seguridad: 'Seguridad',
+  novedades: 'Novedades',
+  general: 'Otros avisos',
 };
 
-function eventLabel(code: string): string {
-  return EVENT_LABEL[code] ?? code.replace(/[._]/g, ' ');
+type Preference = notificationsApi.NotificationPreference;
+
+/** La clave con la que se identifica una preferencia. El servidor ya no devuelve `id`. */
+function keyOf(preference: Pick<Preference, 'eventCode' | 'channel'>): string {
+  return `${preference.eventCode}:${preference.channel}`;
 }
 
 export default function PreferenciasAvisos() {
   const session = useSession();
-  const [items, setItems] = useState<notificationsApi.NotificationPreference[]>([]);
+  const [items, setItems] = useState<Preference[]>([]);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [saving, setSaving] = useState<string | null>(null);
@@ -73,7 +73,6 @@ export default function PreferenciasAvisos() {
     notificationsApi
       .getPreferences(session.customerId)
       .then((value) => {
-        // Igual que en la bandeja: un objeto inesperado no puede tumbar la pantalla.
         if (!cancelled) setItems(Array.isArray(value) ? value : []);
       })
       .catch((caught) => {
@@ -87,27 +86,23 @@ export default function PreferenciasAvisos() {
     };
   }, [session.customerId]);
 
-  const toggle = async (preference: notificationsApi.NotificationPreference, next: boolean) => {
-    if (!session.customerId || preference.isRequired) return;
-    const key = `${preference.eventCode}:${preference.channel}`;
+  const toggle = async (preference: Preference, next: boolean) => {
+    if (!session.customerId || preference.isMandatory) return;
+    const key = keyOf(preference);
     setSaving(key);
 
     // Se pinta primero y se guarda despues: un interruptor que tarda medio segundo en moverse se
     // toca dos veces, y la segunda deshace la primera.
     const previous = items;
-    setItems((current) =>
-      current.map((entry) => (entry.id === preference.id ? { ...entry, isEnabled: next } : entry)),
-    );
+    setItems((current) => current.map((entry) => (keyOf(entry) === key ? { ...entry, isEnabled: next, isExplicit: true } : entry)));
 
     try {
       const updated = await notificationsApi.updatePreferences(session.customerId, [
-        { eventCode: preference.eventCode, channel: preference.channel, isEnabled: next, isRequired: preference.isRequired },
+        { eventCode: preference.eventCode, channel: preference.channel, isEnabled: next },
       ]);
-      if (Array.isArray(updated) && updated.length > 0) {
-        setItems((current) =>
-          current.map((entry) => updated.find((fresh) => fresh.id === entry.id) ?? entry),
-        );
-      }
+      // La respuesta trae el catalogo entero, ya reconciliado. Se adopta tal cual: si el servidor
+      // decidio algo distinto de lo que se pinto, gana el servidor y la pantalla no queda mintiendo.
+      if (Array.isArray(updated) && updated.length > 0) setItems(updated);
       setError(null);
     } catch (caught) {
       setItems(previous);
@@ -119,12 +114,14 @@ export default function PreferenciasAvisos() {
 
   const described = error ? describeError(error) : null;
 
-  /** Agrupado por evento: es la unidad sobre la que la persona decide. */
-  const byEvent = new Map<string, notificationsApi.NotificationPreference[]>();
+  /** Agrupado por evento dentro de su categoria: es la unidad sobre la que la persona decide. */
+  const byCategory = new Map<string, Map<string, Preference[]>>();
   for (const preference of items) {
-    const bucket = byEvent.get(preference.eventCode);
-    if (bucket) bucket.push(preference);
-    else byEvent.set(preference.eventCode, [preference]);
+    const category = byCategory.get(preference.category) ?? new Map<string, Preference[]>();
+    const bucket = category.get(preference.eventCode) ?? [];
+    bucket.push(preference);
+    category.set(preference.eventCode, bucket);
+    byCategory.set(preference.category, category);
   }
 
   return (
@@ -143,55 +140,79 @@ export default function PreferenciasAvisos() {
 
       {ready && items.length === 0 ? (
         <EmptyState
-          title="Todavía no hay preferencias que ajustar"
-          detail="En cuanto tengas actividad en tu cuenta, aquí podrás elegir por dónde te avisamos de cada cosa."
+          title="No pudimos cargar tus avisos"
+          detail="Vuelve a intentarlo en un momento. Mientras tanto seguimos avisándote de todo lo importante."
         />
       ) : null}
 
-      {[...byEvent.entries()].map(([eventCode, preferences]) => {
-        const required = preferences.some((preference) => preference.isRequired);
-        return (
-          <Card key={eventCode}>
-            <View style={styles.eventHeader}>
-              <AtlasText variant="h3" style={styles.flex}>
-                {eventLabel(eventCode)}
-              </AtlasText>
-              {required ? <Badge label="Siempre activo" tone="info" /> : null}
-            </View>
+      {[...byCategory.entries()].map(([category, events]) => (
+        <View key={category}>
+          <AtlasText variant="caption" tone="tertiary">
+            {(CATEGORY_TITLE[category] ?? category).toUpperCase()}
+          </AtlasText>
+          <Gap size="xs" />
 
-            {required ? (
-              <AtlasText variant="caption" tone="tertiary">
-                Este aviso no se puede apagar: es el que evita que te enteres tarde de una deuda tuya.
-              </AtlasText>
-            ) : null}
-
-            <Divider />
-
-            {preferences.map((preference, index) => {
-              const channel = CHANNEL_LABEL[preference.channel] ?? { label: preference.channel, icon: 'sobre' as IconName };
-              return (
-                <View key={preference.id}>
-                  {index > 0 ? <Gap size="xs" /> : null}
-                  <View style={styles.channelRow}>
-                    <View style={styles.channelIcon}>
-                      <Icon name={channel.icon} size={16} tint={color.text.secondary} />
-                    </View>
-                    <AtlasText variant="body" tone="secondary" style={styles.flex}>
-                      {channel.label}
-                    </AtlasText>
-                    <Switch
-                      value={preference.isEnabled}
-                      onValueChange={(next) => void toggle(preference, next)}
-                      disabled={preference.isRequired || saving === `${preference.eventCode}:${preference.channel}`}
-                      accessibilityLabel={`${channel.label} para ${eventLabel(eventCode)}`}
-                    />
-                  </View>
+          {[...events.entries()].map(([eventCode, preferences]) => {
+            const head = preferences[0]!;
+            const mandatory = preferences.some((preference) => preference.isMandatory);
+            return (
+              <Card key={eventCode}>
+                <View style={styles.eventHeader}>
+                  <AtlasText variant="h3" style={styles.flex}>
+                    {head.label}
+                  </AtlasText>
+                  {mandatory ? <Badge label="Siempre activo" tone="info" /> : null}
                 </View>
-              );
-            })}
-          </Card>
-        );
-      })}
+
+                {head.description ? (
+                  <AtlasText variant="caption" tone="secondary">
+                    {head.description}
+                  </AtlasText>
+                ) : null}
+
+                {/*
+                  El motivo del candado, con el mismo peso visual que un aviso: es lo que convierte
+                  «no puedes apagarlo» en «no te conviene apagarlo, y por esto».
+                */}
+                {mandatory ? (
+                  <View style={styles.lockRow}>
+                    <Icon name="candado" size={14} tint={color.text.tertiary} />
+                    <AtlasText variant="caption" tone="tertiary" style={styles.flex}>
+                      {preferences.find((preference) => preference.mandatoryReason)?.mandatoryReason ??
+                        'Este aviso no se puede apagar: es el que evita que te enteres tarde de una deuda tuya.'}
+                    </AtlasText>
+                  </View>
+                ) : null}
+
+                <Divider />
+
+                {preferences.map((preference, index) => {
+                  const channel = CHANNEL_LABEL[preference.channel] ?? { label: preference.channel, icon: 'sobre' as IconName };
+                  return (
+                    <View key={keyOf(preference)}>
+                      {index > 0 ? <Gap size="xs" /> : null}
+                      <View style={styles.channelRow}>
+                        <View style={styles.channelIcon}>
+                          <Icon name={channel.icon} size={16} tint={color.text.secondary} />
+                        </View>
+                        <AtlasText variant="body" tone="secondary" style={styles.flex}>
+                          {channel.label}
+                        </AtlasText>
+                        <Switch
+                          value={preference.isEnabled}
+                          onValueChange={(next) => void toggle(preference, next)}
+                          disabled={preference.isMandatory || saving === keyOf(preference)}
+                          accessibilityLabel={`${channel.label} para ${preference.label}`}
+                        />
+                      </View>
+                    </View>
+                  );
+                })}
+              </Card>
+            );
+          })}
+        </View>
+      ))}
 
       <Gap size="lg" />
     </Screen>
@@ -201,6 +222,7 @@ export default function PreferenciasAvisos() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   eventHeader: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  lockRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.xs },
   channelRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.xxs },
   channelIcon: {
     width: 30,

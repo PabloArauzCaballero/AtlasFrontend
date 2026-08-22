@@ -6,10 +6,10 @@
  * propia cuenta.
  */
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
-import { apiConfig, purchaseDataSource } from '../../../src/api/config';
-import { useSandbox } from '../../../src/sandbox/store';
+import * as contentApi from '../../../src/api/endpoints/app-content';
+import { ContentActionButton } from '../../../src/ui/content';
 import { describeCustomerStatus } from '../../../src/features/onboarding-map';
 import { useSession } from '../../../src/session/session';
 import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS } from '../../../src/features/tour-inicio';
@@ -24,9 +24,26 @@ import { color, radius, space } from '../../../src/theme/tokens';
 export default function Profile() {
   const router = useRouter();
   const session = useSession();
-  const sandbox = useSandbox();
   const [signingOut, setSigningOut] = useState(false);
   const tour = useTour();
+
+  /*
+   * El contacto de soporte sale del servidor, no del codigo. Si soporte cambia de numero —o si un
+   * dia hay que atender por otro canal— se edita desde el portal y llega a todo el mundo a la vez,
+   * en lugar de esperar a que cada persona actualice la app.
+   */
+  const [helpAction, setHelpAction] = useState<contentApi.ContentAction | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void contentApi.getContent('help').then((entries) => {
+      if (cancelled) return;
+      const whatsapp = entries.find((entry) => entry.action?.kind === 'whatsapp');
+      setHelpAction(whatsapp?.action ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const book = useCreditBook(session.customerId);
   const rating = book.rating;
@@ -207,9 +224,20 @@ export default function Profile() {
       <Card>
         <AtlasText variant="h3">Ayuda</AtlasText>
         <Divider />
-        <ListRow icon="ayuda" title="¿Cómo funciona Atlas?" subtitle="Pagas 60% hoy y el resto en 3 cuotas cada 14 días" />
-        <Divider />
-        <ListRow icon="ayuda" title="¿Dónde pago mis cuotas?" subtitle="Siempre al QR bancario del comercio donde compraste" />
+        {/*
+          Antes aqui habia dos filas con la respuesta metida en el subtitulo, a diez palabras cada
+          una. Eso no responde: es un titular. Las preguntas que la gente se hace de verdad —«¿como
+          deciden cuanto me prestan?», «¿que pasa si me atraso?»— no caben en una linea, y
+          contestarlas a medias cierra la pregunta sin resolverla. Ahora llevan a su pantalla, con la
+          respuesta entera y editable desde el portal.
+        */}
+        <ListRow
+          icon="ayuda"
+          title="Preguntas frecuentes"
+          subtitle="Cómo funciona Atlas, cómo se calcula tu línea y qué pasa si te atrasas"
+          onPress={() => router.push('/(app)/ayuda')}
+          accessibilityHint="Abrir las preguntas frecuentes"
+        />
         <Divider />
         {/*
           El recorrido tiene que poder repetirse. Quien lo salto el primer día porque tenia prisa no
@@ -222,7 +250,7 @@ export default function Profile() {
         <ListRow
           title="Ver el recorrido de nuevo"
           subtitle="Los tres puntos que conviene saber antes de comprar"
-          icon="ayuda"
+          icon="refrescar"
           onPress={() => {
             void resetTour(TOUR_INICIO_KEY).then(() => {
               router.push('/(app)/(tabs)');
@@ -230,22 +258,16 @@ export default function Profile() {
             });
           }}
         />
-      </Card>
-
-      <Card>
-        <AtlasText variant="h3">Entorno</AtlasText>
-        <Divider />
-        <ListRow title="Servidor" subtitle={apiConfig.baseUrl} />
-        <Divider />
-        <ListRow title="Origen de compras" subtitle={purchaseDataSource === 'sandbox' ? 'Sandbox local (dominio V3)' : 'Backend Atlas'} />
-        <Divider />
-        <ListRow title="Version" subtitle={apiConfig.appVersion} />
-        {purchaseDataSource === 'sandbox' ? (
+        {/*
+          El boton de WhatsApp sale del contenido del servidor —numero, texto del boton y mensaje
+          previo incluidos— para que soporte pueda cambiar de numero sin publicar una version.
+          Si el servidor no responde, sencillamente no se pinta: un boton de ayuda roto es peor que
+          su ausencia justo cuando alguien lo necesita.
+        */}
+        {helpAction ? (
           <>
-            <Divider />
-            <View>
-              <Button label="Reiniciar datos del sandbox" variant="ghost" onPress={sandbox.reset} />
-            </View>
+            <Gap size="sm" />
+            <ContentActionButton action={helpAction} />
           </>
         ) : null}
       </Card>
