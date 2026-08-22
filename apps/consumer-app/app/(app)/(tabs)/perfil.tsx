@@ -17,6 +17,7 @@ import { resetTour, useTour } from '../../../src/ui/tour';
 import { Gap, Screen } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, Divider, ListRow, ProgressBar } from '../../../src/ui/primitives';
 import { Icon } from '../../../src/ui/icons';
+import { DelinquencyImpact, ScoringPanel } from '../../../src/ui/scoring-panel';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { color, radius, space } from '../../../src/theme/tokens';
 
@@ -29,6 +30,9 @@ export default function Profile() {
 
   const book = useCreditBook(session.customerId);
   const rating = book.rating;
+  const creditLine = book.creditLine;
+  // Lo vencido sale del reparto por rubro, que ya lo mide contra el calendario en el servidor.
+  const overdue = book.spending?.totals.overdue ?? 0;
 
   const me = session.me;
   const fullName = [me?.profile.firstName, me?.profile.lastName].filter(Boolean).join(' ') || 'Tu cuenta';
@@ -57,6 +61,23 @@ export default function Profile() {
       <AtlasText variant="body" tone="secondary">
         Cliente {me?.customer.customerCode ?? ''}
       </AtlasText>
+
+      {/*
+        EL PUNTAJE ATLAS, primero.
+
+        Es el que decide cuanto puede gastar, sale del motor y lo puede mover la persona pagando.
+        Va por encima de la calificacion de deuda —que es como se clasifica su cartera para la
+        provision contable— porque esa responde a otra pregunta y no es accionable para el cliente.
+      */}
+      {creditLine ? (
+        <Card>
+          <ScoringPanel line={creditLine} />
+        </Card>
+      ) : null}
+
+      {creditLine && overdue > 0 ? (
+        <DelinquencyImpact line={creditLine} overdueAmount={overdue} currency={creditLine.currencyCode} />
+      ) : null}
 
       {/*
         La calificacion crediticia, del modulo `credit-rating` del backend.
@@ -143,6 +164,22 @@ export default function Profile() {
           icon="sobre"
           title="Correo"
           subtitle={me?.customer.emailDomain ? `Termina en @${me.customer.emailDomain}` : 'Sin registrar'}
+        />
+        <Divider />
+        <ListRow
+          icon="documento"
+          title="Recalcular mi línea"
+          subtitle="Sube tu extracto bancario y la recalculamos en 24 h"
+          onPress={() => router.push('/(app)/extracto-bancario')}
+          accessibilityHint="Abrir para subir tu extracto bancario"
+        />
+        <Divider />
+        <ListRow
+          icon="sobre"
+          title="Cómo te avisamos"
+          subtitle="Elige por dónde recibes cada aviso"
+          onPress={() => router.push('/(app)/preferencias-avisos')}
+          accessibilityHint="Abrir las preferencias de avisos"
         />
         <Divider />
         <ListRow

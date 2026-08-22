@@ -32,7 +32,7 @@ export default function SignIn() {
 
   const blockedReason = firstBlocker([
     [identifier.trim().length >= 3, 'Escribe el correo o teléfono con el que te registraste.'],
-    [password.length >= 1, 'Falta tu contraseña.'],
+    [password.length >= 1, 'Falta tu PIN.'],
   ]);
 
   const submit = async () => {
@@ -115,7 +115,7 @@ export default function SignIn() {
       />
 
       <IconField
-        label="Contraseña"
+        label="PIN"
         icon="candado"
         value={password}
         onChangeText={setPassword}

@@ -7,6 +7,7 @@
  * desfasados entre si: el mismo dinero contado en dos momentos distintos.
  */
 import { useCallback, useEffect, useState } from 'react';
+import * as creditLineApi from '../api/endpoints/credit-line';
 import * as loansApi from '../api/endpoints/loans';
 
 type State = {
@@ -23,9 +24,16 @@ type State = {
    * permitiria que la lista y el calendario contaran la misma cuota de dos maneras.
    */
   calendar: loansApi.PaymentCalendar | null;
+  /**
+   * La linea de credito que decidio el MOTOR, no la constante que llevaba la app.
+   *
+   * `null` mientras no se haya calculado nunca (404 del backend), que es un estado real del
+   * producto —cliente recien dado de alta— y no un fallo: la pantalla lo distingue.
+   */
+  creditLine: creditLineApi.CreditLine | null;
 };
 
-const EMPTY: State = { ready: false, error: null, loans: [], spending: null, rating: null, calendar: null };
+const EMPTY: State = { ready: false, error: null, loans: [], spending: null, rating: null, calendar: null, creditLine: null };
 
 export function useCreditBook(customerId: string | null) {
   const [state, setState] = useState<State>(EMPTY);
@@ -41,11 +49,12 @@ export function useCreditBook(customerId: string | null) {
      * que un 404 suyo es un estado normal del producto —cliente nuevo— y no puede tumbar el tablero
      * de gastos. Con `all`, la pantalla entera se caeria por la pieza mas opcional de las tres.
      */
-    const [loans, spending, rating, calendar] = await Promise.allSettled([
+    const [loans, spending, rating, calendar, creditLine] = await Promise.allSettled([
       loansApi.listLoans(customerId),
       loansApi.getSpendingByCategory(customerId),
       loansApi.getCreditRating(customerId),
       loansApi.getPaymentCalendar(customerId),
+      creditLineApi.getCreditLine(customerId),
     ]);
 
     setState({
@@ -56,6 +65,7 @@ export function useCreditBook(customerId: string | null) {
       spending: spending.status === 'fulfilled' ? spending.value : null,
       rating: rating.status === 'fulfilled' ? rating.value : null,
       calendar: calendar.status === 'fulfilled' ? calendar.value : null,
+      creditLine: creditLine.status === 'fulfilled' ? creditLine.value : null,
     });
   }, [customerId]);
 

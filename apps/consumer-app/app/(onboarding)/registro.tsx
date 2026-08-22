@@ -20,6 +20,7 @@ import { type Country, DEFAULT_COUNTRY, DateField, IconField, PhoneField } from 
 import { Icon, type IconName } from '../../src/ui/icons';
 import { color, space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
+import { PinField } from '../../src/ui/pin-field';
 import { AtlasText, Button, Card, Divider, ErrorState, Skeleton } from '../../src/ui/primitives';
 
 /** Edad minima exigida por la regla de habilitacion del backend. */
@@ -38,6 +39,26 @@ function ageFrom(birthDate: string): number | null {
   return age;
 }
 
+/**
+ * Que le pasa a este PIN, dicho como se lo dirias a la persona.
+ *
+ * La lista de prohibidos es la MISMA que valida el servidor. Se repite aqui a proposito: que el
+ * telefono lo diga al teclear evita un viaje de ida y vuelta para enterarse de que `1234` no vale,
+ * y el servidor sigue siendo quien manda —esto es comodidad, no control.
+ */
+const PIN_PROHIBIDOS = new Set([
+  '0000', '1111', '2222', '3333', '4444', '5555', '6666', '7777', '8888', '9999',
+  '1234', '2345', '3456', '4567', '5678', '6789', '7890',
+  '4321', '5432', '6543', '7654', '8765', '9876', '0987',
+  '1212', '1122', '1004', '2000', '6969', '1313', '2001', '1010',
+]);
+
+function pinProblem(pin: string): string | null {
+  if (!/^\d{4}$/.test(pin)) return 'Tu PIN debe ser de 4 dígitos.';
+  if (PIN_PROHIBIDOS.has(pin)) return 'Ese PIN es demasiado fácil de adivinar. Elige otro.';
+  return null;
+}
+
 export default function Register() {
   const router = useRouter();
   const session = useSession();
@@ -50,7 +71,6 @@ export default function Register() {
    * un toque a casi todo el mundo y no le quita la opcion a nadie.
    */
   const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
-  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [loadError, setLoadError] = useState<unknown>(null);
@@ -91,7 +111,7 @@ export default function Register() {
         : null,
     phone: form.phone.length < 7 ? 'Escribe tu número, sin el código de país.' : null,
     email: !form.email.includes('@') ? 'Escribe un correo válido.' : null,
-    password: form.password.length < 10 ? 'Mínimo 10 caracteres.' : null,
+    password: pinProblem(form.password),
   };
 
   const requiredConsents = (documents ?? []).filter((document) => document.requiresExplicitAction);
@@ -111,7 +131,7 @@ export default function Register() {
     [errors.birthDate === null, errors.birthDate ?? 'Falta tu fecha de nacimiento.'],
     [errors.phone === null, 'Falta tu número de teléfono.'],
     [errors.email === null, 'Falta tu correo electrónico.'],
-    [errors.password === null, 'La contraseña necesita al menos 10 caracteres.'],
+    [errors.password === null, errors.password ?? 'Falta tu PIN de 4 dígitos.'],
     [consentsOk, 'Falta aceptar las autorizaciones obligatorias.'],
   ]);
 
@@ -242,39 +262,20 @@ export default function Register() {
       </FormSection>
 
       <FormSection icon="candado" title="Cómo entras">
-        <IconField
-          label="Contraseña"
-          icon="candado"
+        {/*
+          Un PIN de CUATRO digitos, no una contrasena.
+
+          La de diez caracteres la olvidaba la mitad de la gente, y recuperarla pasa por el correo
+          —que en este segmento no siempre se revisa—. Un PIN que se recuerda es un PIN que no se
+          apunta en un papel, y esa era la alternativa real. Lo sostienen el bloqueo temporal por
+          intentos fallidos y la lista de PIN prohibidos que valida el servidor.
+        */}
+        <PinField
+          label="Tu PIN"
           value={form.password}
           onChangeText={(v) => setForm({ ...form, password: v })}
-          secureTextEntry={!showPassword}
-          textContentType="newPassword"
-          autoComplete="new-password"
-          placeholder="Mínimo 10 caracteres"
-          required
           error={form.password ? errors.password : null}
-          hint="Mínimo 10 caracteres."
-          trailing={
-            /*
-              Un icono, no la palabra «Ver».
-
-              El texto competia con la etiqueta del campo y con el mensaje de ayuda: tres cosas
-              escritas en la misma fila. El ojo TACHADO frente al ojo abierto se distingue de un
-              vistazo y no se lee, que es lo que se quiere de un control secundario.
-            */
-            <Pressable
-              onPress={() => setShowPassword(!showPassword)}
-              accessibilityRole="button"
-              accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-              hitSlop={10}
-            >
-              <Icon
-                name={showPassword ? 'ojo-tachado' : 'ojo'}
-                size={20}
-                tint={showPassword ? color.action.primary : color.text.tertiary}
-              />
-            </Pressable>
-          }
+          hint="Cuatro digitos que recuerdes. Evita 1234, tu ano de nacimiento o cuatro iguales."
         />
       </FormSection>
 

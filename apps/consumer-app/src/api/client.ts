@@ -115,7 +115,19 @@ async function rawRequest<T>(path: string, options: RequestOptions, accessToken:
     });
   }
 
-  return { data: (envelope.data ?? (envelope as unknown as T)) as T, requestId };
+  /*
+   * `'data' in envelope` y no `envelope.data ?? envelope`.
+   *
+   * Con `??`, una respuesta legitima de `data: null` —«este cliente todavia no subio ningun
+   * extracto»— devolvia el SOBRE ENTERO en lugar de `null`. La pantalla recibia
+   * `{requestId, data: null, timestamp}`, que es un objeto y por tanto verdadero, y pintaba una
+   * tarjeta de estado vacia sobre un extracto que no existe.
+   *
+   * Los endpoints que responden sin sobre siguen funcionando: si no hay clave `data`, se devuelve
+   * el cuerpo tal cual.
+   */
+  const body = envelope !== null && typeof envelope === 'object' && 'data' in envelope ? envelope.data : (envelope as unknown as T);
+  return { data: body as T, requestId };
 }
 
 /** Punto unico de salida a red. Refresca el token una sola vez ante 401 y no reintenta mas. */

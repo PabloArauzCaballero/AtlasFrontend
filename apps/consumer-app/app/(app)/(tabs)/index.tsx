@@ -41,6 +41,7 @@ export default function Home() {
   // El informe tarda: sin este estado el boton parece no responder y la gente lo pulsa dos veces.
   const [reportBusy, setReportBusy] = useState(false);
   const spending = book.spending;
+  const creditLine = book.creditLine;
   const currency = spending?.currencyCode ?? 'BOB';
   const activeOrders = sandbox.state.orders.filter((order) => order.status === 'ACTIVE' || order.status === 'WAITING_INITIAL_PAYMENT');
 
@@ -132,22 +133,47 @@ export default function Home() {
           <AtlasText variant="caption" tone="secondary">
             Disponible para comprar
           </AtlasText>
-          <AtlasText variant="amount">{formatMoney(sandbox.available)}</AtlasText>
+          {/*
+            El limite sale del MOTOR, no de una constante.
 
-          <View style={styles.lineMeta}>
-            <View style={styles.lineMetaItem}>
-              <AtlasText variant="caption" tone="tertiary">
-                Límite aprobado
+            Hasta ahora esta cifra era `DEFAULT_LIMIT = minor(500_000)` escrita en la app: Bs 5.000
+            para todo el mundo, decidida por nadie. Ahora la calcula la politica de suscripcion con
+            el expediente real de cada persona. Mientras el motor no la haya calculado nunca, se
+            dice —no se rellena con el numero viejo, que es lo que escondia el problema.
+          */}
+          {creditLine ? (
+            <>
+              <AtlasText variant="amount">{formatAmount(creditLine.available, creditLine.currencyCode)}</AtlasText>
+              <View style={styles.lineMeta}>
+                <View style={styles.lineMetaItem}>
+                  <AtlasText variant="caption" tone="tertiary">
+                    Límite aprobado
+                  </AtlasText>
+                  <AtlasText variant="amountSmall">{formatAmount(creditLine.approvedLimit, creditLine.currencyCode)}</AtlasText>
+                </View>
+                <View style={styles.lineMetaItem}>
+                  <AtlasText variant="caption" tone="tertiary">
+                    Por pagar
+                  </AtlasText>
+                  <AtlasText variant="amountSmall">{formatAmount(creditLine.used, creditLine.currencyCode)}</AtlasText>
+                </View>
+              </View>
+              {creditLine.maxAffordableInstallment !== null ? (
+                <AtlasText variant="caption" tone="secondary">
+                  Calculado sobre un ingreso disponible de{' '}
+                  {formatAmount(creditLine.disposableIncome ?? 0, creditLine.currencyCode)} al mes. Tu cuota máxima sostenible es{' '}
+                  {formatAmount(creditLine.maxAffordableInstallment, creditLine.currencyCode)}.
+                </AtlasText>
+              ) : null}
+            </>
+          ) : (
+            <>
+              <AtlasText variant="amount">—</AtlasText>
+              <AtlasText variant="caption" tone="secondary">
+                Todavía estamos calculando tu línea. En cuanto la política la resuelva, aparecerá aquí.
               </AtlasText>
-              <AtlasText variant="amountSmall">{formatMoney(sandbox.state.creditLine.approvedLimit)}</AtlasText>
-            </View>
-            <View style={styles.lineMetaItem}>
-              <AtlasText variant="caption" tone="tertiary">
-                Por pagar
-              </AtlasText>
-              <AtlasText variant="amountSmall">{formatMoney(sandbox.outstanding)}</AtlasText>
-            </View>
-          </View>
+            </>
+          )}
 
           <TourTarget id={TOUR_INICIO_TARGETS.escanear}>
             <Button label="Escanear QR del comercio" onPress={() => router.push('/(app)/(tabs)/escanear')} />

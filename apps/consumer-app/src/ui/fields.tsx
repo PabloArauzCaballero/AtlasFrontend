@@ -5,7 +5,7 @@
  * foco visible. Un formulario movil que no contempla el teclado es un formulario web encogido.
  */
 import { forwardRef, useState } from 'react';
-import { Pressable, StyleSheet, TextInput, type TextInputProps, View, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, TextInput, type TextInputProps, View, type ViewStyle, Switch as RNSwitch } from 'react-native';
 import { type Currency, type Minor, formatMoney, parseAmountInput } from '../domain/money';
 import { color, radius, space, touch, type } from '../theme/tokens';
 import { AtlasText } from './primitives';
@@ -304,3 +304,38 @@ const styles = StyleSheet.create({
   checkBoxChecked: { backgroundColor: color.action.primary, borderColor: color.action.primary },
   checkText: { flex: 1, gap: space.xxs },
 });
+
+/**
+ * Un interruptor de encendido/apagado.
+ *
+ * Se usa el nativo del sistema y no uno dibujado a mano: es el control que la gente ya sabe leer de
+ * un vistazo —y, mas importante, el que los lectores de pantalla anuncian correctamente sin que
+ * haya que declararle el rol y el estado a mano.
+ *
+ * `disabled` se pinta apagando el color, no escondiendo el control: una preferencia que no se puede
+ * cambiar tiene que VERSE, porque la persona necesita saber que existe y que esta activa.
+ */
+export function Switch({
+  value,
+  onValueChange,
+  disabled = false,
+  accessibilityLabel,
+}: {
+  value: boolean;
+  onValueChange: (next: boolean) => void;
+  disabled?: boolean;
+  accessibilityLabel?: string;
+}) {
+  return (
+    <RNSwitch
+      value={value}
+      onValueChange={onValueChange}
+      disabled={disabled}
+      accessibilityLabel={accessibilityLabel}
+      trackColor={{ false: color.surface.sunken, true: color.action.primary }}
+      thumbColor={color.surface.primary}
+      ios_backgroundColor={color.surface.sunken}
+      style={disabled ? { opacity: 0.5 } : undefined}
+    />
+  );
+}

@@ -22,7 +22,10 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Atlas usa la camara para escanear el QR del comercio e iniciar tu compra.",
         "NSPhotoLibraryUsageDescription": "Atlas usa tus fotos para adjuntar el comprobante de un pago.",
-        "NSLocationWhenInUseUsageDescription": "Atlas usa tu ubicacion solo al declarar tu domicilio durante la verificacion."
+        "NSLocationWhenInUseUsageDescription": "Atlas usa tu ubicacion solo al declarar tu domicilio durante la verificacion.",
+        "NSDocumentsFolderUsageDescription": "Atlas accede a tus archivos solo para que elijas el extracto bancario que quieres subir.",
+        "NSFaceIDUsageDescription": "Atlas usa Face ID para que entres con tu rostro en lugar de escribir tu PIN.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {

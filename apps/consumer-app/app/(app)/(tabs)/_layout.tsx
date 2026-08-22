@@ -1,8 +1,12 @@
 /**
  * Barra de pestanas.
  *
- * Cuatro destinos de primer nivel y recurrentes, que es para lo unico que sirven las pestanas.
+ * Cinco destinos de primer nivel y recurrentes, que es para lo unico que sirven las pestanas.
  * Nada de pasos de un asistente, detalles ni acciones destructivas aqui dentro.
+ *
+ * «Avisos» es pestana y no una campanita en una esquina: lo que llega ahi son vencimientos, moras y
+ * cambios en la linea de credito. Escondido tras un icono con un punto rojo, el aviso que dice «te
+ * vence una cuota manana» compite con la notificacion del sistema y pierde.
  *
  * "Escanear" ocupa el centro porque es la accion que define el producto: comprar en un comercio.
  * Es la unica que lleva realce, y lo lleva siempre —tambien sin foco— porque su realce no dice
@@ -51,6 +55,10 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="pagos"
         options={{ title: 'Pagos', tabBarIcon: ({ focused }) => <TabIcon name="pagos" focused={focused} /> }}
+      />
+      <Tabs.Screen
+        name="avisos"
+        options={{ title: 'Avisos', tabBarIcon: ({ focused }) => <TabIcon name="sobre" focused={focused} /> }}
       />
       <Tabs.Screen
         name="perfil"
