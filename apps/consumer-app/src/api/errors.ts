@@ -70,7 +70,7 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   IDENTITY_ALREADY_VERIFIED: 'Tu identidad ya fue verificada.',
   DOCUMENT_NUMBER_MISMATCH: 'El número de documento no coincide con el que registraste.',
   IDENTITY_PACKAGE_REQUIRED: 'Primero debes subir tu documento de identidad.',
-  INVALID_CREDENTIALS: 'Correo o contraseña incorrectos.',
+  INVALID_CREDENTIALS: 'Correo, teléfono o PIN incorrectos.',
   ACCOUNT_LOCKED: 'Tu cuenta está bloqueada temporalmente por varios intentos fallidos.',
 
   /*
@@ -102,13 +102,13 @@ export type ErrorRecovery = { label: string; href: string };
 const RECOVERY_BY_CODE: Record<string, ErrorRecovery[]> = {
   CUSTOMER_ALREADY_EXISTS: [
     { label: 'Ingresar con mi cuenta', href: '/(auth)/ingresar' },
-    { label: 'Olvidé mi contraseña', href: '/(auth)/recuperar' },
+    { label: 'Olvidé mi PIN', href: '/(auth)/recuperar' },
   ],
   CONTACT_ALREADY_REGISTERED: [
     { label: 'Ingresar con mi cuenta', href: '/(auth)/ingresar' },
-    { label: 'Olvidé mi contraseña', href: '/(auth)/recuperar' },
+    { label: 'Olvidé mi PIN', href: '/(auth)/recuperar' },
   ],
-  ACCOUNT_LOCKED: [{ label: 'Olvidé mi contraseña', href: '/(auth)/recuperar' }],
+  ACCOUNT_LOCKED: [{ label: 'Olvidé mi PIN', href: '/(auth)/recuperar' }],
 };
 
 /**

@@ -56,7 +56,7 @@ export default function Profile() {
 
   const confirmSignOut = () => {
     // Cerrar sesión es reversible pero interrumpe: se confirma antes, con el patron nativo.
-    Alert.alert('Cerrar sesión', 'Tendrás que ingresar de nuevo con tu contraseña.', [
+    Alert.alert('Cerrar sesión', 'Tendrás que ingresar de nuevo con tu PIN.', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Cerrar sesión',
@@ -212,7 +212,7 @@ export default function Profile() {
         <AtlasText variant="h3">Seguridad</AtlasText>
         <Divider />
         <ListRow
-          title="Cambiar contraseña"
+          title="Cambiar mi PIN"
           icon="candado"
           subtitle="Te enviamos un código por correo"
           onPress={() => router.push('/(auth)/recuperar')}
