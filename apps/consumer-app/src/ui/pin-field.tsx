@@ -72,7 +72,23 @@ export function PinField({
         </Pressable>
       </View>
 
-      <Pressable onPress={() => input.current?.focus()} accessibilityRole="none">
+      {/*
+        Las casillas son la superficie tocable del campo, y hasta ahora no tenian nombre.
+
+        Con `accessibilityRole="none"` y sin etiqueta, un lector de pantalla anunciaba el rotulo
+        —«Tu PIN»— y despues cuatro vistas mudas: quien navega con VoiceOver no encontraba donde
+        escribir. Y por el mismo motivo tampoco podia encontrarlo una prueba automatizada, que es
+        como se descubrio: el unico campo del alta que habia que tocar por coordenada.
+
+        `accessibilityRole="none"` se queda —el campo real es el `TextInput` de debajo, y anunciar
+        esto como boton diria que hace algo que no hace— pero ya tiene nombre e identificador.
+      */}
+      <Pressable
+        onPress={() => input.current?.focus()}
+        accessibilityRole="none"
+        accessibilityLabel={`${label}: ${PIN_LENGTH} dígitos`}
+        testID="pin-field"
+      >
         <View style={styles.boxes}>
           {Array.from({ length: PIN_LENGTH }, (_, index) => {
             const filled = index < value.length;
