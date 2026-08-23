@@ -233,26 +233,32 @@ cuenta. Eso se hace en Google, no aquí.
 
 ## 5. Lo que queda abierto
 
-1. **El error de envío es invisible** (§2.3). El `ErrorState` debería traer la vista hasta él, o el
-   fallo debería aparecer junto al botón, donde está mirando la persona.
-2. **La pantalla del carnet sigue sin llamar al motor** (§4-bis): es lo único que queda para que el
-   camino que ya funciona llegue al cliente.
-3. **La dirección exacta.** El backend tiene `addressLineEncrypted` y **espera recibirlo ya cifrado
-   por el cliente**; esa pieza no existe, así que la app no pide calle ni número. Hasta que se
-   defina cómo se cifra, la tarjeta de confianza dice lo que sí pasa y no promete cifrado de un dato
-   que no se recoge.
-4. **`contacts` y `notifications`**: el backend acepta esos permisos y la app no los consulta porque
-   `expo-contacts` y `expo-notifications` no son dependencias. Añadirlos exige recompilar el
-   binario. Decir «denegado» sobre un permiso que no se ha consultado sería peor que callar.
-5. **El buzón del remitente.** Ya sale como **ATLAS** y no como una dirección suelta
-   (`GMAIL_FROM_NAME`), pero la dirección sigue siendo una cuenta personal: hace falta un buzón de
-   la plataforma. Eso es alta de infraestructura, no código.
-6. **La recuperación se quedó en el modelo viejo.** El enlace dice «Olvidé mi contraseña» en una
-   pantalla cuyo campo se llama «PIN», y no es solo la etiqueta: `POST /auth/password-reset/confirm`
-   exige **10 caracteres** (`auth.schemas.ts`) para todos los tipos de actor, así que quien olvide su
-   PIN de 4 dígitos solo puede recuperarlo convirtiéndolo en una contraseña larga que el resto de la
-   app sigue llamando PIN. No deja a nadie fuera —el campo de ingreso es texto libre— pero es una
-   decisión de producto pendiente, no una corrección de copia.
+Los seis puntos que abría este informe **están cerrados**. Se dejan nombrados porque el cómo importa
+más que el hecho:
+
+1. ~~El error de envío es invisible~~ — `Screen` acepta ahora una referencia a su desplazamiento y
+   `useScrollToError` lleva la vista arriba en el flanco, no en cada render: un error persistente que
+   devolviera la vista al principio cada vez que alguien intenta leer otra cosa sería peor que el
+   fallo original.
+2. ~~El carnet no llama al motor~~ — lo llama, y el veredicto se enseña en palabras de la persona.
+3. ~~La dirección exacta~~ — la cifra el **servidor**, con el mismo sobre que el teléfono. Cifrar en
+   el móvil exigiría repartir una llave a cada teléfono, que es como una llave deja de serlo.
+4. ~~`contacts` y `notifications`~~ — instalados, con binario nativo nuevo. El permiso de contactos
+   se pide al pulsar el botón y se lee **un** contacto, el que la persona elige.
+5. ~~El buzón del remitente~~ — sale como ATLAS, y producción ya no arranca con un buzón personal.
+   Falta el alta del buzón con dominio propio, que es infraestructura.
+6. ~~La recuperación en el modelo viejo~~ — pide un PIN de 4 dígitos, como el alta. El servicio ya
+   aplicaba la regla por tipo de actor; lo que sobraba era el mínimo de 10 en el esquema.
+
+Y dos que no estaban en la lista y aparecieron probando:
+
+7. **El MRZ perdía el número por un glifo de más.** Una cédula a 445 px se leía entera y salía sin
+   número de documento: el reconocedor devuelve `IDBOL1234567<<A4<<<…` —una `A` colada entre el
+   relleno y el dígito de control—, el control queda corrido y el número se descarta. Corregido en el
+   motor, con la corrección atada al control compuesto para que no pueda inventar un número por azar.
+8. **El campo del PIN no tenía nombre.** Cuatro casillas sobre un `TextInput` oculto: un lector de
+   pantalla anunciaba «Tu PIN» y después cuatro vistas mudas. Se descubrió porque era el único campo
+   del alta que una prueba automatizada tenía que tocar por coordenada.
 
 ## 6. Cosas del entorno que hubo que arreglar para llegar hasta aquí
 
