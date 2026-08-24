@@ -107,7 +107,13 @@ export const updateProfile = (
     lastName: string;
     birthDate: string;
     genderDeclared: 'female' | 'male' | 'other' | 'undisclosed';
-    preferredLanguage: 'es' | 'en' | 'qu' | 'ay';
+    /*
+     * El servidor todavía acepta `qu` y `ay`; la app ya no los ofrece porque no tiene una sola
+     * cadena traducida a ninguno de los dos. Se estrecha AQUÍ y no en el backend: el enumerado del
+     * servidor es contrato con otros clientes, y recortarlo por una decisión de esta app rompería a
+     * cualquiera que ya guarde esos valores.
+     */
+    preferredLanguage: 'es' | 'en';
     marketingOptIn: boolean;
   }>,
 ) =>

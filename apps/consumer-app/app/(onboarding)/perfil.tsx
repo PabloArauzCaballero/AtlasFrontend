@@ -10,13 +10,20 @@ import { useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
-import { CheckRow, Field } from '../../src/ui/fields';
-import { SelectField } from '../../src/ui/form-controls';
+import { CheckRow } from '../../src/ui/fields';
+import { IconField, SelectField } from '../../src/ui/form-controls';
 import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 
 type Gender = 'female' | 'male' | 'other' | 'undisclosed';
-type Language = 'es' | 'en' | 'qu' | 'ay';
+/*
+ * Solo los idiomas en los que la app EXISTE.
+ *
+ * Ofrecía quechua y aymara y no hay una sola cadena traducida a ninguno de los dos: elegirlos no
+ * cambiaba nada y dejaba en el expediente una preferencia que el producto no puede atender. Ofrecer
+ * un idioma es un compromiso de atender en él —también por escrito y en soporte—, no una casilla.
+ */
+type Language = 'es' | 'en';
 
 export default function PersonalData() {
   const router = useRouter();
@@ -66,8 +73,8 @@ export default function PersonalData() {
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
-      <Field label="Nombre" value={firstName} onChangeText={setFirstName} autoComplete="given-name" />
-      <Field label="Apellido" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
+      <IconField icon="perfil" label="Nombre" value={firstName} onChangeText={setFirstName} autoComplete="given-name" />
+      <IconField icon="perfil" label="Apellido" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
 
       <SelectField<Gender>
         label="Genero declarado"
@@ -87,9 +94,7 @@ export default function PersonalData() {
         onChange={setLanguage}
         opciones={[
           { valor: 'es', etiqueta: 'Español' },
-          { valor: 'qu', etiqueta: 'Quechua' },
-          { valor: 'ay', etiqueta: 'Aymara' },
-          { valor: 'en', etiqueta: 'Ingles' },
+          { valor: 'en', etiqueta: 'Inglés' },
         ]}
       />
 

@@ -93,6 +93,7 @@ export default function OnboardingProgress() {
               <ListRow
                 title={label?.title ?? section.code}
                 subtitle={done ? 'Listo' : (label?.detail ?? 'Pendiente')}
+                icon={label?.icon}
                 right={<Badge label={done ? 'completo' : 'pendiente'} tone={done ? 'success' : 'warning'} />}
                 onPress={() => router.push(SECTION_ROUTE[section.code as OnboardingSectionCode])}
                 accessibilityHint={done ? 'Abrir para revisar lo que enviaste' : 'Abrir para completar este paso'}

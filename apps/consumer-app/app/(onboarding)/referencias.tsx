@@ -14,8 +14,8 @@ import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { elegirContacto } from '../../src/device/contacts';
 import { firstBlocker } from '../../src/ui/blocked';
-import { CheckRow, Field } from '../../src/ui/fields';
-import { SelectField } from '../../src/ui/form-controls';
+import { CheckRow } from '../../src/ui/fields';
+import { IconField, SelectField } from '../../src/ui/form-controls';
 import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Button, Card, Divider, ErrorState } from '../../src/ui/primitives';
 import { TRUST_REFERENCIAS } from '../../src/features/trust-copy';
@@ -138,13 +138,13 @@ export default function References() {
             }}
           />
 
-          <Field
+          <IconField icon="perfil"
             label="Nombre completo"
             value={draft.fullName}
             onChangeText={(value) => update(index, { fullName: value })}
             required
           />
-          <Field
+          <IconField icon="telefono"
             label="Teléfono"
             value={draft.phone}
             onChangeText={(value) => update(index, { phone: value })}

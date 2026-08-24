@@ -6,6 +6,7 @@
  * persona que no sabe que es un "reference_contact".
  */
 import type { Blocker, OnboardingSectionCode } from '../api/endpoints/onboarding';
+import type { IconName } from '../ui/icons';
 
 export type OnboardingRoute =
   | '/(onboarding)/verificar-contacto'
@@ -25,13 +26,21 @@ export const SECTION_ROUTE: Record<OnboardingSectionCode, OnboardingRoute> = {
   reference_contacts: '/(onboarding)/referencias',
 };
 
-export const SECTION_LABEL: Record<OnboardingSectionCode, { title: string; detail: string }> = {
-  contact_verification: { title: 'Verifica tu teléfono', detail: 'Te enviamos un código para confirmar que es tuyo.' },
-  personal_data: { title: 'Tus datos personales', detail: 'Nombre, apellido y fecha de nacimiento.' },
-  financial_profile: { title: 'Tu situación económica', detail: 'Trabajo, ingresos y gastos declarados.' },
-  address: { title: 'Tu domicilio', detail: 'Dónde vives actualmente.' },
-  identity_documents: { title: 'Tu documento de identidad', detail: 'Foto del carnet por ambos lados y una selfie.' },
-  reference_contacts: { title: 'Tus referencias', detail: 'Dos personas que puedan dar referencia de ti.' },
+/**
+ * El icono es parte de la etiqueta, no un adorno de la pantalla.
+ *
+ * Vive aqui y no en `progreso.tsx` porque la lista de pasos sale en mas de un sitio, y un paso que
+ * se dibuja con el sobre en una pantalla y sin nada en otra deja de reconocerse como el mismo. Cada
+ * uno apunta al DATO que se pide —el sobre para el codigo, la casa para el domicilio— y no al orden
+ * en que toca hacerlo: el orden ya lo cuenta la lista.
+ */
+export const SECTION_LABEL: Record<OnboardingSectionCode, { title: string; detail: string; icon: IconName }> = {
+  contact_verification: { title: 'Verifica tu teléfono', detail: 'Te enviamos un código para confirmar que es tuyo.', icon: 'sobre' },
+  personal_data: { title: 'Tus datos personales', detail: 'Nombre, apellido y fecha de nacimiento.', icon: 'perfil' },
+  financial_profile: { title: 'Tu situación económica', detail: 'Trabajo, ingresos y gastos declarados.', icon: 'billetera' },
+  address: { title: 'Tu domicilio', detail: 'Dónde vives actualmente.', icon: 'hogar' },
+  identity_documents: { title: 'Tu documento de identidad', detail: 'Foto del carnet por ambos lados y una selfie.', icon: 'documento' },
+  reference_contacts: { title: 'Tus referencias', detail: 'Dos personas que puedan dar referencia de ti.', icon: 'telefono' },
 };
 
 /** `nextStep` del servidor -> ruta. `awaiting_review` no es una seccion: es el estado de espera. */

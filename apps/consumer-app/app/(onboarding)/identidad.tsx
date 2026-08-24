@@ -15,12 +15,14 @@ import { Image, StyleSheet, View, type ScrollView } from 'react-native';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import * as identityEngine from '../../src/api/endpoints/identity-engine';
 import { describeError } from '../../src/api/errors';
+import { CARNET_DE_PRUEBA, capturaSimulada, estaDisponible as hayCamaraDePrueba } from '../../src/device/camara-de-prueba';
 import { hashSensitiveText } from '../../src/device/device';
 import { leerBase64, uploadEvidence, type EvidenceKind, type PreparedEvidence } from '../../src/features/evidence-upload';
 import { useSession } from '../../src/session/session';
 import { color, radius, space } from '../../src/theme/tokens';
 import { firstBlocker } from '../../src/ui/blocked';
-import { Field } from '../../src/ui/fields';
+import { DateField, IconField, SelectField } from '../../src/ui/form-controls';
+import { DEPARTAMENTOS } from '../../src/features/geografia';
 import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, ErrorState } from '../../src/ui/primitives';
 import { TRUST_IDENTIDAD } from '../../src/features/trust-copy';
@@ -33,6 +35,20 @@ const STEPS: { kind: EvidenceKind; title: string; hint: string; facing: 'back' |
 ];
 
 const isIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+/** Un carnet vigente vence, como mínimo, mañana. El calendario lo impide por construcción. */
+const manana = (() => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d;
+})();
+
+/** Con qué año abre el calendario cuando aún no hay fecha: los carnets suelen durar cinco años. */
+const dentroDeCincoAnos = (() => {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() + 5);
+  return d;
+})();
 
 export default function Identity() {
   const router = useRouter();
@@ -78,6 +94,40 @@ export default function Identity() {
       if (!photo?.uri) throw new Error('CAPTURE_FAILED');
       const prepared = await uploadEvidence({ customerId: session.customerId, kind: activeStep.kind, localUri: photo.uri });
       setEvidence((current) => ({ ...current, [activeStep.kind]: prepared }));
+      setCapturing(null);
+    } catch (caught) {
+      setError(caught);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /*
+    Las tres capturas y los datos del carnet, sin camara delante. Solo en desarrollo.
+
+    Toma el mismo camino que una foto de verdad: cada imagen se sube con su URL firmada y entra al
+    estado por `setEvidence`, asi que lo que se prueba despues —el paquete, el motor, la pantalla de
+    revision— es el codigo real y no una rama de mentira. Lo unico que cambia es de donde salen los
+    bytes. Ver `device/camara-de-prueba.ts`.
+
+    Los campos tecleados se rellenan con lo que el carnet lleva IMPRESO: el motor lee la tarjeta, y
+    un numero distinto del que ve seria una discrepancia de verdad, detectada de verdad.
+  */
+  const usarCarnetDePrueba = async () => {
+    if (!session.customerId || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const subidas: Partial<Record<EvidenceKind, PreparedEvidence>> = {};
+      // En serie y no en paralelo: son tres subidas firmadas y el backend cuenta los intentos.
+      for (const step of STEPS) {
+        const localUri = await capturaSimulada(step.kind);
+        subidas[step.kind] = await uploadEvidence({ customerId: session.customerId, kind: step.kind, localUri });
+      }
+      setEvidence((current) => ({ ...current, ...subidas }));
+      setDocumentNumber(CARNET_DE_PRUEBA.numero);
+      setExpiresAt(CARNET_DE_PRUEBA.expiraEn);
+      setIssuedIn(CARNET_DE_PRUEBA.emitidoEn);
       setCapturing(null);
     } catch (caught) {
       setError(caught);
@@ -218,6 +268,10 @@ export default function Identity() {
         footer={
           <>
             <Button label="Tomar foto" onPress={capture} loading={busy} disabled={busy} />
+            {/* El simulador no tiene camara: sin esto, el paso de identidad no se puede recorrer. */}
+            {hayCamaraDePrueba() ? (
+              <Button label="Usar el carnet de prueba" variant="secondary" onPress={usarCarnetDePrueba} disabled={busy} />
+            ) : null}
             <Button label="Cancelar" variant="ghost" onPress={() => setCapturing(null)} />
           </>
         }
@@ -318,6 +372,30 @@ export default function Identity() {
         </Card>
       ) : null}
 
+      {/*
+        Atajo de desarrollo, con su etiqueta puesta.
+
+        Va ANTES de las tres tarjetas y no escondido al final: quien abre esta pantalla en un
+        simulador se topa con la camara a la primera, y una salida que hay que buscar no es una
+        salida. Se anuncia como lo que es —datos de prueba— para que nadie lo confunda con haber
+        verificado a alguien.
+      */}
+      {hayCamaraDePrueba() ? (
+        <Card>
+          <View style={styles.stepHeader}>
+            <View style={styles.stepText}>
+              <AtlasText variant="bodyStrong">Sin cámara: usar el carnet de prueba</AtlasText>
+              <AtlasText variant="caption" tone="secondary">
+                Rellena las tres capturas y los datos con un documento sintético ({CARNET_DE_PRUEBA.titular}). Solo en
+                desarrollo.
+              </AtlasText>
+            </View>
+            <Badge label="prueba" tone="warning" />
+          </View>
+          <Button label="Rellenar con el carnet de prueba" variant="secondary" onPress={usarCarnetDePrueba} disabled={busy} />
+        </Card>
+      ) : null}
+
       {STEPS.map((step) => {
         const captured = evidence[step.kind];
         return (
@@ -352,7 +430,7 @@ export default function Identity() {
         );
       })}
 
-      <Field
+      <IconField icon="documento"
         label="Número de carnet"
         value={documentNumber}
         onChangeText={setDocumentNumber}
@@ -360,15 +438,34 @@ export default function Identity() {
         required
         error={documentNumber && !documentOk ? 'Revisa el número de tu carnet.' : null}
       />
-      <Field label="Expedido en" value={issuedIn} onChangeText={setIssuedIn} />
-      <Field
+      {/*
+        El carnet boliviano se expide POR DEPARTAMENTO, y en el propio documento aparece así. Como
+        texto libre entraban «Santa Cruz», «SC», «Sta. Cruz» y «santa cruz de la sierra» —que además
+        es la ciudad, no el departamento— para el mismo dato, y ninguna consulta por lugar de emisión
+        volvía a ser fiable. La lista es la misma de `geografia.ts`, que es la que ya usa el domicilio.
+      */}
+      <SelectField
+        label="Expedido en"
+        value={issuedIn || null}
+        onChange={setIssuedIn}
+        opciones={DEPARTAMENTOS.map((departamento) => ({ valor: departamento.nombre, etiqueta: departamento.nombre }))}
+        placeholder="Elige el departamento"
+      />
+      {/*
+        El vencimiento se ELIGE en un calendario, no se teclea.
+
+        Pedía `AAAA-MM-DD` a mano: es el formato de una base de datos, y la mitad de los rechazos de
+        esta pantalla eran de formato y no de dato. Con `minimumDate` en mañana, además, deja de ser
+        posible teclear un carnet ya vencido — que era una validación que sólo saltaba al final.
+      */}
+      <DateField
         label="Fecha de vencimiento"
         value={expiresAt}
-        onChangeText={setExpiresAt}
-        placeholder="2031-03-10"
-        keyboardType="numbers-and-punctuation"
-        maxLength={10}
-        hint="Formato AAAA-MM-DD."
+        onChange={setExpiresAt}
+        placeholder="Elige la fecha del carnet"
+        minimumDate={manana}
+        initialDate={dentroDeCincoAnos}
+        hint="La que figura en tu carnet."
         required
         error={expiresAt && !expiryOk ? 'El documento debe estar vigente.' : null}
       />

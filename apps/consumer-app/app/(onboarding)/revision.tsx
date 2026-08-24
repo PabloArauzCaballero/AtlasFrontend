@@ -18,6 +18,7 @@ import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, Divider, ErrorState, ListRow } from '../../src/ui/primitives';
+import { useBrandCut } from '../../src/ui/brand-cut';
 
 export default function Review() {
   const router = useRouter();
@@ -43,6 +44,8 @@ export default function Review() {
     }, [session]),
   );
 
+  const cortar = useBrandCut();
+
   const status = session.onboarding;
   const submitted =
     justSubmitted || status?.onboarding.completionStatus === 'completed' || status?.lifecycleStatus === 'under_review';
@@ -54,7 +57,19 @@ export default function Review() {
     setError(null);
     try {
       await onboardingApi.submitForReview(session.customerId);
-      setJustSubmitted(true);
+      /*
+        El mismo corte de marca que abre la app, ahora para cerrarla.
+
+        Terminar el alta es el segundo momento del producto que merece marcarse: la pantalla apenas
+        cambiaba —el mismo fondo, otro texto— y ocho pasos de formulario terminaban sin que nada
+        dijera «esto ya está». El corte tapa el cambio de estado y lo devuelve convertido en un
+        hecho, con la misma gramática con la que se entró.
+
+        Va DESPUÉS del 200 y no antes: celebrar un envío que todavía puede fallar es peor que no
+        celebrarlo. Y `useBrandCut` respeta el ajuste de movimiento reducido —con él activo ejecuta
+        la acción sin animar—, así que esto no le tapa la pantalla a quien pidió que no se la tapen.
+      */
+      cortar(() => setJustSubmitted(true));
       // El refresco es para enriquecer la pantalla, no para saber si el envio ocurrio. Si falla
       // —incluido el 429 del limitador— la solicitud sigue enviada y la pantalla ya lo refleja.
       await session.refresh().catch(() => undefined);
@@ -135,6 +150,7 @@ export default function Review() {
               key={section.code}
               title={SECTION_LABEL[section.code]?.title ?? section.code}
               subtitle={SECTION_LABEL[section.code]?.detail}
+              icon={SECTION_LABEL[section.code]?.icon}
               right={<Badge label="pendiente" tone="warning" />}
               onPress={() => router.push(SECTION_ROUTE[section.code])}
             />

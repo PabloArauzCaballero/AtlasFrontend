@@ -6,19 +6,18 @@
  * tenga sentido, es la forma mas rapida de perder el permiso para siempre.
  */
 import * as Location from 'expo-location';
-import { type ScrollView } from 'react-native';
+import { View, type ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { Field } from '../../src/ui/fields';
-import { SelectField } from '../../src/ui/form-controls';
-import { DEPARTAMENTOS, ciudadesDe, nombreCiudad, nombreDepartamento } from '../../src/features/geografia';
-import { coordenadasDeEnlace } from '../../src/features/maps-link';
+import { IconField, SelectField } from '../../src/ui/form-controls';
+import { DEPARTAMENTOS, ciudadesDe, nombreCiudad, nombreDepartamento, nombreZona, zonasDe } from '../../src/features/geografia';
 import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, ErrorState } from '../../src/ui/primitives';
+import { MapaPunto } from '../../src/ui/mapa-punto';
 import { TRUST_DOMICILIO } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
 
@@ -36,8 +35,6 @@ export default function Address() {
   const [city, setCity] = useState<string | null>(null);
   const [zone, setZone] = useState('');
   const [addressLine, setAddressLine] = useState('');
-  const [enlace, setEnlace] = useState('');
-  const [enlaceEstado, setEnlaceEstado] = useState<'vacio' | 'leyendo' | 'ok' | 'no-entendido'>('vacio');
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracyMeters?: number } | null>(null);
   const [locationState, setLocationState] = useState<'idle' | 'asking' | 'denied' | 'granted'>('idle');
   const [busy, setBusy] = useState(false);
@@ -78,20 +75,22 @@ export default function Address() {
     boton de «usar mi ubicacion» —diria donde esta, no donde vive— y en cambio pega un enlace de
     Maps sin pensarlo, porque es como ya comparte su direccion todos los dias.
   */
-  const leerEnlace = async (texto: string) => {
-    setEnlace(texto);
-    if (!texto.trim()) {
-      setEnlaceEstado('vacio');
-      return;
-    }
-    setEnlaceEstado('leyendo');
-    const punto = await coordenadasDeEnlace(texto);
-    if (!punto) {
-      setEnlaceEstado('no-entendido');
-      return;
-    }
+  /*
+    El punto se SEÑALA en un mapa, no se pega como enlace.
+
+    Antes había un campo donde pegar un enlace de Google Maps y un `fetch` que intentaba sacarle las
+    coordenadas al enlace corto. Funcionaba, pero el trabajo lo hacía la persona: salir de Atlas,
+    encontrar el botón de compartir, copiar, volver y pegar —y si el enlace no era de los que el
+    lector entiende, un error que no se puede corregir sin repetir el viaje entero—.
+
+    No se puede «abrir Google Maps y volver con el punto»: esa vuelta no existe en ninguna de las dos
+    plataformas. Lo que sí se puede es traer el mapa aquí, que es lo que hace `MapaPunto`.
+  */
+  const [mapaAbierto, setMapaAbierto] = useState(false);
+
+  const elegirEnMapa = (punto: { lat: number; lng: number }) => {
     setGps({ lat: punto.lat, lng: punto.lng });
-    setEnlaceEstado('ok');
+    setMapaAbierto(false);
   };
 
   const save = async () => {
@@ -106,7 +105,7 @@ export default function Address() {
           // que solo puedan ser los del catalogo.
           department: nombreDepartamento(department)!,
           city: nombreCiudad(department, city)!,
-          zone: zone.trim() || undefined,
+          zone: nombreZona(city, zone) ?? undefined,
           addressLine: addressLine.trim() || undefined,
         },
         gpsObservation: gps ?? undefined,
@@ -141,8 +140,10 @@ export default function Address() {
         onChange={(elegido) => {
           setDepartment(elegido);
           // La ciudad elegida pertenecia al departamento anterior: mantenerla dejaria «Cochabamba,
-          // Santa Cruz» en el expediente, que es peor que no tener ciudad.
+          // Santa Cruz» en el expediente, que es peor que no tener ciudad. Y la zona pertenecia a
+          // esa ciudad, asi que cae con ella.
           setCity(null);
+          setZone('');
         }}
         placeholder="Elige tu departamento"
         required
@@ -151,12 +152,30 @@ export default function Address() {
         label="Ciudad"
         value={city}
         opciones={ciudades.map((ciudad) => ({ valor: ciudad.codigo, etiqueta: ciudad.nombre }))}
-        onChange={setCity}
+        onChange={(elegida) => {
+          setCity(elegida);
+          // La zona pertenece a la ciudad anterior: dejarla puesta guardaria una zona de otra ciudad.
+          setZone('');
+        }}
         placeholder="Elige tu ciudad"
         deshabilitadoPorque={department ? null : 'Elige primero tu departamento.'}
         required
       />
-      <Field label="Zona o barrio" value={zone} onChangeText={setZone} placeholder="Equipetrol" />
+      {/*
+        La zona depende de la CIUDAD, igual que la ciudad depende del departamento.
+
+        Como texto libre entraban «Equipetrol», «equipetrol» y «Barrio Equipetrol Norte» para la
+        misma zona, y la zona es justo el nivel al que se decide dónde abrir un comercio y a dónde
+        llega la cobranza. Se deshabilita hasta que haya ciudad porque antes no hay lista que ofrecer.
+      */}
+      <SelectField
+        label="Zona o barrio"
+        value={zone || null}
+        onChange={setZone}
+        opciones={zonasDe(city).map((z) => ({ valor: z.codigo, etiqueta: z.nombre }))}
+        placeholder="Elige tu zona"
+        deshabilitadoPorque={city ? null : 'Elige primero tu ciudad.'}
+      />
 
       {/*
         La calle y el numero: opcional, y con el motivo delante.
@@ -165,7 +184,7 @@ export default function Address() {
         asi que se pide con su para-que a la vista y sin obligar. El servidor lo guarda cifrado —lo
         cifra el, no la app: una llave repartida a cada telefono deja de ser una llave—.
       */}
-      <Field
+      <IconField icon="hogar"
         label="Calle y número (opcional)"
         value={addressLine}
         onChangeText={setAddressLine}
@@ -179,22 +198,31 @@ export default function Address() {
         ya no necesita conceder GPS, y quien concede GPS no necesita pegarlo. Por eso comparten
         destino —`gps`— y por eso el estado se cuenta en el mismo sitio donde se escribe.
       */}
-      <Field
-        label="Enlace de Google Maps (opcional)"
-        value={enlace}
-        onChangeText={leerEnlace}
-        placeholder="https://maps.app.goo.gl/…"
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="url"
-        hint={
-          enlaceEstado === 'leyendo'
-            ? 'Abriendo el enlace…'
-            : enlaceEstado === 'ok'
-              ? 'Ubicación tomada del enlace.'
-              : 'Comparte tu casa desde Google Maps y pega aquí el enlace.'
-        }
-        error={enlaceEstado === 'no-entendido' ? 'No pudimos leer una ubicación de ese enlace.' : null}
+      {/*
+        Un botón, no un campo de texto: lo que se pide es un punto, y un punto se señala.
+      */}
+      <View style={{ gap: 8 }}>
+        <AtlasText variant="caption" tone="secondary">
+          Ubicación exacta (opcional)
+        </AtlasText>
+        <Button
+          label={gps ? 'Cambiar el punto en el mapa' : 'Señalar mi casa en el mapa'}
+          variant="secondary"
+          haptic="none"
+          onPress={() => setMapaAbierto(true)}
+        />
+        <AtlasText variant="caption" tone="tertiary">
+          {gps
+            ? `Punto guardado: ${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)}.`
+            : 'Sirve para encontrar tu casa el día que haya que ir. Puedes continuar sin esto.'}
+        </AtlasText>
+      </View>
+
+      <MapaPunto
+        visible={mapaAbierto}
+        inicial={gps}
+        onCancelar={() => setMapaAbierto(false)}
+        onElegir={elegirEnMapa}
       />
 
       <Card>

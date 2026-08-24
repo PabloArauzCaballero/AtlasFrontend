@@ -12,8 +12,7 @@ import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { Field } from '../../src/ui/fields';
-import { SelectField } from '../../src/ui/form-controls';
+import { IconField, SelectField } from '../../src/ui/form-controls';
 import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Button, Card, ErrorState } from '../../src/ui/primitives';
 
@@ -248,7 +247,7 @@ export default function VerifyContact() {
             </Card>
           )}
 
-          <Field
+          <IconField icon="escudo"
             label="Código recibido"
             value={code}
             onChangeText={(next) => setCode(next.replace(/\D/g, '').slice(0, 8))}

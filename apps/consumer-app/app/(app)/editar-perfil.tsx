@@ -24,27 +24,26 @@ import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { color, radius, space } from '../../src/theme/tokens';
 import { CheckRow } from '../../src/ui/fields';
-import { SelectField } from '../../src/ui/form-controls';
+import { type OpcionSelect, SelectField } from '../../src/ui/form-controls';
 import { Icon } from '../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Appear } from '../../src/ui/motion';
 import { AtlasText, Button, Card, Divider, ErrorState } from '../../src/ui/primitives';
 
-type Language = 'es' | 'en' | 'qu' | 'ay';
+type Language = 'es' | 'en';
 type Gender = 'female' | 'male' | 'other' | 'undisclosed';
 
-const LANGUAGES: Array<{ value: Language; label: string; detail?: string }> = [
-  { value: 'es', label: 'Español' },
-  { value: 'en', label: 'Inglés' },
-  { value: 'qu', label: 'Quechua' },
-  { value: 'ay', label: 'Aymara' },
+/** Solo los idiomas en los que la app existe. Ver la nota en `(onboarding)/perfil.tsx`. */
+const LANGUAGES: OpcionSelect<Language>[] = [
+  { valor: 'es', etiqueta: 'Español' },
+  { valor: 'en', etiqueta: 'Inglés' },
 ];
 
-const GENDERS: Array<{ value: Gender; label: string }> = [
-  { value: 'female', label: 'Mujer' },
-  { value: 'male', label: 'Hombre' },
-  { value: 'other', label: 'Otro' },
-  { value: 'undisclosed', label: 'Prefiero no decirlo' },
+const GENDERS: OpcionSelect<Gender>[] = [
+  { valor: 'female', etiqueta: 'Mujer' },
+  { valor: 'male', etiqueta: 'Hombre' },
+  { valor: 'other', etiqueta: 'Otro' },
+  { valor: 'undisclosed', etiqueta: 'Prefiero no decirlo' },
 ];
 
 export default function EditProfile() {
@@ -64,7 +63,7 @@ export default function EditProfile() {
    */
   useEffect(() => {
     const current = me?.profile.preferredLanguage;
-    if (current === 'es' || current === 'en' || current === 'qu' || current === 'ay') setLanguage(current);
+    if (current === 'es' || current === 'en') setLanguage(current);
   }, [me?.profile.preferredLanguage]);
 
   const save = async () => {
@@ -125,8 +124,8 @@ export default function EditProfile() {
           </View>
           <Divider />
 
-          <OptionGroup label="Idioma" options={LANGUAGES} value={language} onChange={setLanguage} />
-          <OptionGroup label="Género" options={GENDERS} value={gender} onChange={setGender} />
+          <SelectField<Language> label="Idioma" opciones={LANGUAGES} value={language} onChange={setLanguage} />
+          <SelectField<Gender> label="Género" opciones={GENDERS} value={gender} onChange={setGender} />
 
           <CheckRow
             label="Quiero recibir novedades y promociones"

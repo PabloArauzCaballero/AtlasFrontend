@@ -78,8 +78,29 @@ module.exports = ({ config }) => {
   const env = resolvePublicEnv(__dirname);
   const apiUrl = env.EXPO_PUBLIC_ATLAS_API_URL;
 
+  /*
+   * La clave del mapa de Android, si la hay.
+   *
+   * `expo-maps` usa Apple Maps en iOS —que no pide clave— y Google Maps en Android, que SÍ la pide:
+   * sin ella el mapa se monta y se queda en gris, sin error y sin nada que explique por qué. Se lee
+   * del entorno y no se versiona: una clave de Maps se restringe por paquete y huella SHA-1, pero
+   * dejarla en el repositorio la convierte igualmente en algo que rotar el día que se filtre.
+   *
+   * Si no está definida, el bloque no se añade y la compilación de Android sigue siendo válida: lo
+   * único que no funcionará es el mapa del domicilio, que es opcional.
+   */
+  const androidMapsKey = process.env.ANDROID_MAPS_API_KEY;
+
   const withExtra = {
     ...config,
+    ...(androidMapsKey
+      ? {
+          android: {
+            ...config.android,
+            config: { ...config.android?.config, googleMaps: { apiKey: androidMapsKey } },
+          },
+        }
+      : {}),
     extra: {
       ...config.extra,
       /*

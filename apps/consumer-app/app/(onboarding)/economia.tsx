@@ -12,15 +12,25 @@ import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { Field } from '../../src/ui/fields';
-import { SelectField } from '../../src/ui/form-controls';
+import { IconField, SelectField } from '../../src/ui/form-controls';
+import { OPCIONES_ACTIVIDAD, nombreActividad } from '../../src/features/actividades';
 import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 import { TRUST_ECONOMIA } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
 
+/*
+ * Los dos catálogos los cierra el SERVIDOR (`customer-eligibility.constants.ts`), y hay que
+ * copiarlos tal cual: el esquema del backend es `z.enum(...).strict()`, así que un valor que aquí
+ * suene bien pero allí no exista no se degrada — devuelve 400 y la pantalla dice «Revisa los datos»
+ * sin señalar el campo.
+ *
+ * Es lo que pasaba: el origen de ingresos ofrecía `business`, `freelance` y `family_support`, que el
+ * servidor no conoce. Tres de las cuatro opciones del desplegable rompían el paso, y la cuarta
+ * —`salary`— lo salvaba, que es justo lo que hace que un fallo así sobreviva a las pruebas a mano.
+ */
 type Employment = 'employee' | 'self_employed' | 'business_owner' | 'unemployed' | 'retired' | 'student';
-type SourceOfFunds = 'salary' | 'business' | 'freelance' | 'pension' | 'family_support' | 'other';
+type SourceOfFunds = 'salary' | 'business_income' | 'rental_income' | 'pension' | 'remittances' | 'savings' | 'other';
 
 const toNumber = (raw: string): number | undefined => {
   const cleaned = raw.replace(/[^\d.,]/g, '').replace(',', '.');
@@ -46,6 +56,16 @@ export default function FinancialProfile() {
 
   // El backend rechaza `employee` sin empleador: se valida antes de gastar un viaje de red.
   const employerRequired = employmentStatus === 'employee' && employerName.trim().length === 0;
+
+  /*
+    La antigüedad solo existe donde hay de qué contarla.
+
+    El campo dice «cuánto tiempo llevas en tu trabajo o actividad actual» y se mostraba siempre,
+    incluso tras declarar que no se trabaja: pedirle a alguien sin empleo la antigüedad de su empleo
+    es una pregunta sin respuesta posible, y la que teclee para poder seguir es un dato inventado que
+    entra al motor de decisión igual que uno real.
+  */
+  const pideAntiguedad = employmentStatus === 'employee' || employmentStatus === 'business_owner';
   const canSubmit =
     employmentStatus !== null &&
     sourceOfFunds !== null &&
@@ -72,7 +92,8 @@ export default function FinancialProfile() {
       await onboardingApi.updateFinancialProfile(session.customerId, {
         employmentStatus: employmentStatus ?? undefined,
         employerName: employerName.trim() || undefined,
-        employmentSeniorityMonths: toNumber(seniority) !== undefined ? Math.round(toNumber(seniority)!) : undefined,
+        employmentSeniorityMonths:
+          pideAntiguedad && toNumber(seniority) !== undefined ? Math.round(toNumber(seniority)!) : undefined,
         monthlyIncomeDeclared: toNumber(income),
         otherMonthlyIncome: toNumber(otherIncome) ?? 0,
         monthlyExpensesDeclared: toNumber(expenses),
@@ -105,17 +126,32 @@ export default function FinancialProfile() {
       <SelectField<Employment>
         label="Situación laboral"
         value={employmentStatus}
-        onChange={setEmploymentStatus}
+        onChange={(next) => {
+          setEmploymentStatus(next);
+          /*
+            Lo que deja de preguntarse se BORRA, no se esconde.
+
+            Si alguien teclea 36 meses como empleado y luego corrige a «ahora no trabajo», el campo
+            desaparece de la pantalla pero su valor seguiría viajando en el envío: el expediente
+            diría que no trabaja y que lleva tres años en ese trabajo. Lo mismo con el empleador.
+          */
+          if (next !== 'employee' && next !== 'business_owner') setSeniority('');
+          if (next !== 'employee') setEmployerName('');
+        }}
         opciones={[
           { valor: 'employee', etiqueta: 'Trabajo en relación de dependencia' },
           { valor: 'self_employed', etiqueta: 'Trabajo por mi cuenta' },
           { valor: 'business_owner', etiqueta: 'Tengo un negocio' },
           { valor: 'student', etiqueta: 'Estudio' },
+          // Faltaban las dos, y el servidor las acepta: sin ellas, quien no trabaja no puede
+          // terminar el alta —ni eligiendo otra cosa, porque estaria declarando algo falso—.
+          { valor: 'unemployed', etiqueta: 'Ahora no trabajo' },
+          { valor: 'retired', etiqueta: 'Estoy jubilado' },
         ]}
       />
 
       {employmentStatus === 'employee' ? (
-        <Field
+        <IconField icon="comercio"
           label="Nombre de tu empleador"
           value={employerName}
           onChangeText={setEmployerName}
@@ -124,15 +160,17 @@ export default function FinancialProfile() {
         />
       ) : null}
 
-      <Field
-        label="Antigüedad en meses"
-        value={seniority}
-        onChangeText={(v) => setSeniority(v.replace(/\D/g, ''))}
-        keyboardType="number-pad"
-        hint="Cuánto tiempo llevas en tu trabajo o actividad actual."
-      />
+      {pideAntiguedad ? (
+        <IconField icon="reloj"
+          label="Antigüedad en meses"
+          value={seniority}
+          onChangeText={(v) => setSeniority(v.replace(/\D/g, ''))}
+          keyboardType="number-pad"
+          hint={employmentStatus === 'business_owner' ? 'Cuánto tiempo llevas con tu negocio.' : 'Cuánto tiempo llevas con tu empleador actual.'}
+        />
+      ) : null}
 
-      <Field
+      <IconField icon="billetera"
         label="Ingreso mensual (Bs)"
         value={income}
         onChangeText={setIncome}
@@ -140,8 +178,8 @@ export default function FinancialProfile() {
         inputMode="decimal"
         required
       />
-      <Field label="Otros ingresos mensuales (Bs)" value={otherIncome} onChangeText={setOtherIncome} keyboardType="decimal-pad" inputMode="decimal" />
-      <Field
+      <IconField icon="billetera" label="Otros ingresos mensuales (Bs)" value={otherIncome} onChangeText={setOtherIncome} keyboardType="decimal-pad" inputMode="decimal" />
+      <IconField icon="grafico"
         label="Gastos mensuales (Bs)"
         value={expenses}
         onChangeText={setExpenses}
@@ -151,13 +189,15 @@ export default function FinancialProfile() {
         required
       />
 
-      <Field
+      <SelectField
         label="Actividad económica"
-        value={activity}
-        onChangeText={setActivity}
-        placeholder="comercio, salud, transporte..."
-        autoCapitalize="none"
+        value={activity || null}
+        onChange={setActivity}
+        opciones={OPCIONES_ACTIVIDAD}
+        placeholder="Elige tu rubro"
+        hint={nombreActividad(activity) ? undefined : 'Busca por rubro: comercio, transporte, salud…'}
         required
+        buscable
       />
 
       <SelectField<SourceOfFunds>
@@ -166,9 +206,12 @@ export default function FinancialProfile() {
         onChange={setSourceOfFunds}
         opciones={[
           { valor: 'salary', etiqueta: 'Salario' },
-          { valor: 'business', etiqueta: 'Mi negocio' },
-          { valor: 'freelance', etiqueta: 'Trabajos independientes' },
-          { valor: 'family_support', etiqueta: 'Apoyo familiar' },
+          { valor: 'business_income', etiqueta: 'Mi negocio' },
+          { valor: 'rental_income', etiqueta: 'Alquileres' },
+          { valor: 'remittances', etiqueta: 'Remesas del exterior' },
+          { valor: 'pension', etiqueta: 'Jubilación o renta' },
+          { valor: 'savings', etiqueta: 'Ahorros' },
+          { valor: 'other', etiqueta: 'Otro' },
         ]}
       />
 

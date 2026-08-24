@@ -328,6 +328,12 @@ export type OpcionSelect<T extends string = string> = { valor: T; etiqueta: stri
  * `deshabilitadoPorque` existe para la ciudad: sin departamento elegido no hay lista que ofrecer, y
  * un control que no responde sin decir por que se lee como roto. Dice lo que falta, en su sitio.
  */
+/** Sin tildes y en minúsculas: quien busca «Cochabamba» escribe «cochabamba», y quien busca
+ *  «Aroma» no debería fallar por escribir «aroma» con o sin acento. */
+function normalizar(texto: string): string {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
 export function SelectField<T extends string = string>({
   label,
   value,
@@ -338,6 +344,7 @@ export function SelectField<T extends string = string>({
   error,
   required,
   deshabilitadoPorque,
+  buscable,
 }: {
   label: string;
   value: T | null;
@@ -348,10 +355,37 @@ export function SelectField<T extends string = string>({
   error?: string | null;
   required?: boolean;
   deshabilitadoPorque?: string | null;
+  /** Fuerza o suprime el buscador. Sin pasarlo, aparece cuando hay más de ocho opciones. */
+  buscable?: boolean;
 }) {
   const [abierto, setAbierto] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
   const elegida = opciones.find((opcion) => opcion.valor === value) ?? null;
   const bloqueado = Boolean(deshabilitadoPorque);
+
+  /*
+    El buscador aparece solo cuando la lista deja de caber de un vistazo.
+
+    Con seis opciones, un campo de texto encima es una barrera antes de una lista que ya se lee
+    entera; con cuarenta rubros o las zonas de una ciudad, sin buscador la hoja obliga a arrastrar a
+    ciegas. El umbral es el de la propia hoja: `maxHeight` deja ver unas ocho filas.
+  */
+  const conBuscador = buscable ?? opciones.length > 8;
+
+  const visibles = useMemo(() => {
+    const aguja = normalizar(busqueda);
+    if (!aguja) return opciones;
+    return opciones.filter(
+      (opcion) => normalizar(opcion.etiqueta).includes(aguja) || normalizar(opcion.detalle ?? '').includes(aguja),
+    );
+  }, [opciones, busqueda]);
+
+  const cerrar = () => {
+    setAbierto(false);
+    // La búsqueda se descarta al cerrar: reabrir y encontrar el filtro anterior puesto se lee como
+    // que faltan opciones, y el motivo —tres letras escritas hace un minuto— no está a la vista.
+    setBusqueda('');
+  };
 
   return (
     <View style={styles.block}>
@@ -387,26 +421,61 @@ export function SelectField<T extends string = string>({
         hint={bloqueado ? (deshabilitadoPorque ?? undefined) : (hint ?? elegida?.detalle)}
       />
 
-      <Modal visible={abierto} transparent animationType="slide" onRequestClose={() => setAbierto(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setAbierto(false)} />
+      <Modal visible={abierto} transparent animationType="slide" onRequestClose={cerrar}>
+        <Pressable style={styles.backdrop} onPress={cerrar} />
         <View style={styles.sheet}>
           <View style={styles.sheetHead}>
             <AtlasText variant="bodyStrong">{label}</AtlasText>
-            <Pressable onPress={() => setAbierto(false)} accessibilityRole="button" accessibilityLabel="Cerrar">
+            <Pressable onPress={cerrar} accessibilityRole="button" accessibilityLabel="Cerrar">
               <AtlasText variant="bodyStrong" style={{ color: color.action.primary }}>
                 Listo
               </AtlasText>
             </Pressable>
           </View>
-          <ScrollView style={styles.sheetList}>
-            {opciones.map((opcion) => {
+
+          {conBuscador ? (
+            <View style={styles.buscador}>
+              <Icon name="lista" size={18} tint={color.text.tertiary} />
+              <TextInput
+                value={busqueda}
+                onChangeText={setBusqueda}
+                placeholder="Buscar"
+                placeholderTextColor={color.text.placeholder}
+                autoCorrect={false}
+                autoCapitalize="none"
+                accessibilityLabel={`Buscar en ${label}`}
+                style={styles.buscadorInput}
+              />
+              {busqueda ? (
+                <Pressable onPress={() => setBusqueda('')} accessibilityRole="button" accessibilityLabel="Borrar la búsqueda">
+                  <AtlasText variant="caption" tone="secondary">
+                    Borrar
+                  </AtlasText>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
+
+          <ScrollView style={styles.sheetList} keyboardShouldPersistTaps="handled">
+            {/*
+              Sin resultados se DICE, no se deja la hoja en blanco: una lista vacía y sin explicación
+              se lee como que el catálogo no cargó.
+            */}
+            {visibles.length === 0 ? (
+              <View style={styles.sinResultados}>
+                <AtlasText variant="body" tone="secondary">
+                  Nada coincide con «{busqueda}».
+                </AtlasText>
+              </View>
+            ) : null}
+            {visibles.map((opcion) => {
               const seleccionada = opcion.valor === value;
               return (
                 <PressSurface
                   key={opcion.valor}
                   onPress={() => {
                     onChange(opcion.valor);
-                    setAbierto(false);
+                    cerrar();
                   }}
                   style={[styles.countryRow, seleccionada && styles.countryRowSelected]}
                   scaleTo={press.scaleSubtle}
@@ -596,6 +665,19 @@ const styles = StyleSheet.create({
     borderBottomColor: color.border.subtle,
   },
   sheetList: { maxHeight: 380 },
+  buscador: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    marginHorizontal: space.lg,
+    marginTop: space.md,
+    paddingHorizontal: space.md,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: color.surface.sunken,
+  },
+  buscadorInput: { flex: 1, color: color.text.primary, ...type.body },
+  sinResultados: { paddingHorizontal: space.lg, paddingVertical: space.lg },
   countryRow: {
     flexDirection: 'row',
     alignItems: 'center',
