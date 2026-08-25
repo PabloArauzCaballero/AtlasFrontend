@@ -20,6 +20,8 @@ import { isSandboxPurchase } from '../../../src/api/config';
 import { formatMoney } from '../../../src/domain/money';
 import { dueLabel, formatTime, itemTitle, statusLabel, statusTone } from '../../../src/features/payment-copy';
 import { useSandbox } from '../../../src/sandbox/store';
+import { useSession } from '../../../src/session/session';
+import { requestProofTicket, submitPaymentClaim, uploadProof } from '../../../src/api/endpoints/payment-claims';
 import { color, palette, radius, space } from '../../../src/theme/tokens';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { Field } from '../../../src/ui/fields';
@@ -29,6 +31,9 @@ import { AtlasText, Badge, Button, Card, Divider, EmptyState, ErrorState } from 
 export default function PaymentScreen() {
   const router = useRouter();
   const sandbox = useSandbox();
+  const session = useSession();
+  const [enviando, setEnviando] = useState(false);
+  const [fallo, setFallo] = useState<string | null>(null);
   const { itemId } = useLocalSearchParams<{ itemId: string }>();
 
   const [reference, setReference] = useState('');
@@ -85,11 +90,57 @@ export default function PaymentScreen() {
     if (!picked.canceled && picked.assets[0]) setProofUri(picked.assets[0].uri);
   };
 
-  const reportPayment = () => {
+  /**
+   * El aviso de pago sale de verdad hacia el backend.
+   *
+   * Antes esto llamaba al sandbox: el comprobante se quedaba en el telefono, el cliente creia haber
+   * avisado y el comercio nunca se enteraba. Ahora el comprobante sube al almacen con una URL
+   * firmada y el aviso queda esperando a que el comercio lo confirme.
+   *
+   * Si el envio falla NO se marca como avisado: decirle a alguien que su pago esta reportado cuando
+   * no salio de su telefono es la unica forma de que deje de intentarlo.
+   */
+  const reportPayment = async () => {
     if (!instruction) return;
-    sandbox.claimPayment({ instructionId: instruction.id, reference: reference.trim() || null, proofUri });
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setReported(true);
+
+    if (isSandboxPurchase || !session.customerId) {
+      sandbox.claimPayment({ instructionId: instruction.id, reference: reference.trim() || null, proofUri });
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setReported(true);
+      return;
+    }
+
+    setEnviando(true);
+    setFallo(null);
+    try {
+      const contentType = 'image/jpeg';
+      let storageKey: string | null = null;
+
+      if (proofUri) {
+        const blob = await (await fetch(proofUri)).blob();
+        const ticket = await requestProofTicket(session.customerId, { contentType, sizeBytes: blob.size });
+        await uploadProof(ticket, proofUri, contentType);
+        storageKey = ticket.storageKey;
+      }
+      if (!storageKey) {
+        setFallo('Adjunta el comprobante de tu transferencia antes de avisar.');
+        return;
+      }
+
+      await submitPaymentClaim(session.customerId, {
+        installmentId: String(item.id),
+        amount: String(item.amount),
+        payerReference: reference.trim() || undefined,
+        storageKey,
+        contentType,
+      });
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setReported(true);
+    } catch (error) {
+      setFallo(error instanceof Error ? error.message : 'No pudimos enviar tu aviso. Intenta de nuevo.');
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
@@ -99,9 +150,9 @@ export default function PaymentScreen() {
           <Button label="Entendido" onPress={() => router.back()} />
         ) : (
           <Button
-            label="Ya realice el pago"
-            onPress={reportPayment}
-            disabled={!instruction}
+            label={enviando ? 'Enviando tu aviso...' : 'Ya realice el pago'}
+            onPress={() => void reportPayment()}
+            disabled={!instruction || enviando}
             blockedReason={instruction ? null : 'Estamos preparando las instrucciones de pago.'}
             haptic="success"
           />
@@ -187,6 +238,12 @@ export default function PaymentScreen() {
             placeholder="Ej. 4839201"
           />
           <Button label={proofUri ? 'Comprobante adjunto' : 'Adjuntar comprobante'} variant="secondary" onPress={attachProof} />
+          {fallo ? (
+            <>
+              <Gap size="sm" />
+              <AtlasText variant="body" tone="danger">{fallo}</AtlasText>
+            </>
+          ) : null}
         </Card>
       )}
 
