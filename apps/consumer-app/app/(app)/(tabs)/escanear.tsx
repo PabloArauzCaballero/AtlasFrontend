@@ -100,8 +100,9 @@ export default function ScanScreen() {
         release(1500);
       };
 
+      let resolved: Awaited<ReturnType<typeof resolveMerchantQr>> | null = null;
       try {
-        await resolveMerchantQr(token.trim());
+        resolved = await resolveMerchantQr(token.trim());
       } catch (error) {
         /*
          * Los dos codigos de demostracion no existen como terminal en el backend, y no deberian:
@@ -123,15 +124,32 @@ export default function ScanScreen() {
         }
       }
 
-      const result = sandbox.scan(token);
-      if (!result.ok) {
-        reject(result.rejection.code);
+      /*
+       * Un comercio que el servidor SI reconocio abre la sesion con los datos del expediente. Antes
+       * se volvia a preguntar por el token a `sandbox.scan`, que solo conoce los dos QR de
+       * demostracion: un serial real resolvia bien y moria aqui con «QR no reconocido», acusando al
+       * comercio de un limite del motor local.
+       *
+       * `sandbox.scan` queda para los codigos de demostracion, que son los unicos que el servidor
+       * no reconoce y aun asi deben poder recorrer el flujo.
+       */
+      const sessionId = resolved ? sandbox.scanResolved(resolved).sessionId : null;
+      if (!sessionId) {
+        const result = sandbox.scan(token);
+        if (!result.ok) {
+          reject(result.rejection.code);
+          return;
+        }
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setRejection(null);
+        router.push(`/(app)/compra/monto?sessionId=${result.sessionId}`);
+        release(1200);
         return;
       }
 
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setRejection(null);
-      router.push(`/(app)/compra/monto?sessionId=${result.sessionId}`);
+      router.push(`/(app)/compra/monto?sessionId=${sessionId}`);
       release(1200);
     },
     [router, sandbox],

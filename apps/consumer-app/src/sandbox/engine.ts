@@ -103,6 +103,55 @@ export function openScanSession(token: string, now: number): { session: ScanSess
   };
 }
 
+/**
+ * Abre la sesion de compra con el comercio que resolvio EL SERVIDOR.
+ *
+ * `openScanSession` solo sabe de los QR de demostracion que viven en `fixtures`, asi que un codigo
+ * real —el serial de un POS dado de alta en el expediente— resolvia bien contra el backend y
+ * moria una linea despues con `QR_NOT_RECOGNIZED`. El comercio existia; el que no lo conocia era
+ * el motor local.
+ *
+ * Aqui la sesion se construye con la respuesta del servidor y no se consulta ninguna fixture. El
+ * motor local sigue llevando la sesion de compra —el dominio no existe todavia en el backend—,
+ * pero los datos del comercio son los del expediente, que es lo unico que el telefono no puede
+ * inventarse.
+ */
+export function openResolvedScanSession(
+  resolved: {
+    partnerProfileId: string;
+    branchId: string;
+    posTerminalId: string;
+    displayName: string;
+    businessCategory: string | null;
+  },
+  now: number,
+): { session: ScanSession } {
+  return {
+    session: {
+      id: id('scan'),
+      posQrId: resolved.posTerminalId,
+      context: {
+        organizationId: resolved.partnerProfileId,
+        tradeName: resolved.displayName,
+        branchId: resolved.branchId,
+        // El backend todavia no publica el nombre de la sucursal ni la ciudad en esta respuesta.
+        // Se deja vacio en vez de rellenarlo con un placeholder: un nombre inventado en la
+        // pantalla de confirmacion es peor que un campo que no se muestra.
+        branchName: '',
+        posId: resolved.posTerminalId,
+        posName: '',
+        city: '',
+        industry: resolved.businessCategory ?? '',
+        verified: true,
+      },
+      status: 'OPEN',
+      openedAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + SCAN_SESSION_TTL_MS).toISOString(),
+      consumedAt: null,
+    },
+  };
+}
+
 export const isExpired = (isoDate: string, now: number): boolean => new Date(isoDate).getTime() <= now;
 
 /** Disponible = limite - consumido - reservado. No se confia en un contador mutable (R51). */

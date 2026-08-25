@@ -24,6 +24,7 @@ import {
   isExpired,
   issueInstruction,
   nextDueItem,
+  openResolvedScanSession,
   openScanSession,
   outstandingAmount,
 } from './engine';
@@ -58,6 +59,17 @@ type SandboxContextValue = {
   outstanding: Minor;
   nextDue: { schedule: PaymentSchedule; item: ScheduleItem } | null;
   scan(token: string): { ok: true; sessionId: string } | { ok: false; rejection: ScanRejection };
+  /**
+   * Abre la sesion con el comercio que ya resolvio el backend, sin pasar por las fixtures.
+   * Es el camino de un QR real; `scan` queda para los codigos de demostracion.
+   */
+  scanResolved(resolved: {
+    partnerProfileId: string;
+    branchId: string;
+    posTerminalId: string;
+    displayName: string;
+    businessCategory: string | null;
+  }): { sessionId: string };
   submitAmount(sessionId: string, grossAmount: Minor): { ok: true; orderId: string } | { ok: false; code: string };
   /** Pide la decision. En modo `live` la resuelve AtlasBackend contra el motor de decision. */
   evaluate(orderId: string): Promise<void>;
@@ -124,6 +136,12 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
     if ('code' in result) return { ok: false, rejection: result };
     setState((current) => ({ ...current, scanSessions: [result.session, ...current.scanSessions].slice(0, 30) }));
     return { ok: true, sessionId: result.session.id };
+  }, []);
+
+  const scanResolved = useCallback<SandboxContextValue['scanResolved']>((resolved) => {
+    const { session } = openResolvedScanSession(resolved, Date.now());
+    setState((current) => ({ ...current, scanSessions: [session, ...current.scanSessions].slice(0, 30) }));
+    return { sessionId: session.id };
   }, []);
 
   const submitAmount = useCallback<SandboxContextValue['submitAmount']>((sessionId, grossAmount) => {
@@ -465,6 +483,7 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
       outstanding: outstandingAmount(state.schedules),
       nextDue: nextDueItem(state.schedules),
       scan,
+      scanResolved,
       submitAmount,
       evaluate,
       decisionOrigin,
@@ -499,6 +518,7 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
       openDispute,
       ready,
       scan,
+      scanResolved,
       state,
       submitAmount,
     ],
