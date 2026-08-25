@@ -88,6 +88,12 @@ export async function requestLiveDecision(input: {
   now: number;
   ttlMs: number;
   purposeCode?: string;
+  /**
+   * El expediente del comercio, cuando la compra nacio de un QR real. Es lo que enlaza la solicitud
+   * con el negocio para que aparezca en su portal esperando aceptacion. Se omite en las compras de
+   * demostracion —su comercio es de fixture y no existe en el backend—.
+   */
+  partnerProfileId?: string;
 }): Promise<LiveDecisionResult> {
   const financedMajor = toMajorNumber(input.financedAmount);
 
@@ -114,6 +120,11 @@ export async function requestLiveDecision(input: {
       requestedAmount: financedMajor,
       requestedTermMonths: BNPL_TERM_MONTHS,
       purposeCode: input.purposeCode ?? 'bnpl_purchase',
+      // Solo si es un identificador de expediente con la forma que el backend acepta. Un comercio
+      // de fixture (`org_1042`) no lo es, y mandarlo produciria un 422 en una compra de demo.
+      ...(input.partnerProfileId && /^[1-9][0-9]*$/.test(input.partnerProfileId)
+        ? { partnerProfileId: input.partnerProfileId }
+        : {}),
     });
     return {
       kind: 'decided',

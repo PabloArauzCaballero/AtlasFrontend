@@ -32,6 +32,15 @@ export type CreateCreditApplicationInput = {
   requestedAmount: number;
   requestedTermMonths: number;
   purposeCode?: string;
+  /**
+   * El comercio donde nace la compra, resuelto antes por el lector de QR.
+   *
+   * Sin este dato la solicitud se crea igual y el motor la decide, pero queda HUERFANA de comercio:
+   * el portal del comercio, que lista lo que espera su respuesta, nunca la ve. Ese era el eslabon
+   * que faltaba para que el negocio pudiera aceptar desde su ERP la compra que el cliente acaba de
+   * pedir. El backend valida que el expediente exista y este aprobado; aqui solo viaja.
+   */
+  partnerProfileId?: string;
 };
 
 /**

@@ -250,6 +250,10 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
         decisionSeq: 1,
         now,
         ttlMs: DECISION_TTL_MS,
+        // El comercio viaja en el contexto de la orden desde que se resolvio el QR. Es lo que hace
+        // que la solicitud aparezca en el portal del negocio para que la acepte: sin esto la compra
+        // se decidia de verdad pero el comercio no la veia nunca.
+        partnerProfileId: order.context.organizationId,
       });
 
       if (result.kind === 'unavailable') {
