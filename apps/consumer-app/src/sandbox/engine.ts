@@ -212,6 +212,7 @@ export function createOrder(input: {
     decision: null,
     acceptance: null,
     commitmentId: null,
+    backendApplicationId: null,
   };
 
   return { order, session: { ...input.session, status: 'CONSUMED', consumedAt: new Date(input.now).toISOString() } };

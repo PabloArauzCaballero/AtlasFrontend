@@ -82,6 +82,14 @@ export type CreditApplicationSummary = {
   submittedAt: string;
   decidedAt: string | null;
   decisionReasonCode: string | null;
+  /**
+   * Si el comercio ya respondió la venta que el motor aprobó: `pending` mientras la mira, `accepted`
+   * cuando la confirma, `declined` si la rechaza. `null` cuando no aplica. Es lo que la app espera
+   * antes de dejar pagar el inicial: aprobar el crédito es el paso de Atlas; confirmar la venta, el
+   * del comercio.
+   */
+  businessAcceptance?: 'pending' | 'accepted' | 'declined' | null;
+  businessAcceptanceAt?: string | null;
 };
 
 export const listCreditApplications = (customerId: string) =>

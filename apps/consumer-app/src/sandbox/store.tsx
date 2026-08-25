@@ -33,6 +33,7 @@ import type { CreditDecision } from './types';
 import { isBackendDecision } from '../api/config';
 import { useSession } from '../session/session';
 import { requestLiveDecision } from '../features/credit-evaluation';
+import { listCreditApplications } from '../api/endpoints/credit';
 
 /**
  * De donde salio la decision que se esta mostrando.
@@ -51,6 +52,8 @@ const DEFAULT_LIMIT: Minor = minor(500_000);
 
 /** Latencia simulada del comercio al revisar la orden en su portal. */
 const MERCHANT_REVIEW_MS = 4_500;
+/** Cada cuanto se le pregunta al backend si el comercio ya acepto la venta. */
+const MERCHANT_ACCEPTANCE_POLL_MS = 4_000;
 
 type SandboxContextValue = {
   ready: boolean;
@@ -167,7 +170,7 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
    * reglas venga la decision de donde venga (R48/R49). Que decide es una cosa; que hace el estado
    * con lo decidido es otra, y mezclarlas era lo que ataba las pantallas al motor local.
    */
-  const applyDecision = useCallback((orderId: string, decision: CreditDecision) => {
+  const applyDecision = useCallback((orderId: string, decision: CreditDecision, backendApplicationId: string | null = null) => {
     setState((current) => {
       const order = current.orders.find((item) => item.id === orderId);
       if (!order || order.decision) return current;
@@ -179,7 +182,9 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
       return {
         ...current,
         orders: current.orders.map((item) =>
-          item.id === orderId ? { ...item, decision, status, rowVersion: item.rowVersion + 1 } : item,
+          item.id === orderId
+            ? { ...item, decision, status, backendApplicationId, rowVersion: item.rowVersion + 1 }
+            : item,
         ),
         creditLine: approved
           ? {
@@ -267,7 +272,9 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
         executionId: result.application.executionId ?? null,
         decisionMode: result.application.decisionMode ?? null,
       });
-      applyDecision(orderId, result.decision);
+      // Se guarda el id de la solicitud REAL: es a ella a la que despues se le pregunta si el
+      // comercio ya acepto. Sin esto, la orden aprobada por Atlas no tendria como esperar al negocio.
+      applyDecision(orderId, result.decision, result.application.applicationId);
     },
     [applyDecision, customerId],
   );
@@ -437,13 +444,26 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * El comercio revisa la orden en su portal y responde. En produccion esto llega por push; aqui se
-   * dispara solo, con la misma latencia perceptible, para que el estado de espera sea real y no un
-   * adorno.
+   * El comercio revisa la orden en su portal y responde.
+   *
+   * En una compra REAL esto NO se simula: la respuesta la da el negocio de verdad desde su ERP, y el
+   * telefono la espera preguntandole al backend por la solicitud (ver el efecto de sondeo mas abajo).
+   * Auto-aceptarla aqui seria pagar el inicial antes de que el comercio confirme la venta —el orden
+   * correcto es Atlas aprueba el credito, LUEGO el comercio acepta, y recien entonces se habilita el
+   * pago—.
+   *
+   * El disparo automatico queda SOLO para las compras de demostracion (sin solicitud real detras),
+   * para poder recorrer el flujo sin un comercio del otro lado.
    */
   useEffect(() => {
     state.orders
-      .filter((order) => order.status === 'PENDING_MERCHANT_ACCEPTANCE' && !order.acceptance && !timers.current[order.id])
+      .filter(
+        (order) =>
+          order.status === 'PENDING_MERCHANT_ACCEPTANCE' &&
+          !order.acceptance &&
+          !order.backendApplicationId &&
+          !timers.current[order.id],
+      )
       .forEach((order) => {
         timers.current[order.id] = setTimeout(() => {
           delete timers.current[order.id];
@@ -451,6 +471,50 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
         }, MERCHANT_REVIEW_MS);
       });
   }, [merchantAccept, state.orders]);
+
+  /**
+   * Espera la aceptacion REAL del comercio, preguntandole al backend por la solicitud.
+   *
+   * Solo para ordenes con una solicitud real detras y todavia esperando respuesta. Mientras el
+   * comercio no acepte, la orden se queda en «esperando comercio» y el pago del inicial sigue
+   * bloqueado —que es justo lo que pedia el flujo—. Cuando el negocio acepta, la orden avanza; si
+   * rechaza, se marca rechazada y no se cobra nada.
+   */
+  useEffect(() => {
+    if (!isBackendDecision || !customerId) return;
+    const pendientes = state.orders.filter(
+      (order) => order.status === 'PENDING_MERCHANT_ACCEPTANCE' && !order.acceptance && order.backendApplicationId,
+    );
+    if (pendientes.length === 0) return;
+
+    let cancelado = false;
+    const intervalo = setInterval(async () => {
+      let resumen;
+      try {
+        resumen = await listCreditApplications(customerId);
+      } catch {
+        // Una lectura fallida no cambia nada: se reintenta al siguiente tick. La orden sigue en
+        // espera, que es el estado seguro —nunca se habilita el pago por no haber podido preguntar—.
+        return;
+      }
+      if (cancelado) return;
+      const porId = new Map(resumen.applications.map((app) => [app.applicationId, app]));
+      for (const order of pendientes) {
+        const app = porId.get(order.backendApplicationId!);
+        if (!app) continue;
+        if (app.businessAcceptance === 'accepted') {
+          merchantAccept(order.id);
+        } else if (app.businessAcceptance === 'declined') {
+          merchantReject(order.id);
+        }
+      }
+    }, MERCHANT_ACCEPTANCE_POLL_MS);
+
+    return () => {
+      cancelado = true;
+      clearInterval(intervalo);
+    };
+  }, [customerId, merchantReject, merchantAccept, state.orders]);
 
   /** Expira sesiones y ordenes vencidas: el TTL debe verse, no solo existir en el modelo. */
   useEffect(() => {
