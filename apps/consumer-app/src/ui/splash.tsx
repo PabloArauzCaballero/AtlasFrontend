@@ -1,5 +1,5 @@
 /**
- * El arranque: la marca respira una vez y entrega la app.
+ * El arranque: la secuencia de marca de ATLAS.
  *
  * ## Que problema resuelve
  *
@@ -8,33 +8,47 @@
  * y ese corte es lo primero que ve cualquiera al abrir. Una app que arranca con un salto se siente
  * mas lenta de lo que es, aunque tarde exactamente lo mismo.
  *
- * ## Como esta resuelto
+ * El splash nativo se oculta EN CUANTO hay algo que dibujar, y esta capa toma el relevo con el
+ * mismo navy: el cambio no se ve porque no hay cambio. A partir de ahi ocurre una secuencia con
+ * principio, golpe y final.
  *
- * El splash nativo se oculta EN CUANTO hay algo que dibujar, y esta capa toma el relevo con la
- * misma marca sobre el mismo navy: el cambio no se ve porque no hay cambio. A partir de ahi la
- * marca hace un solo gesto —entra, respira, se va— y descubre la app.
+ * ## La coreografia
  *
  * ```
- *  entrada 420 ms         respiro 260 ms        salida 420 ms
- *  escala 0.86 -> 1       escala 1 -> 1.04      escala 1.04 -> 1.12
- *  opacidad 0 -> 1                              opacidad 1 -> 0
+ *   0 ms  ┃ barras cinematograficas entran · el negro se abre a navy
+ * 280 ms  ┃ la «A» SE DIBUJA sola, trazo a trazo, con una luz en la punta del trazo
+ * 1180ms  ┃ el relleno de marca aparece por debajo del trazo y el travesano cierra la letra
+ * 1520ms  ┃ barrido especular: una banda de luz cruza el metal en diagonal
+ * 1660ms  ┃ ▶ IMPACTO — destello, onda expansiva, el resplandor de fondo se abre · suena el ta-dum
+ * 1820ms  ┃ A·T·L·A·S aparecen una a una y el tracking se cierra hacia el centro
+ * 2460ms  ┃ el respiro: todo quieto. Es el fotograma en el que se reconoce la marca
+ * 2800ms  ┃ (si la app esta lista) la camara acelera hacia la marca y la atraviesa
  * ```
  *
- * El respiro es lo que separa un logotipo animado de un logotipo que aparece y ya: sin el, la
- * entrada y la salida se leen como un unico movimiento de escala y la marca no llega a estar quieta
- * en ningun momento —justo el instante en el que se la reconoce—.
+ * ## Por que el intro NO espera a que la app este lista
+ *
+ * Al reves que antes. La secuencia arranca en el fotograma en que se monta esta capa y corre
+ * entera, pase lo que pase por debajo: si esperara a `listo`, en un arranque frio —que es cuando
+ * mas tarda la sesion en restaurarse— la marca se quedaria congelada varios segundos antes de
+ * empezar a moverse, y una imagen quieta durante tres segundos se lee como una app colgada.
+ *
+ * Lo que SI espera a `listo` es la salida. Los dos relojes estan separados justamente por eso: el
+ * intro es un tiempo fijo que se puede ensayar, y la salida es un tiempo que depende de la red.
+ * Cuando la sesion tarda menos que el intro —el caso normal— no se nota ninguna espera, porque la
+ * app termino de cargar mientras se dibujaba la letra.
  *
  * ## Por que se va hacia ADELANTE y no se desvanece
  *
- * La salida escala a 1.12 mientras se apaga: la marca se acerca a la camara y la atraviesa, que es
- * el mismo lenguaje que el corte de marca de la bienvenida (`ui/brand-cut.tsx`). Un fundido a secas
- * diria «se acabo el logo»; acercandose dice «estas entrando», y las dos transiciones de la app
- * cuentan entonces la misma historia.
+ * La salida escala la marca hasta salirse del encuadre mientras se apaga: la camara se acerca y la
+ * atraviesa, que es el mismo lenguaje que el corte de marca de la bienvenida (`ui/brand-cut.tsx`).
+ * Un fundido a secas diria «se acabo el logo»; acercandose dice «estas entrando», y las dos
+ * transiciones de la app cuentan entonces la misma historia.
  *
  * ## Movimiento reducido
  *
- * No hay animacion: la capa se retira en cuanto la app esta lista. Una marca que crece ocupando la
- * pantalla entera es exactamente lo que el ajuste del sistema pide no hacer.
+ * No hay secuencia: la capa se retira en cuanto la app esta lista, y **tampoco suena el ta-dum**.
+ * Una marca que crece ocupando la pantalla entera es exactamente lo que el ajuste del sistema pide
+ * no hacer, y un golpe de sonido sin nada que lo justifique en pantalla es un ruido a secas.
  */
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -42,65 +56,209 @@ import Animated, {
   Easing,
   interpolate,
   runOnJS,
+  useAnimatedProps,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withDelay,
-  withSequence,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
-import { color } from '../theme/tokens';
-import { AtlasMark } from './brand';
+import Svg, { Circle, ClipPath, Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { color, palette } from '../theme/tokens';
+import { useSonidoMarca } from './brand-sound';
 import { AtlasText } from './primitives';
 
-const ENTRADA = 420;
-const RESPIRO = 260;
-const SALIDA = 420;
+const AnimatedPath = Animated.createAnimatedComponent(Path);
+const AnimatedRect = Animated.createAnimatedComponent(Rect);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+/**
+ * El guion, en milisegundos desde que se monta la capa.
+ *
+ * Todo el resto del fichero lee de aqui. Tener los tiempos sueltos por el codigo —que es como
+ * estaba— obliga a recorrer seis funciones para responder «¿cuando entra el rotulo?», y basta con
+ * tocar uno para que dos tramos se solapen sin que nadie lo note hasta verlo en el telefono.
+ */
+const GUION = {
+  barras: [0, 320],
+  trazo: [280, 1180],
+  relleno: [1140, 1520],
+  barrido: [1500, 2160],
+  impacto: 1660,
+  onda: [1660, 2320],
+  rotulo: [1820, 2460],
+  respiro: [2460, 2800],
+} as const;
+
+/** Lo que dura el intro completo. La salida se encadena DESPUES, y solo si la app esta lista. */
+const INTRO = 2800;
+const SALIDA = 640;
+
+/**
+ * Longitud del contorno de la «A», en unidades del `viewBox`.
+ *
+ * Es lo que hace posible dibujarla trazo a trazo: `strokeDasharray` pinta un guion tan largo como
+ * la letra entera y `strokeDashoffset` lo va corriendo. Un valor corto deja la letra a medias; uno
+ * largo hace que el dibujo empiece tarde y termine de golpe. 152 es el perimetro real medido sobre
+ * los seis vertices del trazado, redondeado hacia arriba.
+ */
+const CONTORNO = 152;
+
+/** El trazado de la marca, el mismo que dibuja `ui/brand.tsx`. Aqui se usa dos veces: contorno y relleno. */
+const LETRA = 'M24 5 L43 43 H34 L24 21 L14 43 H5 Z';
+const TRAVESANO = 'M17.5 31 H30.5 L34 38 H14 Z';
+
+const MARCA_PX = 132;
+/** El lienzo del impacto: onda expansiva y resplandor. Mas grande que la marca, para que quepa lo que sale de ella. */
+const ESCENA_PX = 360;
+
+/*
+  Curvas de aceleracion, escritas a mano.
+
+  No son `Easing.out(Easing.cubic)` porque aqui cada capa lee de un reloj COMUN y aplica su propia
+  curva sobre su propio tramo; `withTiming` solo sabe curvar una animacion entera. Un reloj comun es
+  lo que garantiza que el destello, la onda y el sonido caigan exactamente en el mismo fotograma:
+  con seis animaciones independientes, cada una con su retardo, basta un fotograma perdido en el
+  arranque para que el golpe visual y el sonoro se separen — y separados dejan de ser un golpe.
+*/
+function tramo(reloj: number, desde: number, hasta: number): number {
+  'worklet';
+  return Math.min(1, Math.max(0, (reloj - desde) / (hasta - desde)));
+}
+
+function frena(x: number): number {
+  'worklet';
+  return 1 - Math.pow(1 - x, 3);
+}
+
+function frenaMucho(x: number): number {
+  'worklet';
+  return 1 - Math.pow(1 - x, 5);
+}
+
+function acelera(x: number): number {
+  'worklet';
+  return x * x * x;
+}
+
+function suave(x: number): number {
+  'worklet';
+  return x * x * (3 - 2 * x);
+}
+
+/**
+ * El grano de pelicula.
+ *
+ * ## Por que hay grano en una app de dinero
+ *
+ * Porque es la diferencia entre «un logotipo sobre un fondo de color» y «un plano». Un degradado
+ * digital perfecto no existe en el mundo fisico: el ojo lo lee como plano, y un fondo plano deja al
+ * logotipo pegado contra el cristal. Unas motas irregulares a opacidad muy baja bastan para que el
+ * fondo tenga textura y la marca parezca estar DELANTE de algo.
+ *
+ * ## Por que las posiciones se calculan una vez y no cambian
+ *
+ * Un grano que se remueve cada fotograma es ruido de television, no grano de pelicula, y ademas
+ * obligaria a recalcular ciento veinte formas sesenta veces por segundo durante el arranque —justo
+ * cuando el hilo de JS esta ocupado restaurando la sesion—. Estas motas se generan al cargar el
+ * modulo, se dibujan una vez y lo unico que se anima es la opacidad de la capa entera, que el
+ * compositor resuelve sin volver a dibujar nada.
+ *
+ * La secuencia es deterministica a proposito (semilla fija): dos ejecuciones dan el mismo grano, y
+ * una captura de pantalla de referencia sigue siendo comparable.
+ */
+const MOTAS = (() => {
+  let semilla = 20260824;
+  const siguiente = () => {
+    // LCG de Numerical Recipes: no hace falta calidad estadistica, hace falta repetibilidad.
+    semilla = (semilla * 1664525 + 1013904223) % 4294967296;
+    return semilla / 4294967296;
+  };
+  return Array.from({ length: 120 }, () => ({
+    x: siguiente() * 100,
+    y: siguiente() * 100,
+    r: 0.18 + siguiente() * 0.42,
+    o: 0.05 + siguiente() * 0.09,
+  }));
+})();
+
+const LETRAS = ['A', 'T', 'L', 'A', 'S'] as const;
 
 /**
  * La capa de arranque. Se dibuja sobre todo lo demas y se retira sola.
  *
- * `onDone` avisa cuando ya no queda nada que ver, para que el arbol la desmonte: una vista a pantalla
- * completa con `pointerEvents: none` no molesta, pero seguir montada obliga a componerla en cada
- * fotograma de la app durante el resto de la sesion.
+ * `onDone` avisa cuando ya no queda nada que ver, para que el arbol la desmonte: una vista a
+ * pantalla completa con `pointerEvents: none` no molesta, pero seguir montada obliga a componerla
+ * en cada fotograma de la app durante el resto de la sesion.
  */
 export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () => void }) {
   const reduced = useReducedMotion();
-  const paso = useSharedValue(0);
-  /*
-    La salida se lanza UNA vez.
+  const sonido = useSonidoMarca();
 
-    Sin esta guarda, el efecto se relanzaba en cada render del arbol —porque `onDone` es una funcion
-    nueva cada vez— y `withSequence` volvia a empezar desde el principio. El sintoma no se parece a
-    la causa: la marca se quedaba en pantalla indefinidamente, como si la app no arrancara, cuando
-    lo que pasaba es que la animacion no llegaba nunca al final porque alguien la reiniciaba.
-  */
-  const lanzada = React.useRef(false);
+  /** El reloj del intro, en milisegundos. Todas las capas leen de el. */
+  const reloj = useSharedValue(0);
+  /** La salida: 0 = la marca esta donde estaba, 1 = la camara ya la atraveso. */
+  const salida = useSharedValue(0);
+  /** El disparo del sonido. Es un reloj propio para que el ta-dum no dependa de que el intro termine. */
+  const golpe = useSharedValue(0);
+
+  const [introTerminado, setIntroTerminado] = React.useState(false);
+
   const terminar = React.useRef(onDone);
   terminar.current = onDone;
   // Estable: el callback que cruza al hilo de JS no puede cambiar de identidad en cada render, o el
   // efecto que lo usa se relanza y con el la animacion entera.
   const avisar = React.useCallback(() => terminar.current(), []);
+  const marcarIntro = React.useCallback(() => setIntroTerminado(true), []);
+  const tocarMarca = React.useCallback(() => sonido.marca(), [sonido]);
 
+  /*
+    El intro arranca al montar, una sola vez, y no depende de nada.
+
+    `lanzado` existe porque el efecto se re-ejecutaba en cada render del arbol y `withTiming`
+    volvia a empezar desde cero. El sintoma no se parecia a la causa: la marca se quedaba en
+    pantalla indefinidamente, como si la app no arrancara, cuando lo que pasaba es que la animacion
+    no llegaba nunca al final porque alguien la reiniciaba.
+  */
+  const lanzado = React.useRef(false);
   React.useEffect(() => {
-    if (!listo || lanzada.current) return;
-    lanzada.current = true;
+    if (lanzado.current) return;
+    lanzado.current = true;
+    if (reduced) {
+      setIntroTerminado(true);
+      return;
+    }
+    // Lineal a proposito: es un RELOJ, no un movimiento. Curvar el reloj curvaria a la vez las
+    // ocho capas que leen de el, y la coreografia dejaria de caer donde dice el guion.
+    reloj.value = withTiming(INTRO, { duration: INTRO, easing: Easing.linear }, (completo) => {
+      if (completo) runOnJS(marcarIntro)();
+    });
+    /*
+      El sonido va enganchado al MISMO reloj que la imagen, no a un `setTimeout`.
+
+      Durante el arranque el hilo de JS esta restaurando la sesion, leyendo el almacen seguro y
+      montando el arbol: un temporizador de JS ahi llega tarde y con retraso variable. El golpe
+      sonoro separado del visual por cien milisegundos ya no se percibe como un golpe, sino como
+      dos cosas.
+    */
+    golpe.value = withTiming(1, { duration: GUION.impacto, easing: Easing.linear }, (completo) => {
+      if (completo) runOnJS(tocarMarca)();
+    });
+  }, [reduced, reloj, golpe, marcarIntro, tocarMarca]);
+
+  /* La salida: cuando el intro termino Y la app esta lista. Las dos condiciones, en cualquier orden. */
+  const saliendo = React.useRef(false);
+  React.useEffect(() => {
+    if (!introTerminado || !listo || saliendo.current) return;
+    saliendo.current = true;
     if (reduced) {
       terminar.current();
       return;
     }
-    /*
-      Una sola secuencia y no tres animaciones encadenadas con retardos: encadenar por tiempo
-      obliga a que cada tramo conozca cuanto duran los anteriores, y basta con tocar uno para que
-      los demas se solapen sin que nadie lo note hasta verlo.
-    */
-    paso.value = withSequence(
-      withTiming(1, { duration: ENTRADA, easing: Easing.out(Easing.cubic) }),
-      withDelay(RESPIRO, withTiming(2, { duration: SALIDA, easing: Easing.in(Easing.cubic) }, (terminado) => {
-        if (terminado) runOnJS(avisar)();
-      })),
-    );
-  }, [listo, reduced, paso, avisar]);
+    salida.value = withTiming(1, { duration: SALIDA, easing: Easing.in(Easing.cubic) }, (completo) => {
+      if (completo) runOnJS(avisar)();
+    });
+  }, [introTerminado, listo, reduced, salida, avisar]);
 
   /*
     Red de seguridad: pase lo que pase, esta capa se retira.
@@ -108,46 +266,331 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
     Si la sesion no termina de restaurarse —el servidor no responde, el token esta corrupto— `listo`
     no llega nunca y la persona se queda mirando un logotipo sin saber que hacer. Un arranque
     bloqueado es el peor fallo posible de una app de dinero, porque no se distingue de que la app
-    este rota. A los seis segundos se descubre la interfaz: si debajo hay un error, al menos se lee.
+    este rota. A los ocho segundos se descubre la interfaz: si debajo hay un error, al menos se lee.
+
+    Ocho y no seis: el intro solo ya ocupa 2,8 s, y el margen tiene que seguir siendo para la RED,
+    no para la animacion.
   */
   React.useEffect(() => {
     const alarma = setTimeout(() => {
-      if (!lanzada.current) {
-        lanzada.current = true;
+      if (!saliendo.current) {
+        saliendo.current = true;
         terminar.current();
       }
-    }, 6000);
+    }, 8000);
     return () => clearTimeout(alarma);
   }, []);
 
+  /* ---- Las capas ---- */
+
   const capa = useAnimatedStyle(() => ({
-    opacity: interpolate(paso.value, [0, 1, 2], [1, 1, 0]),
+    // La capa entera se apaga en el ULTIMO tercio de la salida. Antes no: mientras la marca crece,
+    // lo que hay debajo todavia no debe verse o se ven dos pantallas superpuestas.
+    opacity: 1 - frena(tramo(salida.value, 0.55, 1)),
   }));
 
-  const marca = useAnimatedStyle(() => ({
-    opacity: interpolate(paso.value, [0, 0.6, 1, 2], [0, 1, 1, 0]),
-    transform: [{ scale: interpolate(paso.value, [0, 1, 2], [0.86, 1, 1.12]) }],
+  /** El resplandor de fondo. Nace tenue, se abre de golpe en el impacto y se queda respirando. */
+  const resplandor = useAnimatedStyle(() => {
+    const previo = suave(tramo(reloj.value, GUION.trazo[0], GUION.impacto)) * 0.45;
+    const estallido = frenaMucho(tramo(reloj.value, GUION.impacto, GUION.impacto + 420));
+    const escala = 0.55 + previo * 0.35 + estallido * 0.55 + salida.value * 1.6;
+    return {
+      // Acotado a 1: los dos sumandos pueden pasarse juntos, y una opacidad mayor que uno no es
+      // «mas brillante», es un valor que cada plataforma decide recortar a su manera.
+      opacity: Math.min(1, previo + estallido * 0.75) * (1 - acelera(tramo(salida.value, 0.3, 1))),
+      transform: [{ scale: escala }],
+    };
+  });
+
+  /** El grano aparece con el fondo y se va antes del final: sobre la pantalla atravesada estorbaria. */
+  const grano = useAnimatedStyle(() => ({
+    opacity: 0.5 * suave(tramo(reloj.value, 0, 600)) * (1 - tramo(salida.value, 0, 0.6)),
   }));
 
-  const rotulo = useAnimatedStyle(() => ({
-    // El rotulo entra DESPUES de la marca —a partir del 55 % de la entrada— y sube seis pixeles. Es
-    // el orden en que se lee un logotipo: primero el simbolo, luego el nombre.
-    opacity: interpolate(paso.value, [0, 0.55, 1, 1.6], [0, 0, 1, 0]),
-    transform: [{ translateY: interpolate(paso.value, [0, 1], [6, 0]) }],
+  /**
+   * Las barras cinematograficas.
+   *
+   * Entran al principio y se RETIRAN al atravesar. Ese gesto —el encuadre ancho que se abre a
+   * pantalla completa— es la forma mas corta de decir «se acabo la secuencia, empieza la
+   * aplicacion» sin escribirlo. Si se quedaran hasta el final, la app aparecería recortada durante
+   * un fotograma.
+   */
+  const barras = useAnimatedStyle(() => {
+    const entrada = frena(tramo(reloj.value, GUION.barras[0], GUION.barras[1]));
+    const apertura = acelera(tramo(salida.value, 0.15, 1));
+    return { transform: [{ scaleY: Math.max(0, entrada - apertura) }] };
+  });
+
+  /**
+   * El escenario: la camara.
+   *
+   * Un empuje LENTISIMO durante todo el intro —de 1.0 a 1.03— que la persona no ve pero si nota:
+   * es lo que separa un plano fijo de un plano vivo. Y luego la aceleracion de la salida, que es la
+   * misma idea llevada al extremo.
+   */
+  const escenario = useAnimatedStyle(() => {
+    const deriva = suave(tramo(reloj.value, 0, INTRO)) * 0.03;
+    const empuje = acelera(salida.value) * 0.55;
+    return { transform: [{ scale: 1 + deriva + empuje }] };
+  });
+
+  /** La marca: entra con un empuje corto y sale atravesando la camara. */
+  const marca = useAnimatedStyle(() => {
+    const asentar = frena(tramo(reloj.value, GUION.trazo[0], GUION.relleno[1]));
+    const golpeVisual = frenaMucho(tramo(reloj.value, GUION.impacto, GUION.impacto + 220)) * 0.06;
+    const retroceso = frena(tramo(reloj.value, GUION.impacto + 220, GUION.impacto + 560)) * 0.06;
+    const atravesar = acelera(salida.value) * 7.2;
+    return {
+      opacity: 1 - acelera(tramo(salida.value, 0.4, 1)),
+      transform: [{ scale: 0.92 + asentar * 0.08 + golpeVisual - retroceso + atravesar }],
+    };
+  });
+
+  /**
+   * El trazo que se dibuja.
+   *
+   * `strokeDashoffset` va de la longitud entera —nada dibujado— a cero. La curva frena al final
+   * para que la punta llegue al vertice de arriba desacelerando, que es como se termina un trazo
+   * hecho a mano y no como se termina uno hecho por una maquina.
+   */
+  const trazoProps = useAnimatedProps(() => ({
+    strokeDashoffset: CONTORNO * (1 - frena(tramo(reloj.value, GUION.trazo[0], GUION.trazo[1]))),
+    // El contorno se apaga cuando el relleno ya esta: dejarlo encendido engorda la letra.
+    opacity: 1 - suave(tramo(reloj.value, GUION.relleno[0], GUION.relleno[1] + 120)),
+  }));
+
+  const rellenoProps = useAnimatedProps(() => ({
+    opacity: suave(tramo(reloj.value, GUION.relleno[0], GUION.relleno[1])),
+  }));
+
+  const travesanoProps = useAnimatedProps(() => ({
+    // El travesano cierra la letra DESPUES del relleno. Es el ultimo trazo que da un rotulista.
+    opacity: 0.55 * suave(tramo(reloj.value, GUION.relleno[1] - 80, GUION.relleno[1] + 220)),
+  }));
+
+  /**
+   * El barrido especular: una banda de luz que cruza la letra en diagonal.
+   *
+   * Es lo que convierte el degradado plano en una superficie. Va recortada a la forma de la «A»
+   * (`clipPath`), asi que la luz solo existe SOBRE el metal: una banda que se saliera de la letra
+   * seria un reflejo en el aire, y se lee como un error de composicion.
+   */
+  const barridoProps = useAnimatedProps(() => ({
+    x: -70 + frena(tramo(reloj.value, GUION.barrido[0], GUION.barrido[1])) * 140,
+    opacity: 0.9 * Math.sin(Math.PI * tramo(reloj.value, GUION.barrido[0], GUION.barrido[1])),
+  }));
+
+  /**
+   * La onda expansiva del impacto.
+   *
+   * Crece rapido y se apaga rapido: una onda que se demora se lee como un circulo que se hace
+   * grande. El grosor tambien adelgaza mientras crece, que es lo que hace la energia al repartirse
+   * sobre una circunferencia mas larga.
+   */
+  const ondaProps = useAnimatedProps(() => {
+    const avance = frenaMucho(tramo(reloj.value, GUION.onda[0], GUION.onda[1]));
+    /*
+      La compuerta `nacida` es lo que impide que la onda exista ANTES del impacto.
+
+      Sin ella, `1 - avance` vale uno desde el milisegundo cero: durante el segundo y medio que
+      tarda la letra en dibujarse habia un anillo de radio 14 encendido en el centro de la pantalla,
+      justo detras de la marca. Se veia en la grabacion del simulador como un circulito suelto en el
+      primer fotograma del arranque. Que la opacidad estatica valga cero no arregla esto —lo que se
+      pinta a partir del segundo fotograma es este calculo, no la prop estatica—.
+    */
+    const nacida = tramo(reloj.value, GUION.onda[0] - 30, GUION.onda[0]);
+    return {
+      r: 14 + avance * 120,
+      strokeWidth: Math.max(0.4, 3.4 * (1 - avance)),
+      opacity: 0.75 * (1 - avance) * nacida,
+    };
+  });
+
+  /** El destello: blanco, dos fotogramas, y fuera. Es el golpe. */
+  const destello = useAnimatedStyle(() => ({
+    opacity: 0.5 * (1 - tramo(reloj.value, GUION.impacto, GUION.impacto + 150)) * tramo(reloj.value, GUION.impacto - 40, GUION.impacto),
   }));
 
   return (
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.capa, capa]}>
-      <View style={styles.centro}>
-        <Animated.View style={marca}>
-          <AtlasMark size={104} />
-        </Animated.View>
-        <Animated.View style={rotulo}>
-          <AtlasText variant="hero" style={styles.rotulo}>
-            ATLAS
-          </AtlasText>
-        </Animated.View>
+      <Animated.View style={[styles.centrado, resplandor]}>
+        <Svg width={ESCENA_PX * 2.4} height={ESCENA_PX * 2.4} viewBox="0 0 100 100">
+          <Defs>
+            <RadialGradient id="arranque-resplandor" cx="50%" cy="50%" r="50%">
+              <Stop offset="0" stopColor={palette.brand400} stopOpacity="0.55" />
+              <Stop offset="0.4" stopColor={palette.brand500} stopOpacity="0.18" />
+              <Stop offset="1" stopColor={palette.brand500} stopOpacity="0" />
+            </RadialGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100" height="100" fill="url(#arranque-resplandor)" />
+        </Svg>
+      </Animated.View>
+
+      {/* La vineta: oscurece las esquinas para que el ojo caiga al centro. Es fija; no se anima. */}
+      <View style={StyleSheet.absoluteFill}>
+        <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <Defs>
+            <RadialGradient id="arranque-vineta" cx="50%" cy="50%" r="72%">
+              <Stop offset="0.35" stopColor="#000000" stopOpacity="0" />
+              <Stop offset="1" stopColor="#000000" stopOpacity="0.55" />
+            </RadialGradient>
+          </Defs>
+          <Rect x="0" y="0" width="100" height="100" fill="url(#arranque-vineta)" />
+        </Svg>
       </View>
+
+      <Animated.View style={[StyleSheet.absoluteFill, grano]}>
+        <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+          {MOTAS.map((mota, indice) => (
+            <Circle key={indice} cx={mota.x} cy={mota.y} r={mota.r} fill="#FFFFFF" opacity={mota.o} />
+          ))}
+        </Svg>
+      </Animated.View>
+
+      <Animated.View style={[StyleSheet.absoluteFill, styles.centro, escenario]}>
+        <View style={styles.escena}>
+          <Svg width={ESCENA_PX} height={ESCENA_PX} viewBox="0 0 300 300" style={StyleSheet.absoluteFill}>
+            {/*
+              `r` y `opacity` en cero de partida, aunque `ondaProps` los sobreescriba.
+
+              Reanimated aplica las props animadas DESPUES del primer dibujado, asi que lo que se
+              pinta en ese fotograma son los valores estaticos. Sin estos dos, el primer fotograma
+              del arranque era un anillo suelto de radio por defecto en mitad de una pantalla vacia
+              —visible en la grabacion del simulador— un octavo de segundo antes de que la marca
+              empezara siquiera a dibujarse. Vale para las cinco formas animadas de aqui.
+            */}
+            <AnimatedCircle
+              cx={150}
+              cy={150}
+              r={0}
+              opacity={0}
+              fill="none"
+              stroke={palette.brand300}
+              animatedProps={ondaProps}
+            />
+          </Svg>
+
+          <Animated.View style={marca}>
+            <Svg width={MARCA_PX} height={MARCA_PX} viewBox="0 0 48 48" accessibilityLabel="Logotipo de Atlas">
+              <Defs>
+                <LinearGradient id="arranque-marca" x1="0" y1="0" x2="1" y2="1">
+                  <Stop offset="0" stopColor={palette.brand500} />
+                  <Stop offset="0.55" stopColor={palette.brand400} />
+                  <Stop offset="1" stopColor={palette.brand300} />
+                </LinearGradient>
+                <LinearGradient id="arranque-brillo" x1="0" y1="0" x2="1" y2="0">
+                  <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0" />
+                  <Stop offset="0.5" stopColor="#FFFFFF" stopOpacity="0.85" />
+                  <Stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
+                </LinearGradient>
+                <ClipPath id="arranque-recorte">
+                  <Path d={LETRA} />
+                </ClipPath>
+              </Defs>
+
+              <AnimatedPath
+                d={LETRA}
+                fill="none"
+                stroke={palette.brand300}
+                strokeWidth={1.1}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray={CONTORNO}
+                strokeDashoffset={CONTORNO}
+                animatedProps={trazoProps}
+              />
+              <AnimatedPath d={LETRA} fill="url(#arranque-marca)" opacity={0} animatedProps={rellenoProps} />
+              <AnimatedPath d={TRAVESANO} fill={palette.brand900} opacity={0} animatedProps={travesanoProps} />
+
+              <G clipPath="url(#arranque-recorte)">
+                {/*
+                  Inclinada 18 grados: una banda vertical se lee como una persiana. La diagonal es
+                  la que parece luz rebotando en una superficie que no esta perfectamente de frente.
+                */}
+                <AnimatedRect
+                  y={-30}
+                  x={-70}
+                  opacity={0}
+                  width={16}
+                  height={110}
+                  fill="url(#arranque-brillo)"
+                  transform="rotate(18 24 24)"
+                  animatedProps={barridoProps}
+                />
+              </G>
+            </Svg>
+          </Animated.View>
+
+          <View style={styles.rotulo}>
+            {LETRAS.map((letra, indice) => (
+              <LetraDelRotulo key={`${letra}-${indice}`} letra={letra} indice={indice} reloj={reloj} salida={salida} />
+            ))}
+          </View>
+        </View>
+      </Animated.View>
+
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.destello, destello]} />
+
+      <Animated.View pointerEvents="none" style={[styles.barra, styles.barraArriba, barras]} />
+      <Animated.View pointerEvents="none" style={[styles.barra, styles.barraAbajo, barras]} />
+    </Animated.View>
+  );
+}
+
+/**
+ * Una letra del rotulo.
+ *
+ * ## Por que cada letra es su propio componente
+ *
+ * Porque cada una tiene su propio tiempo y su propio recorrido, y eso son cinco estilos animados.
+ * Calcularlos en el padre significaria cinco `useAnimatedStyle` escritos a mano —o un array de
+ * hooks, que React no permite—. Aqui el escalonado sale del indice y no hay nada que repetir.
+ *
+ * ## El tracking que se cierra
+ *
+ * Las letras nacen separadas y se juntan hacia el centro. Es el gesto tipografico de los titulos de
+ * credito: el ojo lee primero las letras sueltas —que todavia no son una palabra— y ve como se
+ * convierten en una. Se hace con `translateX` por letra y no animando `letterSpacing` porque el
+ * espaciado de texto se resuelve en el motor de maquetado: animarlo obliga a remaquetar el rotulo
+ * entero en cada fotograma, y en Android eso se ve.
+ */
+function LetraDelRotulo({
+  letra,
+  indice,
+  reloj,
+  salida,
+}: {
+  letra: string;
+  indice: number;
+  reloj: SharedValue<number>;
+  salida: SharedValue<number>;
+}) {
+  /** Distancia al centro del rotulo, en «letras». Con cinco letras: -2, -1, 0, 1, 2. */
+  const desdeCentro = indice - (LETRAS.length - 1) / 2;
+
+  const estilo = useAnimatedStyle(() => {
+    const [desde, hasta] = GUION.rotulo;
+    // Cada letra arranca 70 ms despues de la anterior y todas terminan de recorrer lo mismo.
+    const inicio = desde + indice * 70;
+    const avance = frena(tramo(reloj.value, inicio, hasta));
+    // El tracking se cierra mas despacio que la aparicion: la palabra termina de formarse despues
+    // de que la ultima letra ya se lee.
+    const apertura = 1 - frenaMucho(tramo(reloj.value, desde, hasta + 180));
+    return {
+      opacity: avance * (1 - acelera(tramo(salida.value, 0.25, 0.85))),
+      transform: [
+        { translateX: desdeCentro * apertura * 16 + desdeCentro * acelera(salida.value) * 190 },
+        { translateY: (1 - avance) * 10 },
+        { scale: 0.94 + avance * 0.06 + acelera(salida.value) * 0.9 },
+      ],
+    };
+  });
+
+  return (
+    <Animated.View style={estilo}>
+      <AtlasText variant="hero" style={styles.letra}>
+        {letra}
+      </AtlasText>
     </Animated.View>
   );
 }
@@ -156,6 +599,21 @@ const styles = StyleSheet.create({
   // El mismo navy que el splash nativo y que el fondo de la app: los tres tienen que ser el mismo
   // color o el relevo se ve como un parpadeo de fondo.
   capa: { backgroundColor: color.surface.primary, alignItems: 'center', justifyContent: 'center' },
-  centro: { alignItems: 'center', gap: 20 },
-  rotulo: { letterSpacing: 6, textAlign: 'center' },
+  centro: { alignItems: 'center', justifyContent: 'center' },
+  centrado: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  escena: { width: ESCENA_PX, height: ESCENA_PX, alignItems: 'center', justifyContent: 'center', gap: 22 },
+  rotulo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  // El interletrado base del rotulo ya formado. El resto del recorrido lo pone `translateX`.
+  letra: { letterSpacing: 6, textAlign: 'center' },
+  destello: { backgroundColor: '#FFFFFF' },
+  /*
+    Las barras se animan con `scaleY` y no con la altura.
+
+    La altura obliga a remaquetar la vista en cada fotograma; `scaleY` lo resuelve el compositor.
+    Con `transformOrigin` en el borde de la pantalla, escalar de 0 a 1 se ve exactamente igual que
+    una barra que baja, y cuesta lo que cuesta mover una capa ya dibujada.
+  */
+  barra: { position: 'absolute', left: 0, right: 0, height: '11%', backgroundColor: '#000000' },
+  barraArriba: { top: 0, transformOrigin: 'top' },
+  barraAbajo: { bottom: 0, transformOrigin: 'bottom' },
 });

@@ -16,7 +16,9 @@ import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { SandboxProvider } from '../src/sandbox/store';
+import { SonidoMarcaProvider } from '../src/ui/brand-sound';
 import { AnimatedSplash } from '../src/ui/splash';
+import { BienvenidaHablada } from '../src/ui/welcome-voice';
 import { SessionProvider, useSession } from '../src/session/session';
 import { color } from '../src/theme/tokens';
 import { BrandCutProvider } from '../src/ui/brand-cut';
@@ -73,6 +75,7 @@ function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
       <Stack.Screen name="(onboarding)" />
       <Stack.Screen name="(app)" />
     </Stack>
+    <BienvenidaHablada />
     {arranqueVisible ? <AnimatedSplash listo={listo} onDone={() => setArranqueVisible(false)} /> : null}
     </>
   );
@@ -99,26 +102,36 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.surface.primary }}>
       <SafeAreaProvider>
         <StatusBar style="light" />
-        <SessionProvider>
-          <SandboxProvider>
-            {/*
-              El recorrido guiado envuelve a la navegacion, no a una pantalla: su capa se dibuja
-              sobre la ventana completa —incluida la barra de pestanas, que es uno de los objetivos
-              que senala— y una capa montada dentro de una pantalla queda recortada por ella.
-            */}
-            <TourProvider>
+        {/*
+          El sonido de marca envuelve a la sesion, no al reves.
+
+          Lo usan tres piezas que viven en niveles distintos —el arranque, el corte de marca y el
+          saludo posterior al login—, y el reproductor tiene que ser el MISMO para las tres: es un
+          recurso nativo, y ademas la regla de «el ta-dum suena una vez por apertura» necesita una
+          memoria por encima de todo lo que se monta y se desmonta debajo.
+        */}
+        <SonidoMarcaProvider>
+          <SessionProvider>
+            <SandboxProvider>
               {/*
-                El corte de marca envuelve a la navegacion por el mismo motivo que el recorrido
-                guiado: su capa tiene que cubrir la ventana COMPLETA. Montado dentro de la
-                bienvenida quedaria recortado por ella y, peor, se desmontaria con la propia
-                pantalla justo a la mitad de la animacion —que es exactamente cuando se navega—.
+                El recorrido guiado envuelve a la navegacion, no a una pantalla: su capa se dibuja
+                sobre la ventana completa —incluida la barra de pestanas, que es uno de los objetivos
+                que senala— y una capa montada dentro de una pantalla queda recortada por ella.
               */}
-              <BrandCutProvider>
-                <NavigationTree fontsReady={fontsLoaded || Boolean(fontError)} />
-              </BrandCutProvider>
-            </TourProvider>
-          </SandboxProvider>
-        </SessionProvider>
+              <TourProvider>
+                {/*
+                  El corte de marca envuelve a la navegacion por el mismo motivo que el recorrido
+                  guiado: su capa tiene que cubrir la ventana COMPLETA. Montado dentro de la
+                  bienvenida quedaria recortado por ella y, peor, se desmontaria con la propia
+                  pantalla justo a la mitad de la animacion —que es exactamente cuando se navega—.
+                */}
+                <BrandCutProvider>
+                  <NavigationTree fontsReady={fontsLoaded || Boolean(fontError)} />
+                </BrandCutProvider>
+              </TourProvider>
+            </SandboxProvider>
+          </SessionProvider>
+        </SonidoMarcaProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

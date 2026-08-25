@@ -219,16 +219,67 @@ Las pantallas de tarea acotada (`compra/monto`, `pago/[itemId]`) se declaran con
 `presentation: 'modal'` y nada más en iOS; el deslizamiento desde abajo se añade **solo en
 Android**, donde `modal` equivale a `push` y sin él no se distinguiría de un paso más del flujo.
 
+### La secuencia de arranque
+
+Abrir la app no enseña un logotipo: reproduce una secuencia de 2,8 s con principio, golpe y final
+(`src/ui/splash.tsx`). Las barras cinematográficas entran, la «A» **se dibuja sola** trazo a trazo,
+el relleno de marca aparece por debajo, una banda de luz cruza el metal en diagonal, y en el segundo
+1,66 hay un impacto —destello, onda expansiva, el resplandor de fondo que se abre— sincronizado al
+fotograma con el sonido de marca. Después el rótulo A·T·L·A·S aparece letra a letra cerrando el
+tracking hacia el centro, se queda quieto un tercio de segundo —el fotograma en el que se reconoce
+la marca— y la cámara acelera hasta atravesarla.
+
+Tres decisiones sostienen el resto:
+
+- **Un solo reloj.** Las ocho capas leen de un mismo valor lineal en milisegundos y cada una aplica
+  su curva sobre su tramo. Con ocho animaciones independientes y sus retardos, basta un fotograma
+  perdido en el arranque para que el destello y el sonido se separen — y separados dejan de ser un
+  golpe.
+- **El intro NO espera a que la app esté lista.** Arranca al montar y corre entero. La que espera es
+  la *salida*. Al revés, un arranque frío —justo cuando más tarda la sesión— dejaba la marca
+  congelada varios segundos, y una imagen quieta se lee como una app colgada.
+- **Hay grano de película y viñeta.** Un degradado digital perfecto se lee como plano, y un fondo
+  plano deja al logotipo pegado contra el cristal. Las motas se calculan una vez con semilla fija:
+  lo único que se anima es la opacidad de la capa, que el compositor resuelve sin redibujar nada.
+
 ### El corte de marca
 
-Salir de la bienvenida —hacia el registro o hacia el acceso— atraviesa la marca: la cámara se
-acerca al logotipo hasta cruzarlo y la pantalla de destino queda detrás (`src/ui/brand-cut.tsx`).
-Es el único movimiento de la app que pasa del cuarto de segundo (`motion.brandCut`, 560 ms), y se
-lo puede permitir porque ocurre **una vez por sesión** y porque durante él la app no hace esperar a
-nadie: el destino se monta detrás mientras la marca cubre.
+Salir de la bienvenida —hacia el registro o hacia el acceso— atraviesa la marca: la cámara **se echa
+atrás** un cuarto de segundo, y entonces se lanza hacia el logotipo hasta cruzarlo, dejando estela,
+dispersión cromática y líneas de velocidad radiales; la pantalla de destino queda detrás
+(`src/ui/brand-cut.tsx`). Son 1,7 s, y se lo puede permitir porque ocurre **una vez por sesión** y
+porque durante él la app no hace esperar a nadie: el destino se monta detrás mientras la marca
+cubre.
+
+El retroceso inicial es anticipación: sin él la marca arranca ya en movimiento y el ojo no tiene
+contra qué medir la velocidad. Con él, el mismo recorrido se lee como el doble de rápido sin costar
+un píxel más. La estela son tres copias que leen el mismo reloj **atrasado en el tiempo**, no copias
+más pequeñas: una copia pequeña está quieta detrás; una atrasada recorre la misma trayectoria con
+retraso, que es lo que hace un obturador lento.
 
 No se usa para pasar de página del carrusel. El corte marca un **límite**; usarlo en cada toque lo
-convertiría en un peaje de medio segundo repetido cuatro veces.
+convertiría en un peaje repetido cuatro veces.
+
+### El sonido de marca
+
+El «ta-dum» (`assets/audio/atlas-marca.mp3`, generado con `tools/generar-sonido-marca.mjs`) suena en
+el impacto del arranque. Cinco reglas lo mantienen del lado de «impacta» y fuera de «molesta», y
+están en `src/ui/brand-sound.tsx`:
+
+1. **El interruptor de silencio manda.** Quien silenció el teléfono ya dijo que no quiere sonidos.
+2. **Agacha, no interrumpe:** si hay música, baja de volumen y vuelve.
+3. **Una vez por apertura de app.** No por pantalla ni por navegación. Lo que convierte un sonido de
+   marca en una molestia es la repetición, no el volumen — por eso el corte de marca lo pide también
+   y no suena dos veces.
+4. **Al 70 %**, atenuado en reproducción y no en el archivo, para no perder cuerpo en el altavoz.
+5. **Nunca en segundo plano.**
+
+Con movimiento reducido no suena: un golpe de sonido sin nada que lo justifique en pantalla es ruido
+a secas.
+
+La **bienvenida hablada** es otra cosa y tiene otras reglas: la genera el worker de locución del
+motor con el nombre de quien entra, y sólo suena al **ingresar** —no al restaurar la sesión al abrir
+la app—. Ver `src/ui/welcome-voice.tsx`.
 
 ### Lo demás que se mueve, y por qué
 
