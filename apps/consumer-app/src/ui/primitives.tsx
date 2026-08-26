@@ -69,10 +69,15 @@ export function AtlasText({
  * ven en una captura: el lector de pantalla lo deletrea letra a letra, la traduccion hereda unas
  * mayusculas que en otro idioma pueden no corresponder, y el interletraje se queda sin corregir,
  * que es lo que hace que una versalita se lea apretada y sucia.
+ *
+ * El tono por defecto es `secondary`, no `tertiary`. A 11 px, `tertiary` sobre el navy se queda por
+ * debajo del contraste que pide un texto normal, y un antetitulo no es decorativo: es lo que dice de
+ * QUE es la cifra que tiene debajo. Lo que lo separa del titulo no puede ser que se lea peor, sino
+ * que sea mas pequeno y vaya en versalitas.
  */
 export function Overline({
   children,
-  tone = 'tertiary',
+  tone = 'secondary',
   style,
   ...rest
 }: TextProps & { tone?: TextTone }) {

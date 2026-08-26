@@ -164,7 +164,7 @@ export default function Home() {
 
       <TourTarget id={TOUR_INICIO_TARGETS.linea}>
         <BrandPanel>
-          <Overline tone="secondary">Disponible para comprar</Overline>
+          <Overline>Disponible para comprar</Overline>
           {/*
             El limite sale del MOTOR, no de una constante.
 
