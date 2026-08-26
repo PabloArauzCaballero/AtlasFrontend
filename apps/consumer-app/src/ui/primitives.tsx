@@ -1013,7 +1013,16 @@ const styles = StyleSheet.create({
     tarjeta se leia como un menu de ajustes del sistema. Lo que agrupa una lista es la proximidad;
     la línea solo tiene que separar, no abrir un hueco.
   */
-  divider: { height: 1, backgroundColor: color.border.subtle, marginVertical: space.sm },
+  /*
+    El aire de la linea se cuenta DOS veces, y por eso mide la mitad.
+
+    Casi todos los divisores viven dentro de una tarjeta, y una tarjeta ya separa a sus hijos con
+    `gap: space.md`. Con `marginVertical: space.sm` encima, entre el titulo y la linea quedaban 20 px
+    y otros 20 hasta el contenido: cuarenta de aire alrededor de un pixel. Eso es lo que hacia que
+    una tarjeta con cabecera se leyera como tres bloques sueltos con una raya en medio en vez de como
+    un bloque con su titulo.
+  */
+  divider: { height: 1, backgroundColor: color.border.subtle, marginVertical: space.xs },
   // 32 + 12: el ancho del chip de icono pequeno mas el hueco de la fila. La linea arranca justo
   // debajo de la primera letra del titulo.
   dividerInset: { marginLeft: 32 + space.md },
