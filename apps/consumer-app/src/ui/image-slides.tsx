@@ -146,7 +146,7 @@ export function ImageSlides({ slides }: Readonly<{ slides: readonly ImageSlide[]
       {activa ? (
         <View style={styles.pie}>
           <View style={styles.pieTexto}>
-            <AtlasText variant="bodyStrong">{activa.title}</AtlasText>
+            <AtlasText variant="title">{activa.title}</AtlasText>
             <AtlasText variant="caption" tone="secondary">
               {activa.hint}
             </AtlasText>

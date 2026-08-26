@@ -131,7 +131,7 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
       {next ? (
         <AtlasText variant="caption" tone="secondary">
           Te faltan{" "}
-          <AtlasText variant="bodyStrong">
+          <AtlasText variant="captionStrong">
             {next.from - scoring} puntos
           </AtlasText>{" "}
           para llegar a «{next.label}».
@@ -271,7 +271,7 @@ export function DelinquencyImpact({
         Tienes {formatAmount(overdueAmount, currency)} vencidos. Cada atraso
         entra en el cálculo de tu puntaje y baja la línea que la política te
         aprueba: hoy tu banda de riesgo es{" "}
-        <AtlasText variant="bodyStrong">
+        <AtlasText variant="captionStrong">
           {line.riskBand ?? "la más alta"}
         </AtlasText>
         .

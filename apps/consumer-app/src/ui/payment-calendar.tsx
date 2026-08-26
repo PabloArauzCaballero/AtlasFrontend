@@ -30,15 +30,37 @@ import { formatAmount } from '../features/spending-copy';
 import { color, press, radius, space } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { PressSurface } from './motion';
-import { AtlasText, Divider, Overline } from './primitives';
+import { AtlasText, Divider, IconChip, Overline } from './primitives';
 
 type EntryState = CalendarEntry['state'];
 
-const STATE_LOOK: Record<EntryState, { label: string; tint: string; icon: IconName }> = {
-  overdue: { label: 'Vencida', tint: color.feedback.danger, icon: 'alerta' },
-  upcoming: { label: 'Por vencer', tint: color.feedback.warning, icon: 'reloj' },
-  paid: { label: 'Pagada', tint: color.feedback.success, icon: 'check' },
-  written_off: { label: 'Castigada', tint: color.text.tertiary, icon: 'documento' },
+/*
+ * Cada estado trae su color CRUDO y sus dos nombres de tono, y los tres se usan en sitios distintos.
+ *
+ * `tint` es para los puntos —el de la rejilla y el de la leyenda—, que son manchas de color pleno y
+ * no tienen componente al que pedirle un tono. `chip` y `texto` son nombres del sistema, para el
+ * chip del icono y para el importe.
+ *
+ * La fila fabricaba su fondo concatenando la alfa al hexadecimal (`look.tint + '22'`): un color
+ * literal escrito fuera de los tokens, y con un 13 % fijo que pesa distinto según el color de
+ * partida —el chip rojo y el ámbar no destacaban igual aunque el código dijera que sí—. Es la misma
+ * corrección que ya se hizo en la bandeja de avisos y en los puntos del contenido del servidor;
+ * ésta se quedó atrás porque el patrón estaba escrito con otra forma.
+ */
+const STATE_LOOK: Record<
+  EntryState,
+  {
+    label: string;
+    tint: string;
+    chip: React.ComponentProps<typeof IconChip>['tone'];
+    texto: 'danger' | 'warning' | 'success' | 'tertiary';
+    icon: IconName;
+  }
+> = {
+  overdue: { label: 'Vencida', tint: color.feedback.danger, chip: 'danger', texto: 'danger', icon: 'alerta' },
+  upcoming: { label: 'Por vencer', tint: color.feedback.warning, chip: 'warning', texto: 'warning', icon: 'reloj' },
+  paid: { label: 'Pagada', tint: color.feedback.success, chip: 'success', texto: 'success', icon: 'check' },
+  written_off: { label: 'Castigada', tint: color.text.tertiary, chip: 'neutral', texto: 'tertiary', icon: 'documento' },
 };
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -279,11 +301,9 @@ export function CalendarRow({
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={`Cuota ${entry.installmentNumber} de ${entry.merchant.displayName}, ${look.label.toLowerCase()}`}
     >
-      <View style={[styles.rowIcon, { backgroundColor: look.tint + '22' }]}>
-        <Icon name={look.icon} size={16} tint={look.tint} />
-      </View>
+      <IconChip name={look.icon} tone={look.chip} size="sm" />
       <View style={styles.rowText}>
-        <AtlasText variant="bodyStrong" numberOfLines={1}>
+        <AtlasText variant="title" numberOfLines={1}>
           {entry.merchant.displayName}
         </AtlasText>
         <AtlasText variant="caption" tone="tertiary">
@@ -292,7 +312,9 @@ export function CalendarRow({
           {entry.state === 'overdue' ? ` · ${entry.daysPastDue} ${entry.daysPastDue === 1 ? 'día' : 'días'} de atraso` : ''}
         </AtlasText>
       </View>
-      <AtlasText variant="bodyStrong" style={{ color: entry.state === 'paid' ? color.text.tertiary : look.tint }}>
+      {/* El importe en cifras tabulares, como en el resto de las listas de dinero de la app: una
+          columna de cuotas se recorre de arriba abajo comparando, y con cifras proporcionales baila. */}
+      <AtlasText variant="amountMicro" tone={entry.state === 'paid' ? 'tertiary' : look.texto}>
         {formatAmount(entry.state === 'paid' ? entry.totalAmount : entry.pendingAmount, entry.currencyCode)}
       </AtlasText>
       {onPress ? <Icon name="adelante" size={16} tint={color.text.tertiary} /> : null}
@@ -325,6 +347,5 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
   list: { gap: space.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.xs },
-  rowIcon: { width: 32, height: 32, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   rowText: { flex: 1, gap: 2 },
 });

@@ -278,7 +278,7 @@ export default function ExtractoBancario() {
           {review.status === "rejected" && review.rejectionCategory ? (
             <>
               <Divider />
-              <AtlasText variant="bodyStrong">
+              <AtlasText variant="h3">
                 {RECHAZO[review.rejectionCategory]?.titulo ??
                   "No pudimos usarlo"}
               </AtlasText>

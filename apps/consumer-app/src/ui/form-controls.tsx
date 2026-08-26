@@ -416,10 +416,11 @@ export function SelectField<T extends string = string>({
       <Modal visible={abierto} transparent animationType="slide" onRequestClose={cerrar}>
         <Pressable style={styles.backdrop} onPress={cerrar} />
         <View style={styles.sheet}>
+          <View style={styles.grabber} />
           <View style={styles.sheetHead}>
-            <AtlasText variant="bodyStrong">{label}</AtlasText>
-            <Pressable onPress={cerrar} accessibilityRole="button" accessibilityLabel="Cerrar">
-              <AtlasText variant="bodyStrong" style={{ color: color.action.primary }}>
+            <AtlasText variant="h3">{label}</AtlasText>
+            <Pressable onPress={cerrar} accessibilityRole="button" accessibilityLabel="Cerrar" hitSlop={12}>
+              <AtlasText variant="bodyStrong" tone="brand">
                 Listo
               </AtlasText>
             </Pressable>
