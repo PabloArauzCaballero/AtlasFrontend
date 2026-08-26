@@ -21,11 +21,12 @@
  * como hablar con alguien es hacerle pagar por nuestra organizacion del contenido.
  */
 import { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as contentApi from '../../src/api/endpoints/app-content';
 import { ContentActionButton, ContentBullets } from '../../src/ui/content';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
-import { AtlasText, Card, Divider, Skeleton } from '../../src/ui/primitives';
+import { Accordion, AtlasText, Card, CardHeader, Divider, EmptyState, SectionHeader, Skeleton } from '../../src/ui/primitives';
 import { resetTour, useTour } from '../../src/ui/tour';
 import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS } from '../../src/features/tour-inicio';
 
@@ -73,75 +74,71 @@ export default function Ayuda() {
 
       {!ready ? (
         <Card>
-          <Skeleton height={18} width="70%" />
-          <Skeleton height={14} />
-          <Skeleton height={14} width="80%" />
+          <Skeleton height={23} width="70%" />
+          <Skeleton height={1} />
+          <Skeleton height={23} width="55%" />
+          <Skeleton height={1} />
+          <Skeleton height={23} width="64%" />
         </Card>
       ) : null}
 
       {help.map((entry) => (
         <Card key={entry.contentKey}>
-          <AtlasText variant="h3">{entry.title}</AtlasText>
-          {entry.subtitle ? (
-            <AtlasText variant="body" tone="secondary">
-              {entry.subtitle}
-            </AtlasText>
-          ) : null}
-          <Gap size="xs" />
+          <CardHeader
+            icon="telefono"
+            title={entry.title ?? 'Hablar con Atlas'}
+            detail={entry.subtitle ?? undefined}
+            divider={false}
+          />
           <ContentActionButton action={entry.action} onScreen={openScreen} onTour={replayTour} />
         </Card>
       ))}
 
       {faq.length > 0 ? (
         <>
-          <Gap size="sm" />
-          <AtlasText variant="caption" tone="tertiary">
-            PREGUNTAS FRECUENTES
-          </AtlasText>
+          <SectionHeader title="Preguntas frecuentes" detail="Toca una para ver la respuesta." />
+          {/*
+            Las seis preguntas viven en UNA tarjeta, plegadas, y no en seis tarjetas abiertas.
+
+            Seis tarjetas con seis respuestas completas convierten la ayuda en un documento que hay
+            que recorrer entero; una sola lista de preguntas es un indice, que es lo que alguien con
+            una duda concreta necesita. La tarjeta ademas las agrupa: dice que las seis son la misma
+            clase de cosa.
+          */}
+          <Card>
+            {/*
+              Una pregunta sin titulo no se pinta. El contenido lo edita una persona desde el portal
+              y el titulo puede llegar vacio; un desplegable sin encabezado seria una flecha suelta
+              que abre un parrafo, y nadie sabria que estaba abriendo.
+            */}
+            {faq.filter((entry) => Boolean(entry.title)).map((entry, index) => (
+              <View key={entry.contentKey}>
+                {index > 0 ? <Divider /> : null}
+                <Accordion title={entry.title ?? ''}>
+                  {entry.body ? (
+                    <AtlasText variant="body" tone="secondary">
+                      {entry.body}
+                    </AtlasText>
+                  ) : null}
+
+                  {entry.bullets.length > 0 ? <ContentBullets bullets={entry.bullets} /> : null}
+
+                  {entry.action ? (
+                    <ContentActionButton action={entry.action} onScreen={openScreen} onTour={replayTour} />
+                  ) : null}
+                </Accordion>
+              </View>
+            ))}
+          </Card>
         </>
       ) : null}
 
-      {faq.map((entry) => (
-        <Card key={entry.contentKey}>
-          {/*
-            La pregunta a tamano de titulo y la respuesta a tamano de lectura. Al reves —que es como
-            estaba, pregunta y respuesta con el mismo peso— obliga a leer las seis para encontrar la
-            tuya.
-          */}
-          <AtlasText variant="h3">{entry.title}</AtlasText>
-
-          {entry.body ? (
-            <>
-              <Gap size="xxs" />
-              <AtlasText variant="body" tone="secondary">
-                {entry.body}
-              </AtlasText>
-            </>
-          ) : null}
-
-          {entry.bullets.length > 0 ? (
-            <>
-              <Divider />
-              <ContentBullets bullets={entry.bullets} />
-            </>
-          ) : null}
-
-          {entry.action ? (
-            <>
-              <Gap size="xs" />
-              <ContentActionButton action={entry.action} onScreen={openScreen} onTour={replayTour} />
-            </>
-          ) : null}
-        </Card>
-      ))}
-
       {ready && help.length === 0 && faq.length === 0 ? (
-        <Card>
-          <AtlasText variant="h3">No pudimos cargar la ayuda</AtlasText>
-          <AtlasText variant="body" tone="secondary">
-            Vuelve a intentarlo en un momento. Si necesitas hablar con alguien ahora, escríbenos por WhatsApp desde tu perfil.
-          </AtlasText>
-        </Card>
+        <EmptyState
+          icon="ayuda"
+          title="No pudimos cargar la ayuda"
+          detail="Vuelve a intentarlo en un momento. Si necesitas hablar con alguien ahora, escríbenos por WhatsApp desde tu perfil."
+        />
       ) : null}
 
       <Gap size="lg" />

@@ -9,13 +9,23 @@
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import * as loansApi from '../../../src/api/endpoints/loans';
 import { categoryLook, dueCopy, formatAmount } from '../../../src/features/spending-copy';
-import { color, space } from '../../../src/theme/tokens';
-import { Icon } from '../../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { AtlasText, Badge, Card, Divider, ErrorState, ListRow, Skeleton } from '../../../src/ui/primitives';
+import {
+  AtlasText,
+  Badge,
+  Card,
+  CardHeader,
+  Divider,
+  ErrorState,
+  IconChip,
+  ListRow,
+  Skeleton,
+  Stat,
+  StatRow,
+} from '../../../src/ui/primitives';
 
 /** Lo que queda por pagar de una cuota: lo pactado menos lo cobrado, sin dejar negativos. */
 function pendingOf(installment: loansApi.LoanInstallment): number {
@@ -61,8 +71,10 @@ export default function LoanDetail() {
       <Screen>
         <ScreenHeader title="Crédito" onBack="auto" />
         <Card>
-          <Skeleton height={18} width="50%" />
-          <Skeleton height={32} width="70%" />
+          <Skeleton height={11} width="35%" />
+          <Skeleton height={23} width="55%" />
+          <Skeleton height={1} />
+          <Skeleton height={40} />
         </Card>
       </Screen>
     );
@@ -92,42 +104,36 @@ export default function LoanDetail() {
         title={formatAmount(Number(loan.principalAmount), loan.currencyCode)}
         subtitle={`${loan.merchant?.displayName ?? 'Compra sin comercio'} · ${look.label}`}
         onBack="auto"
-        leading={
-          <View style={styles.icon}>
-            <Icon name={look.icon} size={24} tint={color.action.primary} />
-          </View>
-        }
+        leading={<IconChip name={look.icon} size="lg" />}
       />
 
-      <Card>
-        <View style={styles.summary}>
-          <View style={styles.summaryItem}>
-            <AtlasText variant="caption" tone="tertiary">
-              POR PAGAR
-            </AtlasText>
-            <AtlasText variant="amountSmall">{formatAmount(Number(loan.outstandingPrincipal), loan.currencyCode)}</AtlasText>
-          </View>
-          <View style={styles.summaryItem}>
-            <AtlasText variant="caption" tone="tertiary">
-              PLAZO
-            </AtlasText>
-            <AtlasText variant="amountSmall">{loan.termMonths} m</AtlasText>
-          </View>
-        </View>
+      <Card tone={overdueInstallments.length > 0 ? 'danger' : 'default'}>
+        <StatRow>
+          <Stat
+            label="Por pagar"
+            value={formatAmount(Number(loan.outstandingPrincipal), loan.currencyCode)}
+            tone={overdueInstallments.length > 0 ? 'danger' : 'primary'}
+          />
+          {/* «meses», no «m»: la abreviatura ahorra cuatro letras y obliga a descifrarlas. */}
+          <Stat label="Plazo" value={`${loan.termMonths} ${loan.termMonths === 1 ? 'mes' : 'meses'}`} />
+        </StatRow>
+        <Divider />
         {overdueInstallments.length > 0 ? (
-          <Badge label={`${worstOverdueDays} días de atraso`} tone="danger" />
+          <Badge dot label={`${worstOverdueDays} días de atraso`} tone="danger" />
         ) : loan.status === 'paid_off' ? (
-          <Badge label="Pagado" tone="success" />
+          <Badge dot label="Pagado" tone="success" />
         ) : (
-          <Badge label="Al día" tone="success" />
+          <Badge dot label="Al día" tone="success" />
         )}
       </Card>
 
-      <Card>
-        <View style={styles.rowCenter}>
-          <Icon name="pagos" size={18} tint={color.text.secondary} />
-          <AtlasText variant="h3">Cuotas</AtlasText>
-        </View>
+      <Card padding="tight">
+        <CardHeader
+          icon="pagos"
+          iconTone="neutral"
+          title="Cuotas"
+          trailing={<Badge label={`${loan.schedule.length}`} tone="neutral" />}
+        />
         {loan.schedule.map((installment, index) => {
           const pending = pendingOf(installment);
           const settled = installment.status === 'paid' || pending === 0;
@@ -135,7 +141,7 @@ export default function LoanDetail() {
 
           return (
             <View key={installment.installmentNumber}>
-              {index > 0 ? <Divider /> : null}
+              {index > 0 ? <Divider inset /> : null}
               <ListRow
                 title={`Cuota ${installment.installmentNumber}`}
                 subtitle={settled ? 'Pagada' : dueCopy(installment.dueDate)}
@@ -143,12 +149,7 @@ export default function LoanDetail() {
                 onPress={() => router.push(`/(app)/cuota/${loan.loanId}/${installment.installmentNumber}`)}
                 accessibilityHint="Abrir el detalle de esta cuota"
                 right={
-                  <AtlasText
-                    variant="bodyStrong"
-                    style={{
-                      color: settled ? color.text.tertiary : overdue ? color.feedback.danger : color.feedback.warning,
-                    }}
-                  >
+                  <AtlasText variant="amountMicro" tone={settled ? 'tertiary' : overdue ? 'danger' : 'warning'}>
                     {formatAmount(settled ? 0 : pending, loan.currencyCode)}
                   </AtlasText>
                 }
@@ -160,10 +161,7 @@ export default function LoanDetail() {
 
       {loan.decision.executionId ? (
         <Card>
-          <View style={styles.rowCenter}>
-            <Icon name="ayuda" size={18} tint={color.action.primary} />
-            <AtlasText variant="h3">¿Cómo se decidió?</AtlasText>
-          </View>
+          <CardHeader icon="ayuda" title="¿Cómo se decidió?" />
           <AtlasText variant="caption" tone="secondary">
             Este crédito lo aprobó el motor de decisión de Atlas. Ejecución {loan.decision.executionId}
             {loan.decision.artifactVersionId ? ` · política ${loan.decision.artifactVersionId}` : ''}.
@@ -176,18 +174,4 @@ export default function LoanDetail() {
   );
 }
 
-const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  headerText: { flex: 1, gap: space.xxs },
-  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  summary: { flexDirection: 'row', gap: space.xl },
-  summaryItem: { gap: space.xxs },
-  icon: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.surface.raised,
-  },
-});
+

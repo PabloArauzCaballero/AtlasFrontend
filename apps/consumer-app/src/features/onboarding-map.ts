@@ -27,6 +27,33 @@ export const SECTION_ROUTE: Record<OnboardingSectionCode, OnboardingRoute> = {
 };
 
 /**
+ * El ORDEN de los pasos, escrito una vez.
+ *
+ * `SECTION_ROUTE` ya lleva las seis secciones, pero el orden de las claves de un objeto no es un
+ * contrato del que se pueda depender para numerar nada. Aqui esta explicito, y es el mismo que usa
+ * el servidor para calcular `nextStep`: verificar el telefono antes de pedir datos, y el documento
+ * antes de las referencias.
+ *
+ * Existe para poder decir «Paso 3 de 6» en cada pantalla del alta. Un formulario largo sin numero
+ * de paso no da forma de estimar cuanto falta, y lo que la gente hace cuando no sabe cuanto falta
+ * es abandonarlo.
+ */
+export const SECTION_ORDER: OnboardingSectionCode[] = [
+  'contact_verification',
+  'personal_data',
+  'identity_documents',
+  'address',
+  'financial_profile',
+  'reference_contacts',
+];
+
+/** En que posicion (1-based) va una seccion, y cuantas hay. */
+export function stepPosition(code: OnboardingSectionCode): { step: number; total: number } {
+  const index = SECTION_ORDER.indexOf(code);
+  return { step: index >= 0 ? index + 1 : 1, total: SECTION_ORDER.length };
+}
+
+/**
  * El icono es parte de la etiqueta, no un adorno de la pantalla.
  *
  * Vive aqui y no en `progreso.tsx` porque la lista de pasos sale en mas de un sitio, y un paso que

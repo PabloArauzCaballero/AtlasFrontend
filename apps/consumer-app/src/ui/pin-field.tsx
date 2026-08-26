@@ -100,7 +100,7 @@ export function PinField({
               >
                 {filled ? (
                   visible ? (
-                    <AtlasText variant="h2">{value[index]}</AtlasText>
+                    <AtlasText variant="amount">{value[index]}</AtlasText>
                   ) : (
                     <View style={styles.dot} />
                   )
@@ -150,21 +150,29 @@ const BOX = 64;
 const styles = StyleSheet.create({
   wrapper: { gap: space.xs },
   labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  boxes: { flexDirection: 'row', gap: space.sm, justifyContent: 'center' },
+  boxes: { flexDirection: 'row', gap: space.md, justifyContent: 'center' },
+  /*
+    La casilla es un HUECO, no un pedestal.
+
+    Estaba pintada con `surface.raised` —el color de una tarjeta—, asi que las cuatro casillas del
+    PIN se leian como cuatro botones colocados sobre la pantalla en vez de como cuatro sitios donde
+    escribir. Es la misma correccion que ya llevaban los campos de texto: mas oscuro que lo que las
+    contiene, el hueco se ve hueco.
+  */
   box: {
     width: BOX,
     height: BOX,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: color.border.subtle,
-    backgroundColor: color.surface.raised,
+    backgroundColor: color.surface.sunken,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  boxFilled: { borderColor: color.action.primary },
-  boxActive: { borderColor: color.action.primary, borderWidth: 2 },
+  boxFilled: { borderColor: color.border.focus, backgroundColor: color.brandWash.to },
+  boxActive: { borderColor: color.border.focus, borderWidth: 2 },
   boxError: { borderColor: color.feedback.danger },
-  dot: { width: 14, height: 14, borderRadius: 7, backgroundColor: color.text.primary },
+  dot: { width: 14, height: 14, borderRadius: radius.pill, backgroundColor: color.text.primary },
   hiddenInput: {
     position: 'absolute',
     top: 0,

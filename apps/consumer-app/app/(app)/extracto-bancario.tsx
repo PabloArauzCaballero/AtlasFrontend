@@ -24,12 +24,11 @@ import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import * as creditLineApi from '../../src/api/endpoints/credit-line';
 import { describeError } from '../../src/api/errors';
-import { readAccessToken } from '../../src/api/client';
 import { useSession } from '../../src/session/session';
-import { color, radius, space } from '../../src/theme/tokens';
-import { Icon, type IconName } from '../../src/ui/icons';
+import { space } from '../../src/theme/tokens';
+import type { IconName } from '../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, ErrorState } from '../../src/ui/primitives';
+import { AtlasText, Badge, Button, Card, CardHeader, ErrorState, IconChip } from '../../src/ui/primitives';
 
 /** Lo que se le promete a quien entrega sus movimientos. Cada linea es una obligacion real. */
 const PROMESAS: Array<{ icon: IconName; title: string; detail: string }> = [
@@ -148,21 +147,14 @@ export default function ExtractoBancario() {
 
       {/* El estado va primero cuando hay uno: es la respuesta a «¿y lo que subí ayer?». */}
       {!loading && review ? (
-        <Card style={pending ? styles.pendingCard : undefined}>
-          <View style={styles.rowCenter}>
-            <Icon
-              name={review.status === 'applied' ? 'check' : review.status === 'rejected' ? 'alerta' : 'reloj'}
-              size={22}
-              tint={
-                review.status === 'applied'
-                  ? color.feedback.success
-                  : review.status === 'rejected'
-                    ? color.feedback.danger
-                    : color.feedback.warning
-              }
-            />
-            <AtlasText variant="h3">{review.statusLabel}</AtlasText>
-          </View>
+        <Card tone={review.status === 'applied' ? 'success' : review.status === 'rejected' ? 'danger' : 'warning'}>
+          <CardHeader
+            icon={review.status === 'applied' ? 'check' : review.status === 'rejected' ? 'alerta' : 'reloj'}
+            iconTone={review.status === 'applied' ? 'success' : review.status === 'rejected' ? 'danger' : 'warning'}
+            eyebrow="Tu extracto"
+            title={review.statusLabel}
+            divider={false}
+          />
           <AtlasText variant="body" tone="secondary">
             {review.statusDetail}
           </AtlasText>
@@ -188,35 +180,22 @@ export default function ExtractoBancario() {
         legal que no va a abrir. Si la confianza no se gana aqui, no se gana.
       */}
       <Card>
-        <View style={styles.rowCenter}>
-          <Icon name="candado" size={20} tint={color.action.primary} />
-          <AtlasText variant="h3">Qué hacemos con tu extracto</AtlasText>
-        </View>
-        <Divider />
-        {PROMESAS.map((promesa, index) => (
-          <View key={promesa.title}>
-            {index > 0 ? <Gap size="sm" /> : null}
-            <View style={styles.promesa}>
-              <View style={styles.promesaIcon}>
-                <Icon name={promesa.icon} size={18} tint={color.action.primary} />
-              </View>
-              <View style={styles.flex}>
-                <AtlasText variant="bodyStrong">{promesa.title}</AtlasText>
-                <AtlasText variant="caption" tone="tertiary">
-                  {promesa.detail}
-                </AtlasText>
-              </View>
+        <CardHeader icon="candado" title="Qué hacemos con tu extracto" />
+        {PROMESAS.map((promesa) => (
+          <View key={promesa.title} style={styles.promesa}>
+            <IconChip name={promesa.icon} />
+            <View style={styles.flex}>
+              <AtlasText variant="title">{promesa.title}</AtlasText>
+              <AtlasText variant="caption" tone="tertiary">
+                {promesa.detail}
+              </AtlasText>
             </View>
           </View>
         ))}
       </Card>
 
       <Card>
-        <View style={styles.rowCenter}>
-          <Icon name="ayuda" size={20} tint={color.text.secondary} />
-          <AtlasText variant="h3">¿Qué pasa después?</AtlasText>
-        </View>
-        <Divider />
+        <CardHeader icon="ayuda" iconTone="neutral" title="¿Qué pasa después?" />
         <AtlasText variant="body" tone="secondary">
           En un máximo de <AtlasText variant="bodyStrong">24 horas</AtlasText> recalculamos tu capacidad de pago con lo que diga tu
           extracto y te avisamos. Tu línea puede subir, quedarse igual o bajar: depende de lo que muestren tus movimientos, no de
@@ -233,16 +212,6 @@ export default function ExtractoBancario() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  pendingCard: { borderColor: color.feedback.warning, borderWidth: 1 },
+  flex: { flex: 1, gap: space.xxs },
   promesa: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start' },
-  promesaIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.surface.sunken,
-  },
 });

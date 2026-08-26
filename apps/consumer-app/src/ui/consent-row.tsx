@@ -79,9 +79,16 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
       </PressSurface>
 
       <View style={styles.text}>
-        <AtlasText variant="bodyStrong">
+        {/* El asterisco en color de marca y con su nombre para el lector de pantalla: gris y pegado
+            al final de la frase no se ve, y sin leyenda no significa nada. Misma regla que
+            `ui/fields.tsx`. */}
+        <AtlasText variant="title">
           {title}
-          {required ? ' *' : ''}
+          {required ? (
+            <AtlasText variant="title" tone="brand" accessibilityLabel="obligatorio">
+              {' *'}
+            </AtlasText>
+          ) : null}
         </AtlasText>
         {summary ? (
           <AtlasText variant="caption" tone="secondary">
@@ -97,7 +104,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
           hitSlop={6}
           style={styles.readTarget}
         >
-          <AtlasText variant="caption" style={{ color: readable ? color.action.primary : color.text.tertiary }}>
+          <AtlasText variant="captionStrong" tone={readable ? 'brand' : 'tertiary'}>
             {readable ? 'Leer el documento' : 'Documento no disponible'}
           </AtlasText>
           {readable ? <Icon name="adelante" size={12} tint={color.action.primary} /> : null}
@@ -116,7 +123,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
               ) : null}
             </View>
             <Pressable onPress={() => setReading(false)} accessibilityRole="button" accessibilityLabel="Cerrar" hitSlop={8}>
-              <AtlasText variant="bodyStrong" style={{ color: color.action.primary }}>
+              <AtlasText variant="bodyStrong" tone="brand">
                 Cerrar
               </AtlasText>
             </Pressable>
@@ -138,7 +145,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
               accessibilityLabel={`Aceptar ${title}`}
               style={styles.acceptButton}
             >
-              <AtlasText variant="bodyStrong" style={{ color: color.surface.primary }}>
+              <AtlasText variant="bodyStrong" tone="onBrand">
                 {checked ? 'Ya lo aceptaste' : 'Acepto'}
               </AtlasText>
             </Pressable>

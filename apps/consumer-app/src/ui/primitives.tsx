@@ -25,7 +25,7 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
-import { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
+import Reanimated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { color, palette, press, radius, shadow, space, spring, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { AnimatedPressable, PressSurface } from './motion';
@@ -49,10 +49,38 @@ const TONE: Record<TextTone, string> = {
 export function AtlasText({
   variant = 'body',
   tone = 'primary',
+  align,
   style,
   ...rest
-}: TextProps & { variant?: TypeVariant; tone?: TextTone }) {
-  return <Text {...rest} style={[type[variant] as TextStyle, { color: TONE[tone] }, style]} />;
+}: TextProps & { variant?: TypeVariant; tone?: TextTone; align?: TextStyle['textAlign'] }) {
+  return (
+    <Text
+      {...rest}
+      style={[type[variant] as TextStyle, { color: TONE[tone] }, align ? { textAlign: align } : null, style]}
+    />
+  );
+}
+
+/**
+ * Antetitulo: la etiqueta en versalitas que dice de QUE es el bloque de debajo.
+ *
+ * La caja alta la pone ESTE componente con `textTransform`, no el literal del contenido. Escribir
+ * «FINANCIADO» en el texto —que es como estaba repartido por media app— tiene tres costes que no se
+ * ven en una captura: el lector de pantalla lo deletrea letra a letra, la traduccion hereda unas
+ * mayusculas que en otro idioma pueden no corresponder, y el interletraje se queda sin corregir,
+ * que es lo que hace que una versalita se lea apretada y sucia.
+ */
+export function Overline({
+  children,
+  tone = 'tertiary',
+  style,
+  ...rest
+}: TextProps & { tone?: TextTone }) {
+  return (
+    <Text {...rest} style={[type.overline as TextStyle, styles.overline, { color: TONE[tone] }, style]}>
+      {children}
+    </Text>
+  );
 }
 
 /* ----------------------------------------------------------------- boton */
@@ -215,17 +243,266 @@ export function Button({
 
 /* ------------------------------------------------------------------ card */
 
-export function Card({ style, children, ...rest }: ViewProps & { style?: ViewStyle }) {
+/**
+ * Tono de una tarjeta: de que color es su contorno.
+ *
+ * Existe porque media app estaba declarando `{ borderColor: color.feedback.danger, borderWidth: 1 }`
+ * en su propia hoja de estilos para pintar el aviso de mora, y cada pantalla elegia una opacidad
+ * distinta para el borde. Un aviso que se ve de un color en Inicio y de otro en Pagos deja de leerse
+ * como el MISMO aviso, que es justo lo que un aviso tiene que conseguir.
+ */
+export type CardTone = 'default' | 'danger' | 'warning' | 'success' | 'brand';
+
+/** Cuanto aire lleva la tarjeta por dentro. `none` es para tarjetas que solo contienen filas. */
+export type CardPadding = 'base' | 'tight' | 'none';
+
+export function Card({
+  tone = 'default',
+  padding = 'base',
+  style,
+  children,
+  ...rest
+}: ViewProps & { tone?: CardTone; padding?: CardPadding; style?: ViewStyle }) {
   /*
     El filo superior es 1 px más claro que el resto del contorno.
 
     Es como se lee una superficie fisica: la luz viene de arriba y el canto la recoge. Sin el, una
     tarjeta oscura sobre un fondo oscuro es un rectangulo con borde, y toda la pantalla se aplana
     por mucha sombra que se le ponga debajo.
+
+    Con tono, el filo se apaga: un contorno de aviso que ademas se ilumina por arriba pierde el
+    color justo en el canto que mas se mira.
   */
   return (
-    <View {...rest} style={[styles.card, style]}>
+    <View
+      {...rest}
+      style={[
+        styles.card,
+        padding === 'tight' && styles.cardTight,
+        padding === 'none' && styles.cardFlush,
+        tone !== 'default' && CARD_TONE[tone],
+        style,
+      ]}
+    >
       {children}
+    </View>
+  );
+}
+
+const CARD_TONE: Record<Exclude<CardTone, 'default'>, ViewStyle> = {
+  danger: { borderColor: color.feedbackBorder.danger, borderTopColor: color.feedbackBorder.danger },
+  warning: { borderColor: color.feedbackBorder.warning, borderTopColor: color.feedbackBorder.warning },
+  success: { borderColor: color.feedbackBorder.success, borderTopColor: color.feedbackBorder.success },
+  brand: { borderColor: color.feedbackBorder.brand, borderTopColor: color.feedbackBorder.brand },
+};
+
+/**
+ * Chip de icono: el cuadrado redondeado que acompana a un titulo o a una fila.
+ *
+ * Estaba copiado en cinco pantallas con cinco medidas distintas —40x40 aqui, 36x36 alla, un radio
+ * `md` en una y `lg` en otra—, y esa clase de deriva es exactamente lo que hace que dos pantallas
+ * de la misma app parezcan de dos apps. Un icono suelto sobre el fondo, ademas, no tiene con que
+ * alinearse verticalmente contra un titulo de dos lineas; el chip si.
+ */
+export function IconChip({
+  name,
+  tone = 'brand',
+  size = 'md',
+  style,
+}: {
+  name: IconName;
+  tone?: 'brand' | 'neutral' | 'success' | 'warning' | 'danger' | 'info';
+  size?: 'sm' | 'md' | 'lg';
+  style?: ViewStyle;
+}) {
+  const box = size === 'sm' ? 32 : size === 'lg' ? 48 : 40;
+  const glyph = size === 'sm' ? 16 : size === 'lg' ? 24 : 20;
+  const tint = tone === 'brand' ? color.action.primary : tone === 'neutral' ? color.text.secondary : color.feedback[tone];
+  return (
+    <View
+      style={[
+        styles.iconChip,
+        { width: box, height: box, borderRadius: size === 'sm' ? radius.md : radius.lg },
+        { backgroundColor: color.feedbackSoft[tone === 'brand' ? 'success' : tone] },
+        style,
+      ]}
+    >
+      <Icon name={name} size={glyph} tint={tint} />
+    </View>
+  );
+}
+
+/**
+ * Cabecera de una tarjeta: chip opcional, titulo, apunte y UNA cosa a la derecha.
+ *
+ * Recoge el patron que estaba escrito a mano en casi todas las pantallas —una fila con
+ * `justifyContent: 'space-between'`, un `h3` a la izquierda, un `Badge` a la derecha y un `Divider`
+ * debajo—. Escrito a mano, cada pantalla elegia su propio hueco entre el titulo y la linea, y el
+ * resultado era que ninguna tarjeta empezaba a la misma altura que su vecina.
+ */
+export function CardHeader({
+  title,
+  detail,
+  eyebrow,
+  icon,
+  iconTone,
+  trailing,
+  divider = true,
+}: {
+  title: string;
+  detail?: string;
+  eyebrow?: string;
+  icon?: IconName;
+  iconTone?: React.ComponentProps<typeof IconChip>['tone'];
+  trailing?: React.ReactNode;
+  /** La linea de debajo. Se quita cuando la tarjeta no tiene cuerpo que separar. */
+  divider?: boolean;
+}) {
+  return (
+    <>
+      <View style={styles.cardHeader}>
+        {icon ? <IconChip name={icon} tone={iconTone} size="sm" /> : null}
+        <View style={styles.cardHeaderText}>
+          {eyebrow ? <Overline>{eyebrow}</Overline> : null}
+          <AtlasText variant="h3">{title}</AtlasText>
+          {detail ? (
+            <AtlasText variant="caption" tone="secondary">
+              {detail}
+            </AtlasText>
+          ) : null}
+        </View>
+        {trailing}
+      </View>
+      {divider ? <Divider /> : null}
+    </>
+  );
+}
+
+/**
+ * Titulo de una SECCION de la pantalla: lo que va entre tarjetas, no dentro de una.
+ *
+ * Antes esto era un `AtlasText variant="h3"` suelto en mitad del desplazamiento —«Tus compras»,
+ * «Tus pagos»—, con el mismo estilo exacto que el titulo que llevaban las tarjetas de debajo. Dos
+ * niveles distintos de la jerarquia dibujados igual no son jerarquia: son ruido con el que el ojo
+ * no sabe si esta empezando un bloque o leyendo uno.
+ */
+export function SectionHeader({
+  title,
+  eyebrow,
+  detail,
+  action,
+  style,
+}: {
+  title: string;
+  eyebrow?: string;
+  detail?: string;
+  action?: React.ReactNode;
+  style?: ViewStyle;
+}) {
+  return (
+    <View style={[styles.sectionHeader, style]}>
+      <View style={styles.sectionHeaderText}>
+        {eyebrow ? <Overline>{eyebrow}</Overline> : null}
+        <AtlasText variant="h2">{title}</AtlasText>
+        {detail ? (
+          <AtlasText variant="caption" tone="secondary">
+            {detail}
+          </AtlasText>
+        ) : null}
+      </View>
+      {action}
+    </View>
+  );
+}
+
+/**
+ * Una cifra con su etiqueta. La unidad minima de un tablero.
+ *
+ * La etiqueta va ARRIBA y en versalitas, y el dato debajo en la familia de titulares. Al reves
+ * —etiqueta grande, dato pequeno— es como se leia la app: el ojo aterrizaba en la palabra
+ * «financiado» y tenia que buscar el numero, que es lo unico que se habia venido a mirar.
+ */
+export function Stat({
+  label,
+  value,
+  tone = 'primary',
+  hint,
+  size = 'md',
+  style,
+}: {
+  label: string;
+  value: string;
+  tone?: TextTone;
+  hint?: string;
+  size?: 'sm' | 'md' | 'lg';
+  style?: ViewStyle;
+}) {
+  return (
+    <View style={[styles.stat, style]}>
+      <Overline>{label}</Overline>
+      <AtlasText variant={size === 'lg' ? 'amount' : size === 'sm' ? 'amountMicro' : 'amountSmall'} tone={tone}>
+        {value}
+      </AtlasText>
+      {hint ? (
+        <AtlasText variant="caption" tone="tertiary">
+          {hint}
+        </AtlasText>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * Varias cifras en una fila, separadas por un filo vertical.
+ *
+ * El filo no es adorno: dos cifras separadas solo por un hueco se leen como una sola magnitud
+ * partida en dos, sobre todo cuando comparten formato de moneda. La linea dice que son dos
+ * respuestas a dos preguntas distintas.
+ */
+export function StatRow({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+  const items = React.Children.toArray(children).filter(Boolean);
+  return (
+    <View style={[styles.statRow, style]}>
+      {items.map((child, index) => (
+        <React.Fragment key={index}>
+          {index > 0 ? <View style={styles.statRule} /> : null}
+          <View style={styles.statCell}>{child}</View>
+        </React.Fragment>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * Etiqueta a la izquierda, valor a la derecha. La fila de un detalle.
+ *
+ * El valor va en la familia de titulares cuando es una cifra (`numeric`) para que una columna de
+ * datos se pueda recorrer de arriba abajo sin que las cifras bailen. El texto corriente se queda en
+ * Manrope: un nombre propio en versalitas de titular se lee como un grito.
+ */
+export function KeyValue({
+  label,
+  value,
+  numeric = false,
+  tone = 'primary',
+  children,
+}: {
+  label: string;
+  value?: string;
+  numeric?: boolean;
+  tone?: TextTone;
+  children?: React.ReactNode;
+}) {
+  return (
+    <View style={styles.keyValue}>
+      <AtlasText variant="caption" tone="secondary" style={styles.keyValueLabel}>
+        {label}
+      </AtlasText>
+      {children ?? (
+        <AtlasText variant={numeric ? 'amountMicro' : 'captionStrong'} tone={tone} align="right" style={styles.keyValueValue}>
+          {value}
+        </AtlasText>
+      )}
     </View>
   );
 }
@@ -283,15 +560,40 @@ export function BrandPanel({ style, children, ...rest }: ViewProps & { style?: V
   );
 }
 
-export function Divider({ style }: { style?: ViewStyle }) {
-  return <View style={[styles.divider, style]} />;
+export function Divider({ inset = false, style }: { inset?: boolean; style?: ViewStyle }) {
+  /*
+    `inset` alinea la linea con el TEXTO de la fila, no con el borde de la tarjeta.
+
+    Es la convencion de las listas del sistema en ambas plataformas, y dice algo cierto: una linea
+    que empieza donde empieza el texto separa dos filas de la misma lista; una que va de borde a
+    borde separa dos bloques distintos. Usar la misma para las dos cosas obliga a leer el contenido
+    para saber cual de las dos separaciones se esta mirando.
+  */
+  return <View style={[styles.divider, inset && styles.dividerInset, style]} />;
 }
 
 /* ----------------------------------------------------------------- badge */
 
 export type BadgeTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
 
-export function Badge({ label, tone = 'neutral', style }: { label: string; tone?: BadgeTone; style?: ViewStyle }) {
+export function Badge({
+  label,
+  tone = 'neutral',
+  dot = false,
+  style,
+}: {
+  label: string;
+  tone?: BadgeTone;
+  /**
+   * El punto de color delante del texto.
+   *
+   * Sirve para lo que cambia de estado —una cuota que pasa de «al dia» a «vencida»—: el color del
+   * fondo de una pastilla al 14 % de opacidad es demasiado tenue para que el cambio se note de
+   * reojo, y subirlo obligaria a repintar el texto. Un punto pleno de 6 px si se ve.
+   */
+  dot?: boolean;
+  style?: ViewStyle;
+}) {
   const background = color.feedbackSoft[tone];
   const foreground =
     tone === 'neutral'
@@ -301,9 +603,177 @@ export function Badge({ label, tone = 'neutral', style }: { label: string; tone?
         : color.feedback[tone];
   return (
     <View style={[styles.badge, { backgroundColor: background }, style]}>
-      <Text style={[type.micro as TextStyle, { color: foreground }]}>{label.toUpperCase()}</Text>
+      {dot ? <View style={[styles.badgeDot, { backgroundColor: foreground }]} /> : null}
+      {/*
+        La caja alta la pone `textTransform`, no el literal. Con el texto ya en mayusculas, el
+        lector de pantalla anuncia «V-E-N-C-I-D-A» deletreado; asi anuncia la palabra.
+      */}
+      <Text style={[type.micro as TextStyle, styles.badgeLabel, { color: foreground }]}>{label}</Text>
     </View>
   );
+}
+
+/* ------------------------------------------------------------ desplegable */
+
+/**
+ * Pregunta que se abre para dar su respuesta.
+ *
+ * ## Por que la ayuda no puede ser seis respuestas apiladas
+ *
+ * Porque quien entra en «Ayuda» ya tiene UNA pregunta, no seis. Con las seis respuestas abiertas,
+ * encontrar la propia obliga a recorrer varias pantallas de texto leyendo cinco que no importan —y
+ * cuanto mejor escritas esten las otras, mas cuesta—. Plegadas, la lista de preguntas cabe de un
+ * vistazo y es un indice: el gesto de elegir sustituye al de buscar.
+ *
+ * ## Lo que se mueve, y lo que no
+ *
+ * La flecha gira; el contenido aparece y desaparece. NO se anima la altura: animar altura en React
+ * Native obliga a medir el contenido y a redibujar en cada fotograma desde el hilo de JS, y en una
+ * pantalla que ademas esta cargando texto del servidor eso se ve como un tiron. Un giro de 90° es
+ * suficiente para que el gesto se lea como abrir y cerrar, y corre en el hilo de UI.
+ */
+export function Accordion({
+  title,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = React.useState(defaultOpen);
+  const reduced = useReducedMotion();
+  const progress = useSharedValue(defaultOpen ? 1 : 0);
+
+  React.useEffect(() => {
+    progress.value = reduced ? (open ? 1 : 0) : withSpring(open ? 1 : 0, spring.settle);
+  }, [open, reduced, progress]);
+
+  const chevron = useAnimatedStyle(() => ({ transform: [{ rotate: `${progress.value * 90}deg` }] }));
+
+  return (
+    <View>
+      <PressSurface
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={title}
+        onPress={() => setOpen((current) => !current)}
+        scaleTo={press.scaleSubtle}
+        style={styles.accordionHeader}
+      >
+        <AtlasText variant="h3" style={styles.accordionTitle}>
+          {title}
+        </AtlasText>
+        <Reanimated.View style={chevron}>
+          <Icon name="adelante" size={18} tint={color.text.tertiary} />
+        </Reanimated.View>
+      </PressSurface>
+      {open ? (
+        <View style={styles.accordionBody}>
+          <Divider />
+          {children}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+/* ---------------------------------------------------------------- avatar */
+
+/**
+ * Las iniciales de quien esta usando la app.
+ *
+ * No es decoracion: es la unica pieza de Perfil que dice «esta es TU cuenta» sin tener que leer.
+ * Se dibujan las iniciales y no una foto porque la app no pide ninguna —y un icono de persona
+ * generico dice exactamente lo mismo para todo el mundo, que es lo contrario de lo que hace falta
+ * aqui—.
+ *
+ * El degradado es el de la marca a la inversa del boton principal: el circulo pesa poco y no
+ * compite con la accion, pero pertenece al mismo sistema.
+ */
+export function Avatar({ name, size = 56 }: { name: string; size?: number }) {
+  const initials = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? '')
+    .join('');
+
+  return (
+    <LinearGradient
+      colors={[palette.brand500, palette.brand700]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
+    >
+      <Text
+        // Decorativo para el lector de pantalla: el nombre completo esta escrito al lado, y
+        // deletrear «V M» antes de leerlo solo estorba.
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[type.h2 as TextStyle, { color: color.text.primary, fontSize: size * 0.34, lineHeight: size * 0.42 }]}
+      >
+        {initials || '·'}
+      </Text>
+    </LinearGradient>
+  );
+}
+
+/* ------------------------------------------------------------------ chips */
+
+/**
+ * Chip de filtro. Se TINE al elegirse; no se rellena.
+ *
+ * Es la misma regla que ya gobierna las opciones de un formulario en esta app, y estaba sin aplicar
+ * justo donde mas se nota: rellenos de menta plena, los cuatro filtros de Pagos ponian en pantalla
+ * cuatro bloques del color de la accion principal, y el boton que de verdad manda —«Ver que debo
+ * regularizar»— dejaba de destacar. Cuando dos elementos gritan igual, pierde el que tenia que
+ * mandar.
+ *
+ * El area tactil es lo otro que estaba mal: 4 px de relleno vertical dejaban el chip en 27 px de
+ * alto, muy por debajo del minimo de 48 que la app declara en `touch.minSize`. Se paga con
+ * `hitSlop` y no con relleno para que la fila de filtros no crezca hasta parecer una barra de
+ * pestanas.
+ */
+export function Chip({
+  label,
+  icon,
+  selected = false,
+  count,
+  onPress,
+  accessibilityLabel,
+}: {
+  label: string;
+  icon?: IconName;
+  selected?: boolean;
+  /** Cuantos hay detras del filtro. Un filtro que lleva a cero deja de ser una sorpresa. */
+  count?: number;
+  onPress: () => void;
+  accessibilityLabel?: string;
+}) {
+  const tint = selected ? color.action.primary : color.text.secondary;
+  return (
+    <PressSurface
+      onPress={onPress}
+      style={[styles.chip, selected && styles.chipSelected]}
+      hitSlop={{ top: space.sm, bottom: space.sm, left: space.xs, right: space.xs }}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      accessibilityLabel={accessibilityLabel ?? label}
+      scaleTo={press.scale}
+    >
+      {icon ? <Icon name={icon} size={15} tint={tint} /> : null}
+      <Text style={[type.micro as TextStyle, { color: tint }]}>{label}</Text>
+      {typeof count === 'number' ? (
+        <Text style={[type.micro as TextStyle, { color: selected ? color.action.primary : color.text.tertiary }]}>{count}</Text>
+      ) : null}
+    </PressSurface>
+  );
+}
+
+/** La fila donde viven los chips. Existe para que ninguna pantalla vuelva a elegir su propio hueco. */
+export function ChipBar({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
+  return <View style={[styles.chipBar, style]}>{children}</View>;
 }
 
 /* -------------------------------------------------------------- progreso */
@@ -360,11 +830,30 @@ export function Skeleton({ height = 16, width = '100%', style }: { height?: numb
 
 /* ------------------------------------------------------------- estados */
 
-export function EmptyState({ title, detail, action }: { title: string; detail: string; action?: React.ReactNode }) {
+export function EmptyState({
+  title,
+  detail,
+  icon,
+  action,
+}: {
+  title: string;
+  detail: string;
+  /**
+   * El dibujo de lo que todavia no hay.
+   *
+   * Un hueco vacio con dos parrafos dentro se lee como un error de carga. Con el icono del concepto
+   * que falta —una compra, un aviso— se lee como lo que es: un sitio que aun no se ha llenado.
+   */
+  icon?: IconName;
+  action?: React.ReactNode;
+}) {
   return (
     <View style={styles.stateBox}>
-      <AtlasText variant="h3">{title}</AtlasText>
-      <AtlasText variant="body" tone="secondary" style={styles.stateDetail}>
+      {icon ? <IconChip name={icon} tone="neutral" size="lg" style={styles.stateIcon} /> : null}
+      <AtlasText variant="h3" align="center">
+        {title}
+      </AtlasText>
+      <AtlasText variant="body" tone="secondary" align="center" style={styles.stateDetail}>
         {detail}
       </AtlasText>
       {action ? <View style={styles.stateAction}>{action}</View> : null}
@@ -439,13 +928,14 @@ export function ListRow({
 }) {
   const content = (
     <View style={styles.row}>
-      {icon ? (
-        <View style={styles.rowIcon}>
-          <Icon name={icon} size={20} />
-        </View>
-      ) : null}
+      {/*
+        El icono va en su chip, como en cualquier otra fila de la app. Suelto sobre el fondo no
+        tiene con que alinearse contra un titulo de dos lineas y la lista se descuadra en cuanto un
+        nombre de comercio no cabe.
+      */}
+      {icon ? <IconChip name={icon} tone="neutral" size="sm" /> : null}
       <View style={styles.rowText}>
-        <AtlasText variant="bodyStrong">{title}</AtlasText>
+        <AtlasText variant="title">{title}</AtlasText>
         {subtitle ? (
           <AtlasText variant="caption" tone="secondary">
             {subtitle}
@@ -504,6 +994,8 @@ const styles = StyleSheet.create({
     gap: space.md,
     ...shadow.card,
   },
+  cardTight: { padding: space.base, gap: space.sm },
+  cardFlush: { padding: 0, gap: 0, overflow: 'hidden' },
 
   // El filo: 1 px de degradado que asoma por el contorno de la superficie.
   brandPanelEdge: { borderRadius: radius.xxl, padding: 1 },
@@ -517,8 +1009,81 @@ const styles = StyleSheet.create({
     la línea solo tiene que separar, no abrir un hueco.
   */
   divider: { height: 1, backgroundColor: color.border.subtle, marginVertical: space.sm },
+  // 32 + 12: el ancho del chip de icono pequeno mas el hueco de la fila. La linea arranca justo
+  // debajo de la primera letra del titulo.
+  dividerInset: { marginLeft: 32 + space.md },
 
-  badge: { borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: space.xs, alignSelf: 'flex-start' },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs,
+    alignSelf: 'flex-start',
+  },
+  badgeDot: { width: 6, height: 6, borderRadius: radius.pill },
+  badgeLabel: { textTransform: 'uppercase' },
+
+  overline: { textTransform: 'uppercase' },
+
+  accordionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md, minHeight: touch.minSize },
+  accordionTitle: { flex: 1 },
+  accordionBody: { gap: space.md, paddingBottom: space.xs },
+
+  avatar: { alignItems: 'center', justifyContent: 'center' },
+
+  chipBar: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    height: 34,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
+    backgroundColor: color.surface.raised,
+  },
+  chipSelected: { borderColor: color.border.focus, backgroundColor: color.feedbackSoft.success },
+
+  iconChip: { alignItems: 'center', justifyContent: 'center' },
+
+  /*
+    La cabecera de tarjeta se alinea por ARRIBA, no al centro.
+
+    Con `center`, un titulo que pasa a dos lineas empuja el chip y la pastilla de estado hacia el
+    medio del bloque, y la fila deja de tener una linea base comun con el resto de la tarjeta. Con
+    `flex-start` los tres elementos comparten el borde superior pase lo que pase con el texto.
+  */
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
+  cardHeaderText: { flex: 1, gap: space.xxs },
+
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    gap: space.md,
+    // Se pega al bloque que titula y se despega del que deja atras: la proximidad es lo que dice a
+    // cual de los dos pertenece. Sin esto, un titulo a medio camino entre dos tarjetas parece el
+    // pie de la de arriba.
+    marginTop: space.sm,
+    marginBottom: -space.xs,
+  },
+  sectionHeaderText: { flex: 1, gap: space.xxs },
+
+  stat: { gap: space.xxs },
+  statRow: { flexDirection: 'row', alignItems: 'stretch' },
+  statCell: { flex: 1 },
+  // El filo entre dos cifras. `alignSelf: 'stretch'` para que mida lo que mida la mas alta de las
+  // dos y no haya que darle una altura fija que se quede corta en cuanto una lleve apunte.
+  statRule: { width: 1, alignSelf: 'stretch', backgroundColor: color.border.subtle, marginHorizontal: space.base },
+
+  keyValue: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: space.base, minHeight: 24 },
+  // La etiqueta cede el ancho antes que el valor: en un detalle de credito, lo que no puede partirse
+  // en dos lineas es la cifra.
+  keyValueLabel: { flexShrink: 1 },
+  keyValueValue: { flexShrink: 0 },
 
   progressTrack: { height: 6, borderRadius: radius.pill, backgroundColor: color.surface.raisedStrong, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: radius.pill, backgroundColor: color.action.primary },
@@ -533,9 +1098,13 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface.raised,
     padding: space.xl,
     gap: space.xs,
+    // Centrado: un estado vacio no es un parrafo, es un cartel. Alineado a la izquierda dentro de
+    // una tarjeta ancha se lee como si le faltara el contenido de la derecha.
+    alignItems: 'center',
     ...shadow.card,
   },
-  stateBoxError: { borderColor: color.feedbackBorder.danger },
+  stateIcon: { marginBottom: space.sm },
+  stateBoxError: { borderColor: color.feedbackBorder.danger, borderTopColor: color.feedbackBorder.danger, alignItems: 'stretch' },
   stateDetail: { marginTop: space.xs },
   stateReference: { marginTop: space.sm },
   stateAction: { marginTop: space.base, alignSelf: 'stretch', gap: space.sm },
@@ -550,6 +1119,5 @@ const styles = StyleSheet.create({
     // relleno de mas solo separaba cada fila de sus vecinas hasta deshacer la lista.
     paddingVertical: space.sm,
   },
-  rowIcon: { width: 28, alignItems: 'flex-start' },
   rowText: { flex: 1, gap: space.xxs },
 });

@@ -65,7 +65,7 @@ export function PartnerBanner({ content = SAMPLE_PARTNER_BANNER, onPress }: { co
               <Stop offset="1" stopColor={palette.navy} />
             </LinearGradient>
           </Defs>
-          <Rect x="0" y="0" width="100%" height="100%" rx={radius.lg} fill="url(#partnerBanner)" />
+          <Rect x="0" y="0" width="100%" height="100%" rx={radius.xxl} fill="url(#partnerBanner)" />
         </Svg>
 
         <View style={styles.content}>
@@ -76,7 +76,7 @@ export function PartnerBanner({ content = SAMPLE_PARTNER_BANNER, onPress }: { co
             <AtlasText variant="caption" style={styles.partnerName}>
               {content.partnerName}
             </AtlasText>
-            <AtlasText variant="bodyStrong" style={styles.headline}>
+            <AtlasText variant="h3" style={styles.headline}>
               {content.headline}
             </AtlasText>
             <AtlasText variant="caption" style={styles.detail}>
@@ -94,21 +94,21 @@ const styles = StyleSheet.create({
   wrapper: { gap: space.xs },
   tag: { letterSpacing: 1 },
   card: {
-    borderRadius: radius.lg,
+    borderRadius: radius.xxl,
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: color.surface.edge,
   },
-  content: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md },
+  content: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.base },
   iconBox: {
     width: 46,
     height: 46,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: palette.ink10,
   },
-  text: { flex: 1, gap: 2 },
+  text: { flex: 1, gap: space.xxs },
   /*
     Estos tres son los unicos colores de la app que se declaran contra un fondo que no es el de la
     app: el banner trae su propio degradado, asi que los tonos del sistema para texto —pensados

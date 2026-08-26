@@ -25,7 +25,7 @@ import type { CreditLine } from '../api/endpoints/credit-line';
 import { formatAmount } from '../features/spending-copy';
 import { color, radius, space } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
-import { AtlasText, Badge, Divider } from './primitives';
+import { AtlasText, Badge, Divider, IconChip, Overline } from './primitives';
 
 const TONE_COLOR: Record<string, string> = {
   success: color.feedback.success,
@@ -78,15 +78,23 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
           <Icon name="estrella" size={20} tint={tint} />
           <AtlasText variant="h3">Tu puntaje Atlas</AtlasText>
         </View>
-        <Badge label={line.scoringBand.label} tone={line.scoringBand.tone === 'info' ? 'info' : (line.scoringBand.tone as never)} />
+        <Badge
+          dot
+          label={line.scoringBand.label}
+          tone={line.scoringBand.tone === 'info' ? 'info' : (line.scoringBand.tone as never)}
+        />
       </View>
 
+      {/*
+        El puntaje es la cifra mas grande del perfil, y por eso va en `amountHero`: es lo que la
+        persona viene a mirar y lo unico de esta tarjeta que puede mover pagando.
+      */}
       <View style={styles.scoreRow}>
-        <AtlasText variant="amount" style={{ color: tint }}>
+        <AtlasText variant="amountHero" style={{ color: tint }}>
           {scoring}
         </AtlasText>
-        <AtlasText variant="caption" tone="tertiary">
-          de {scale.max}
+        <AtlasText variant="amountSmall" tone="tertiary">
+          / {scale.max}
         </AtlasText>
       </View>
 
@@ -113,9 +121,7 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
       <Divider />
 
       {/* Que compone el puntaje, y de donde salio cada pieza. */}
-      <AtlasText variant="caption" tone="tertiary">
-        CON QUÉ SE CALCULÓ
-      </AtlasText>
+      <Overline>Con qué se calculó</Overline>
       {SHOWN_INPUTS.filter((input) => line.inputs[input.key]).map((input) => {
         const origin = PROVENANCE_COPY[line.inputs[input.key]!] ?? PROVENANCE_COPY.ausente!;
         return (
@@ -131,9 +137,7 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
       {line.reasons.length > 0 ? (
         <>
           <Divider />
-          <AtlasText variant="caption" tone="tertiary">
-            LO QUE DIJO LA POLÍTICA
-          </AtlasText>
+          <Overline>Lo que dijo la política</Overline>
           {line.reasons.map((reason) => (
             <View key={reason.code} style={styles.rowCenter}>
               <Icon
@@ -152,16 +156,16 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
       {line.nextSteps.length > 0 ? (
         <>
           <Divider />
-          <AtlasText variant="caption" tone="tertiary">
-            CÓMO SUBIRLO
-          </AtlasText>
+          <Overline>Cómo subirlo</Overline>
           {line.nextSteps.map((step) => (
             <View key={step.code} style={styles.step}>
-              <View style={[styles.stepIcon, { backgroundColor: color.action.primary + '22' }]}>
-                <Icon name={STEP_ICON[step.code] ?? 'chispa'} size={18} tint={color.action.primary} />
-              </View>
+              {/*
+                El chip comun, no un fondo fabricado concatenando la alfa al hexadecimal del color de
+                marca —que ademas es un color literal escrito fuera de los tokens—.
+              */}
+              <IconChip name={STEP_ICON[step.code] ?? 'chispa'} size="sm" />
               <View style={styles.flex}>
-                <AtlasText variant="bodyStrong">{step.label}</AtlasText>
+                <AtlasText variant="title">{step.label}</AtlasText>
                 <AtlasText variant="caption" tone="tertiary">
                   {step.detail}
                 </AtlasText>
@@ -189,10 +193,10 @@ export function DelinquencyImpact({ line, overdueAmount, currency }: { line: Cre
   if (overdueAmount <= 0) return null;
 
   return (
-    <View style={[styles.impact, { borderColor: color.feedback.danger }]}>
+    <View style={[styles.impact, { borderColor: color.feedbackBorder.danger }]}>
       <View style={styles.rowCenter}>
-        <Icon name="alerta" size={20} tint={color.feedback.danger} />
-        <AtlasText variant="bodyStrong">La mora te está costando puntos</AtlasText>
+        <IconChip name="alerta" tone="danger" size="sm" />
+        <AtlasText variant="h3">La mora te está costando puntos</AtlasText>
       </View>
       <AtlasText variant="caption" tone="secondary">
         Tienes {formatAmount(overdueAmount, currency)} vencidos. Cada atraso entra en el cálculo de tu puntaje y baja la línea que
@@ -217,6 +221,5 @@ const styles = StyleSheet.create({
   tick: { position: 'absolute', width: 1, height: 10, backgroundColor: color.surface.primary },
   inputRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: 2 },
   step: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start', paddingVertical: space.xxs },
-  stepIcon: { width: 34, height: 34, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   impact: { gap: space.sm, padding: space.lg, borderRadius: radius.lg, borderWidth: 1, backgroundColor: color.surface.raised },
 });

@@ -7,12 +7,13 @@
  */
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { OnboardingSectionCode } from '../../src/api/endpoints/onboarding';
 import { SECTION_LABEL, SECTION_ROUTE, describeLifecycle } from '../../src/features/onboarding-map';
 import { useSession } from '../../src/session/session';
+import { space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, ListRow, ProgressBar, Skeleton } from '../../src/ui/primitives';
+import { AtlasText, Badge, Button, Card, Divider, ListRow, Overline, ProgressBar, SectionHeader, Skeleton } from '../../src/ui/primitives';
 
 export default function OnboardingProgress() {
   const router = useRouter();
@@ -41,8 +42,11 @@ export default function OnboardingProgress() {
       <Screen>
         <ScreenHeader title="Tu registro" />
         <Card>
-          <Skeleton height={12} width="60%" />
+          <Skeleton height={11} width="55%" />
           <Skeleton height={6} />
+        </Card>
+        <Card padding="tight">
+          <Skeleton height={48} />
           <Skeleton height={48} />
           <Skeleton height={48} />
         </Card>
@@ -69,32 +73,36 @@ export default function OnboardingProgress() {
       <ScreenHeader title={lifecycle.title} subtitle={lifecycle.detail} />
 
       <Card>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <AtlasText variant="caption" tone="secondary">
-            Avance de tu registro
-          </AtlasText>
-          <AtlasText variant="bodyStrong" tone="brand">
+        <View style={styles.avance}>
+          <Overline>Avance de tu registro</Overline>
+          {/* La cifra en la familia de importes: es un numero que se compara consigo mismo entre
+              visita y visita, y con cifras proporcionales «11 %» y «88 %» no ocupan lo mismo. */}
+          <AtlasText variant="amountSmall" tone="brand">
             {status.completionPercentage}%
           </AtlasText>
         </View>
         <ProgressBar value={status.completionPercentage} label={`Registro completado al ${status.completionPercentage} por ciento`} />
+        {pending.length > 0 ? (
+          <AtlasText variant="caption" tone="secondary">
+            Te {pending.length === 1 ? 'queda 1 paso' : `quedan ${pending.length} pasos`} por completar.
+          </AtlasText>
+        ) : null}
       </Card>
 
-      <Gap size="xs" />
-      <AtlasText variant="h3">Pasos</AtlasText>
+      <SectionHeader title="Pasos" />
 
-      <Card>
+      <Card padding="tight">
         {status.sections.map((section, index) => {
           const label = SECTION_LABEL[section.code as OnboardingSectionCode];
           const done = section.status === 'completed';
           return (
             <View key={section.code}>
-              {index > 0 ? <Divider /> : null}
+              {index > 0 ? <Divider inset /> : null}
               <ListRow
                 title={label?.title ?? section.code}
                 subtitle={done ? 'Listo' : (label?.detail ?? 'Pendiente')}
                 icon={label?.icon}
-                right={<Badge label={done ? 'completo' : 'pendiente'} tone={done ? 'success' : 'warning'} />}
+                right={<Badge dot label={done ? 'completo' : 'pendiente'} tone={done ? 'success' : 'warning'} />}
                 onPress={() => router.push(SECTION_ROUTE[section.code as OnboardingSectionCode])}
                 accessibilityHint={done ? 'Abrir para revisar lo que enviaste' : 'Abrir para completar este paso'}
               />
@@ -108,3 +116,7 @@ export default function OnboardingProgress() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  avance: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: space.md },
+});

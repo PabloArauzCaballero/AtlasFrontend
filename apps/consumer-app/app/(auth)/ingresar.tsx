@@ -9,11 +9,12 @@ import { useState } from 'react';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { Pressable } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
 import { IconField } from '../../src/ui/form-controls';
 import { Icon } from '../../src/ui/icons';
-import { color } from '../../src/theme/tokens';
+import { color, space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
+import { AtlasLogo } from '../../src/ui/brand';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 
 export default function SignIn() {
@@ -76,6 +77,14 @@ export default function SignIn() {
         </>
       }
     >
+      {/*
+        La marca, antes del titulo.
+
+        Una pantalla de acceso sin logotipo es un formulario de dos campos que podria ser el de
+        cualquiera, y es justo la pantalla donde la persona teclea su PIN: reconocer donde se esta
+        entrando no es adorno, es lo primero que se comprueba antes de escribir una credencial.
+      */}
+      <AtlasLogo size={36} style={styles.marca} />
       <ScreenHeader title="Ingresar" subtitle="Usa el correo o teléfono con el que te registraste." onBack="auto" />
 
       {described ? (
@@ -151,3 +160,7 @@ export default function SignIn() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  marca: { marginBottom: space.sm },
+});

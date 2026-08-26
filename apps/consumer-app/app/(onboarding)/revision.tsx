@@ -9,7 +9,7 @@
  * "listo". Prometer una aprobacion que no ocurrio es el peor final posible para un onboarding.
  */
 import { useFocusEffect, useRouter } from 'expo-router';
-import { type ScrollView } from 'react-native';
+import { View, type ScrollView } from 'react-native';
 import { useCallback, useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { AtlasApiError, describeError } from '../../src/api/errors';
@@ -17,7 +17,7 @@ import { SECTION_LABEL, SECTION_ROUTE, describeBlocker, describeLifecycle } from
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, ErrorState, ListRow } from '../../src/ui/primitives';
+import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, ListRow } from '../../src/ui/primitives';
 import { useBrandCut } from '../../src/ui/brand-cut';
 
 export default function Review() {
@@ -137,52 +137,68 @@ export default function Review() {
         )
       }
     >
-      <ScreenHeader title={submitted ? lifecycle.title : 'Revisa y envia'} subtitle={lifecycle.detail} onBack="auto" />
+      <ScreenHeader
+        eyebrow="Último paso"
+        title={submitted ? lifecycle.title : 'Revisa y envía'}
+        subtitle={lifecycle.detail}
+        onBack="auto"
+      />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
       {pending.length > 0 ? (
-        <Card>
-          <AtlasText variant="h3">Todavía falta</AtlasText>
-          <Divider />
-          {pending.map((section) => (
-            <ListRow
-              key={section.code}
-              title={SECTION_LABEL[section.code]?.title ?? section.code}
-              subtitle={SECTION_LABEL[section.code]?.detail}
-              icon={SECTION_LABEL[section.code]?.icon}
-              right={<Badge label="pendiente" tone="warning" />}
-              onPress={() => router.push(SECTION_ROUTE[section.code])}
-            />
+        <Card tone="warning" padding="tight">
+          <CardHeader
+            icon="alerta"
+            iconTone="warning"
+            title="Todavía falta"
+            detail={pending.length === 1 ? '1 paso por completar' : `${pending.length} pasos por completar`}
+          />
+          {pending.map((section, index) => (
+            <View key={section.code}>
+              {index > 0 ? <Divider inset /> : null}
+              <ListRow
+                title={SECTION_LABEL[section.code]?.title ?? section.code}
+                subtitle={SECTION_LABEL[section.code]?.detail}
+                icon={SECTION_LABEL[section.code]?.icon}
+                right={<Badge dot label="pendiente" tone="warning" />}
+                onPress={() => router.push(SECTION_ROUTE[section.code])}
+              />
+            </View>
           ))}
         </Card>
       ) : null}
 
       {status && status.blockers.length > 0 ? (
-        <Card>
-          <AtlasText variant="h3">Estado de tu evaluación</AtlasText>
-          <Divider />
-          {status.blockers.map((blocker) => {
+        <Card padding="tight">
+          <CardHeader icon="escudo" title="Estado de tu evaluación" />
+          {status.blockers.map((blocker, index) => {
             const copy = describeBlocker(blocker);
             return (
-              <ListRow
-                key={blocker.code}
-                title={copy.title}
-                subtitle={copy.detail}
-                right={<Badge label={copy.actionable ? 'accion tuya' : 'en curso'} tone={copy.actionable ? 'warning' : 'info'} />}
-              />
+              <View key={blocker.code}>
+                {index > 0 ? <Divider inset /> : null}
+                <ListRow
+                  icon={copy.actionable ? 'alerta' : 'reloj'}
+                  title={copy.title}
+                  subtitle={copy.detail}
+                  right={
+                    <Badge dot label={copy.actionable ? 'acción tuya' : 'en curso'} tone={copy.actionable ? 'warning' : 'info'} />
+                  }
+                />
+              </View>
             );
           })}
         </Card>
       ) : null}
 
       {submitted ? (
-        <Card>
-          <AtlasText variant="bodyStrong">Que sigue</AtlasText>
-          <AtlasText variant="body" tone="secondary">
-            Un analista revisa tu documento y tu informacion. Te avisamos por notificacion apenas haya respuesta; no hace
-            falta que dejes la app abierta.
-          </AtlasText>
+        <Card tone="brand">
+          <CardHeader
+            icon="reloj"
+            title="Qué sigue"
+            detail="Un analista revisa tu documento y tu información. Te avisamos por notificación apenas haya respuesta; no hace falta que dejes la app abierta."
+            divider={false}
+          />
         </Card>
       ) : null}
 

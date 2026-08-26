@@ -15,8 +15,18 @@ import { useSession } from '../../../src/session/session';
 import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS } from '../../../src/features/tour-inicio';
 import { resetTour, useTour } from '../../../src/ui/tour';
 import { Gap, Screen } from '../../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, ListRow, ProgressBar } from '../../../src/ui/primitives';
-import { Icon } from '../../../src/ui/icons';
+import {
+  AtlasText,
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  Divider,
+  ListRow,
+  Overline,
+  ProgressBar,
+} from '../../../src/ui/primitives';
 import { DelinquencyImpact, ScoringPanel } from '../../../src/ui/scoring-panel';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { color, radius, space } from '../../../src/theme/tokens';
@@ -74,10 +84,23 @@ export default function Profile() {
   return (
     <Screen onRefresh={() => void session.refresh()}>
       <Gap size="sm" />
-      <AtlasText variant="h1">{fullName}</AtlasText>
-      <AtlasText variant="body" tone="secondary">
-        Cliente {me?.customer.customerCode ?? ''}
-      </AtlasText>
+      {/*
+        La identidad, en un bloque y no en dos textos sueltos.
+
+        El nombre y el codigo de cliente estaban uno debajo del otro pegados al borde izquierdo, con
+        el mismo aspecto que el titulo de cualquier otra pantalla. Perfil es la unica pantalla que
+        habla de la PERSONA, y no lo decia por ningun sitio: entrar aqui se parecia a entrar en
+        Ajustes.
+      */}
+      <View style={styles.identidad}>
+        <Avatar name={fullName} />
+        <View style={styles.identidadTexto}>
+          <AtlasText variant="h1" numberOfLines={2}>
+            {fullName}
+          </AtlasText>
+          {me?.customer.customerCode ? <Overline>Cliente {me.customer.customerCode}</Overline> : null}
+        </View>
+      </View>
 
       {/*
         EL PUNTAJE ATLAS, primero.
@@ -105,21 +128,18 @@ export default function Profile() {
       */}
       {rating ? (
         <Card>
-          <View style={styles.rowBetween}>
-            <View style={styles.rowCenter}>
-              <Icon name="estrella" size={20} tint={color.action.primary} />
-              <AtlasText variant="h3">Tu calificación</AtlasText>
-            </View>
-            <Badge label={rating.gradeLabel} tone={rating.worstDaysPastDue > 0 ? 'warning' : 'success'} />
-          </View>
-          <Divider />
+          <CardHeader
+            icon="estrella"
+            title="Tu calificación"
+            trailing={<Badge dot label={rating.gradeLabel} tone={rating.worstDaysPastDue > 0 ? 'warning' : 'success'} />}
+          />
 
           <View style={styles.gradeRow}>
             <View style={styles.gradeBox}>
               <AtlasText variant="amount">{rating.grade}</AtlasText>
             </View>
             <View style={styles.gradeText}>
-              <AtlasText variant="bodyStrong">
+              <AtlasText variant="title">
                 {rating.position && rating.scaleSize
                   ? 'Categoría ' + rating.position + ' de ' + rating.scaleSize
                   : rating.gradeLabel}
@@ -150,9 +170,8 @@ export default function Profile() {
         </Card>
       ) : null}
 
-      <Card>
-        <AtlasText variant="h3">Tu cuenta</AtlasText>
-        <Divider />
+      <Card padding="tight">
+        <CardHeader icon="perfil" iconTone="neutral" title="Tu cuenta" />
         <ListRow
           title="Estado"
           icon="escudo"
@@ -164,7 +183,7 @@ export default function Profile() {
             />
           }
         />
-        <Divider />
+        <Divider inset />
         <ListRow
           icon="telefono"
           title="Teléfono" subtitle={me?.customer.phoneLast4 ? `Termina en ${me.customer.phoneLast4}` : 'Sin registrar'} />
@@ -182,7 +201,7 @@ export default function Profile() {
           title="Correo"
           subtitle={me?.customer.emailDomain ? `Termina en @${me.customer.emailDomain}` : 'Sin registrar'}
         />
-        <Divider />
+        <Divider inset />
         <ListRow
           icon="documento"
           title="Recalcular mi línea"
@@ -190,7 +209,7 @@ export default function Profile() {
           onPress={() => router.push('/(app)/extracto-bancario')}
           accessibilityHint="Abrir para subir tu extracto bancario"
         />
-        <Divider />
+        <Divider inset />
         <ListRow
           icon="sobre"
           title="Cómo te avisamos"
@@ -198,7 +217,7 @@ export default function Profile() {
           onPress={() => router.push('/(app)/preferencias-avisos')}
           accessibilityHint="Abrir las preferencias de avisos"
         />
-        <Divider />
+        <Divider inset />
         <ListRow
           icon="editar"
           title="Editar mis datos"
@@ -208,22 +227,20 @@ export default function Profile() {
         />
       </Card>
 
-      <Card>
-        <AtlasText variant="h3">Seguridad</AtlasText>
-        <Divider />
+      <Card padding="tight">
+        <CardHeader icon="candado" iconTone="neutral" title="Seguridad" />
         <ListRow
           title="Cambiar mi PIN"
           icon="candado"
           subtitle="Te enviamos un código por correo"
           onPress={() => router.push('/(auth)/recuperar')}
         />
-        <Divider />
+        <Divider inset />
         <ListRow title="Sesión" subtitle="Tus tokens se guardan cifrados en este dispositivo" />
       </Card>
 
-      <Card>
-        <AtlasText variant="h3">Ayuda</AtlasText>
-        <Divider />
+      <Card padding="tight">
+        <CardHeader icon="ayuda" iconTone="neutral" title="Ayuda" />
         {/*
           Antes aqui habia dos filas con la respuesta metida en el subtitulo, a diez palabras cada
           una. Eso no responde: es un titular. Las preguntas que la gente se hace de verdad —«¿como
@@ -278,16 +295,25 @@ export default function Profile() {
 }
 
 const styles = StyleSheet.create({
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
-  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  gradeRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  identidad: { flexDirection: 'row', alignItems: 'center', gap: space.base },
+  identidadTexto: { flex: 1, gap: space.xs },
+  gradeRow: { flexDirection: 'row', alignItems: 'center', gap: space.base },
+  /*
+    La letra de la calificacion, en su propia caja.
+
+    Lleva contorno y no solo fondo: sobre la tarjeta, un cuadrado un 7 % mas claro no se distingue
+    lo bastante como para leerse como una insignia, y esa letra es el resumen de todo el bloque.
+  */
   gradeBox: {
     width: 64,
     height: 64,
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: color.surface.raisedStrong,
+    backgroundColor: color.surface.sunken,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
+    borderTopColor: color.surface.edge,
   },
-  gradeText: { flex: 1, gap: space.xxs },
+  gradeText: { flex: 1, gap: space.sm },
 });

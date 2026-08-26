@@ -149,6 +149,9 @@ export const color = {
   feedbackBorder: {
     warning: 'rgba(255,196,107,0.35)',
     danger: 'rgba(255,138,138,0.35)',
+    success: 'rgba(43,224,168,0.32)',
+    /** Para la tarjeta que la pantalla quiere destacar sin gastarse el degradado de marca. */
+    brand: 'rgba(43,224,168,0.28)',
   },
 } as const;
 
@@ -166,17 +169,38 @@ export const space = {
   huge: 56,
 } as const;
 
+/**
+ * Radios.
+ *
+ * ## La regla concentrica
+ *
+ * Un radio interior tiene que ser el exterior MENOS el relleno que los separa, o las dos curvas no
+ * son paralelas y la esquina se ve torcida aunque nadie sepa por que. De ahi que la escala baje de
+ * cuatro en cuatro: una tarjeta a `xxl` con `space.sm` de relleno pide `xl` dentro, y con
+ * `space.md`, `lg`.
+ *
+ * ## Por que el radio de tarjeta bajo de 28 a 24
+ *
+ * A 28 px sobre una tarjeta del ancho de la pantalla la curva se come casi un tercio de la altura
+ * de la cabecera de la tarjeta: el bloque deja de leerse como una superficie y empieza a leerse
+ * como una pastilla. Es la diferencia entre una app de banca y una app de mensajeria. 24 mantiene
+ * la generosidad de la identidad —el landing usa 22 px en sus paneles— sin redondear el contenido.
+ */
 export const radius = {
+  /** Adornos pequenos: el punto de un estado, la marca de un paso. */
+  xs: 6,
   sm: 8,
   md: 12,
+  /** Campos, chips de icono y cualquier hueco dentro de una tarjeta. */
   lg: 16,
   xl: 20,
-  xxl: 28,
+  /** Tarjetas y paneles. */
+  xxl: 24,
   pill: 999,
 } as const;
 
 /**
- * Tipografia: `Sora` para display, `Manrope` para texto.
+ * Tipografia: `Sora` para lo que se lee de un vistazo, `Manrope` para lo que se lee de verdad.
  *
  * Se nombra la FAMILIA CONCRETA de cada grosor en vez de combinar una familia con `fontWeight`.
  * En Android `fontWeight` no interpola sobre una fuente cargada: o existe el archivo de ese
@@ -184,15 +208,41 @@ export const radius = {
  * que hace que una app se vea barata al lado de su propia web.
  *
  * Por eso ningun estilo de `type` lleva `fontWeight`: el grosor viaja en el nombre de la familia.
+ *
+ * ## El grosor 800 no es un capricho
+ *
+ * La identidad publicada dibuja TODOS sus titulares con `--display` a `font-weight: 800`
+ * (`AtlasLandingPage/assets/css/style.css`). La app se habia quedado en 700, que en Sora es un
+ * grosor claramente mas ligero, y con ello los titulos de las veinte pantallas se leian medio paso
+ * por debajo de los de la web. Es el tipo de diferencia que nadie sabe nombrar y todo el mundo nota:
+ * la app parecia el borrador del sitio.
  */
 export const font = {
   displaySemi: 'Sora_600SemiBold',
   displayBold: 'Sora_700Bold',
+  /** El grosor de titular de la marca. El mismo 800 que la web. */
+  displayBlack: 'Sora_800ExtraBold',
   bodyRegular: 'Manrope_400Regular',
   bodyMedium: 'Manrope_500Medium',
   bodySemi: 'Manrope_600SemiBold',
   bodyBold: 'Manrope_700Bold',
+  /** Solo para versalitas: a 11 px el 700 no llega a separarse del cuerpo. */
+  bodyBlack: 'Manrope_800ExtraBold',
 } as const;
+
+/**
+ * Interletraje OPTICO: el mismo porcentaje, no el mismo numero de pixeles.
+ *
+ * Es la correccion que faltaba y la que mas hacia que la tipografia se leyera «de plantilla». El
+ * interletraje se percibe en proporcion al tamano: -0.5 px sobre 26 px es un -1,9 %, y sobre 11 px
+ * seria un -4,5 %. Escribir el mismo numero en toda la escala deja los titulares SUELTOS —que es
+ * como se ve una fuente puesta por defecto— y las etiquetas pequenas APRETADAS.
+ *
+ * La identidad publicada cierra sus titulares al -4,5 % y abre sus versalitas al +14 %. Aqui se
+ * calcula desde el porcentaje para que la escala entera respete esa misma curva y para que anadir
+ * un tamano nuevo no obligue a adivinar su interletraje.
+ */
+const track = (size: number, percent: number) => Math.round(size * percent) / 100;
 
 /**
  * Escala tipografica.
@@ -200,17 +250,49 @@ export const font = {
  * La regla de reparto: `Sora` manda en lo que se lee de un vistazo —titulos e importes— y
  * `Manrope` en lo que se lee de verdad, que es todo lo demas. Mezclar al reves cansa: Sora tiene
  * demasiada personalidad para un parrafo y Manrope demasiada poca para un titular.
+ *
+ * ## Los titulos de seccion cambiaron de familia, y era el fallo mas repetido
+ *
+ * `h3` es el estilo mas usado de la app despues del cuerpo —titula casi todas las tarjetas— y
+ * estaba en **Manrope Bold a 17 px**, es decir, la fuente del parrafo un punto mas grande y en
+ * negrita. Un titulo que solo se distingue de su texto por el grosor no crea jerarquia: crea
+ * texto en negrita. Al pasar a Sora, la tarjeta recupera el contraste de familia que la marca ya
+ * tenia, y la pantalla deja de leerse como una lista de parrafos.
+ *
+ * Lo que ANTES hacia `h3` en una fila de lista —titular una fila, no una seccion— tiene ahora su
+ * propio estilo, `title`: ahi el contraste de familia sobra, porque una fila no encabeza nada.
  */
 export const type = {
-  hero: { fontFamily: font.displayBold, fontSize: 34, lineHeight: 42, letterSpacing: -0.8 },
-  h1: { fontFamily: font.displayBold, fontSize: 26, lineHeight: 34, letterSpacing: -0.5 },
-  h2: { fontFamily: font.displaySemi, fontSize: 20, lineHeight: 27, letterSpacing: -0.3 },
-  h3: { fontFamily: font.bodyBold, fontSize: 17, lineHeight: 23, letterSpacing: -0.2 },
+  /** Momentos de marca: bienvenida, exito de un alta. Se usa una vez por pantalla o ninguna. */
+  display: { fontFamily: font.displayBlack, fontSize: 38, lineHeight: 44, letterSpacing: track(38, -4.5) },
+  hero: { fontFamily: font.displayBlack, fontSize: 32, lineHeight: 38, letterSpacing: track(32, -4.5) },
+  /** Titulo de pantalla. Uno por pantalla, en la cabecera. */
+  h1: { fontFamily: font.displayBlack, fontSize: 25, lineHeight: 31, letterSpacing: track(25, -4) },
+  /** Titulo de bloque grande dentro de una pantalla. */
+  h2: { fontFamily: font.displayBold, fontSize: 20, lineHeight: 26, letterSpacing: track(20, -3.5) },
+  /** Titulo de tarjeta o de seccion. */
+  h3: { fontFamily: font.displayBold, fontSize: 17, lineHeight: 23, letterSpacing: track(17, -2.5) },
+  /** Titulo de FILA: nombra un elemento de una lista, no encabeza una seccion. Va en Manrope. */
+  title: { fontFamily: font.bodyBold, fontSize: 15, lineHeight: 20, letterSpacing: track(15, -1) },
   body: { fontFamily: font.bodyMedium, fontSize: 15, lineHeight: 23 },
   bodyStrong: { fontFamily: font.bodyBold, fontSize: 15, lineHeight: 23 },
   caption: { fontFamily: font.bodyMedium, fontSize: 13, lineHeight: 19 },
+  /** El dato de un par etiqueta/valor cuando no es dinero: se lee como valor, no como parrafo. */
+  captionStrong: { fontFamily: font.bodyBold, fontSize: 13, lineHeight: 19 },
   /** Etiquetas y estados. Va en versalita espaciada: a 11 px el peso solo no basta para jerarquia. */
-  micro: { fontFamily: font.bodyBold, fontSize: 11, lineHeight: 15, letterSpacing: 0.6 },
+  micro: { fontFamily: font.bodyBold, fontSize: 11, lineHeight: 15, letterSpacing: track(11, 5) },
+  /**
+   * Antetitulo: la etiqueta que dice de QUE es el bloque que viene debajo.
+   *
+   * Existe porque la app la estaba escribiendo a mano —`variant="caption"` con el texto ya en
+   * mayusculas dentro del literal, «FINANCIADO», «POR PAGAR»—. Escribir mayusculas en el contenido
+   * las mete en el lector de pantalla, que las deletrea, y deja el interletraje sin corregir: una
+   * palabra en versalitas con el espaciado del texto normal se lee apretada y sucia. Aqui la caja
+   * la pone el componente y el espaciado lo pone el token.
+   */
+  overline: { fontFamily: font.bodyBlack, fontSize: 11, lineHeight: 14, letterSpacing: track(11, 14) },
+  /** Etiqueta de un control. Ligeramente abierta: compite con el borde del campo, no con un parrafo. */
+  label: { fontFamily: font.bodySemi, fontSize: 13, lineHeight: 18, letterSpacing: track(13, 1) },
   /**
    * Importes. Cifras TABULARES a proposito.
    *
@@ -218,18 +300,33 @@ export const type = {
    * baila de fila en fila y el ojo deja de poder compararlos de un vistazo. En dinero eso no es
    * un detalle tipografico: es la diferencia entre leer un saldo y tener que releerlo.
    */
+  amountHero: {
+    fontFamily: font.displayBlack,
+    fontSize: 40,
+    lineHeight: 46,
+    letterSpacing: track(40, -4.5),
+    fontVariant: ['tabular-nums'] as const,
+  },
   amount: {
-    fontFamily: font.displayBold,
-    fontSize: 32,
-    lineHeight: 40,
-    letterSpacing: -1.2,
+    fontFamily: font.displayBlack,
+    fontSize: 31,
+    lineHeight: 38,
+    letterSpacing: track(31, -4),
     fontVariant: ['tabular-nums'] as const,
   },
   amountSmall: {
-    fontFamily: font.displaySemi,
+    fontFamily: font.displayBold,
     fontSize: 17,
     lineHeight: 23,
-    letterSpacing: -0.3,
+    letterSpacing: track(17, -2.5),
+    fontVariant: ['tabular-nums'] as const,
+  },
+  /** El importe de una fila, donde `amountSmall` ya pesa demasiado al lado del titulo. */
+  amountMicro: {
+    fontFamily: font.displayBold,
+    fontSize: 14,
+    lineHeight: 19,
+    letterSpacing: track(14, -2),
     fontVariant: ['tabular-nums'] as const,
   },
 } as const;

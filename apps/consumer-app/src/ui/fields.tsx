@@ -8,8 +8,9 @@ import { forwardRef, useState } from 'react';
 import { StyleSheet, TextInput, type TextInputProps, View, type ViewStyle, Switch as RNSwitch } from 'react-native';
 import { type Currency, type Minor, formatMoney, parseAmountInput } from '../domain/money';
 import { color, press, radius, space, touch, type } from '../theme/tokens';
+import { Icon } from './icons';
 import { PressSurface } from './motion';
-import { AtlasText } from './primitives';
+import { AtlasText, Overline } from './primitives';
 
 export type FieldProps = TextInputProps & {
   label: string;
@@ -27,9 +28,25 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
 
   return (
     <View style={[styles.field, containerStyle]}>
-      <AtlasText variant="caption" tone="secondary">
+      {/*
+        La etiqueta va en `label`, no en `caption`.
+
+        `caption` es el estilo del texto de ayuda que va DEBAJO del campo, y usarlo tambien arriba
+        dejaba la etiqueta y su ayuda dibujadas exactamente igual: el formulario se leia como tres
+        lineas de texto con un rectangulo en medio, en lugar de como un campo. `label` es medio paso
+        mas pesado y va ligeramente abierto, que es lo que hace que se lea como el nombre de algo.
+
+        El asterisco de obligatorio va en color de marca y con su propia etiqueta accesible: un
+        asterisco gris del mismo color que la etiqueta no se ve, y sin leyenda que lo explique no
+        significa nada para quien usa un lector de pantalla.
+      */}
+      <AtlasText variant="label" tone="secondary">
         {label}
-        {required ? ' *' : ''}
+        {required ? (
+          <AtlasText variant="label" tone="brand" accessibilityLabel="obligatorio">
+            {' *'}
+          </AtlasText>
+        ) : null}
       </AtlasText>
 
       <TextInput
@@ -84,9 +101,7 @@ export function AmountField({
 
   return (
     <View style={styles.amountBox}>
-      <AtlasText variant="caption" tone="secondary">
-        Monto total de la compra
-      </AtlasText>
+      <Overline>Monto total de la compra</Overline>
       <View style={styles.amountRow}>
         <AtlasText variant="amount" tone="secondary">
           Bs
@@ -137,7 +152,7 @@ export function OptionGroup<T extends string>({
 }) {
   return (
     <View style={styles.field}>
-      <AtlasText variant="caption" tone="secondary">
+      <AtlasText variant="label" tone="secondary">
         {label}
       </AtlasText>
       <View style={styles.options}>
@@ -161,7 +176,7 @@ export function OptionGroup<T extends string>({
               scaleTo={press.scaleSubtle}
               style={[styles.option, selected && styles.optionSelected]}
             >
-              <AtlasText variant="bodyStrong" tone={selected ? 'brand' : 'primary'}>
+              <AtlasText variant="title" tone={selected ? 'brand' : 'primary'}>
                 {option.label}
               </AtlasText>
               {option.detail ? (
@@ -203,12 +218,16 @@ export function CheckRow({
       scaleTo={press.scaleSubtle}
       style={styles.checkRow}
     >
+      {/*
+        La marca es el icono del set, no el caracter «✓».
+
+        El glifo lo dibujaba la fuente del sistema —Manrope no lo trae— asi que la unica marca de
+        verificacion de la app se dibujaba con un trazo, un grosor y unos remates que no eran los de
+        ninguna otra cosa en pantalla, y ademas cambiaba de forma entre iOS y Android. El icono
+        comparte rejilla y grosor con los otros cuarenta.
+      */}
       <View style={[styles.checkBox, checked && styles.checkBoxChecked]}>
-        {checked ? (
-          <AtlasText variant="caption" tone="onBrand">
-            ✓
-          </AtlasText>
-        ) : null}
+        {checked ? <Icon name="check" size={15} tint={color.text.onBrand} /> : null}
       </View>
       <View style={styles.checkText}>
         <AtlasText variant="body">{label}</AtlasText>
@@ -233,7 +252,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.base,
     paddingVertical: space.md,
     color: color.text.primary,
+    /*
+      La FAMILIA, que faltaba.
+
+      El campo declaraba solo el tamano, asi que lo que la persona escribia se dibujaba con la
+      fuente del sistema mientras la etiqueta de encima y la ayuda de debajo iban en Manrope. En el
+      alta hay treinta y tantos campos: era, con diferencia, el sitio donde mas texto de la app se
+      pintaba con una tipografia que no es la de la marca — y justo el texto que la persona mira
+      mientras lo teclea.
+    */
+    fontFamily: type.body.fontFamily,
     fontSize: type.body.fontSize,
+    lineHeight: type.body.lineHeight,
   },
   /*
     El foco no solo cambia el borde: lo engorda y lo tine.

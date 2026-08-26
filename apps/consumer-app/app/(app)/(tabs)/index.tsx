@@ -6,7 +6,7 @@
  */
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Pressable, StyleSheet, View } from 'react-native';
+import { Alert, StyleSheet, View } from 'react-native';
 import { isSandboxPurchase } from '../../../src/api/config';
 import { formatMoney } from '../../../src/domain/money';
 import { useSandbox } from '../../../src/sandbox/store';
@@ -14,14 +14,29 @@ import { useSession } from '../../../src/session/session';
 import { space } from '../../../src/theme/tokens';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { Gap, Screen } from '../../../src/ui/layout';
-import { AtlasText, Badge, BrandPanel, Button, Card, Divider, EmptyState, ListRow, ProgressBar, Skeleton } from '../../../src/ui/primitives';
-import { Icon } from '../../../src/ui/icons';
+import {
+  AtlasText,
+  Badge,
+  BrandPanel,
+  Button,
+  Card,
+  CardHeader,
+  Divider,
+  EmptyState,
+  IconChip,
+  ListRow,
+  Overline,
+  ProgressBar,
+  SectionHeader,
+  Skeleton,
+  Stat,
+  StatRow,
+} from '../../../src/ui/primitives';
 import { PressSurface } from '../../../src/ui/motion';
 import { PartnerBanner } from '../../../src/ui/partner-banner';
 import { downloadSpendingReport } from '../../../src/features/spending-report';
 import { categoryLook, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
-import { color, radius } from '../../../src/theme/tokens';
 import { dueLabel, statusTone, statusLabel } from '../../../src/features/payment-copy';
 import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS, TOUR_INICIO_TARGETS } from '../../../src/features/tour-inicio';
 import { TourTarget, shouldAutoStart, useTour } from '../../../src/ui/tour';
@@ -78,14 +93,20 @@ export default function Home() {
     return (
       <Screen>
         <Gap size="lg" />
+        {/*
+          El esqueleto tiene la geometria EXACTA de lo que viene: antetitulo, importe grande, dos
+          cifras y el boton. Un esqueleto que no coincide con su contenido es peor que ninguno,
+          porque la pantalla se recoloca entera en el momento en que llegan los datos.
+        */}
         <Card>
-          <Skeleton height={14} width="40%" />
-          <Skeleton height={36} width="70%" />
-          <Skeleton height={6} />
+          <Skeleton height={11} width="45%" />
+          <Skeleton height={40} width="62%" />
+          <Skeleton height={40} />
         </Card>
         <Card>
-          <Skeleton height={48} />
-          <Skeleton height={48} />
+          <Skeleton height={17} width="40%" />
+          <Skeleton height={1} />
+          <Skeleton height={31} width="55%" />
         </Card>
       </Screen>
     );
@@ -111,12 +132,14 @@ export default function Home() {
         primero el disponible sería invitarle a aumentar una deuda que ya no está pagando.
       */}
       {spending && spending.totals.overdue > 0 ? (
-        <Card style={styles.moraCard}>
-          <View style={styles.rowCenter}>
-            <Icon name="alerta" size={24} tint={color.feedback.danger} />
-            <AtlasText variant="h3">Tienes pagos pendientes que debes regularizar</AtlasText>
-          </View>
-          <AtlasText variant="amount" style={{ color: color.feedback.danger }}>
+        <Card tone="danger">
+          <CardHeader
+            icon="alerta"
+            iconTone="danger"
+            eyebrow="Vencido"
+            title="Tienes pagos que regularizar"
+          />
+          <AtlasText variant="amount" tone="danger">
             {formatAmount(spending.totals.overdue, currency)}
           </AtlasText>
           <AtlasText variant="body" tone="secondary">
@@ -124,15 +147,24 @@ export default function Home() {
             puede llevar a la suspensión de tu cuenta.
           </AtlasText>
           <Button label="Ver qué debo pagar" onPress={() => router.push('/(app)/(tabs)/pagos')} />
-          <Button label="Leer términos y condiciones" variant="secondary" onPress={() => router.push('/(app)/politica-mora')} />
+          {/*
+            La salida secundaria es un enlace, no un segundo boton.
+
+            Dos botones apilados del mismo tamano dentro de un aviso rojo pesan lo mismo, y la
+            pantalla deja de decir cual de las dos cosas hay que hacer. Aqui hay una accion —pagar—
+            y una lectura.
+          */}
+          <Button
+            label="Leer términos y condiciones"
+            variant="ghost"
+            onPress={() => router.push('/(app)/politica-mora')}
+          />
         </Card>
       ) : null}
 
       <TourTarget id={TOUR_INICIO_TARGETS.linea}>
         <BrandPanel>
-          <AtlasText variant="caption" tone="secondary">
-            Disponible para comprar
-          </AtlasText>
+          <Overline tone="secondary">Disponible para comprar</Overline>
           {/*
             El limite sale del MOTOR, no de una constante.
 
@@ -143,21 +175,20 @@ export default function Home() {
           */}
           {creditLine ? (
             <>
-              <AtlasText variant="amount">{formatAmount(creditLine.available, creditLine.currencyCode)}</AtlasText>
-              <View style={styles.lineMeta}>
-                <View style={styles.lineMetaItem}>
-                  <AtlasText variant="caption" tone="tertiary">
-                    Límite aprobado
-                  </AtlasText>
-                  <AtlasText variant="amountSmall">{formatAmount(creditLine.approvedLimit, creditLine.currencyCode)}</AtlasText>
-                </View>
-                <View style={styles.lineMetaItem}>
-                  <AtlasText variant="caption" tone="tertiary">
-                    Por pagar
-                  </AtlasText>
-                  <AtlasText variant="amountSmall">{formatAmount(creditLine.used, creditLine.currencyCode)}</AtlasText>
-                </View>
-              </View>
+              {/*
+                La cifra mas grande de la app, y por eso el unico `amountHero`. Es la respuesta a la
+                pregunta con la que se abre la app.
+              */}
+              <AtlasText variant="amountHero">{formatAmount(creditLine.available, creditLine.currencyCode)}</AtlasText>
+              <Divider />
+              <StatRow>
+                <Stat label="Límite aprobado" value={formatAmount(creditLine.approvedLimit, creditLine.currencyCode)} />
+                <Stat
+                  label="Por pagar"
+                  value={formatAmount(creditLine.used, creditLine.currencyCode)}
+                  tone={creditLine.used > 0 ? 'primary' : 'tertiary'}
+                />
+              </StatRow>
               {creditLine.maxAffordableInstallment !== null ? (
                 <AtlasText variant="caption" tone="secondary">
                   Calculado sobre un ingreso disponible de{' '}
@@ -168,7 +199,9 @@ export default function Home() {
             </>
           ) : (
             <>
-              <AtlasText variant="amount">—</AtlasText>
+              <AtlasText variant="amountHero" tone="tertiary">
+                —
+              </AtlasText>
               <AtlasText variant="caption" tone="secondary">
                 Todavía estamos calculando tu línea. En cuanto la política la resuelva, aparecerá aquí.
               </AtlasText>
@@ -184,20 +217,20 @@ export default function Home() {
       <TourTarget id={TOUR_INICIO_TARGETS.pagos}>
         {sandbox.nextDue ? (
           <Card>
-            <View style={styles.rowBetween}>
-              <AtlasText variant="h3">Tu próximo pago</AtlasText>
-              <Badge label={statusLabel(sandbox.nextDue.item.status)} tone={statusTone(sandbox.nextDue.item.status)} />
+            <CardHeader
+              icon="reloj"
+              title="Tu próximo pago"
+              trailing={
+                <Badge dot label={statusLabel(sandbox.nextDue.item.status)} tone={statusTone(sandbox.nextDue.item.status)} />
+              }
+            />
+            <View>
+              <AtlasText variant="amount">{formatMoney(sandbox.nextDue.item.amount)}</AtlasText>
+              <AtlasText variant="caption" tone="secondary">
+                {dueLabel(sandbox.nextDue.item)}
+              </AtlasText>
             </View>
-            <Divider />
-            <View style={styles.rowBetween}>
-              <View>
-                <AtlasText variant="amount">{formatMoney(sandbox.nextDue.item.amount)}</AtlasText>
-                <AtlasText variant="caption" tone="secondary">
-                  {dueLabel(sandbox.nextDue.item)}
-                </AtlasText>
-              </View>
-            </View>
-            <Button label="Ver como pagar" variant="secondary" onPress={() => router.push(`/(app)/pago/${sandbox.nextDue!.item.id}`)} />
+            <Button label="Ver cómo pagar" variant="secondary" onPress={() => router.push(`/(app)/pago/${sandbox.nextDue!.item.id}`)} />
           </Card>
         ) : (
           /*
@@ -206,8 +239,7 @@ export default function Home() {
             sin compras se está preguntando: donde se paga esto.
           */
           <Card>
-            <AtlasText variant="h3">Tus pagos</AtlasText>
-            <Divider />
+            <CardHeader icon="pagos" title="Tus pagos" />
             <AtlasText variant="body" tone="secondary">
               Cuando tengas una compra activa, aquí aparece tu próxima cuota y el QR bancario del comercio donde
               pagarla.
@@ -219,29 +251,21 @@ export default function Home() {
       {/* El tablero de gasto por rubro. Sale del comercio donde nacio cada credito. */}
       {spending && spending.categories.length > 0 ? (
         <Card>
-          <View style={styles.rowBetween}>
-            <View style={styles.rowCenter}>
-              <Icon name="grafico" size={20} tint={color.action.primary} />
-              <AtlasText variant="h3">En que gastas</AtlasText>
-            </View>
-            <Badge label={String(spending.totals.loanCount) + (spending.totals.loanCount === 1 ? ' compra' : ' compras')} tone="neutral" />
-          </View>
-          <Divider />
+          <CardHeader
+            icon="grafico"
+            title="En qué gastas"
+            trailing={
+              <Badge
+                label={String(spending.totals.loanCount) + (spending.totals.loanCount === 1 ? ' compra' : ' compras')}
+                tone="neutral"
+              />
+            }
+          />
 
-          <View style={styles.totalsRow}>
-            <View style={styles.totalItem}>
-              <AtlasText variant="caption" tone="tertiary">
-                FINANCIADO
-              </AtlasText>
-              <AtlasText variant="amountSmall">{formatAmount(spending.totals.financed, currency)}</AtlasText>
-            </View>
-            <View style={styles.totalItem}>
-              <AtlasText variant="caption" tone="tertiary">
-                POR PAGAR
-              </AtlasText>
-              <AtlasText variant="amountSmall">{formatAmount(spending.totals.outstanding, currency)}</AtlasText>
-            </View>
-          </View>
+          <StatRow>
+            <Stat label="Financiado" value={formatAmount(spending.totals.financed, currency)} />
+            <Stat label="Por pagar" value={formatAmount(spending.totals.outstanding, currency)} />
+          </StatRow>
 
           {spending.categories.map((item) => {
             const look = categoryLook(item.category);
@@ -254,13 +278,11 @@ export default function Home() {
                 accessibilityRole="button"
                 accessibilityLabel={look.label + ': ' + item.share.toFixed(0) + ' por ciento de tu gasto'}
               >
-                <View style={styles.categoryIcon}>
-                  <Icon name={look.icon} size={20} tint={item.overdue > 0 ? color.feedback.danger : color.action.primary} />
-                </View>
+                <IconChip name={look.icon} tone={item.overdue > 0 ? 'danger' : 'brand'} />
                 <View style={styles.categoryText}>
                   <View style={styles.rowBetween}>
-                    <AtlasText variant="bodyStrong">{look.label}</AtlasText>
-                    <AtlasText variant="bodyStrong">{formatAmount(item.financed, currency)}</AtlasText>
+                    <AtlasText variant="title">{look.label}</AtlasText>
+                    <AtlasText variant="amountMicro">{formatAmount(item.financed, currency)}</AtlasText>
                   </View>
                   {/*
                     La barra usa el porcentaje que YA calculo el servidor: recalcularlo aquí haria
@@ -297,20 +319,25 @@ export default function Home() {
         </Card>
       ) : null}
 
-      <AtlasText variant="h3">Tus compras</AtlasText>
+      <SectionHeader
+        title="Tus compras"
+        eyebrow={activeOrders.length > 0 ? `${activeOrders.length} en curso` : undefined}
+      />
 
       {activeOrders.length === 0 ? (
         <EmptyState
+          icon="billetera"
           title="Todavía no tienes compras"
           detail="Cuando compres en un comercio Atlas, aquí verás el detalle y tus cuotas."
           action={<Button label="Escanear un QR" variant="secondary" onPress={() => router.push('/(app)/(tabs)/escanear')} />}
         />
       ) : (
-        <Card>
+        <Card padding="tight">
           {activeOrders.map((order, index) => (
             <View key={order.id}>
-              {index > 0 ? <Divider /> : null}
+              {index > 0 ? <Divider inset /> : null}
               <ListRow
+                icon="comercio"
                 title={order.context.tradeName}
                 subtitle={`${order.orderCode} · ${formatMoney(order.grossAmount)}`}
                 right={
@@ -336,21 +363,7 @@ export default function Home() {
 const styles = StyleSheet.create({
   greeting: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space.md },
   greetingText: { gap: space.xxs },
-  lineMeta: { flexDirection: 'row', gap: space.xl },
-  lineMetaItem: { gap: space.xxs },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
-  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  moraCard: { borderColor: color.feedback.danger, borderWidth: 1, gap: space.sm },
-  totalsRow: { flexDirection: 'row', gap: space.xl },
-  totalItem: { gap: space.xxs },
   categoryRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.xs },
-  categoryIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.surface.raisedStrong,
-  },
-  categoryText: { flex: 1, gap: space.xxs },
+  categoryText: { flex: 1, gap: space.xs },
 });

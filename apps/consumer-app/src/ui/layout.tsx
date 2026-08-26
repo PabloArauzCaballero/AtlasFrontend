@@ -18,9 +18,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, radius, space, touch } from '../theme/tokens';
-import { Icon } from './icons';
+import { Icon, type IconName } from './icons';
 import { Appear, PressSurface } from './motion';
-import { AtlasText } from './primitives';
+import { AtlasText, Overline } from './primitives';
 
 export function Screen({
   children,
@@ -157,12 +157,23 @@ export function useScrollToError(error: unknown, scrollRef: React.RefObject<Scro
 export function ScreenHeader({
   title,
   subtitle,
+  eyebrow,
   onBack,
   action,
   leading,
 }: {
   title: string;
   subtitle?: string;
+  /**
+   * De DONDE viene esta pantalla, en versalitas y encima del titulo.
+   *
+   * Las pantallas de detalle —una cuota, una compra, un comercio— titulan la cosa que se esta
+   * mirando («Cuota 3 de 6») y se guardaban el contexto para el subtitulo, mezclado con la
+   * explicacion. El antetitulo separa las dos cosas: arriba a que pertenece, en el centro que es,
+   * debajo que hacer con ello. Es lo que evita tener que leer el subtitulo entero para saber si se
+   * ha entrado donde se queria.
+   */
+  eyebrow?: string;
   onBack?: (() => void) | 'auto';
   action?: React.ReactNode;
   /**
@@ -203,6 +214,7 @@ export function ScreenHeader({
       {leading}
 
       <View style={styles.headerText}>
+        {eyebrow ? <Overline>{eyebrow}</Overline> : null}
         <AtlasText variant="h1">{title}</AtlasText>
         {subtitle ? (
           <AtlasText variant="body" tone="secondary">
@@ -216,6 +228,39 @@ export function ScreenHeader({
   );
 }
 
+/**
+ * Accion en icono de una cabecera: el engranaje de Avisos, el cambio de vista de Pagos.
+ *
+ * Estaba copiada en cuatro pantallas como un cuadrado de 40 px sin contorno, y sin contorno sobre
+ * un fondo del mismo valor no se lee como un boton sino como una mancha. Ahora comparte forma,
+ * medida y filo con el boton de volver que tiene al otro lado de la misma fila, que es lo que hace
+ * que los dos se lean como controles de la cabecera y no como dos adornos distintos.
+ */
+export function HeaderAction({
+  icon,
+  label,
+  onPress,
+  tone = 'neutral',
+}: {
+  icon: IconName;
+  /** Obligatoria: un boton sin texto necesita nombre para el lector de pantalla. */
+  label: string;
+  onPress: () => void;
+  tone?: 'neutral' | 'brand';
+}) {
+  return (
+    <PressSurface
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      onPress={onPress}
+      hitSlop={8}
+      style={styles.headerAction}
+    >
+      <Icon name={icon} size={20} tint={tone === 'brand' ? color.action.primary : color.text.primary} />
+    </PressSurface>
+  );
+}
+
 /** Espaciador vertical explicito: mas legible que un `marginTop` suelto repartido por la pantalla. */
 export function Gap({ size = 'base' }: { size?: keyof typeof space }) {
   return <View style={{ height: space[size] }} />;
@@ -223,9 +268,28 @@ export function Gap({ size = 'base' }: { size?: keyof typeof space }) {
 
 const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: color.surface.primary },
-  content: { paddingHorizontal: space.lg, paddingTop: space.base, gap: space.base },
-  header: { flexDirection: 'row', alignItems: 'center', gap: space.md, marginBottom: space.sm },
-  headerText: { flex: 1, gap: space.xs },
+  content: {
+    paddingHorizontal: space.lg,
+    paddingTop: space.base,
+    gap: space.base,
+    /*
+      Ancho maximo de lectura, centrado.
+
+      En una tableta o un plegable abierto, una pantalla pensada para 390 px se estira hasta 1.000 y
+      cada tarjeta se convierte en una franja con dos palabras en el centro y medio metro de vacio a
+      los lados. Ademas la linea de texto pasa de las ~70 letras que se leen comodas a mas del
+      doble, y el ojo pierde el renglon al volver. 560 es el ancho al que la app sigue siendo la
+      misma app en cualquier pantalla, en vez de una version deformada de si misma.
+    */
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
+  },
+  // `flex-start`, no `center`: en cuanto el titulo pasa a dos lineas —«Preferencias de avisos»— con
+  // `center` el boton de volver baja al medio del bloque y deja de estar donde el pulgar lo busca,
+  // que es arriba a la izquierda.
+  header: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, marginBottom: space.sm },
+  headerText: { flex: 1, gap: space.xxs, paddingTop: space.xs },
   backButton: {
     width: touch.minSize,
     height: touch.minSize,
@@ -233,7 +297,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: color.surface.raised,
+    // El filo. Un circulo relleno sin contorno sobre un fondo casi del mismo valor no se lee como
+    // un boton: se lee como una mancha mas clara. Es el mismo recurso que usa la tarjeta.
+    borderWidth: 1,
+    borderColor: color.border.subtle,
+    borderTopColor: color.surface.edge,
     marginLeft: -space.sm,
+  },
+  headerAction: {
+    width: touch.minSize,
+    height: touch.minSize,
+    borderRadius: radius.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: color.surface.raised,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
+    borderTopColor: color.surface.edge,
   },
   footer: {
     paddingHorizontal: space.lg,
@@ -242,5 +322,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: color.border.subtle,
     gap: space.sm,
+    width: '100%',
+    maxWidth: 560,
+    alignSelf: 'center',
   },
 });

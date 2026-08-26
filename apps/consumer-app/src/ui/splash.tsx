@@ -54,7 +54,6 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
-  interpolate,
   runOnJS,
   useAnimatedProps,
   useAnimatedStyle,
@@ -431,8 +430,8 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
         <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
           <Defs>
             <RadialGradient id="arranque-vineta" cx="50%" cy="50%" r="72%">
-              <Stop offset="0.35" stopColor="#000000" stopOpacity="0" />
-              <Stop offset="1" stopColor="#000000" stopOpacity="0.55" />
+              <Stop offset="0.35" stopColor={palette.black} stopOpacity="0" />
+              <Stop offset="1" stopColor={palette.black} stopOpacity="0.55" />
             </RadialGradient>
           </Defs>
           <Rect x="0" y="0" width="100" height="100" fill="url(#arranque-vineta)" />
@@ -442,7 +441,7 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
       <Animated.View style={[StyleSheet.absoluteFill, grano]}>
         <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
           {MOTAS.map((mota, indice) => (
-            <Circle key={indice} cx={mota.x} cy={mota.y} r={mota.r} fill="#FFFFFF" opacity={mota.o} />
+            <Circle key={indice} cx={mota.x} cy={mota.y} r={mota.r} fill={palette.white} opacity={mota.o} />
           ))}
         </Svg>
       </Animated.View>
@@ -479,9 +478,9 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
                   <Stop offset="1" stopColor={palette.brand300} />
                 </LinearGradient>
                 <LinearGradient id="arranque-brillo" x1="0" y1="0" x2="1" y2="0">
-                  <Stop offset="0" stopColor="#FFFFFF" stopOpacity="0" />
-                  <Stop offset="0.5" stopColor="#FFFFFF" stopOpacity="0.85" />
-                  <Stop offset="1" stopColor="#FFFFFF" stopOpacity="0" />
+                  <Stop offset="0" stopColor={palette.white} stopOpacity="0" />
+                  <Stop offset="0.5" stopColor={palette.white} stopOpacity="0.85" />
+                  <Stop offset="1" stopColor={palette.white} stopOpacity="0" />
                 </LinearGradient>
                 <ClipPath id="arranque-recorte">
                   <Path d={LETRA} />
@@ -605,7 +604,7 @@ const styles = StyleSheet.create({
   rotulo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   // El interletrado base del rotulo ya formado. El resto del recorrido lo pone `translateX`.
   letra: { letterSpacing: 6, textAlign: 'center' },
-  destello: { backgroundColor: '#FFFFFF' },
+  destello: { backgroundColor: palette.white },
   /*
     Las barras se animan con `scaleY` y no con la altura.
 
@@ -613,7 +612,7 @@ const styles = StyleSheet.create({
     Con `transformOrigin` en el borde de la pantalla, escalar de 0 a 1 se ve exactamente igual que
     una barra que baja, y cuesta lo que cuesta mover una capa ya dibujada.
   */
-  barra: { position: 'absolute', left: 0, right: 0, height: '11%', backgroundColor: '#000000' },
+  barra: { position: 'absolute', left: 0, right: 0, height: '11%', backgroundColor: palette.black },
   barraArriba: { top: 0, transformOrigin: 'top' },
   barraAbajo: { bottom: 0, transformOrigin: 'bottom' },
 });

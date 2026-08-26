@@ -74,7 +74,7 @@ export function MapaPunto({
             <Icon name="atras" size={22} tint={color.text.primary} />
           </Pressable>
           <View style={styles.cabeceraTexto}>
-            <AtlasText variant="bodyStrong">Señala tu casa</AtlasText>
+            <AtlasText variant="h3">Señala tu casa</AtlasText>
             <AtlasText variant="caption" tone="secondary">
               Toca el mapa donde vives. Puedes corregirlo tocando otra vez.
             </AtlasText>
@@ -94,8 +94,10 @@ export function MapaPunto({
             El botón dice si ya hay algo que confirmar en vez de quedarse apagado y mudo: un botón
             deshabilitado sin motivo obliga a adivinar qué falta, y aquí lo que falta es un toque.
           */}
-          <AtlasText variant="caption" tone={punto ? 'secondary' : 'tertiary'}>
-            {punto ? `Punto elegido: ${punto.lat.toFixed(5)}, ${punto.lng.toFixed(5)}` : 'Todavía no has tocado el mapa.'}
+          {/* Las coordenadas en la familia de cifras: son un dato numerico que se compara consigo
+              mismo al corregir el punto, y con cifras proporcionales bailan de un toque a otro. */}
+          <AtlasText variant={punto ? 'amountMicro' : 'caption'} tone={punto ? 'secondary' : 'tertiary'}>
+            {punto ? `${punto.lat.toFixed(5)}, ${punto.lng.toFixed(5)}` : 'Todavía no has tocado el mapa.'}
           </AtlasText>
           <Button
             label="Usar este punto"
@@ -120,7 +122,18 @@ const styles = StyleSheet.create({
     paddingTop: space.huge,
     paddingBottom: space.md,
   },
-  cabeceraTexto: { flex: 1, gap: 2 },
-  mapa: { flex: 1, overflow: 'hidden', borderRadius: radius.lg, marginHorizontal: space.base },
+  cabeceraTexto: { flex: 1, gap: space.xxs },
+  /*
+    El mapa lleva contorno, como cualquier otra superficie de la app. Sin el, el visor termina en el
+    borde exacto donde empieza el navy y la transicion se lee como un recorte, no como un objeto.
+  */
+  mapa: {
+    flex: 1,
+    overflow: 'hidden',
+    borderRadius: radius.xxl,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
+    marginHorizontal: space.lg,
+  },
   pie: { padding: space.lg, gap: space.md },
 });

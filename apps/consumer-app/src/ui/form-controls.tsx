@@ -18,7 +18,7 @@
 import DateTimePicker, { type DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { forwardRef, useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
-import { color, press, radius, space, touch, type } from '../theme/tokens';
+import { color, press, radius, shadow, space, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
@@ -45,10 +45,7 @@ export const IconField = forwardRef<TextInput, IconFieldProps>(function IconFiel
 
   return (
     <View style={styles.block}>
-      <AtlasText variant="caption" tone="secondary">
-        {label}
-        {required ? ' *' : ''}
-      </AtlasText>
+      <FieldLabel label={label} required={required} />
 
       <View style={[styles.control, focused && styles.controlFocused, error ? styles.controlError : null]}>
         {/*
@@ -178,10 +175,7 @@ export function DateField({
 
   return (
     <View style={styles.block}>
-      <AtlasText variant="caption" tone="secondary">
-        {label}
-        {required ? ' *' : ''}
-      </AtlasText>
+      <FieldLabel label={label} required={required} />
 
       <PressSurface
         onPress={() => setOpen(true)}
@@ -215,10 +209,11 @@ export function DateField({
         <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
           <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
           <View style={styles.sheet}>
+            <View style={styles.grabber} />
             <View style={styles.sheetHead}>
-              <AtlasText variant="bodyStrong">{label}</AtlasText>
-              <Pressable onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel="Listo">
-                <AtlasText variant="bodyStrong" style={{ color: color.action.primary }}>
+              <AtlasText variant="h3">{label}</AtlasText>
+              <Pressable onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel="Listo" hitSlop={12}>
+                <AtlasText variant="bodyStrong" tone="brand">
                   Listo
                 </AtlasText>
               </Pressable>
@@ -389,10 +384,7 @@ export function SelectField<T extends string = string>({
 
   return (
     <View style={styles.block}>
-      <AtlasText variant="caption" tone="secondary">
-        {label}
-        {required ? ' *' : ''}
-      </AtlasText>
+      <FieldLabel label={label} required={required} />
 
       <PressSurface
         onPress={() => setAbierto(true)}
@@ -510,10 +502,7 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
 
   return (
     <View style={styles.block}>
-      <AtlasText variant="caption" tone="secondary">
-        {label}
-        {required ? ' *' : ''}
-      </AtlasText>
+      <FieldLabel label={label} required={required} />
 
       <View style={[styles.control, styles.phoneControl, focused && styles.controlFocused, error ? styles.controlError : null]}>
         <PressSurface
@@ -525,7 +514,7 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
           <AtlasText variant="body" style={styles.flag}>
             {country.flag}
           </AtlasText>
-          <AtlasText variant="bodyStrong">{country.dial}</AtlasText>
+          <AtlasText variant="title">{country.dial}</AtlasText>
           <Icon name="adelante" size={14} tint={color.text.tertiary} />
         </PressSurface>
 
@@ -553,10 +542,11 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
       <Modal visible={picking} transparent animationType="slide" onRequestClose={() => setPicking(false)}>
         <Pressable style={styles.backdrop} onPress={() => setPicking(false)} />
         <View style={styles.sheet}>
+          <View style={styles.grabber} />
           <View style={styles.sheetHead}>
-            <AtlasText variant="bodyStrong">Código de país</AtlasText>
-            <Pressable onPress={() => setPicking(false)} accessibilityRole="button" accessibilityLabel="Cerrar">
-              <AtlasText variant="bodyStrong" style={{ color: color.action.primary }}>
+            <AtlasText variant="h3">Código de país</AtlasText>
+            <Pressable onPress={() => setPicking(false)} accessibilityRole="button" accessibilityLabel="Cerrar" hitSlop={12}>
+              <AtlasText variant="bodyStrong" tone="brand">
                 Listo
               </AtlasText>
             </Pressable>
@@ -599,6 +589,30 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
 
 /* ------------------------------------------------------------------ comun */
 
+/**
+ * La etiqueta de un control.
+ *
+ * Estaba escrita cuatro veces, identica, en los cuatro controles de este archivo, y las cuatro con
+ * `variant="caption"`: el mismo estilo exacto que el texto de ayuda de DEBAJO del campo. Un
+ * formulario donde el nombre del dato y su explicacion se dibujan igual se lee como tres renglones
+ * de texto con un rectangulo en medio.
+ *
+ * El asterisco va aparte y en color de marca, con su propia etiqueta accesible: gris y pegado al
+ * final de la palabra no se ve, y sin nombre no significa nada para un lector de pantalla.
+ */
+function FieldLabel({ label, required }: { label: string; required?: boolean }) {
+  return (
+    <AtlasText variant="label" tone="secondary">
+      {label}
+      {required ? (
+        <AtlasText variant="label" tone="brand" accessibilityLabel="obligatorio">
+          {' *'}
+        </AtlasText>
+      ) : null}
+    </AtlasText>
+  );
+}
+
 function FieldFoot({ error, hint }: { error?: string | null; hint?: string }) {
   if (error) {
     return (
@@ -631,7 +645,9 @@ const styles = StyleSheet.create({
     // Hundido, no elevado: un campo es un hueco donde se escribe, no una tarjeta que se pulsa.
     backgroundColor: color.surface.sunken,
   },
-  controlFocused: { borderColor: color.border.focus },
+  // El mismo grosor de foco que `fields.tsx`: con un solo pixel de color, en una pantalla oscura,
+  // no se distingue cual de seis campos tiene el cursor.
+  controlFocused: { borderColor: color.border.focus, borderWidth: 1.5 },
   // Bloqueado: se apaga, no se esconde. Un control que desaparece hasta que rellenas otro campo
   // hace que la pantalla cambie de forma mientras la lees.
   controlBloqueado: { opacity: 0.5 },
@@ -655,6 +671,21 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
     paddingBottom: space.xl,
+    ...shadow.sheet,
+  },
+  /*
+    El tirador. No se arrastra —la hoja se cierra tocando fuera o con «Listo»— y aun asi vale la
+    pena: es la senal con la que ambos sistemas operativos dicen «esto es una hoja que cubre lo de
+    debajo, no una pantalla nueva». Sin el, la hoja aparecia como un bloque que sube desde el borde
+    y no quedaba claro si volver era retroceder o cerrar.
+  */
+  grabber: {
+    width: 36,
+    height: 4,
+    borderRadius: radius.pill,
+    backgroundColor: color.border.strong,
+    alignSelf: 'center',
+    marginTop: space.md,
   },
   sheetHead: {
     flexDirection: 'row',

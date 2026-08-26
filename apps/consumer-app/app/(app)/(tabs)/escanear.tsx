@@ -11,17 +11,17 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { isSandboxPurchase } from '../../../src/api/config';
 import { resolveMerchantQr } from '../../../src/api/endpoints/loans';
 import { DEMO_TOKEN, REVOKED_DEMO_TOKEN } from '../../../src/sandbox/fixtures';
 import { useSandbox } from '../../../src/sandbox/store';
-import { color, radius, space } from '../../../src/theme/tokens';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { firstBlocker } from '../../../src/ui/blocked';
+import { CameraFrame } from '../../../src/ui/camera-frame';
 import { Field } from '../../../src/ui/fields';
-import { Gap, Screen } from '../../../src/ui/layout';
-import { AtlasText, Button, Card, ErrorState } from '../../../src/ui/primitives';
+import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
+import { AtlasText, Button, Card, CardHeader, ErrorState } from '../../../src/ui/primitives';
 
 const REJECTION_COPY: Record<string, { title: string; detail: string }> = {
   QR_NOT_RECOGNIZED: {
@@ -160,20 +160,16 @@ export default function ScanScreen() {
   return (
     <Screen>
       <Gap size="sm" />
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <AtlasText variant="h1">Escanear</AtlasText>
-          <AtlasText variant="body" tone="secondary">
-            Apunta al código QR de Atlas del comercio.
-          </AtlasText>
-        </View>
-        <DataSourceBadge />
-      </View>
+      <ScreenHeader
+        title="Escanear"
+        subtitle="Apunta al código QR de Atlas del comercio."
+        action={<DataSourceBadge />}
+      />
 
       {copy ? <ErrorState title={copy.title} detail={copy.detail} /> : null}
 
       {permission?.granted ? (
-        <View style={styles.cameraFrame}>
+        <CameraFrame ratio={1}>
           {isFocused ? (
             <CameraView
               style={styles.camera}
@@ -182,15 +178,15 @@ export default function ScanScreen() {
               onBarcodeScanned={({ data }) => void handleToken(data)}
             />
           ) : null}
-          <View style={styles.reticle} pointerEvents="none" />
-        </View>
+        </CameraFrame>
       ) : (
         <Card>
-          <AtlasText variant="bodyStrong">Necesitamos tu camara</AtlasText>
-          <AtlasText variant="caption" tone="secondary">
-            Solo la usamos mientras escaneas. No grabamos video ni guardamos imagenes.
-          </AtlasText>
-          <Button label="Permitir camara" onPress={() => void requestPermission()} />
+          <CardHeader
+            icon="camara"
+            title="Necesitamos tu cámara"
+            detail="Solo la usamos mientras escaneas. No grabamos video ni guardamos imágenes."
+          />
+          <Button label="Permitir cámara" onPress={() => void requestPermission()} />
           {permission?.canAskAgain === false ? (
             <AtlasText variant="caption" tone="warning">
               El permiso está bloqueado. Habilitalo desde los ajustes del sistema o ingresa el código manualmente.
@@ -200,10 +196,12 @@ export default function ScanScreen() {
       )}
 
       <Card>
-        <AtlasText variant="bodyStrong">Ingresar el código a mano</AtlasText>
-        <AtlasText variant="caption" tone="secondary">
-          Si el QR no se lee, el comercio puede dictarte el código que aparece debajo del QR.
-        </AtlasText>
+        <CardHeader
+          icon="editar"
+          iconTone="neutral"
+          title="Ingresar el código a mano"
+          detail="Si el QR no se lee, el comercio puede dictarte el código que aparece debajo del QR."
+        />
         <Field label="Código del comercio" value={manual} onChangeText={setManual} autoCapitalize="none" autoCorrect={false} />
         <Button
           label="Continuar"
@@ -219,11 +217,20 @@ export default function ScanScreen() {
         />
       </Card>
 
+      {/*
+        Los codigos de demostracion existen SOLO en sandbox, y hasta ahora la tarjeta se pintaba
+        siempre: en una compilacion contra el backend real, la pantalla de escaneo terminaba con dos
+        botones que no llevan a ningun sitio y con un rotulo que dice, encima, que no estan
+        disponibles. Es la misma condicion que ya gobierna que esos tokens se acepten mas arriba.
+      */}
+      {isSandboxPurchase ? (
       <Card>
-        <AtlasText variant="bodyStrong">Códigos de prueba</AtlasText>
-        <AtlasText variant="caption" tone="secondary">
-          Disponibles solo en el entorno sandbox, para recorrer el flujo sin un QR fisico.
-        </AtlasText>
+        <CardHeader
+          icon="chispa"
+          iconTone="neutral"
+          title="Códigos de prueba"
+          detail="Disponibles solo en el entorno sandbox, para recorrer el flujo sin un QR físico."
+        />
         <Button
           label="Comercio válido"
           variant="ghost"
@@ -241,30 +248,11 @@ export default function ScanScreen() {
           }}
         />
       </Card>
+      ) : null}
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space.md },
-  headerText: { flex: 1, gap: space.xxs },
-  cameraFrame: {
-    height: 300,
-    borderRadius: radius.xxl,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: color.border.strong,
-    backgroundColor: color.surface.secondary,
-  },
   camera: { flex: 1 },
-  reticle: {
-    position: 'absolute',
-    top: 60,
-    bottom: 60,
-    left: 60,
-    right: 60,
-    borderRadius: radius.xl,
-    borderWidth: 2,
-    borderColor: color.action.primary,
-  },
 });

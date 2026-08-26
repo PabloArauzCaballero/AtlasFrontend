@@ -6,17 +6,20 @@
  * tenga sentido, es la forma mas rapida de perder el permiso para siempre.
  */
 import * as Location from 'expo-location';
-import { View, type ScrollView } from 'react-native';
+import { StyleSheet, View, type ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
+import { color, space } from '../../src/theme/tokens';
 import { firstBlocker } from '../../src/ui/blocked';
+import { Icon } from '../../src/ui/icons';
 import { IconField, SelectField } from '../../src/ui/form-controls';
 import { DEPARTAMENTOS, ciudadesDe, nombreCiudad, nombreDepartamento, nombreZona, zonasDe } from '../../src/features/geografia';
-import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, ErrorState } from '../../src/ui/primitives';
+import { Screen, useScrollToError } from '../../src/ui/layout';
+import { StepHeader } from '../../src/ui/step-header';
+import { AtlasText, Badge, Button, Card, CardHeader, ErrorState } from '../../src/ui/primitives';
 import { MapaPunto } from '../../src/ui/mapa-punto';
 import { TRUST_DOMICILIO } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
@@ -129,7 +132,7 @@ export default function Address() {
 
   return (
     <Screen scrollRef={scroll} footer={<Button label="Guardar domicilio" onPress={save} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
-      <ScreenHeader title="Tu domicilio" subtitle="Dónde vives actualmente." onBack="auto" />
+      <StepHeader code="address" title="Tu domicilio" subtitle="Dónde vives actualmente." />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
@@ -201,8 +204,10 @@ export default function Address() {
       {/*
         Un botón, no un campo de texto: lo que se pide es un punto, y un punto se señala.
       */}
-      <View style={{ gap: 8 }}>
-        <AtlasText variant="caption" tone="secondary">
+      {/* La etiqueta con el mismo estilo que la de cualquier otro control de la pantalla: este bloque
+          es un campo más del formulario, aunque lo que lo rellene sea un mapa y no un teclado. */}
+      <View style={styles.mapaBloque}>
+        <AtlasText variant="label" tone="secondary">
           Ubicación exacta (opcional)
         </AtlasText>
         <Button
@@ -211,11 +216,18 @@ export default function Address() {
           haptic="none"
           onPress={() => setMapaAbierto(true)}
         />
-        <AtlasText variant="caption" tone="tertiary">
-          {gps
-            ? `Punto guardado: ${gps.lat.toFixed(5)}, ${gps.lng.toFixed(5)}.`
-            : 'Sirve para encontrar tu casa el día que haya que ir. Puedes continuar sin esto.'}
-        </AtlasText>
+        {gps ? (
+          <View style={styles.puntoGuardado}>
+            <Icon name="ubicacion" size={14} tint={color.feedback.success} />
+            <AtlasText variant="amountMicro" tone="secondary">
+              {gps.lat.toFixed(5)}, {gps.lng.toFixed(5)}
+            </AtlasText>
+          </View>
+        ) : (
+          <AtlasText variant="caption" tone="tertiary">
+            Sirve para encontrar tu casa el día que haya que ir. Puedes continuar sin esto.
+          </AtlasText>
+        )}
       </View>
 
       <MapaPunto
@@ -225,18 +237,20 @@ export default function Address() {
         onElegir={elegirEnMapa}
       />
 
-      <Card>
-        <AtlasText variant="bodyStrong">Confirmar con tu ubicación (opcional)</AtlasText>
-        <AtlasText variant="caption" tone="secondary">
-          Nos ayuda a validar tu domicilio más rápido. No compartimos tu ubicación con comercios ni la usamos para
-          seguirte.
-        </AtlasText>
+      <Card tone={locationState === 'granted' && gps ? 'success' : 'default'}>
+        <CardHeader
+          icon="ubicacion"
+          iconTone={locationState === 'granted' && gps ? 'success' : 'neutral'}
+          title="Confirmar con tu ubicación (opcional)"
+          detail="Nos ayuda a validar tu domicilio más rápido. No compartimos tu ubicación con comercios ni la usamos para seguirte."
+          divider={false}
+        />
 
         {locationState === 'granted' && gps ? (
-          <Badge label="ubicación capturada" tone="success" />
+          <Badge dot label="ubicación capturada" tone="success" />
         ) : locationState === 'denied' ? (
           <>
-            <Badge label="permiso denegado" tone="warning" />
+            <Badge dot label="permiso denegado" tone="warning" />
             <AtlasText variant="caption" tone="tertiary">
               Puedes continuar sin ubicación. Si cambias de opinión, habilítala desde los ajustes del sistema.
             </AtlasText>
@@ -255,3 +269,8 @@ export default function Address() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  mapaBloque: { gap: space.sm },
+  puntoGuardado: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+});

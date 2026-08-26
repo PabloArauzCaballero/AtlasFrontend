@@ -26,7 +26,7 @@ import { color, palette, radius, space } from '../../../src/theme/tokens';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, EmptyState, ErrorState } from '../../../src/ui/primitives';
+import { AtlasText, Badge, Button, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, Overline } from '../../../src/ui/primitives';
 
 export default function PaymentScreen() {
   const router = useRouter();
@@ -55,7 +55,7 @@ export default function PaymentScreen() {
     return (
       <Screen>
         <ScreenHeader title="Pago" onBack="auto" />
-        <EmptyState title="No encontramos este pago" detail="Vuelve a la lista de pagos y abre la cuota otra vez." />
+        <EmptyState icon="pagos" title="No encontramos este pago" detail="Vuelve a la lista de pagos y abre la cuota otra vez." />
       </Screen>
     );
   }
@@ -64,9 +64,11 @@ export default function PaymentScreen() {
     return (
       <Screen footer={<Button label="Volver" onPress={() => router.back()} />}>
         <ScreenHeader title={itemTitle(item)} subtitle={order.context.tradeName} onBack="auto" />
-        <Card>
-          <Badge label="pagada" tone="success" />
-          <AtlasText variant="amount">{formatMoney(item.amount)}</AtlasText>
+        <Card tone="success">
+          <Badge dot label="pagada" tone="success" />
+          <AtlasText variant="amount" tone="success">
+            {formatMoney(item.amount)}
+          </AtlasText>
           <AtlasText variant="body" tone="secondary">
             {dueLabel(item)}
           </AtlasText>
@@ -163,12 +165,10 @@ export default function PaymentScreen() {
 
       <Card>
         <View style={styles.rowBetween}>
-          <AtlasText variant="caption" tone="secondary">
-            Monto a pagar
-          </AtlasText>
-          <Badge label={statusLabel(item.status)} tone={statusTone(item.status)} />
+          <Overline>Monto a pagar</Overline>
+          <Badge dot label={statusLabel(item.status)} tone={statusTone(item.status)} />
         </View>
-        <AtlasText variant="amount">{formatMoney(item.amount)}</AtlasText>
+        <AtlasText variant="amountHero">{formatMoney(item.amount)}</AtlasText>
         <AtlasText variant="body" tone="secondary">
           {dueLabel(item)}
         </AtlasText>
@@ -176,34 +176,21 @@ export default function PaymentScreen() {
 
       {instruction ? (
         <Card>
-          <AtlasText variant="h3">Paga con el QR del comercio</AtlasText>
-          <AtlasText variant="caption" tone="secondary">
-            Abre la app de tu banco, escanea este código y paga el monto exacto.
-          </AtlasText>
+          <CardHeader
+            icon="escanear"
+            title="Paga con el QR del comercio"
+            detail="Abre la app de tu banco, escanea este código y paga el monto exacto."
+            divider={false}
+          />
 
           <View style={styles.qrBox}>
             <QRCode value={instruction.qrPayloadSnapshot} size={196} backgroundColor={palette.white} color={palette.bg} />
           </View>
 
           <Divider />
-          <View style={styles.rowBetween}>
-            <AtlasText variant="body" tone="secondary">
-              Beneficiario
-            </AtlasText>
-            <AtlasText variant="bodyStrong">{instruction.beneficiaryNameSnapshot}</AtlasText>
-          </View>
-          <View style={styles.rowBetween}>
-            <AtlasText variant="body" tone="secondary">
-              Cuenta
-            </AtlasText>
-            <AtlasText variant="bodyStrong">{instruction.paymentEndpointMaskedSnapshot}</AtlasText>
-          </View>
-          <View style={styles.rowBetween}>
-            <AtlasText variant="body" tone="secondary">
-              Vigente hasta
-            </AtlasText>
-            <AtlasText variant="bodyStrong">{formatTime(instruction.expiresAt)}</AtlasText>
-          </View>
+          <KeyValue label="Beneficiario" value={instruction.beneficiaryNameSnapshot} />
+          <KeyValue label="Cuenta" numeric value={instruction.paymentEndpointMaskedSnapshot} />
+          <KeyValue label="Vigente hasta" numeric value={formatTime(instruction.expiresAt)} />
 
           <Button label={copied ? 'Código copiado' : 'Copiar código de pago'} variant="secondary" onPress={copyEndpoint} />
         </Card>
@@ -216,9 +203,12 @@ export default function PaymentScreen() {
       )}
 
       {reported || claim ? (
-        <Card>
-          <Badge label="en verificación" tone="info" />
-          <AtlasText variant="bodyStrong">Recibimos tu reporte</AtlasText>
+        <Card tone="brand">
+          <CardHeader
+            icon="reloj"
+            title="Recibimos tu reporte"
+            trailing={<Badge dot label="en verificación" tone="info" />}
+          />
           <AtlasText variant="body" tone="secondary">
             Tu comprobante es evidencia, no confirma el pago por si solo. Lo damos por pagado cuando el comercio confirma
             que recibio el dinero. Te avisamos apenas ocurra.
@@ -226,10 +216,12 @@ export default function PaymentScreen() {
         </Card>
       ) : (
         <Card>
-          <AtlasText variant="h3">Ya pagaste</AtlasText>
-          <AtlasText variant="caption" tone="secondary">
-            Cuentanos los datos del pago para acelerar la verificación. Es opcional.
-          </AtlasText>
+          <CardHeader
+            icon="documento"
+            title="Ya pagaste"
+            detail="Cuéntanos los datos del pago para acelerar la verificación. Es opcional."
+            divider={false}
+          />
           <Field
             label="Número de transacción"
             value={reference}
@@ -248,10 +240,13 @@ export default function PaymentScreen() {
       )}
 
       <Card>
-        <AtlasText variant="bodyStrong">Algo no cuadra</AtlasText>
-        <AtlasText variant="caption" tone="secondary">
-          Si pagaste y sigue apareciendo pendiente, abre una revisión. No se borra el vencimiento mientras la revisamos.
-        </AtlasText>
+        <CardHeader
+          icon="alerta"
+          iconTone="warning"
+          title="Algo no cuadra"
+          detail="Si pagaste y sigue apareciendo pendiente, abre una revisión. No se borra el vencimiento mientras la revisamos."
+          divider={false}
+        />
         <Button
           label="Reportar un problema con este pago"
           variant="ghost"
@@ -264,12 +259,14 @@ export default function PaymentScreen() {
 
       {isSandboxPurchase ? (
         <Card>
-          <DataSourceBadge label="Solo en sandbox" />
-          <AtlasText variant="bodyStrong">Simular la confirmacion del comercio</AtlasText>
-          <AtlasText variant="caption" tone="secondary">
-            En produccion esta confirmacion llega desde el portal del comercio y es la unica que resuelve la cuota como
-            pagada. Aquí se dispara a mano para poder recorrer el ciclo completo.
-          </AtlasText>
+          <CardHeader
+            icon="chispa"
+            iconTone="neutral"
+            title="Simular la confirmación del comercio"
+            detail="En producción esta confirmación llega desde el portal del comercio y es la única que resuelve la cuota como pagada. Aquí se dispara a mano para poder recorrer el ciclo completo."
+            trailing={<DataSourceBadge label="Solo en sandbox" />}
+            divider={false}
+          />
           <Button
             label="El comercio confirma que recibio el pago"
             variant="secondary"
@@ -291,10 +288,20 @@ export default function PaymentScreen() {
 
 const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
+  /*
+    El QR sobre blanco, con aire alrededor y su propio filo.
+
+    La zona tranquila —el margen blanco de al menos cuatro modulos— no es estetica: sin ella muchos
+    lectores no enganchan el codigo, y esta es la pantalla donde un fallo de lectura significa que
+    alguien no puede pagar su cuota. El contorno separa el blanco del papel navy para que la tarjeta
+    no parezca tener un agujero.
+  */
   qrBox: {
     alignSelf: 'center',
-    padding: space.base,
+    padding: space.lg,
     borderRadius: radius.xl,
     backgroundColor: color.surface.inverse,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
   },
 });

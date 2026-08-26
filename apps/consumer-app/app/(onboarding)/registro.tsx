@@ -14,14 +14,14 @@ import * as customerApi from '../../src/api/endpoints/customer';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { StyleSheet, View, Pressable, type ScrollView } from 'react-native';
+import { StyleSheet, View, type ScrollView } from 'react-native';
 import { ConsentRow } from '../../src/ui/consent-row';
 import { type Country, DEFAULT_COUNTRY, DateField, IconField, PhoneField } from '../../src/ui/form-controls';
 import { Icon, type IconName } from '../../src/ui/icons';
 import { color, space } from '../../src/theme/tokens';
-import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
+import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { PinField } from '../../src/ui/pin-field';
-import { AtlasText, Button, Card, Divider, ErrorState, Skeleton } from '../../src/ui/primitives';
+import { AtlasText, Button, Card, Divider, ErrorState, Overline, SectionHeader, Skeleton } from '../../src/ui/primitives';
 import { TRUST_REGISTRO } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
 
@@ -287,15 +287,15 @@ export default function Register() {
         />
       </FormSection>
 
-      <Gap size="sm" />
-      <AtlasText variant="h3">Autorizaciones</AtlasText>
+      <SectionHeader title="Autorizaciones" detail="Lo que necesitamos que aceptes para poder evaluarte." />
 
       {describedLoad ? (
         <ErrorState title={describedLoad.title} detail={describedLoad.detail} onRetry={loadConsents} reference={describedLoad.reference} />
       ) : documents === null ? (
         <Card>
-          <Skeleton height={20} width="70%" />
-          <Skeleton height={20} width="50%" />
+          <Skeleton height={23} width="70%" />
+          <Skeleton height={1} />
+          <Skeleton height={23} width="50%" />
         </Card>
       ) : documents.length === 0 ? (
         <Card>
@@ -353,10 +353,13 @@ function FormSection({ icon, title, children }: { icon: IconName; title: string;
   return (
     <View style={styles.section}>
       <View style={styles.sectionHead}>
-        <Icon name={icon} size={16} tint={color.text.tertiary} />
-        <AtlasText variant="caption" tone="tertiary" style={styles.sectionTitle}>
-          {title.toUpperCase()}
-        </AtlasText>
+        <Icon name={icon} size={14} tint={color.text.tertiary} />
+        {/*
+          Las versalitas y su interletraje los pone `Overline`, no un `.toUpperCase()` con un
+          `letterSpacing` elegido a ojo en esta pantalla. Escribirlas en el contenido deja al lector
+          de pantalla deletreando el titulo del grupo letra a letra.
+        */}
+        <Overline>{title}</Overline>
       </View>
       <Card>{children}</Card>
     </View>
@@ -364,7 +367,6 @@ function FormSection({ icon, title, children }: { icon: IconName; title: string;
 }
 
 const styles = StyleSheet.create({
-  section: { gap: space.xs },
-  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingHorizontal: space.xxs },
-  sectionTitle: { letterSpacing: 1.1 },
+  section: { gap: space.sm },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.xs },
 });

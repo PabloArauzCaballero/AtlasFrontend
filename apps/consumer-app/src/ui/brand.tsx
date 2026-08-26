@@ -8,7 +8,7 @@
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { color, palette, radius, space } from '../theme/tokens';
-import { AtlasText } from './primitives';
+import { AtlasText, Overline } from './primitives';
 
 /**
  * Halo de marca: la atmosfera del fondo.
@@ -69,15 +69,23 @@ export function AtlasMark({ size = 40 }: { size?: number }) {
   );
 }
 
-export function AtlasLogo({ style }: { style?: ViewStyle }) {
+export function AtlasLogo({ size = 44, style }: { size?: number; style?: ViewStyle }) {
   return (
     <View style={[styles.logo, style]}>
-      <AtlasMark size={44} />
-      <View>
-        <AtlasText variant="h2">ATLAS</AtlasText>
-        <AtlasText variant="micro" tone="brand">
-          COMPRA HOY, PAGA DESPUÉS
+      <AtlasMark size={size} />
+      <View style={styles.logoText}>
+        {/*
+          El logotipo va ABIERTO, no con el interletraje de un titular.
+
+          Es la regla contraria a la del resto de la escala —donde los tamanos grandes se cierran—
+          y es deliberada: cinco letras sueltas en caja alta no son un titulo, son una MARCA, y lo
+          que hace que se lean como marca es el aire entre ellas. Con el -4,5 % de `h2`, «ATLAS» se
+          leia como una palabra en mayusculas dentro de una frase.
+        */}
+        <AtlasText variant="h2" style={styles.wordmark}>
+          ATLAS
         </AtlasText>
+        <Overline tone="brand">Compra hoy, paga después</Overline>
       </View>
     </View>
   );
@@ -102,6 +110,8 @@ export function DataSourceBadge({ label = 'Entorno sandbox' }: { label?: string 
 
 const styles = StyleSheet.create({
   logo: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  logoText: { gap: space.xxs },
+  wordmark: { letterSpacing: 2.4 },
   sandbox: {
     flexDirection: 'row',
     alignItems: 'center',

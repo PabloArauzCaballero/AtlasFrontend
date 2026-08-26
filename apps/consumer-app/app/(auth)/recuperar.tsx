@@ -6,6 +6,7 @@
  * codigo va en camino.
  */
 import { useRouter } from 'expo-router';
+import { StyleSheet } from 'react-native';
 import { useState } from 'react';
 import * as authApi from '../../src/api/endpoints/auth';
 import { describeError } from '../../src/api/errors';
@@ -13,6 +14,8 @@ import { firstBlocker } from '../../src/ui/blocked';
 import { Field } from '../../src/ui/fields';
 import { PinField } from '../../src/ui/pin-field';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
+import { space } from '../../src/theme/tokens';
+import { AtlasLogo } from '../../src/ui/brand';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 
 type Step = 'request' | 'confirm' | 'done';
@@ -83,7 +86,13 @@ export default function RecoverPassword() {
         )
       }
     >
+      <AtlasLogo size={36} style={styles.marca} />
+      {/*
+        El paso, en el antetitulo. Son dos pantallas encadenadas dibujadas en la misma: sin numero,
+        pasar de la primera a la segunda se lee como que la pantalla cambio de contenido sola.
+      */}
       <ScreenHeader
+        eyebrow={`Paso ${step === 'request' ? 1 : 2} de 2`}
         title="Recuperar acceso"
         subtitle={step === 'request' ? 'Te enviamos un código de 6 dígitos por correo.' : 'Escribe el código que recibiste.'}
         onBack="auto"
@@ -93,7 +102,7 @@ export default function RecoverPassword() {
 
       {step === 'request' ? (
         <Field
-          label="Correo electronico"
+          label="Correo electrónico"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -135,8 +144,12 @@ export default function RecoverPassword() {
 
       <Gap size="base" />
       <AtlasText variant="caption" tone="tertiary">
-        Si el correo no esta registrado no recibiras nada, y la respuesta es la misma por seguridad.
+        Si el correo no está registrado no recibirás nada: la respuesta es la misma por seguridad.
       </AtlasText>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  marca: { marginBottom: space.sm },
+});

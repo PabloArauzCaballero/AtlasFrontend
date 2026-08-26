@@ -31,7 +31,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, radius, space, spring } from '../theme/tokens';
 import { Icon } from './icons';
 import { Appear } from './motion';
-import { AtlasText, Button, Card } from './primitives';
+import { AtlasText, Button, Card, IconChip, Overline } from './primitives';
 
 export type TourStep = {
   /** Identificador del objetivo. Debe coincidir con el `id` de un `<TourTarget>` montado. */
@@ -297,12 +297,11 @@ function TourOverlay({
         >
           <Card style={styles.card}>
             <View style={styles.cardHead}>
-              {step.icon ? <Icon name={step.icon} size={20} tint={color.action.primary} /> : null}
-              <AtlasText variant="micro" tone="brand">
-                {`PASO ${index + 1} DE ${total}`}
-              </AtlasText>
+              {step.icon ? <IconChip name={step.icon} size="sm" /> : null}
+              {/* Las versalitas las pone `Overline`, no un literal en mayusculas: ver `primitives.tsx`. */}
+              <Overline tone="brand">{`Paso ${index + 1} de ${total}`}</Overline>
             </View>
-            <AtlasText variant="h3">{step.title}</AtlasText>
+            <AtlasText variant="h2">{step.title}</AtlasText>
             <AtlasText variant="body" tone="secondary">
               {step.body}
             </AtlasText>

@@ -234,7 +234,7 @@ export default function Welcome() {
             </AtlasText>
           </Animated.View>
           <Animated.View style={esloganStyle}>
-            <AtlasText variant="h2" style={styles.eslogan}>
+            <AtlasText variant="h1" style={styles.eslogan}>
               {eslogan.titulo}
             </AtlasText>
             <AtlasText variant="body" tone="secondary" style={styles.esloganPie}>
@@ -428,13 +428,23 @@ const styles = StyleSheet.create({
   esloganPie: { textAlign: 'center', marginTop: space.sm },
 
   pasoContenido: { alignItems: 'center', gap: space.base },
+  /*
+    El icono del paso va en un CIRCULO tenido de marca, no en un cuadrado gris.
+
+    Era un cuadrado de 92 px del color de una tarjeta, es decir, la misma superficie que usa
+    cualquier bloque de datos de la app: el simbolo que abre cada pagina del recorrido se leia como
+    una tarjeta vacia con un dibujo dentro. Redondo y tenido, se lee como un simbolo; y el contorno
+    de marca lo ata a la identidad en la unica pantalla que existe para presentarla.
+  */
   pasoIcono: {
-    width: 92,
-    height: 92,
-    borderRadius: radius.lg,
+    width: 96,
+    height: 96,
+    borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: color.surface.raised,
+    backgroundColor: color.feedbackSoft.success,
+    borderWidth: 1,
+    borderColor: color.feedbackBorder.brand,
     marginBottom: space.md,
   },
   pasoTitulo: { textAlign: 'center' },
@@ -444,5 +454,7 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.border.subtle },
   dotActive: { width: 22, backgroundColor: color.action.primary },
 
-  footer: { paddingHorizontal: space.lg, gap: space.sm },
+  // El mismo ancho maximo que el resto de la app (`ui/layout.tsx`): en una tableta, dos botones
+  // estirados a 1.000 px dejan de leerse como botones.
+  footer: { paddingHorizontal: space.lg, gap: space.sm, width: '100%', maxWidth: 560, alignSelf: 'center' },
 });

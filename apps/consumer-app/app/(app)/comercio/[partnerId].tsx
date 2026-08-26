@@ -8,14 +8,12 @@
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { categoryLook, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useSession } from '../../../src/session/session';
-import { color, space } from '../../../src/theme/tokens';
-import { Icon } from '../../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { AtlasText, Badge, Card, Divider, EmptyState, ListRow, Skeleton } from '../../../src/ui/primitives';
+import { AtlasText, Badge, Card, Divider, EmptyState, IconChip, ListRow, Skeleton, Stat } from '../../../src/ui/primitives';
 
 export default function MerchantCredits() {
   const router = useRouter();
@@ -38,8 +36,8 @@ export default function MerchantCredits() {
       <Screen>
         <ScreenHeader title="Comercio" onBack="auto" />
         <Card>
-          <Skeleton height={18} width="60%" />
-          <Skeleton height={14} width="40%" />
+          <Skeleton height={11} width="60%" />
+          <Skeleton height={23} width="40%" />
         </Card>
       </Screen>
     );
@@ -52,32 +50,27 @@ export default function MerchantCredits() {
         title={merchant?.displayName ?? 'Compra sin comercio'}
         subtitle={look.label}
         onBack="auto"
-        leading={
-          <View style={styles.icon}>
-            <Icon name={look.icon} size={26} tint={color.action.primary} />
-          </View>
-        }
+        leading={<IconChip name={look.icon} size="lg" />}
       />
 
       <Card>
-        <AtlasText variant="caption" tone="tertiary">
-          TOTAL POR PAGAR EN ESTE COMERCIO
-        </AtlasText>
-        <AtlasText variant="amountSmall">{formatAmount(outstanding, currency)}</AtlasText>
-        <AtlasText variant="caption" tone="secondary">
-          {loans.length} {loans.length === 1 ? 'crédito' : 'créditos'}
-        </AtlasText>
+        <Stat
+          label="Total por pagar en este comercio"
+          value={formatAmount(outstanding, currency)}
+          size="lg"
+          hint={`${loans.length} ${loans.length === 1 ? 'crédito' : 'créditos'}`}
+        />
       </Card>
 
       {loans.length === 0 ? (
-        <EmptyState title="Sin créditos aquí" detail="No encontramos créditos de este comercio en tu cuenta." />
+        <EmptyState icon="billetera" title="Sin créditos aquí" detail="No encontramos créditos de este comercio en tu cuenta." />
       ) : (
-        <Card>
+        <Card padding="tight">
           {loans.map((loan, index) => {
             const overdue = loan.daysPastDue > 0;
             return (
               <View key={loan.loanId}>
-                {index > 0 ? <Divider /> : null}
+                {index > 0 ? <Divider inset /> : null}
                 <ListRow
                   title={formatAmount(Number(loan.principalAmount), loan.currencyCode)}
                   subtitle={`${loan.termMonths} ${loan.termMonths === 1 ? 'mes' : 'meses'} · ${
@@ -90,7 +83,7 @@ export default function MerchantCredits() {
                     ) : loan.status === 'paid_off' ? (
                       <Badge label="Pagado" tone="success" />
                     ) : (
-                      <AtlasText variant="bodyStrong">{formatAmount(Number(loan.outstandingPrincipal), loan.currencyCode)}</AtlasText>
+                      <AtlasText variant="amountMicro">{formatAmount(Number(loan.outstandingPrincipal), loan.currencyCode)}</AtlasText>
                     )
                   }
                   onPress={() => router.push(`/(app)/credito/${loan.loanId}`)}
@@ -107,15 +100,4 @@ export default function MerchantCredits() {
   );
 }
 
-const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  headerText: { flex: 1, gap: space.xxs },
-  icon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.surface.raised,
-  },
-});
+

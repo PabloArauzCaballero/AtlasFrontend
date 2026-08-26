@@ -28,7 +28,7 @@ import { type OpcionSelect, SelectField } from '../../src/ui/form-controls';
 import { Icon } from '../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Appear } from '../../src/ui/motion';
-import { AtlasText, Button, Card, Divider, ErrorState } from '../../src/ui/primitives';
+import { AtlasText, Button, Card, CardHeader, ErrorState, Overline } from '../../src/ui/primitives';
 
 type Language = 'es' | 'en';
 type Gender = 'female' | 'male' | 'other' | 'undisclosed';
@@ -97,11 +97,7 @@ export default function EditProfile() {
 
       <Appear index={0}>
         <Card>
-          <View style={styles.rowCenter}>
-            <Icon name="candado" size={18} tint={color.text.tertiary} />
-            <AtlasText variant="h3">Verificado con tu carnet</AtlasText>
-          </View>
-          <Divider />
+          <CardHeader icon="candado" iconTone="neutral" title="Verificado con tu carnet" />
 
           <LockedField label="Nombre y apellido" value={fullName} />
           <LockedField
@@ -118,11 +114,7 @@ export default function EditProfile() {
 
       <Appear index={1}>
         <Card>
-          <View style={styles.rowCenter}>
-            <Icon name="editar" size={18} tint={color.action.primary} />
-            <AtlasText variant="h3">Tus preferencias</AtlasText>
-          </View>
-          <Divider />
+          <CardHeader icon="editar" title="Tus preferencias" />
 
           <SelectField<Language> label="Idioma" opciones={LANGUAGES} value={language} onChange={setLanguage} />
           <SelectField<Gender> label="Género" opciones={GENDERS} value={gender} onChange={setGender} />
@@ -146,10 +138,8 @@ function LockedField({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.locked}>
       <View style={styles.lockedText}>
-        <AtlasText variant="caption" tone="tertiary">
-          {label}
-        </AtlasText>
-        <AtlasText variant="bodyStrong">{value}</AtlasText>
+        <Overline>{label}</Overline>
+        <AtlasText variant="title">{value}</AtlasText>
       </View>
       <Icon name="candado" size={16} tint={color.text.tertiary} />
     </View>
@@ -157,15 +147,23 @@ function LockedField({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  /*
+    Un dato bloqueado se dibuja como el HUECO de un campo, no como una tarjeta dentro de otra.
+
+    Es la misma superficie hundida y el mismo contorno que un campo editable, porque eso es lo que
+    la persona ha venido a buscar: la fila donde estaria su nombre si se pudiera cambiar. Sin el
+    contorno, el bloque se leia como un parrafo con fondo y no como un campo cerrado.
+  */
   locked: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    paddingVertical: space.sm,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
+    paddingVertical: space.md,
+    paddingHorizontal: space.base,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
     backgroundColor: color.surface.sunken,
   },
-  lockedText: { flex: 1, gap: 2 },
+  lockedText: { flex: 1, gap: space.xxs },
 });

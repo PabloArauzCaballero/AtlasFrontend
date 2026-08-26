@@ -30,7 +30,7 @@ import { formatAmount } from '../features/spending-copy';
 import { color, press, radius, space } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { PressSurface } from './motion';
-import { AtlasText, Divider } from './primitives';
+import { AtlasText, Divider, Overline } from './primitives';
 
 type EntryState = CalendarEntry['state'];
 
@@ -142,7 +142,7 @@ export function PaymentCalendarView({
           <Icon name="atras" size={18} tint={color.text.primary} />
         </PressSurface>
         <View style={styles.monthLabel}>
-          <AtlasText variant="bodyStrong">
+          <AtlasText variant="h3">
             {monthName(cursor.month)} {cursor.year}
           </AtlasText>
           <AtlasText variant="caption" tone="tertiary">
@@ -158,9 +158,9 @@ export function PaymentCalendarView({
 
       <View style={styles.weekdays}>
         {WEEKDAYS.map((label, index) => (
-          <AtlasText key={`${label}-${index}`} variant="caption" tone="tertiary" style={styles.weekday}>
+          <Overline key={`${label}-${index}`} style={styles.weekday}>
             {label}
-          </AtlasText>
+          </Overline>
         ))}
       </View>
 
@@ -196,9 +196,14 @@ export function PaymentCalendarView({
               }
             >
               <View style={[styles.dayNumber, isToday && styles.today]}>
+                {/*
+                  El numero del dia en cifras TABULARES: en una rejilla, el «1» mas estrecho que el
+                  «8» descoloca la columna entera y las semanas dejan de leerse alineadas. Es
+                  exactamente el caso para el que existen.
+                */}
                 <AtlasText
-                  variant="caption"
-                  style={{ color: isToday ? color.surface.primary : entries.length > 0 ? color.text.primary : color.text.tertiary }}
+                  variant="amountMicro"
+                  style={{ color: isToday ? color.text.onBrand : entries.length > 0 ? color.text.primary : color.text.tertiary }}
                 >
                   {cell.day}
                 </AtlasText>
@@ -230,11 +235,14 @@ export function PaymentCalendarView({
       */}
       {(selected ? selectedEntries : monthEntries).length > 0 ? (
         <View style={styles.list}>
-          <AtlasText variant="caption" tone="tertiary">
-            {selected
-              ? `${parts(selected).day} DE ${monthName(cursor.month).toUpperCase()}`
-              : `TODO ${monthName(cursor.month).toUpperCase()}`}
-          </AtlasText>
+          {/*
+            Las versalitas las pone `Overline` con `textTransform`, no el literal: con el texto ya en
+            mayusculas el lector de pantalla deletrea el mes letra a letra, y el interletraje se
+            queda sin corregir.
+          */}
+          <Overline>
+            {selected ? `${parts(selected).day} de ${monthName(cursor.month)}` : `Todo ${monthName(cursor.month)}`}
+          </Overline>
           {(selected ? selectedEntries : monthEntries).map((entry) => (
             <CalendarRow
               key={`${entry.loanId}-${entry.installmentNumber}`}

@@ -5,16 +5,18 @@
  * pantalla lo dice tal cual y ofrece el otro canal: un codigo que nunca se envio y una pantalla que
  * dice "revisa tus mensajes" es la peor combinacion posible.
  */
-import { type ScrollView } from 'react-native';
+import { StyleSheet, View, type ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
+import { space } from '../../src/theme/tokens';
 import { firstBlocker } from '../../src/ui/blocked';
 import { IconField, SelectField } from '../../src/ui/form-controls';
-import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
-import { AtlasText, Button, Card, ErrorState } from '../../src/ui/primitives';
+import { Gap, Screen, useScrollToError } from '../../src/ui/layout';
+import { StepHeader } from '../../src/ui/step-header';
+import { AtlasText, Button, Card, CardHeader, ErrorState, IconChip } from '../../src/ui/primitives';
 
 type Channel = 'sms' | 'whatsapp' | 'email';
 
@@ -184,7 +186,7 @@ export default function VerifyContact() {
         )
       }
     >
-      <ScreenHeader title="Verifica tu contacto" subtitle="Confirmamos que el número o correo es tuyo." onBack="auto" />
+      <StepHeader code="contact_verification" title="Verifica tu contacto" subtitle="Confirmamos que el número o correo es tuyo." />
 
       {described ? (
         <ErrorState
@@ -224,26 +226,41 @@ export default function VerifyContact() {
       {sent && !deliveryFailed ? (
         <>
           {vencido ? (
-            <Card>
-              <AtlasText variant="bodyStrong" tone="danger">
-                El código venció
-              </AtlasText>
-              <AtlasText variant="caption" tone="secondary">
-                Por seguridad los códigos duran poco. Pide otro y te lo enviamos al mismo{' '}
-                {channel === 'email' ? 'correo' : 'número'}.
-              </AtlasText>
+            <Card tone="danger">
+              <CardHeader
+                icon="alerta"
+                iconTone="danger"
+                title="El código venció"
+                detail={`Por seguridad los códigos duran poco. Pide otro y te lo enviamos al mismo ${
+                  channel === 'email' ? 'correo' : 'número'
+                }.`}
+                divider={false}
+              />
             </Card>
           ) : (
-            <Card>
-              <AtlasText variant="bodyStrong">Código enviado</AtlasText>
-              {/*
-                El tiempo que queda, no la hora a la que vence. «Vence a las 11:30» obliga a mirar el
-                reloj y restar; «Vence en 4:07» ya es la respuesta a la unica pregunta que se hace
-                quien esta esperando un codigo: si le da tiempo a ir a buscarlo.
-              */}
-              <AtlasText variant="caption" tone="secondary">
-                Vence en {comoReloj(restante)}.
-              </AtlasText>
+            <Card padding="tight">
+              <View style={styles.enviado}>
+                <IconChip name="reloj" tone="brand" size="sm" />
+                <View style={styles.enviadoTexto}>
+                  <AtlasText variant="title">Código enviado</AtlasText>
+                  {/*
+                    El tiempo que queda, no la hora a la que vence. «Vence a las 11:30» obliga a
+                    mirar el reloj y restar; «Vence en 4:07» ya es la respuesta a la unica pregunta
+                    que se hace quien esta esperando un codigo: si le da tiempo a ir a buscarlo.
+                  */}
+                  <AtlasText variant="caption" tone="secondary">
+                    Vence en la cuenta atrás
+                  </AtlasText>
+                </View>
+                {/*
+                  La cuenta atras en cifras TABULARES: es un numero que cambia cada segundo, y con
+                  cifras proporcionales el bloque se ensancha y se encoge en cada tic. Es el sitio
+                  de la app donde mas se nota, y era el unico que no las llevaba.
+                */}
+                <AtlasText variant="amountSmall" tone={restante < 60 ? 'warning' : 'primary'}>
+                  {comoReloj(restante)}
+                </AtlasText>
+              </View>
             </Card>
           )}
 
@@ -270,3 +287,8 @@ export default function VerifyContact() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  enviado: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  enviadoTexto: { flex: 1, gap: space.xxs },
+});

@@ -14,7 +14,8 @@ import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { IconField, SelectField } from '../../src/ui/form-controls';
 import { OPCIONES_ACTIVIDAD, nombreActividad } from '../../src/features/actividades';
-import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
+import { Gap, Screen, useScrollToError } from '../../src/ui/layout';
+import { StepHeader } from '../../src/ui/step-header';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 import { TRUST_ECONOMIA } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
@@ -119,7 +120,7 @@ export default function FinancialProfile() {
 
   return (
     <Screen scrollRef={scroll} footer={<Button label="Guardar" onPress={save} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
-      <ScreenHeader title="Tu situación económica" subtitle="Con esto calculamos cuánto puedes pagar cómodamente." onBack="auto" />
+      <StepHeader code="financial_profile" title="Tu situación económica" subtitle="Con esto calculamos cuánto puedes pagar cómodamente." />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 

@@ -131,7 +131,7 @@ export function TrustCard({ items, title = 'Por qué te pedimos esto' }: { items
             <Icon name="escudo" size={20} tint={color.action.primary} />
           </View>
           <View style={styles.headText}>
-            <AtlasText variant="bodyStrong">{title}</AtlasText>
+            <AtlasText variant="h3">{title}</AtlasText>
             <AtlasText variant="caption" tone="secondary">
               Y qué hacemos para que esté a salvo.
             </AtlasText>

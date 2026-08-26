@@ -106,19 +106,34 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface.secondary,
     borderTopColor: color.border.subtle,
     borderTopWidth: 1,
-    height: 68,
-    paddingTop: space.sm,
+    height: 72,
+    paddingTop: space.md,
   },
-  // La etiqueta toma la familia del sistema de tipos, no un `fontWeight` suelto. Con `fontWeight`
-  // sobre la fuente por defecto, las cuatro etiquetas de la barra eran lo unico de la app que no se
-  // dibujaba en Manrope: bastaba eso para que la barra se viera prestada de otra aplicacion.
-  label: { ...type.micro, letterSpacing: 0.2, marginTop: 2, textTransform: 'none' },
+  /*
+    La etiqueta toma la familia del sistema de tipos, no un `fontWeight` suelto. Con `fontWeight`
+    sobre la fuente por defecto, las cuatro etiquetas de la barra eran lo unico de la app que no se
+    dibujaba en Manrope: bastaba eso para que la barra se viera prestada de otra aplicacion.
+
+    El interletraje se sube de 0,2 a 0,4: a 11 px, cinco palabras cortas puestas en fila se leen
+    apretadas contra sus vecinas, y es el unico sitio de la app donde cinco textos comparten renglon.
+  */
+  label: { ...type.micro, letterSpacing: 0.4, marginTop: space.xs, textTransform: 'none' },
   icon: { minWidth: touch.minSize / 2, alignItems: 'center', justifyContent: 'center' },
+  /*
+    La pastilla de «Escanear» se TINE y lleva contorno; enfocada se rellena.
+
+    Sin contorno, el estado en reposo era un rectangulo blanco al 10 % que sobre la barra apenas se
+    despega: la accion que define el producto se leia como un icono con una sombra rara detras. El
+    filo la convierte en un objeto, y deja sitio para que el relleno pleno signifique algo cuando la
+    pestana esta activa.
+  */
   iconHighlighted: {
-    width: 42,
-    height: 28,
+    width: 46,
+    height: 30,
     borderRadius: radius.pill,
-    backgroundColor: color.action.disabled,
+    backgroundColor: color.feedbackSoft.success,
+    borderWidth: 1,
+    borderColor: color.feedbackBorder.brand,
   },
-  iconHighlightedActive: { backgroundColor: color.action.primary },
+  iconHighlightedActive: { backgroundColor: color.action.primary, borderColor: color.action.primary },
 });

@@ -16,10 +16,10 @@
  */
 import { Linking, StyleSheet, View } from 'react-native';
 import type { ContentAction, ContentBullet } from '../api/endpoints/app-content';
-import { color, press, radius, space } from '../theme/tokens';
+import { color, press, radius, space, touch } from '../theme/tokens';
 import { Icon, ICON_NAMES, type IconName } from './icons';
 import { PressSurface } from './motion';
-import { AtlasText } from './primitives';
+import { AtlasText, IconChip } from './primitives';
 
 function iconOr(name: string | null | undefined, fallback: IconName): IconName {
   return name && (ICON_NAMES as readonly string[]).includes(name) ? (name as IconName) : fallback;
@@ -38,13 +38,16 @@ export function ContentBullets({ bullets }: { bullets: ContentBullet[] }) {
   return (
     <View style={styles.list}>
       {bullets.map((bullet, index) => {
-        const tint = bullet.emphasis ? color.action.primary : color.feedback.success;
         return (
           <View key={`${index}-${bullet.text.slice(0, 12)}`} style={styles.bullet}>
-            <View style={[styles.bulletIcon, { backgroundColor: `${tint}1F` }]}>
-              <Icon name={iconOr(bullet.icon, 'check')} size={16} tint={tint} />
-            </View>
-            <AtlasText variant={bullet.emphasis ? 'bodyStrong' : 'body'} tone={bullet.emphasis ? 'primary' : 'secondary'} style={styles.flex}>
+            {/*
+              El chip comun del sistema, no un fondo fabricado concatenando la alfa al hexadecimal
+              (`${tint}1F`): eso es un color literal escrito fuera de los tokens, y ese 12 % fijo
+              pesaba distinto segun el color de partida, asi que dos puntos de la misma lista no se
+              veian igual de destacados aunque el codigo dijera que si.
+            */}
+            <IconChip name={iconOr(bullet.icon, 'check')} tone={bullet.emphasis ? 'brand' : 'success'} size="sm" />
+            <AtlasText variant={bullet.emphasis ? 'title' : 'body'} tone={bullet.emphasis ? 'primary' : 'secondary'} style={styles.flex}>
               {bullet.text}
             </AtlasText>
           </View>
@@ -117,16 +120,16 @@ const WHATSAPP_INK = '#128C7E';
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   list: { gap: space.sm },
-  bullet: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
-  bulletIcon: { width: 30, height: 30, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
+  bullet: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   action: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
+    minHeight: touch.minSize,
     paddingVertical: space.md,
     paddingHorizontal: space.lg,
-    borderRadius: radius.lg,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: color.action.primary,
     backgroundColor: color.surface.raised,

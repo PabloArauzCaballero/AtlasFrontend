@@ -27,11 +27,11 @@ import * as notificationsApi from '../../src/api/endpoints/notifications';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { activarAvisos, estadoAvisos, type EstadoAvisos } from '../../src/device/push';
-import { color, radius, space } from '../../src/theme/tokens';
-import { Icon, type IconName } from '../../src/ui/icons';
+import { space, touch } from '../../src/theme/tokens';
+import type { IconName } from '../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Switch } from '../../src/ui/fields';
-import { AtlasText, Badge, Button, Card, Divider, EmptyState, ErrorState, Skeleton } from '../../src/ui/primitives';
+import { AtlasText, Badge, Button, Card, CardHeader, Divider, EmptyState, ErrorState, IconChip, SectionHeader, Skeleton } from '../../src/ui/primitives';
 
 /** El canal, dicho como lo diria la persona. Es lo unico que sigue aqui: son cinco y no cambian. */
 const CHANNEL_LABEL: Record<string, { label: string; icon: IconName }> = {
@@ -160,11 +160,13 @@ export default function PreferenciasAvisos() {
           detail="Aunque los enciendas aquí, tu teléfono no los va a mostrar. Actívalos para Atlas en los ajustes del sistema."
         />
       ) : avisos === 'no-disponible' ? (
-        <Card>
-          <AtlasText variant="bodyStrong">Recibir avisos en este teléfono</AtlasText>
-          <AtlasText variant="caption" tone="secondary">
-            Te avisamos cuando vence una cuota y cuando se aprueba una compra. Nada más.
-          </AtlasText>
+        <Card tone="brand">
+          <CardHeader
+            icon="alerta"
+            title="Recibir avisos en este teléfono"
+            detail="Te avisamos cuando vence una cuota y cuando se aprueba una compra. Nada más."
+            divider={false}
+          />
           <Button label="Activar avisos" variant="secondary" onPress={pedirAvisos} loading={pidiendoAvisos} />
         </Card>
       ) : null}
@@ -173,43 +175,36 @@ export default function PreferenciasAvisos() {
 
       {!ready ? (
         <Card>
-          <Skeleton height={16} width="60%" />
-          <Skeleton height={14} />
-          <Skeleton height={14} width="70%" />
+          <Skeleton height={23} width="60%" />
+          <Skeleton height={1} />
+          <Skeleton height={30} />
+          <Skeleton height={30} />
         </Card>
       ) : null}
 
       {ready && items.length === 0 ? (
         <EmptyState
+          icon="sobre"
           title="No pudimos cargar tus avisos"
           detail="Vuelve a intentarlo en un momento. Mientras tanto seguimos avisándote de todo lo importante."
         />
       ) : null}
 
       {[...byCategory.entries()].map(([category, events]) => (
-        <View key={category}>
-          <AtlasText variant="caption" tone="tertiary">
-            {(CATEGORY_TITLE[category] ?? category).toUpperCase()}
-          </AtlasText>
-          <Gap size="xs" />
+        <View key={category} style={styles.categoria}>
+          <SectionHeader title={CATEGORY_TITLE[category] ?? category} />
 
           {[...events.entries()].map(([eventCode, preferences]) => {
             const head = preferences[0]!;
             const mandatory = preferences.some((preference) => preference.isMandatory);
             return (
               <Card key={eventCode}>
-                <View style={styles.eventHeader}>
-                  <AtlasText variant="h3" style={styles.flex}>
-                    {head.label}
-                  </AtlasText>
-                  {mandatory ? <Badge label="Siempre activo" tone="info" /> : null}
-                </View>
-
-                {head.description ? (
-                  <AtlasText variant="caption" tone="secondary">
-                    {head.description}
-                  </AtlasText>
-                ) : null}
+                <CardHeader
+                  title={head.label}
+                  detail={head.description ?? undefined}
+                  trailing={mandatory ? <Badge label="Siempre activo" tone="info" /> : undefined}
+                  divider={false}
+                />
 
                 {/*
                   El motivo del candado, con el mismo peso visual que un aviso: es lo que convierte
@@ -217,7 +212,7 @@ export default function PreferenciasAvisos() {
                 */}
                 {mandatory ? (
                   <View style={styles.lockRow}>
-                    <Icon name="candado" size={14} tint={color.text.tertiary} />
+                    <IconChip name="candado" tone="neutral" size="sm" />
                     <AtlasText variant="caption" tone="tertiary" style={styles.flex}>
                       {preferences.find((preference) => preference.mandatoryReason)?.mandatoryReason ??
                         'Este aviso no se puede apagar: es el que evita que te enteres tarde de una deuda tuya.'}
@@ -227,25 +222,20 @@ export default function PreferenciasAvisos() {
 
                 <Divider />
 
-                {preferences.map((preference, index) => {
+                {preferences.map((preference) => {
                   const channel = CHANNEL_LABEL[preference.channel] ?? { label: preference.channel, icon: 'sobre' as IconName };
                   return (
-                    <View key={keyOf(preference)}>
-                      {index > 0 ? <Gap size="xs" /> : null}
-                      <View style={styles.channelRow}>
-                        <View style={styles.channelIcon}>
-                          <Icon name={channel.icon} size={16} tint={color.text.secondary} />
-                        </View>
-                        <AtlasText variant="body" tone="secondary" style={styles.flex}>
-                          {channel.label}
-                        </AtlasText>
-                        <Switch
-                          value={preference.isEnabled}
-                          onValueChange={(next) => void toggle(preference, next)}
-                          disabled={preference.isMandatory || saving === keyOf(preference)}
-                          accessibilityLabel={`${channel.label} para ${preference.label}`}
-                        />
-                      </View>
+                    <View key={keyOf(preference)} style={styles.channelRow}>
+                      <IconChip name={channel.icon} tone="neutral" size="sm" />
+                      <AtlasText variant="title" tone="secondary" style={styles.flex}>
+                        {channel.label}
+                      </AtlasText>
+                      <Switch
+                        value={preference.isEnabled}
+                        onValueChange={(next) => void toggle(preference, next)}
+                        disabled={preference.isMandatory || saving === keyOf(preference)}
+                        accessibilityLabel={`${channel.label} para ${preference.label}`}
+                      />
                     </View>
                   );
                 })}
@@ -262,15 +252,11 @@ export default function PreferenciasAvisos() {
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  eventHeader: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  lockRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.xs },
-  channelRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.xxs },
-  channelIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.surface.sunken,
-  },
+  // Las tarjetas de una categoria van juntas y la categoria siguiente se despega: es la proximidad,
+  // y no el titulo, lo que dice donde acaba un grupo.
+  categoria: { gap: space.md },
+  lockRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  // La fila del canal respeta el area tactil minima: el interruptor de la derecha es lo que se toca,
+  // y con `space.xxs` de relleno la fila medía 34 px.
+  channelRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: touch.minSize },
 });

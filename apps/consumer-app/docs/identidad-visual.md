@@ -56,6 +56,59 @@ que no había llegado al producto.
 cargada: o existe el archivo de ese grosor, o el sistema finge la negrita engordando los trazos, y
 ese engorde es exactamente lo que hace que una app se vea barata al lado de su propia web.
 
+### Lo que seguía sin llegar, y por qué la app aún «no se sentía profesional»
+
+Las familias estaban cargadas desde hacía tiempo y aun así la tipografía se leía de plantilla. Eran
+tres cosas concretas, y ninguna era la elección de las fuentes.
+
+**1. El grosor de titular no era el de la marca.** La identidad publicada dibuja todos sus titulares
+con `--display` a `font-weight: 800`; la app se había quedado en `Sora_700Bold`, que en Sora es un
+paso claramente más ligero. Los títulos de las veinte pantallas iban medio peldaño por debajo de los
+de la web. Ahora existe `font.displayBlack` (`Sora_800ExtraBold`) y lo usan `display`, `hero`, `h1`,
+`amountHero` y `amount`.
+
+**2. El interletraje era el mismo número de píxeles en toda la escala.** Es la corrección que más
+cambia la sensación. El interletraje se percibe **en proporción al tamaño**: `-0.5` sobre 26 px es un
+−1,9 %, y sobre 11 px sería un −4,5 %. Escribir el mismo número en todos los tamaños deja los
+titulares SUELTOS —que es exactamente el aspecto de una fuente puesta por defecto— y las versalitas
+apretadas. La escala se calcula ahora desde el porcentaje con el ayudante `track(size, percent)`:
+−4,5 % en los titulares grandes (el mismo de la web), −2,5 % en los de tarjeta, +14 % en las
+versalitas.
+
+**3. Los títulos de sección iban en la fuente del cuerpo.** `h3` es el estilo más usado de la app
+después del cuerpo —titula casi todas las tarjetas— y era **Manrope Bold a 17 px**: la fuente del
+párrafo un punto más grande y en negrita. Un título que solo se distingue de su texto por el grosor
+no crea jerarquía, crea texto en negrita. Ahora `h3` es Sora, y lo que antes hacía en una fila de
+lista —nombrar una fila, no encabezar una sección— tiene su propio estilo, `title`, que sigue en
+Manrope porque una fila no encabeza nada.
+
+### Y lo que se dibujaba con la fuente del sistema
+
+`ui/fields.tsx` declaraba en el `TextInput` el **tamaño** pero no la **familia**. Es decir: la
+etiqueta de encima y la ayuda de debajo iban en Manrope, y lo que la persona escribía se dibujaba con
+la fuente del sistema. En el alta hay más de treinta campos: era, con diferencia, el sitio donde más
+texto de la app se pintaba con una tipografía que no es la de la marca — y justo el texto que se mira
+mientras se teclea.
+
+En la misma línea, la marca de verificación de `CheckRow` era el carácter «✓», que Manrope no trae:
+lo dibujaba la fuente del sistema con un trazo y unos remates que no eran los de ningún otro símbolo
+de la app, y además cambiaba de forma entre iOS y Android. Ahora es el icono `check` del set.
+
+### Las versalitas las pone el componente, no el contenido
+
+Había `«FINANCIADO»`, `«POR PAGAR»`, `«CON QUÉ SE CALCULÓ»` y `.toUpperCase()` repartidos por seis
+pantallas. Escribir mayúsculas en el contenido tiene tres costes que no se ven en una captura: el
+lector de pantalla las deletrea, la traducción hereda unas mayúsculas que en otro idioma pueden no
+corresponder, y el interletraje se queda sin corregir —que es lo que hace que una versalita se lea
+apretada y sucia—. El componente `Overline` aplica `textTransform` y el token `type.overline` pone el
++14 %. Se comprueba:
+
+```bash
+grep -rn "toUpperCase()" src app --include=*.tsx
+```
+
+Solo puede quedar el de `Avatar`, que saca iniciales de un nombre propio.
+
 ### Cifras tabulares
 
 `amount` y `amountSmall` llevan `fontVariant: ['tabular-nums']`. Con cifras proporcionales el «1»
@@ -139,6 +192,55 @@ gritan igual el que pierde es el que tenía que mandar.
 `AmountField` usaba `fontWeight: '700'`, justo lo que §2 de este documento prohíbe. Era la única
 cifra de la app dibujada con el engorde del sistema en vez de con la familia real, y encima perdía
 las cifras tabulares. Es el número más importante de la app.
+
+---
+
+## 4 bis. Las piezas que faltaban, y por qué las pantallas se veían «básicas»
+
+Los tokens estaban bien y los primitivos también. Lo que no existía era el **escalón intermedio**:
+las piezas que se repiten en veinte pantallas y que, al no existir, cada pantalla se inventaba en su
+propia hoja de estilos. El resultado era que dos pantallas de la misma app no empezaban a la misma
+altura, y que la jerarquía tenía dos niveles —tarjeta y no tarjeta— para contenido que tiene cuatro.
+
+| Pieza | Qué recoge | Qué pasaba sin ella |
+|---|---|---|
+| `Overline` | La etiqueta en versalitas que dice de qué es el bloque | Mayúsculas escritas en el contenido, con seis interletrajes distintos |
+| `CardHeader` | Chip + título + apunte + una cosa a la derecha + línea | Una fila `space-between` escrita a mano en casi todas las tarjetas |
+| `SectionHeader` | El título que va ENTRE tarjetas | Un `h3` suelto, idéntico al título de la tarjeta de debajo: dos niveles dibujados igual |
+| `IconChip` | El cuadrado redondeado del icono | Copiado en cinco pantallas con cinco medidas y dos radios |
+| `Stat` / `StatRow` | Una cifra con su etiqueta encima, y varias con filo entre ellas | Etiqueta grande y dato pequeño, es decir, la jerarquía al revés |
+| `KeyValue` | Etiqueta izquierda / valor derecha | Un `Breakdown` local en una pantalla y filas `space-between` en otras cuatro |
+| `Chip` / `ChipBar` | Los filtros | Rellenos de menta plena (competían con el botón principal) y 27 px de alto |
+| `Accordion` | Una pregunta que se abre | Seis respuestas completas apiladas: un documento, no un índice |
+| `Avatar` | Las iniciales de quien usa la app | Perfil no decía por ningún sitio que hablaba de una persona |
+| `HeaderAction` | La acción en icono de una cabecera | Un cuadrado de 40 px sin contorno, copiado en cuatro pantallas |
+| `StepHeader` | «Paso N de 6» + barra, en el alta | Seis pantallas de formulario sin decir en cuál estabas ni cuántas faltaban |
+| `CameraFrame` | La mira de cuatro esquinas | Un marco cerrado en el escáner y nada en la captura del carnet |
+
+Además, `Card` acepta ahora `tone` —el aviso de mora se ve igual en Inicio que en Pagos, que antes no
+pasaba: cada pantalla elegía su propia opacidad de borde— y `padding`, para que una tarjeta que solo
+contiene filas no las separe con el aire de una tarjeta de contenido. `Divider` acepta `inset`, que
+es la convención de ambos sistemas y dice algo cierto: una línea que empieza donde empieza el texto
+separa dos filas de la misma lista; una que va de borde a borde separa dos bloques.
+
+### Tres cosas que no eran de estilo
+
+- **El escáner enseñaba los botones de demostración en producción.** La tarjeta «Códigos de prueba»
+  se pintaba siempre, con un rótulo que decía —encima— que solo están disponibles en sandbox. Ahora
+  está tras la misma condición (`isSandboxPurchase`) que ya gobierna que esos tokens se acepten.
+- **Los filtros de Pagos medían 27 px de alto**, muy por debajo del mínimo de 48 que la propia app
+  declara en `touch.minSize`. Se paga con `hitSlop` y no con relleno, para que la fila de filtros no
+  crezca hasta parecer una barra de pestañas. Lo mismo en las filas de canal de las preferencias.
+- **Dos pantallas fabricaban colores concatenando la alfa al hexadecimal** (`look.tint + '22'`,
+  `${tint}1F`). Además de ser un literal fuera de los tokens, ese porcentaje fijo pesa distinto según
+  el color de partida: el chip rojo y el ámbar no destacaban igual aunque el código dijera que sí.
+
+### El ancho máximo
+
+`Screen` limita el contenido a 560 px y lo centra. En una tableta o un plegable abierto, una pantalla
+pensada para 390 px se estiraba hasta 1.000 y cada tarjeta se convertía en una franja con dos
+palabras en el centro; además la línea de texto pasaba de las ~70 letras que se leen cómodas a más
+del doble, y el ojo pierde el renglón al volver.
 
 ---
 
@@ -324,9 +426,12 @@ el número de página, y solo cuando cambia.
 
 ## 7. Qué NO se hizo, a propósito
 
-- **No se movió la jerarquía de ninguna pantalla.** Los cambios de §4 son de superficie, tipografía
-  y profundidad: viven en los tokens y en los primitivos, así que llegan a las veinte pantallas sin
-  reordenar ninguna. Ninguna pantalla cambió de contenido ni de orden de lectura.
+- **No se movió el ORDEN DE LECTURA de ninguna pantalla.** Los cambios de §4 y §4 bis son de
+  superficie, tipografía, jerarquía y profundidad. Ninguna pantalla cambió lo que dice ni en qué
+  orden lo dice: lo que cambió es con qué peso se dibuja cada nivel. Las dos excepciones son
+  deliberadas y están explicadas donde ocurren — la ayuda pasó de seis respuestas apiladas a un
+  índice plegable, y la bandeja de avisos se agrupó por tramo de tiempo. En las dos, la información
+  es exactamente la misma.
 - **No se animó nada que no responda a una acción o a un cambio de estado.** No hay entradas
   decorativas, ni contadores que se animen solos, ni la cifra de la línea de crédito subiendo cada
   vez que se abre el inicio: animar un número que ya estaba ahí lo vuelve ilegible durante el primer

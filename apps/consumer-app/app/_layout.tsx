@@ -5,8 +5,14 @@
  * parpadea entre la pantalla de bienvenida y el area autenticada cada vez que se abre con sesion
  * valida, que es el primer detalle por el que un producto se siente barato.
  */
-import { Manrope_400Regular, Manrope_500Medium, Manrope_600SemiBold, Manrope_700Bold } from '@expo-google-fonts/manrope';
-import { Sora_600SemiBold, Sora_700Bold } from '@expo-google-fonts/sora';
+import {
+  Manrope_400Regular,
+  Manrope_500Medium,
+  Manrope_600SemiBold,
+  Manrope_700Bold,
+  Manrope_800ExtraBold,
+} from '@expo-google-fonts/manrope';
+import { Sora_600SemiBold, Sora_700Bold, Sora_800ExtraBold } from '@expo-google-fonts/sora';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -88,10 +94,15 @@ export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Sora_600SemiBold,
     Sora_700Bold,
+    // El grosor de titular de la marca: la web dibuja sus titulares a 800 y la app se habia
+    // quedado en 700. Ver `theme/tokens.ts`.
+    Sora_800ExtraBold,
     Manrope_400Regular,
     Manrope_500Medium,
     Manrope_600SemiBold,
     Manrope_700Bold,
+    // Solo para las versalitas de `type.overline`: a 11 px el 700 no se separa del cuerpo.
+    Manrope_800ExtraBold,
   });
 
   useEffect(() => {

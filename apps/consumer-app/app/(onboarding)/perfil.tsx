@@ -12,7 +12,8 @@ import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { CheckRow } from '../../src/ui/fields';
 import { IconField, SelectField } from '../../src/ui/form-controls';
-import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
+import { Gap, Screen, useScrollToError } from '../../src/ui/layout';
+import { StepHeader } from '../../src/ui/step-header';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 
 type Gender = 'female' | 'male' | 'other' | 'undisclosed';
@@ -69,7 +70,7 @@ export default function PersonalData() {
 
   return (
     <Screen scrollRef={scroll} footer={<Button label="Guardar" onPress={save} loading={busy} disabled={busy} />}>
-      <ScreenHeader title="Tus datos" subtitle="Así te identificamos en tu expediente." onBack="auto" />
+      <StepHeader code="personal_data" title="Tus datos" subtitle="Así te identificamos en tu expediente." />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
