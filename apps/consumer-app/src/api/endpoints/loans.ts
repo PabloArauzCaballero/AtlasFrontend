@@ -36,6 +36,9 @@ export type LoanSummary = {
 };
 
 export type LoanInstallment = {
+  /** El identificador de la cuota. Es lo que hace falta para avisar de un pago: el numero de orden
+   *  se repite entre creditos y no nombra nada por si solo. */
+  installmentId: string;
   installmentNumber: number;
   dueDate: string;
   principalAmount: string;
