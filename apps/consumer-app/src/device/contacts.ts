@@ -23,23 +23,28 @@
  * viaje a los ajustes del sistema. Pedido en el momento en que se entiende el motivo, la respuesta
  * es otra.
  */
-import { Contact, requestPermissionsAsync } from 'expo-contacts';
+import { Contact, Fields, getContactsAsync, requestPermissionsAsync } from 'expo-contacts';
 import { Platform } from 'react-native';
+import {
+  agendaNoCompartida,
+  contarAgenda,
+  normalizarTelefono,
+  VERSION_ALGORITMO,
+  type ResumenDeAgenda,
+} from '../features/agenda';
+import { hashSensitiveText } from './device';
 
 export type ContactoElegido = { nombre: string | null; telefono: string | null };
 
-/** Solo digitos: la agenda guarda «+591 7 650-0122» y el formulario espera el numero nacional. */
-function soloDigitos(valor: string | undefined): string | null {
-  if (!valor) return null;
-  const digitos = valor.replace(/\D/g, '');
-  if (digitos.length < 7) return null;
-  /*
-    Se quita el prefijo del pais si viene incluido: el campo de telefono de la app guarda solo los
-    digitos nacionales —el prefijo vive en su propio selector— y pegarle un `591` delante produce un
-    numero de once cifras que el backend rechaza sin explicar por que.
-  */
-  return digitos.startsWith('591') && digitos.length > 8 ? digitos.slice(3) : digitos;
-}
+/**
+ * Solo digitos: la agenda guarda «+591 7 650-0122» y el formulario espera el numero nacional.
+ *
+ * Delega en `features/agenda.ts` para que la normalizacion sea UNA en toda la app. Tuvo dos copias
+ * —esta y la del resumen de agenda— y basta con que se separen para que el hash de una referencia
+ * deje de cruzar con el de su propio contacto: el cruce no encuentra nada, la señal queda en cero y
+ * nada lo delata.
+ */
+const soloDigitos = normalizarTelefono;
 
 /**
  * Abre el selector del sistema y devuelve el contacto elegido.
@@ -82,3 +87,117 @@ export async function elegirContacto(): Promise<ContactoElegido | null> {
 
 /** Si esta plataforma ofrece el selector. Hoy las dos, pero la pantalla no tiene por que saberlo. */
 export const HAY_SELECTOR_DE_CONTACTOS = Platform.OS === 'ios' || Platform.OS === 'android';
+
+/* ------------------------------------------------------------------ agenda */
+
+/**
+ * El RESUMEN de la agenda, calculado aqui y no en el servidor.
+ *
+ * ## Por que existe, si arriba se dice que la app no recorre la agenda
+ *
+ * Porque son dos cosas distintas y solo una de ellas se manda. `elegirContacto` lee UNA ficha para
+ * rellenar dos campos. Esto recorre la agenda entera y **no manda ni un solo contacto**: manda
+ * cuentas y proporciones. La agenda no sale del telefono; sale su forma.
+ *
+ * La diferencia importa porque las personas de tu agenda no consintieron nada, no son clientes
+ * nuestros y muchas ni saben que existimos. Copiar sus nombres y telefonos «para analizar el
+ * riesgo» es recoger datos de cientos de terceros para decidir sobre uno. Contar cuantos hay no lo
+ * es.
+ *
+ * ## Que se calcula aqui y por que no puede calcularlo el servidor
+ *
+ * `referencesFoundInAddressBook` — cuantas de las referencias que la persona declaro estan
+ * realmente en su agenda. Es la señal que mas informa de todas: quien declara como referencia a
+ * alguien cuyo telefono no tiene guardado esta declarando a alguien con quien no habla. Calcularla
+ * en el servidor exigiria mandarle los telefonos de la agenda. Aqui es una comparacion local y lo
+ * que viaja es un numero entre cero y dos.
+ *
+ * ## Los hashes, que son la unica excepcion
+ *
+ * Hay una señal que el telefono no puede calcular solo: si en la agenda hay numeros que el sistema
+ * ya conoce por otros expedientes. Eso exige cruzar contra datos del servidor, asi que se mandan
+ * SHA-256 de cada numero normalizado. El servidor los cruza, se queda con la CUENTA y los descarta
+ * —no los persiste, no los registra—. Un hash de telefono es reversible por fuerza bruta, y por eso
+ * ese descarte no es una optimizacion sino el control que hace defendible pedirlos.
+ *
+ * ## Donde vive el CRITERIO
+ *
+ * En `features/agenda.ts`, que es puro y tiene pruebas. Aqui queda solo lo que habla con el
+ * telefono: pedir el permiso, recorrer las fichas y calcular los hashes. Es el mismo reparto que
+ * `device/` y `features/` mantienen en el resto de la app, y aqui ademas es lo unico que permite
+ * probar la normalizacion sin doblar cinco modulos nativos.
+ */
+export type { ResumenDeAgenda } from '../features/agenda';
+
+/**
+ * Recorre la agenda y devuelve su forma. Nunca devuelve un contacto.
+ *
+ * `telefonosDeReferencias` son los numeros que la persona acaba de declarar en el formulario, tal
+ * como los escribio: se normalizan con la MISMA funcion que los de la agenda para que la
+ * comparacion signifique algo.
+ *
+ * Si la persona dice que no, devuelve el vacio explicito y **eso tambien se manda**: negarse es una
+ * respuesta legitima, y registrarla es lo que permite distinguirla de una version de la app que ni
+ * lo preguntaba.
+ */
+export async function resumirAgenda(
+  telefonosDeReferencias: readonly string[],
+): Promise<ResumenDeAgenda> {
+  const declaradas = telefonosDeReferencias.filter(
+    (valor) => normalizarTelefono(valor) !== null,
+  ).length;
+  const ahora = new Date().toISOString();
+
+  try {
+    const permiso = await requestPermissionsAsync();
+    if (!permiso.granted) return agendaNoCompartida(declaradas, ahora);
+
+    /*
+      Solo el campo de TELEFONOS. `expo-contacts` permite pedir la ficha entera —nombre, correo,
+      direccion, fecha de nacimiento, notas— y no se pide nada de eso: lo que no se lee no se puede
+      filtrar mal, no ocupa memoria y no aparece en un volcado si la app se cae.
+    */
+    const { data } = await getContactsAsync({ fields: [Fields.PhoneNumbers] });
+
+    const porContacto = data.map((contacto) =>
+      (contacto.phoneNumbers ?? [])
+        .map((entrada) => normalizarTelefono(entrada.number))
+        .filter((numero): numero is string => numero !== null),
+    );
+    const { contactsWithPhone, uniques, bolivianPhoneCount } = contarAgenda(porContacto);
+
+    /*
+      Los hashes se calculan con la MISMA convencion que el servidor usa para guardar un telefono
+      (`hashSensitiveText` = sha256 sobre el valor recortado y en minusculas). Si divergieran, el
+      cruce no encontraria nunca nada y la señal quedaria muerta sin que nada lo delatara.
+    */
+    const hashes = await Promise.all(uniques.map((numero) => hashSensitiveText(numero)));
+    const hashesDeclarados = await Promise.all(
+      telefonosDeReferencias
+        .map((valor) => normalizarTelefono(valor))
+        .filter((numero): numero is string => numero !== null)
+        .map((numero) => hashSensitiveText(numero)),
+    );
+    const enAgenda = new Set(hashes);
+
+    return {
+      permiso: true,
+      algorithmVersion: VERSION_ALGORITMO,
+      computedAt: ahora,
+      totalContacts: data.length,
+      contactsWithPhone,
+      uniquePhoneCount: uniques.length,
+      bolivianPhoneCount,
+      referencesFoundInAddressBook: hashesDeclarados.filter((hash) => enAgenda.has(hash)).length,
+      referencesDeclared: declaradas,
+      phoneHashes: hashes,
+    };
+  } catch {
+    /*
+      Un fallo del modulo no puede tumbar el alta. Se devuelve el vacio explicito, que el servidor
+      registra como «no disponible» y el artefacto pondera como menos evidencia — nunca como
+      evidencia en contra de la persona.
+    */
+    return agendaNoCompartida(declaradas, ahora);
+  }
+}

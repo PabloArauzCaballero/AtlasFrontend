@@ -12,12 +12,14 @@ import { View, type ScrollView } from 'react-native';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
-import { elegirContacto } from '../../src/device/contacts';
+import { elegirContacto, resumirAgenda } from '../../src/device/contacts';
+import { agendaNoCompartida } from '../../src/features/agenda';
 import { firstBlocker } from '../../src/ui/blocked';
 import { CheckRow } from '../../src/ui/fields';
 import { IconField, SelectField } from '../../src/ui/form-controls';
-import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
-import { AtlasText, Button, Card, Divider, ErrorState } from '../../src/ui/primitives';
+import { Screen, useScrollToError } from '../../src/ui/layout';
+import { StepHeader } from '../../src/ui/step-header';
+import { Badge, Button, Card, CardHeader, ErrorState } from '../../src/ui/primitives';
 import { TRUST_REFERENCIAS } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
 
@@ -36,6 +38,14 @@ export default function References() {
   const [drafts, setDrafts] = useState<Draft[]>([emptyDraft(), emptyDraft()]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  /**
+   * Si la persona autoriza analizar la FORMA de su agenda.
+   *
+   * Empieza en `false` y hay que marcarlo: es una casilla de aceptacion, no una de renuncia. Un
+   * valor por defecto en `true` seria consentimiento por descuido, que para datos de terceros —las
+   * personas de la agenda no consintieron nada— no es consentimiento.
+   */
+  const [analizarAgenda, setAnalizarAgenda] = useState(false);
 
   const update = (index: number, patch: Partial<Draft>) =>
     setDrafts((current) => current.map((draft, position) => (position === index ? { ...draft, ...patch } : draft)));
@@ -72,6 +82,37 @@ export default function References() {
           consentBasis: draft.informed ? 'reference_informed' : 'customer_declared',
         })),
       );
+      /*
+        El snapshot de la agenda va DESPUES de guardar las referencias, y no antes.
+
+        El numero que mas informa —cuantas de las referencias declaradas estan realmente en la
+        agenda— solo se puede calcular cuando ya se declararon. Y va despues tambien en el sentido
+        de que su fallo no puede costar el paso: las referencias ya estan guardadas, asi que si el
+        modulo de contactos falla o la persona cancela el dialogo del sistema, el alta sigue.
+      */
+      const telefonos = drafts.filter(isComplete).map((draft) => draft.phone.trim());
+      const resumen = analizarAgenda
+        ? await resumirAgenda(telefonos)
+        : agendaNoCompartida(telefonos.length, new Date().toISOString());
+      try {
+        await onboardingApi.submitContactsSnapshot(session.customerId, {
+          granted: resumen.permiso,
+          algorithmVersion: resumen.algorithmVersion,
+          computedAt: resumen.computedAt,
+          totalContacts: resumen.totalContacts,
+          contactsWithPhone: resumen.contactsWithPhone,
+          uniquePhoneCount: resumen.uniquePhoneCount,
+          bolivianPhoneCount: resumen.bolivianPhoneCount,
+          referencesFoundInAddressBook: resumen.referencesFoundInAddressBook,
+          referencesDeclared: resumen.referencesDeclared,
+          ...(resumen.phoneHashes.length > 0 ? { phoneHashes: resumen.phoneHashes } : {}),
+        });
+      } catch {
+        // Silencio deliberado: es una señal adicional, no el resultado del paso. Perder el avance
+        // del alta porque no se pudo mandar un agregado seria cobrarle a la persona un problema
+        // nuestro.
+      }
+
       await session.refresh();
       router.replace('/(onboarding)/progreso');
     } catch (caught) {
@@ -91,14 +132,29 @@ export default function References() {
 
   return (
     <Screen scrollRef={scroll} footer={<Button label="Guardar referencias" onPress={save} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
-      <ScreenHeader title="Tus referencias" subtitle={`Necesitamos ${REQUIRED_REFERENCES} personas que puedan dar referencia de ti.`} onBack="auto" />
+      <StepHeader
+        code="reference_contacts"
+        title="Tus referencias"
+        subtitle={`Necesitamos ${REQUIRED_REFERENCES} personas que puedan dar referencia de ti.`}
+      />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
       {drafts.map((draft, index) => (
-        <Card key={index}>
-          <AtlasText variant="h3">Referencia {index + 1}</AtlasText>
-          <Divider />
+        <Card key={index} tone={draft.fullName && draft.phone ? 'success' : 'default'}>
+          <CardHeader
+            icon="perfil"
+            iconTone={draft.fullName && draft.phone ? 'success' : 'neutral'}
+            eyebrow={`Referencia ${index + 1} de ${Math.max(REQUIRED_REFERENCES, drafts.length)}`}
+            title={draft.fullName || 'Sin completar'}
+            trailing={
+              <Badge
+                dot
+                label={draft.fullName && draft.phone ? 'lista' : 'pendiente'}
+                tone={draft.fullName && draft.phone ? 'success' : 'warning'}
+              />
+            }
+          />
 
           <SelectField<Relationship>
             label="Qué relación tienen"
@@ -164,6 +220,28 @@ export default function References() {
       <View>
         <Button label="Agregar otra referencia" variant="ghost" onPress={() => setDrafts([...drafts, emptyDraft()])} />
       </View>
+
+      {/*
+        La autorizacion para mirar la FORMA de la agenda, con lo que se manda escrito al lado.
+
+        Va aqui, al final y despues de las fichas, porque hasta este punto la persona no sabe de que
+        agenda hablamos. Y esta redactada diciendo lo que NO viaja —ni nombres ni telefonos— porque
+        es la unica parte que a alguien le importa de verdad, y porque es cierta: lo que sale del
+        telefono son cuentas (`device/contacts.ts`).
+      */}
+      <Card>
+        <CardHeader
+          icon="perfil"
+          title="Ayudanos a confirmar que eres tu"
+          detail="Si nos autorizas, la app cuenta cuantos contactos tienes y si tus referencias estan entre ellos. No enviamos nombres ni telefonos de tu agenda: solo esos numeros."
+        />
+        <CheckRow
+          label="Permitir analizar mi agenda"
+          detail="Puedes continuar sin autorizarlo."
+          checked={analizarAgenda}
+          onToggle={setAnalizarAgenda}
+        />
+      </Card>
       {/* Al final del formulario: ver `ui/trust-card.tsx`. */}
       <TrustCard items={TRUST_REFERENCIAS} />
     </Screen>

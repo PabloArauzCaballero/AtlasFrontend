@@ -11,7 +11,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
-import { Image, StyleSheet, View, type ScrollView } from 'react-native';
+import { StyleSheet, type ScrollView } from 'react-native';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import * as identityEngine from '../../src/api/endpoints/identity-engine';
 import { describeError } from '../../src/api/errors';
@@ -19,12 +19,14 @@ import { CARNET_DE_PRUEBA, capturaSimulada, estaDisponible as hayCamaraDePrueba 
 import { hashSensitiveText } from '../../src/device/device';
 import { leerBase64, uploadEvidence, type EvidenceKind, type PreparedEvidence } from '../../src/features/evidence-upload';
 import { useSession } from '../../src/session/session';
-import { color, radius, space } from '../../src/theme/tokens';
 import { firstBlocker } from '../../src/ui/blocked';
 import { DateField, IconField, SelectField } from '../../src/ui/form-controls';
 import { DEPARTAMENTOS } from '../../src/features/geografia';
 import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, ErrorState } from '../../src/ui/primitives';
+import { AtlasText, Badge, Button, Card, CardHeader, ErrorState } from '../../src/ui/primitives';
+import { CameraFrame } from '../../src/ui/camera-frame';
+import { ImageSlides, type ImageSlide } from '../../src/ui/image-slides';
+import { StepHeader } from '../../src/ui/step-header';
 import { TRUST_IDENTIDAD } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
 
@@ -63,8 +65,6 @@ export default function Identity() {
   const [issuedIn, setIssuedIn] = useState('Santa Cruz');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  /** El veredicto del motor, cuando lo hay. `null` mientras no se ha preguntado. */
-  const [veredicto, setVeredicto] = useState<identityEngine.IdentityVerificationView | null>(null);
 
   const activeStep = STEPS.find((step) => step.kind === capturing) ?? null;
   const allCaptured = STEPS.every((step) => evidence[step.kind]);
@@ -146,34 +146,39 @@ export default function Identity() {
     todo a quien menos culpa tiene. Si el motor no esta disponible, el documento sigue su camino
     normal —revision humana—, que es exactamente lo que ocurria antes de que esta pieza existiera.
 
-    ## Por que se pregunta en bucle y con un limite
+    ## Por que aqui ya NO se espera al veredicto
 
-    El motor contesta `202` y resuelve por su cuenta; leer el estado una sola vez devolveria
-    `PENDING` siempre. Se pregunta cada segundo hasta ocho veces: mas que eso ya no es una espera,
-    es una pantalla colgada, y el veredicto seguira estando ahi cuando vuelva.
+    Se esperaba: se preguntaba en bucle hasta ocho veces y el resultado se pintaba en una tarjeta al
+    pie de este formulario. Tenia dos defectos y el segundo es el grave.
+
+    El primero es que ocho segundos de espera con el boton bloqueado es una pantalla colgada para el
+    caso mayoritario, que se resuelve en dos.
+
+    El segundo es que un caso derivado a revision humana tarda HORAS, asi que la tarjeta se quedaba
+    en «lo esta revisando una persona» y esa frase moria con la pantalla: quien cerraba la app no
+    tenia forma de volver a preguntarlo. El estado de un tramite que dura horas necesita una
+    direccion propia, y ahora la tiene (`verificacion.tsx`).
+
+    Aqui solo se ARRANCA y se devuelve el identificador. Quien espera es la pantalla siguiente, que
+    ademas puede volver a consultarse mañana.
   */
-  const preguntarAlMotor = async (customerId: string) => {
+  const arrancarVerificacion = async (customerId: string): Promise<string | null> => {
     try {
       const [frente, reverso, selfie] = await Promise.all([
         leerBase64(evidence.identity_front!.localUri),
         leerBase64(evidence.identity_back!.localUri),
         leerBase64(evidence.selfie!.localUri),
       ]);
-      let vista = await identityEngine.startIdentityVerification({
+      const vista = await identityEngine.startIdentityVerification({
         documentFront: frente,
         documentBack: reverso,
         selfie,
         customerId,
       });
-      for (let intento = 0; intento < 8 && !identityEngine.esFinal(vista.status); intento += 1) {
-        await new Promise((listo) => setTimeout(listo, 1000));
-        vista = await identityEngine.getIdentityVerification(vista.verificationId);
-      }
-      setVeredicto(vista);
-      return vista;
+      return vista.verificationId;
     } catch {
-      // Silencio deliberado: el veredicto es informacion adicional, no el resultado del paso.
-      setVeredicto(null);
+      // Silencio deliberado: el veredicto es informacion adicional, no el resultado del paso. Sin
+      // motor, el documento sigue su camino normal y el registro continua.
       return null;
     }
   };
@@ -208,19 +213,20 @@ export default function Identity() {
 
       // El expediente ya esta guardado: ahora la pregunta. En este orden porque el registro no
       // puede depender de que el motor conteste.
-      const vista = await preguntarAlMotor(session.customerId);
+      const verificationId = await arrancarVerificacion(session.customerId);
       await session.refresh();
 
       /*
-        Con un rechazo NO se sale de la pantalla.
+        Se sale SIEMPRE de esta pantalla, y a donde se sale depende de si hay caso que seguir.
 
-        Es el unico veredicto que la persona tiene que leer aqui: si se la devuelve al indice del
-        registro, se encuentra el paso en rojo sin saber por que y sin las fotos delante para
-        entenderlo. Verificado y «lo mira una persona» si continuan, porque en los dos casos lo
-        siguiente es seguir con el registro.
+        Con caso, a la pantalla de estado: es donde se espera el veredicto y donde estan las dos
+        salidas del rechazo —reintentar y pedir ayuda—. Sin caso —el motor no contesto— al indice del
+        registro, porque no hay nada que consultar y dejar a alguien mirando una pantalla de estado
+        vacia seria peor que no enseñarsela.
       */
-      if (vista?.status === 'REJECTED') return;
-      router.replace('/(onboarding)/progreso');
+      router.replace(
+        verificationId ? `/(onboarding)/verificacion?id=${encodeURIComponent(verificationId)}` : '/(onboarding)/progreso',
+      );
     } catch (caught) {
       setError(caught);
     } finally {
@@ -277,49 +283,43 @@ export default function Identity() {
         }
       >
         <ScreenHeader title={activeStep.title} subtitle={activeStep.hint} onBack={() => setCapturing(null)} />
-        <View style={styles.cameraFrame}>
+        {/* La misma mira de cuatro esquinas que el escaner de QR: dos superficies de captura que no
+            se parecen se leen como dos apps distintas. Ver `ui/camera-frame.tsx`. */}
+        <CameraFrame>
           <CameraView ref={cameraRef} style={styles.camera} facing={activeStep.facing} />
-        </View>
+        </CameraFrame>
         {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
-      {/*
-        El veredicto del motor, en palabras de la persona y no del sistema.
-
-        `VERIFIED` / `REJECTED` / `IN_REVIEW` son estados del tramite; lo que hay que decir es si
-        puede seguir, si la miran, o si hay que repetir las fotos. `UNAVAILABLE` **no es un
-        rechazo** y no puede leerse como uno: significa que no se pudo preguntar, y el documento
-        sigue su camino normal.
-      */}
-      {veredicto ? (
-        <Card>
-          <AtlasText
-            variant="bodyStrong"
-            tone={veredicto.status === 'VERIFIED' ? 'success' : veredicto.status === 'REJECTED' ? 'danger' : 'primary'}
-          >
-            {veredicto.status === 'VERIFIED'
-              ? 'Identidad verificada'
-              : veredicto.status === 'REJECTED'
-                ? 'No pudimos validar tu documento'
-                : veredicto.status === 'IN_REVIEW'
-                  ? 'Lo está revisando una persona'
-                  : 'No pudimos verificarlo automáticamente'}
-          </AtlasText>
-          <AtlasText variant="caption" tone="secondary">
-            {veredicto.status === 'VERIFIED'
-              ? 'Confirmamos que el documento es tuyo. Puedes continuar.'
-              : veredicto.status === 'REJECTED'
-                ? 'Vuelve a tomar las fotos con buena luz, sin reflejos y con el carnet completo dentro del recuadro.'
-                : veredicto.status === 'IN_REVIEW'
-                  ? 'Sigue con el registro: te avisamos en cuanto termine la revisión.'
-                  : 'Tu documento quedó guardado y lo revisará una persona. No tienes que hacer nada más.'}
-          </AtlasText>
-        </Card>
-      ) : null}
       </Screen>
     );
   }
 
   /* ------------------------------------------------------------- formulario */
+
+  /*
+    Las slides se derivan de los pasos y de lo capturado; no hay estado propio del carrusel.
+
+    Es lo que garantiza que «repetir» y «tomar foto» sean el MISMO camino: los dos abren la camara
+    en ese paso. Un carrusel con su propia lista se habria desincronizado en cuanto una captura
+    fallara a medias.
+  */
+  const capturadas = STEPS.filter((step) => evidence[step.kind]).length;
+  const slides: ImageSlide[] = STEPS.map((step) => {
+    const captured = evidence[step.kind];
+    return {
+      key: step.kind,
+      title: step.title,
+      hint: step.hint,
+      uri: captured?.localUri ?? null,
+      meta: captured
+        ? `${(captured.sizeBytes / 1024).toFixed(0)} KB · SHA-256 ${captured.sha256Hash.slice(0, 12)}…`
+        : null,
+      done: Boolean(captured),
+      onPress: () => setCapturing(step.kind),
+      actionLabel: captured ? 'Repetir' : 'Tomar foto',
+    };
+  });
+
 
   return (
     <Screen
@@ -334,43 +334,10 @@ export default function Identity() {
         />
       }
     >
-      <ScreenHeader title="Tu documento" subtitle="Carnet de identidad vigente." onBack="auto" />
+      <StepHeader code="identity_documents" title="Tu documento" subtitle="Carnet de identidad vigente." />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
-      {/*
-        El veredicto del motor, en palabras de la persona y no del sistema.
-
-        `VERIFIED` / `REJECTED` / `IN_REVIEW` son estados del tramite; lo que hay que decir es si
-        puede seguir, si la miran, o si hay que repetir las fotos. `UNAVAILABLE` **no es un
-        rechazo** y no puede leerse como uno: significa que no se pudo preguntar, y el documento
-        sigue su camino normal.
-      */}
-      {veredicto ? (
-        <Card>
-          <AtlasText
-            variant="bodyStrong"
-            tone={veredicto.status === 'VERIFIED' ? 'success' : veredicto.status === 'REJECTED' ? 'danger' : 'primary'}
-          >
-            {veredicto.status === 'VERIFIED'
-              ? 'Identidad verificada'
-              : veredicto.status === 'REJECTED'
-                ? 'No pudimos validar tu documento'
-                : veredicto.status === 'IN_REVIEW'
-                  ? 'Lo está revisando una persona'
-                  : 'No pudimos verificarlo automáticamente'}
-          </AtlasText>
-          <AtlasText variant="caption" tone="secondary">
-            {veredicto.status === 'VERIFIED'
-              ? 'Confirmamos que el documento es tuyo. Puedes continuar.'
-              : veredicto.status === 'REJECTED'
-                ? 'Vuelve a tomar las fotos con buena luz, sin reflejos y con el carnet completo dentro del recuadro.'
-                : veredicto.status === 'IN_REVIEW'
-                  ? 'Sigue con el registro: te avisamos en cuanto termine la revisión.'
-                  : 'Tu documento quedó guardado y lo revisará una persona. No tienes que hacer nada más.'}
-          </AtlasText>
-        </Card>
-      ) : null}
 
       {/*
         Atajo de desarrollo, con su etiqueta puesta.
@@ -382,53 +349,35 @@ export default function Identity() {
       */}
       {hayCamaraDePrueba() ? (
         <Card>
-          <View style={styles.stepHeader}>
-            <View style={styles.stepText}>
-              <AtlasText variant="bodyStrong">Sin cámara: usar el carnet de prueba</AtlasText>
-              <AtlasText variant="caption" tone="secondary">
-                Rellena las tres capturas y los datos con un documento sintético ({CARNET_DE_PRUEBA.titular}). Solo en
-                desarrollo.
-              </AtlasText>
-            </View>
-            <Badge label="prueba" tone="warning" />
-          </View>
+          <CardHeader
+            icon="chispa"
+            iconTone="warning"
+            title="Sin cámara: usar el carnet de prueba"
+            detail={`Rellena las tres capturas y los datos con un documento sintético (${CARNET_DE_PRUEBA.titular}). Solo en desarrollo.`}
+            trailing={<Badge label="prueba" tone="warning" />}
+            divider={false}
+          />
           <Button label="Rellenar con el carnet de prueba" variant="secondary" onPress={usarCarnetDePrueba} disabled={busy} />
         </Card>
       ) : null}
 
-      {STEPS.map((step) => {
-        const captured = evidence[step.kind];
-        return (
-          <Card key={step.kind}>
-            <View style={styles.stepHeader}>
-              <View style={styles.stepText}>
-                <AtlasText variant="bodyStrong">{step.title}</AtlasText>
-                <AtlasText variant="caption" tone="secondary">
-                  {step.hint}
-                </AtlasText>
-              </View>
-              <Badge label={captured ? 'listo' : 'pendiente'} tone={captured ? 'success' : 'warning'} />
-            </View>
+      {/*
+        Las tres capturas, en slides que se pasan de lado.
 
-            {captured ? (
-              <View style={styles.previewRow}>
-                <Image source={{ uri: captured.localUri }} style={styles.preview} accessibilityLabel={`Vista previa de ${step.title}`} />
-                <View style={styles.previewMeta}>
-                  <AtlasText variant="caption" tone="tertiary">
-                    {(captured.sizeBytes / 1024).toFixed(0)} KB
-                  </AtlasText>
-                  <AtlasText variant="caption" tone="tertiary" numberOfLines={1}>
-                    SHA-256 {captured.sha256Hash.slice(0, 12)}...
-                  </AtlasText>
-                  <Button label="Repetir" variant="ghost" onPress={() => setCapturing(step.kind)} />
-                </View>
-              </View>
-            ) : (
-              <Button label="Tomar foto" variant="secondary" onPress={() => setCapturing(step.kind)} />
-            )}
-          </Card>
-        );
-      })}
+        Eran tres tarjetas apiladas con una miniatura de 88x66 cada una, y con ese tamaño nadie
+        puede comprobar lo unico que hay que comprobar antes de enviar: si se lee el numero, si hay
+        un reflejo sobre la fecha, si la cara sale entera. Se enviaba a ciegas y el rechazo llegaba
+        despues, cuando las fotos ya no estaban delante. Ver `ui/image-slides.tsx`.
+      */}
+      <Card>
+        <CardHeader
+          icon="camara"
+          title={`Tus capturas (${capturadas} de ${STEPS.length})`}
+          detail="Deslizá de lado para revisar cada foto antes de enviarla."
+          trailing={<Badge dot label={allCaptured ? 'listo' : 'pendiente'} tone={allCaptured ? 'success' : 'warning'} />}
+        />
+        <ImageSlides slides={slides} />
+      </Card>
 
       <IconField icon="documento"
         label="Número de carnet"
@@ -474,18 +423,5 @@ export default function Identity() {
 }
 
 const styles = StyleSheet.create({
-  cameraFrame: {
-    flex: 1,
-    borderRadius: radius.xxl,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: color.border.strong,
-    backgroundColor: color.surface.secondary,
-  },
   camera: { flex: 1 },
-  stepHeader: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  stepText: { flex: 1, gap: space.xxs },
-  previewRow: { flexDirection: 'row', gap: space.base, alignItems: 'center' },
-  preview: { width: 88, height: 66, borderRadius: radius.md, backgroundColor: color.surface.secondary },
-  previewMeta: { flex: 1, gap: space.xxs },
 });

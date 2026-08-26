@@ -178,6 +178,36 @@ export const addReferences = (customerId: string, references: ReferenceContact[]
     { method: 'POST', body: { references } },
   );
 
+/**
+ * El snapshot AGREGADO de la agenda del telefono.
+ *
+ * Espeja `POST /customer-onboarding/:id/contacts-snapshot`. Lo que viaja son cuentas y
+ * proporciones calculadas en el dispositivo (`device/contacts.ts`) mas una lista de hashes de un
+ * solo uso que el servidor cruza y descarta. **Nunca un nombre ni un telefono.**
+ *
+ * El servidor NO devuelve analisis, y es deliberado: quien sube el snapshot es el telefono de la
+ * persona analizada, y devolverle su puntaje de riesgo le enseña que mover para que salga mejor la
+ * proxima vez.
+ */
+export type ContactsSnapshotInput = {
+  granted: boolean;
+  algorithmVersion: string;
+  computedAt: string;
+  totalContacts: number;
+  contactsWithPhone: number;
+  uniquePhoneCount: number;
+  bolivianPhoneCount: number;
+  referencesFoundInAddressBook: number;
+  referencesDeclared: number;
+  phoneHashes?: string[];
+};
+
+export const submitContactsSnapshot = (customerId: string, body: ContactsSnapshotInput) =>
+  request<{ customerId: string; computationRunId: string; granted: boolean; receivedAt: string }>(
+    `/customer-onboarding/${customerId}/contacts-snapshot`,
+    { method: 'POST', body },
+  );
+
 export type UploadTicket = {
   storageKey: string;
   uploadUrl: string;
