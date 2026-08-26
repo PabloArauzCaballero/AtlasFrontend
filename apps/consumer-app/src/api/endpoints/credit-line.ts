@@ -14,7 +14,7 @@
  * `expediente`, `derivado` o `ausente`. «No tienes buro» y «tu buro es malo» no son lo mismo, y la
  * segunda no es culpa del cliente.
  */
-import { request } from '../client';
+import { request } from "../client";
 
 export type ScoringBand = { code: string; label: string; tone: string };
 
@@ -32,7 +32,11 @@ export type CreditLine = {
 
   scoring: number | null;
   scoringBand: ScoringBand;
-  scoringScale: { min: number; max: number; bands: Array<{ from: number; code: string; label: string; tone: string }> };
+  scoringScale: {
+    min: number;
+    max: number;
+    bands: Array<{ from: number; code: string; label: string; tone: string }>;
+  };
 
   riskBand: string | null;
   pricingTier: string | null;
@@ -50,13 +54,36 @@ export type CreditLine = {
     calculatedAt: string;
   };
 
-  reasons: Array<{ code: string; message: string; category: string | null; adverseAction: boolean }>;
+  reasons: Array<{
+    code: string;
+    message: string;
+    category: string | null;
+    adverseAction: boolean;
+  }>;
   /** Que variable era dato real, cual derivada y cual ausente al decidir. */
-  inputs: Record<string, 'expediente' | 'derivado' | 'ausente'>;
+  inputs: Record<string, "expediente" | "derivado" | "ausente">;
   nextSteps: Array<{ code: string; label: string; detail: string }>;
+
+  /**
+   * Lo que el modelo de capacidad PROPUSO, junto al limite que la politica aprobo.
+   *
+   * Las dos cifras llegan al telefono porque su diferencia es informacion del cliente: cuando el
+   * limite aprobado es menor que la capacidad medida, lo que falta no es dinero sino relacion — y
+   * eso se construye pagando a tiempo. Con solo el numero aprobado, «¿por que no mas?» no tiene
+   * respuesta.
+   */
+  capacity: {
+    recommendedLimit: number | null;
+    relationshipScore: number | null;
+    relationshipTier: string | null;
+    bindingConstraint: string | null;
+    evidence: string | null;
+    explanation: string | null;
+  };
 };
 
-export const getCreditLine = (customerId: string) => request<CreditLine>(`/customers/${customerId}/credit-line`);
+export const getCreditLine = (customerId: string) =>
+  request<CreditLine>(`/customers/${customerId}/credit-line`);
 
 export type CreditLineHistory = {
   items: Array<{
@@ -73,23 +100,63 @@ export type CreditLineHistory = {
 export const getCreditLineHistory = (customerId: string) =>
   request<CreditLineHistory>(`/customers/${customerId}/credit-line/history`);
 
+/**
+ * Que se le dice a alguien cuando su extracto no sirve.
+ *
+ * Una categoria por ACCION distinta, y por eso son seis y no una. Antes habia un solo motivo y la
+ * app decia la misma frase tanto si el documento era una factura de la luz, como si era un PDF
+ * editado, como si cubria un mes en vez de tres. Ninguna de las tres personas podia saber que
+ * hacer, asi que las tres volvian a subir el mismo archivo hasta rendirse.
+ */
+export type RejectionCategory =
+  | "NO_ES_EXTRACTO"
+  | "EMISOR_NO_RECONOCIDO"
+  | "DOCUMENTO_MANIPULADO"
+  | "PERIODO_INSUFICIENTE"
+  | "ARCHIVO_ILEGIBLE"
+  | "LECTURA_INSUFICIENTE";
+
+/** Lo que el extracto demostro. Ningun movimiento individual viaja: solo las cifras del calculo. */
+export type StatementCapacity = {
+  monthsAnalyzed: number | null;
+  monthlyIncome: number | null;
+  committedExpenses: number | null;
+  monthlyObligations: number | null;
+  maxAffordableInstallment: number | null;
+  score: number | null;
+  band: string | null;
+  reasons: Array<{ code: string; message: string; severity: string }>;
+};
+
 /** El extracto bancario en revision. `promisedBy` es el compromiso, no una estimacion. */
 export type BankStatementReview = {
   reviewId: string;
-  status: 'received' | 'processing' | 'applied' | 'rejected';
+  status: "received" | "processing" | "applied" | "rejected";
   statusLabel: string;
   statusDetail: string;
   submittedAt: string;
   promisedBy: string;
   appliedCreditLineId: string | null;
   rejectionReason: string | null;
+  /** Codigo estable de la categoria del rechazo. El texto se puede reescribir; esto no. */
+  rejectionCategory: RejectionCategory | null;
+  /** El banco que emitio el extracto, cuando el motor lo reconocio. */
+  institutionName: string | null;
+  period: { from: string | null; to: string | null } | null;
+  /** Solo cuando se pudo evaluar: tres meses completos y legibles. */
+  capacity: StatementCapacity | null;
 };
 
 export const getLatestBankStatement = (customerId: string) =>
-  request<BankStatementReview | null>(`/customers/${customerId}/bank-statements/latest`);
+  request<BankStatementReview | null>(
+    `/customers/${customerId}/bank-statements/latest`,
+  );
 
 export const submitBankStatement = (customerId: string, storageKey: string) =>
-  request<BankStatementReview>(`/customers/${customerId}/bank-statements`, { method: 'POST', body: { storageKey } });
+  request<BankStatementReview>(`/customers/${customerId}/bank-statements`, {
+    method: "POST",
+    body: { storageKey },
+  });
 
 /** El permiso de subida firmado. El archivo viaja directo al almacen cifrado, no por la API. */
 export type UploadPermit = {
@@ -100,8 +167,18 @@ export type UploadPermit = {
   expiresAt: string;
 };
 
-export const createBankStatementUploadUrl = (customerId: string, sizeBytes: number) =>
-  request<UploadPermit>(`/customer-onboarding/${customerId}/documents/upload-url`, {
-    method: 'POST',
-    body: { documentType: 'bank_statement', contentType: 'application/pdf', sizeBytes },
-  });
+export const createBankStatementUploadUrl = (
+  customerId: string,
+  sizeBytes: number,
+) =>
+  request<UploadPermit>(
+    `/customer-onboarding/${customerId}/documents/upload-url`,
+    {
+      method: "POST",
+      body: {
+        documentType: "bank_statement",
+        contentType: "application/pdf",
+        sizeBytes,
+      },
+    },
+  );

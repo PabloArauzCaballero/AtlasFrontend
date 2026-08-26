@@ -20,12 +20,12 @@
  * Los motivos que devuelve la politica se ensenan tal cual, incluidos los adversos. La normativa de
  * credito justo obliga a comunicarlos, y esconderlos convertiria la pantalla en un oraculo.
  */
-import { StyleSheet, View } from 'react-native';
-import type { CreditLine } from '../api/endpoints/credit-line';
-import { formatAmount } from '../features/spending-copy';
-import { color, radius, space } from '../theme/tokens';
-import { Icon, type IconName } from './icons';
-import { AtlasText, Badge, Divider, IconChip, Overline } from './primitives';
+import { StyleSheet, View } from "react-native";
+import type { CreditLine } from "../api/endpoints/credit-line";
+import { formatAmount } from "../features/spending-copy";
+import { color, radius, space } from "../theme/tokens";
+import { Icon, type IconName } from "./icons";
+import { AtlasText, Badge, Divider, IconChip, Overline } from "./primitives";
 
 const TONE_COLOR: Record<string, string> = {
   success: color.feedback.success,
@@ -35,33 +35,36 @@ const TONE_COLOR: Record<string, string> = {
 };
 
 const STEP_ICON: Record<string, IconName> = {
-  extracto: 'documento',
-  antiguedad: 'reloj',
-  historial: 'tendencia',
+  extracto: "documento",
+  antiguedad: "reloj",
+  historial: "tendencia",
 };
 
 /** De dónde salió cada dato, dicho sin jerga. */
 const PROVENANCE_COPY: Record<string, { label: string; tone: string }> = {
-  expediente: { label: 'Dato tuyo', tone: 'success' },
-  derivado: { label: 'Calculado', tone: 'info' },
-  ausente: { label: 'Nos falta', tone: 'warning' },
+  expediente: { label: "Dato tuyo", tone: "success" },
+  derivado: { label: "Calculado", tone: "info" },
+  ausente: { label: "Nos falta", tone: "warning" },
 };
 
 /** Las entradas que de verdad mueven el puntaje. El resto son controles y no se listan. */
 const SHOWN_INPUTS: Array<{ key: string; label: string }> = [
-  { key: 'disposable_income', label: 'Tu ingreso disponible' },
-  { key: 'payment_history_score', label: 'Cómo pagas en Atlas' },
-  { key: 'income_stability_score', label: 'Estabilidad de tu ingreso' },
-  { key: 'bank_statement_nsf_count', label: 'Tu extracto bancario' },
-  { key: 'bureau_score', label: 'Historial en el sistema financiero' },
-  { key: 'delinquency_count_12m', label: 'Atrasos en los últimos 12 meses' },
+  { key: "disposable_income", label: "Tu ingreso disponible" },
+  { key: "payment_history_score", label: "Cómo pagas en Atlas" },
+  { key: "income_stability_score", label: "Estabilidad de tu ingreso" },
+  { key: "bank_statement_nsf_count", label: "Tu extracto bancario" },
+  { key: "bureau_score", label: "Historial en el sistema financiero" },
+  { key: "delinquency_count_12m", label: "Atrasos en los últimos 12 meses" },
 ];
 
 export function ScoringPanel({ line }: { line: CreditLine }) {
   const scoring = line.scoring ?? 0;
   const scale = line.scoringScale;
   const tint = TONE_COLOR[line.scoringBand.tone] ?? color.action.primary;
-  const progress = Math.max(0, Math.min(1, (scoring - scale.min) / Math.max(1, scale.max - scale.min)));
+  const progress = Math.max(
+    0,
+    Math.min(1, (scoring - scale.min) / Math.max(1, scale.max - scale.min)),
+  );
 
   /*
    * El siguiente tramo, y cuanto falta. Es la unica cifra de esta pantalla que la persona puede
@@ -81,7 +84,11 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
         <Badge
           dot
           label={line.scoringBand.label}
-          tone={line.scoringBand.tone === 'info' ? 'info' : (line.scoringBand.tone as never)}
+          tone={
+            line.scoringBand.tone === "info"
+              ? "info"
+              : (line.scoringBand.tone as never)
+          }
         />
       </View>
 
@@ -100,21 +107,39 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
 
       {/* La barra con los cortes marcados: sin ellos, el progreso no dice hacia donde. */}
       <View style={styles.track}>
-        <View style={[styles.fill, { width: `${progress * 100}%`, backgroundColor: tint }]} />
+        <View
+          style={[
+            styles.fill,
+            { width: `${progress * 100}%`, backgroundColor: tint },
+          ]}
+        />
         {sorted
           .filter((band) => band.from > scale.min)
           .map((band) => (
-            <View key={band.code} style={[styles.tick, { left: `${((band.from - scale.min) / (scale.max - scale.min)) * 100}%` }]} />
+            <View
+              key={band.code}
+              style={[
+                styles.tick,
+                {
+                  left: `${((band.from - scale.min) / (scale.max - scale.min)) * 100}%`,
+                },
+              ]}
+            />
           ))}
       </View>
 
       {next ? (
         <AtlasText variant="caption" tone="secondary">
-          Te faltan <AtlasText variant="bodyStrong">{next.from - scoring} puntos</AtlasText> para llegar a «{next.label}».
+          Te faltan{" "}
+          <AtlasText variant="bodyStrong">
+            {next.from - scoring} puntos
+          </AtlasText>{" "}
+          para llegar a «{next.label}».
         </AtlasText>
       ) : (
         <AtlasText variant="caption" tone="secondary">
-          Estás en el tramo más alto. Mantenerlo depende de seguir pagando a tiempo.
+          Estás en el tramo más alto. Mantenerlo depende de seguir pagando a
+          tiempo.
         </AtlasText>
       )}
 
@@ -123,7 +148,8 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
       {/* Que compone el puntaje, y de donde salio cada pieza. */}
       <Overline>Con qué se calculó</Overline>
       {SHOWN_INPUTS.filter((input) => line.inputs[input.key]).map((input) => {
-        const origin = PROVENANCE_COPY[line.inputs[input.key]!] ?? PROVENANCE_COPY.ausente!;
+        const origin =
+          PROVENANCE_COPY[line.inputs[input.key]!] ?? PROVENANCE_COPY.ausente!;
         return (
           <View key={input.key} style={styles.inputRow}>
             <AtlasText variant="body" tone="secondary" style={styles.flex}>
@@ -134,6 +160,34 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
         );
       })}
 
+      {/*
+        Por que tu limite es ESE.
+        
+        Es la pregunta que sigue siempre a una cifra de credito, y hasta ahora no tenia respuesta en
+        ninguna pantalla: la persona veia un numero y un puntaje sin relacion visible entre ellos.
+        Cuando el limite aprobado es MENOR que la capacidad medida —lo normal en alguien nuevo— lo
+        que falta no es dinero sino relacion, y eso si se puede accionar.
+      */}
+      {line.capacity.explanation ? (
+        <>
+          <Divider />
+          <Overline>Por qué tu límite es ese</Overline>
+          <AtlasText variant="body" tone="secondary">
+            {line.capacity.explanation}
+          </AtlasText>
+          {line.capacity.recommendedLimit !== null &&
+          line.capacity.recommendedLimit > line.approvedLimit ? (
+            <AtlasText variant="caption" tone="tertiary">
+              Tus movimientos sostienen hasta Bs{" "}
+              {line.capacity.recommendedLimit.toLocaleString("es-BO", {
+                maximumFractionDigits: 0,
+              })}
+              .
+            </AtlasText>
+          ) : null}
+        </>
+      ) : null}
+
       {line.reasons.length > 0 ? (
         <>
           <Divider />
@@ -141,9 +195,13 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
           {line.reasons.map((reason) => (
             <View key={reason.code} style={styles.rowCenter}>
               <Icon
-                name={reason.adverseAction ? 'alerta' : 'check'}
+                name={reason.adverseAction ? "alerta" : "check"}
                 size={16}
-                tint={reason.adverseAction ? color.feedback.warning : color.feedback.success}
+                tint={
+                  reason.adverseAction
+                    ? color.feedback.warning
+                    : color.feedback.success
+                }
               />
               <AtlasText variant="caption" tone="secondary" style={styles.flex}>
                 {reason.message}
@@ -163,7 +221,7 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
                 El chip comun, no un fondo fabricado concatenando la alfa al hexadecimal del color de
                 marca —que ademas es un color literal escrito fuera de los tokens—.
               */}
-              <IconChip name={STEP_ICON[step.code] ?? 'chispa'} size="sm" />
+              <IconChip name={STEP_ICON[step.code] ?? "chispa"} size="sm" />
               <View style={styles.flex}>
                 <AtlasText variant="title">{step.label}</AtlasText>
                 <AtlasText variant="caption" tone="tertiary">
@@ -181,15 +239,26 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
         alguien pueda contestarle mirando una ejecucion concreta.
       */}
       <AtlasText variant="caption" tone="tertiary">
-        Calculado por el motor de decisión de Atlas · ejecución {line.decision.executionId ?? '—'}
-        {line.decision.artifactVersionId ? ` · política v${line.decision.artifactVersionId}` : ''}
+        Calculado por el motor de decisión de Atlas · ejecución{" "}
+        {line.decision.executionId ?? "—"}
+        {line.decision.artifactVersionId
+          ? ` · política v${line.decision.artifactVersionId}`
+          : ""}
       </AtlasText>
     </View>
   );
 }
 
 /** El aviso de lo que cuesta la mora, con cifras suyas y no con una amenaza genérica. */
-export function DelinquencyImpact({ line, overdueAmount, currency }: { line: CreditLine; overdueAmount: number; currency: string }) {
+export function DelinquencyImpact({
+  line,
+  overdueAmount,
+  currency,
+}: {
+  line: CreditLine;
+  overdueAmount: number;
+  currency: string;
+}) {
   if (overdueAmount <= 0) return null;
 
   return (
@@ -199,12 +268,17 @@ export function DelinquencyImpact({ line, overdueAmount, currency }: { line: Cre
         <AtlasText variant="h3">La mora te está costando puntos</AtlasText>
       </View>
       <AtlasText variant="caption" tone="secondary">
-        Tienes {formatAmount(overdueAmount, currency)} vencidos. Cada atraso entra en el cálculo de tu puntaje y baja la línea que
-        la política te aprueba: hoy tu banda de riesgo es{' '}
-        <AtlasText variant="bodyStrong">{line.riskBand ?? 'la más alta'}</AtlasText>.
+        Tienes {formatAmount(overdueAmount, currency)} vencidos. Cada atraso
+        entra en el cálculo de tu puntaje y baja la línea que la política te
+        aprueba: hoy tu banda de riesgo es{" "}
+        <AtlasText variant="bodyStrong">
+          {line.riskBand ?? "la más alta"}
+        </AtlasText>
+        .
       </AtlasText>
       <AtlasText variant="caption" tone="secondary">
-        Ponerte al día lo revierte. No es un castigo permanente: el puntaje se recalcula con cada pago.
+        Ponerte al día lo revierte. No es un castigo permanente: el puntaje se
+        recalcula con cada pago.
       </AtlasText>
     </View>
   );
@@ -213,13 +287,45 @@ export function DelinquencyImpact({ line, overdueAmount, currency }: { line: Cre
 const styles = StyleSheet.create({
   wrapper: { gap: space.sm },
   flex: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
-  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  scoreRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.xs },
-  track: { height: 10, borderRadius: 5, backgroundColor: color.surface.sunken, overflow: 'hidden', justifyContent: 'center' },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: space.sm,
+  },
+  rowCenter: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  scoreRow: { flexDirection: "row", alignItems: "baseline", gap: space.xs },
+  track: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: color.surface.sunken,
+    overflow: "hidden",
+    justifyContent: "center",
+  },
   fill: { height: 10, borderRadius: 5 },
-  tick: { position: 'absolute', width: 1, height: 10, backgroundColor: color.surface.primary },
-  inputRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: 2 },
-  step: { flexDirection: 'row', gap: space.sm, alignItems: 'flex-start', paddingVertical: space.xxs },
-  impact: { gap: space.sm, padding: space.lg, borderRadius: radius.lg, borderWidth: 1, backgroundColor: color.surface.raised },
+  tick: {
+    position: "absolute",
+    width: 1,
+    height: 10,
+    backgroundColor: color.surface.primary,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space.sm,
+    paddingVertical: 2,
+  },
+  step: {
+    flexDirection: "row",
+    gap: space.sm,
+    alignItems: "flex-start",
+    paddingVertical: space.xxs,
+  },
+  impact: {
+    gap: space.sm,
+    padding: space.lg,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    backgroundColor: color.surface.raised,
+  },
 });
