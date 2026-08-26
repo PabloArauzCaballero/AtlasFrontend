@@ -172,7 +172,14 @@ export function ImageSlides({ slides }: Readonly<{ slides: readonly ImageSlide[]
             />
           ))}
         </View>
-        <AtlasText variant="caption" tone="tertiary">
+        {/*
+          El contador va en cifras TABULARES, como cualquier otro numero que cambia delante del
+          usuario en esta app —la cuenta atras del codigo, los dias del calendario, los importes—.
+          Es lo unico que se mueve al pasar de captura y esta pegado al borde derecho: con cifras
+          proporcionales, «1 de 3» y «3 de 3» no miden lo mismo y el texto se desplaza un pixel en
+          cada gesto, justo al lado de unos puntos que sí se quedan quietos.
+        */}
+        <AtlasText variant="amountMicro" tone="tertiary">
           {indice + 1} de {slides.length}
         </AtlasText>
       </View>
