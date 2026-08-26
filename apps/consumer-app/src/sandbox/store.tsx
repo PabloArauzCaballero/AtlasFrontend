@@ -259,6 +259,9 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
         // que la solicitud aparezca en el portal del negocio para que la acepte: sin esto la compra
         // se decidia de verdad pero el comercio no la veia nunca.
         partnerProfileId: order.context.organizationId,
+        // Y la caja: en el flujo real `posId` ES el id del terminal resuelto, del que cuelga la
+        // sucursal que el comercio necesita ver.
+        posTerminalId: order.context.posId,
       });
 
       if (result.kind === 'unavailable') {

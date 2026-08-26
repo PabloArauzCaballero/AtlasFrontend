@@ -41,6 +41,12 @@ export type CreateCreditApplicationInput = {
    * pedir. El backend valida que el expediente exista y este aprobado; aqui solo viaja.
    */
   partnerProfileId?: string;
+  /**
+   * La caja del comercio donde se escaneo el QR. De ella cuelga la sucursal: es lo que permite que
+   * el portal del negocio diga en que local se hizo la venta. El backend comprueba que el terminal
+   * sea de ese comercio antes de guardarlo.
+   */
+  posTerminalId?: string;
 };
 
 /**

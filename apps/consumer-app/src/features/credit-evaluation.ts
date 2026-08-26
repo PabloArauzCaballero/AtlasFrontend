@@ -94,6 +94,8 @@ export async function requestLiveDecision(input: {
    * demostracion —su comercio es de fixture y no existe en el backend—.
    */
   partnerProfileId?: string;
+  /** La caja donde se escaneo el QR. Deriva la sucursal que ve el comercio en su portal. */
+  posTerminalId?: string;
 }): Promise<LiveDecisionResult> {
   const financedMajor = toMajorNumber(input.financedAmount);
 
@@ -124,6 +126,10 @@ export async function requestLiveDecision(input: {
       // de fixture (`org_1042`) no lo es, y mandarlo produciria un 422 en una compra de demo.
       ...(input.partnerProfileId && /^[1-9][0-9]*$/.test(input.partnerProfileId)
         ? { partnerProfileId: input.partnerProfileId }
+        : {}),
+      // Mismo criterio que el comercio: solo si tiene forma de id real. Un pos de fixture se omite.
+      ...(input.posTerminalId && /^[1-9][0-9]*$/.test(input.posTerminalId)
+        ? { posTerminalId: input.posTerminalId }
         : {}),
     });
     return {
