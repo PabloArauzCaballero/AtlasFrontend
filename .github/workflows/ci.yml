@@ -1,0 +1,33 @@
+# Integración continua de la app del cliente (ATL-009).
+#
+# 38 pantallas y 6 ficheros de prueba, sin ninguna comprobación al fusionar. `yarn verify` ya
+# encadena lo que el repositorio considera su mínimo; aquí simplemente se ejecuta al abrir una PR.
+name: CI
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    name: Tipos, lint y pruebas
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Verificación (tipos, lint y pruebas)
+        run: npm run verify
