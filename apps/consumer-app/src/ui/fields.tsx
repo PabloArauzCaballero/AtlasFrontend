@@ -7,7 +7,7 @@
 import { forwardRef, useState } from 'react';
 import { StyleSheet, TextInput, type TextInputProps, View, type ViewStyle, Switch as RNSwitch } from 'react-native';
 import { type Currency, type Minor, formatMoney, parseAmountInput } from '../domain/money';
-import { color, press, radius, space, touch, type } from '../theme/tokens';
+import { color, inputChrome, press, radius, space, touch, type } from '../theme/tokens';
 import { Icon } from './icons';
 import { PressSurface } from './motion';
 import { AtlasText, Overline } from './primitives';
@@ -51,6 +51,7 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
 
       <TextInput
         ref={ref}
+        {...inputChrome}
         {...rest}
         accessibilityLabel={rest.accessibilityLabel ?? label}
         placeholderTextColor={color.text.placeholder}
@@ -107,6 +108,7 @@ export function AmountField({
           Bs
         </AtlasText>
         <TextInput
+          {...inputChrome}
           accessibilityLabel="Monto total de la compra en bolivianos"
           value={value}
           onChangeText={(next) => onChangeAmount(next, parseAmountInput(next, currency))}
@@ -264,6 +266,16 @@ const styles = StyleSheet.create({
     fontFamily: type.body.fontFamily,
     fontSize: type.body.fontSize,
     lineHeight: type.body.lineHeight,
+    /*
+      Sin el relleno vertical que Android calcula desde las metricas de la fuente.
+
+      Es el mismo ajuste que `render` en `ui/primitives`, y en un campo se nota todavia mas: el
+      relleno se suma DENTRO de la caja, asi que lo tecleado se dibuja por encima del centro del
+      campo y el cursor arranca mas alto que el ejemplo que sustituye. Con treinta y tantos campos
+      en el alta, es un desalineado que se repite pantalla tras pantalla.
+    */
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   /*
     El foco no solo cambia el borde: lo engorda y lo tine.
@@ -298,6 +310,7 @@ const styles = StyleSheet.create({
     fontFamily: type.amount.fontFamily,
     fontSize: type.amount.fontSize,
     lineHeight: type.amount.lineHeight,
+    includeFontPadding: false,
     letterSpacing: type.amount.letterSpacing,
     // Se copia campo a campo en vez de esparcir `type.amount`: su `fontVariant` es una tupla de
     // solo lectura y `TextInput` exige un array mutable.

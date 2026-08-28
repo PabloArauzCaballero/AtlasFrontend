@@ -35,7 +35,7 @@ export type CreditLine = {
   scoringScale: {
     min: number;
     max: number;
-    bands: Array<{ from: number; code: string; label: string; tone: string }>;
+    bands: { from: number; code: string; label: string; tone: string }[];
   };
 
   riskBand: string | null;
@@ -54,15 +54,15 @@ export type CreditLine = {
     calculatedAt: string;
   };
 
-  reasons: Array<{
+  reasons: {
     code: string;
     message: string;
     category: string | null;
     adverseAction: boolean;
-  }>;
+  }[];
   /** Que variable era dato real, cual derivada y cual ausente al decidir. */
   inputs: Record<string, "expediente" | "derivado" | "ausente">;
-  nextSteps: Array<{ code: string; label: string; detail: string }>;
+  nextSteps: { code: string; label: string; detail: string }[];
 
   /**
    * Lo que el modelo de capacidad PROPUSO, junto al limite que la politica aprobo.
@@ -86,7 +86,7 @@ export const getCreditLine = (customerId: string) =>
   request<CreditLine>(`/customers/${customerId}/credit-line`);
 
 export type CreditLineHistory = {
-  items: Array<{
+  items: {
     approvedLimit: number;
     scoring: number | null;
     scoringBand: ScoringBand;
@@ -94,7 +94,7 @@ export type CreditLineHistory = {
     outcome: string;
     validFrom: string;
     validUntil: string | null;
-  }>;
+  }[];
 };
 
 export const getCreditLineHistory = (customerId: string) =>
@@ -125,7 +125,7 @@ export type StatementCapacity = {
   maxAffordableInstallment: number | null;
   score: number | null;
   band: string | null;
-  reasons: Array<{ code: string; message: string; severity: string }>;
+  reasons: { code: string; message: string; severity: string }[];
 };
 
 /** El extracto bancario en revision. `promisedBy` es el compromiso, no una estimacion. */

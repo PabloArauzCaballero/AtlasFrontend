@@ -21,7 +21,7 @@
  */
 import { useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
-import { color, radius, space } from '../theme/tokens';
+import { color, inputChrome, radius, space } from '../theme/tokens';
 import { Icon } from './icons';
 import { AtlasText } from './primitives';
 
@@ -116,6 +116,11 @@ export function PinField({
         */}
         <TextInput
           ref={input}
+          /*
+            El campo esta escondido, pero el TECLADO no: sin esto sube el teclado claro de fabrica
+            sobre la pantalla del PIN, que es la primera que ve quien vuelve a entrar en la app.
+          */
+          keyboardAppearance={inputChrome.keyboardAppearance}
           value={value}
           onChangeText={handleChange}
           keyboardType="number-pad"

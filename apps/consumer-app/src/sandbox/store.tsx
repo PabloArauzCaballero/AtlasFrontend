@@ -28,8 +28,7 @@ import {
   openScanSession,
   outstandingAmount,
 } from './engine';
-import type { PaymentInstruction, PaymentSchedule, PurchaseOrder, SandboxState, ScanSession, ScheduleItem } from './types';
-import type { CreditDecision } from './types';
+import type { PaymentInstruction, PaymentSchedule, PurchaseOrder, SandboxState, ScanSession, ScheduleItem , CreditDecision } from './types';
 import { isBackendDecision } from '../api/config';
 import { useSession } from '../session/session';
 import { requestLiveDecision } from '../features/credit-evaluation';
@@ -123,9 +122,14 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
         setReady(true);
       })
       .catch(() => setReady(true));
+    /*
+     * La ref se copia AQUI y no se lee en la limpieza: para cuando el efecto se desmonta,
+     * `timers.current` puede apuntar ya a otro objeto y se quedarian temporizadores vivos.
+     */
+    const pendientes = timers.current;
     return () => {
       active = false;
-      Object.values(timers.current).forEach(clearTimeout);
+      Object.values(pendientes).forEach(clearTimeout);
     };
   }, []);
 

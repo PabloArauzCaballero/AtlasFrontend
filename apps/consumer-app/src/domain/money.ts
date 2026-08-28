@@ -70,11 +70,25 @@ function formatterFor(currency: Currency, withSymbol: boolean): Intl.NumberForma
   return created;
 }
 
-/** "Bs 1.234,50". El simbolo es parte del significado: nunca mostrar un importe sin moneda. */
+/**
+ * "Bs 1.234,50". El simbolo es parte del significado: nunca mostrar un importe sin moneda.
+ *
+ * ## El espacio es INDIVISIBLE, y no es un detalle de gusto
+ *
+ * Lo que separa el simbolo de la cifra es un espacio duro (U+00A0), no el de la barra espaciadora.
+ * Un espacio normal es un punto de corte valido: en cuanto el importe no cabe entero —una fila de
+ * lista estrecha, un telefono pequeno, el texto del sistema ampliado— el renglon se parte JUSTO
+ * ahi, y queda «Bs» solo al final de una linea con «4.200,00» empezando la siguiente. Es la unica
+ * cosa de la pantalla que no puede leerse en dos trozos: media cifra sin moneda no es un importe,
+ * y en la pantalla de inicio ese importe es lo primero y lo mas grande que hay.
+ *
+ * `Intl` ya devuelve un espacio duro entre moneda y cifra; lo que hacia falta era no perderlo al
+ * cambiar «BOB» por «Bs», que es exactamente lo que hacia el reemplazo anterior.
+ */
 export function formatMoney(amount: Minor, currency: Currency = 'BOB', options?: { symbol?: boolean }): string {
   const value = amount / MINOR_UNITS[currency];
   const text = formatterFor(currency, options?.symbol !== false).format(value);
-  return currency === 'BOB' ? text.replace(/^BOB\s?/, 'Bs ') : text;
+  return currency === 'BOB' ? text.replace(/^BOB\s?/, 'Bs\u00A0') : text;
 }
 
 /**

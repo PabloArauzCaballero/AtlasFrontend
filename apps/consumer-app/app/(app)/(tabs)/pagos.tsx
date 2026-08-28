@@ -70,7 +70,7 @@ type MerchantGroup = {
   overdueAmount: number;
 };
 
-const FILTERS: Array<{ key: Filter; label: string; icon: IconName }> = [
+const FILTERS: { key: Filter; label: string; icon: IconName }[] = [
   { key: 'todos', label: 'Todos', icon: 'lista' },
   { key: 'mora', label: 'En mora', icon: 'alerta' },
   { key: 'proximos', label: 'Próximos', icon: 'reloj' },

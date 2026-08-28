@@ -129,17 +129,17 @@ function lockedUntilOf(error: AtlasApiError): string | null {
 }
 
 const MESSAGE_BY_KIND: Record<AtlasErrorKind, string> = {
-  network: 'Sin conexion. Revisa tu internet e intenta de nuevo.',
-  timeout: 'La conexion tardo demasiado. Intenta de nuevo.',
+  network: 'Sin conexión. Revisa tu internet e intenta de nuevo.',
+  timeout: 'La conexión tardó demasiado. Intenta de nuevo.',
   server: 'Tuvimos un problema de nuestro lado. Intenta en unos minutos.',
   auth: 'Tu sesión expiró. Vuelve a ingresar.',
-  permission: 'No tienes permiso para hacer esta accion.',
+  permission: 'No tienes permiso para hacer esta acción.',
   not_found: 'No encontramos lo que buscabas.',
   validation: 'Revisa los datos ingresados.',
-  conflict: 'Esta operacion ya fue registrada.',
+  conflict: 'Esta operación ya fue registrada.',
   rate_limited: 'Demasiados intentos. Espera un momento antes de reintentar.',
   unavailable: 'El servicio no está disponible ahora mismo.',
-  unknown: 'No pudimos completar la operacion.',
+  unknown: 'No pudimos completar la operación.',
 };
 
 export function describeError(error: unknown): {

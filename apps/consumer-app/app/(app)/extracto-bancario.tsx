@@ -43,7 +43,7 @@ import {
 } from "../../src/ui/primitives";
 
 /** Lo que se le promete a quien entrega sus movimientos. Cada linea es una obligacion real. */
-const PROMESAS: Array<{ icon: IconName; title: string; detail: string }> = [
+const PROMESAS: { icon: IconName; title: string; detail: string }[] = [
   {
     icon: "candado",
     title: "Viaja cifrado y se guarda cifrado",

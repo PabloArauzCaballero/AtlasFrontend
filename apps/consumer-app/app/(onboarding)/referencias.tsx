@@ -232,8 +232,8 @@ export default function References() {
       <Card>
         <CardHeader
           icon="perfil"
-          title="Ayudanos a confirmar que eres tu"
-          detail="Si nos autorizas, la app cuenta cuantos contactos tienes y si tus referencias estan entre ellos. No enviamos nombres ni telefonos de tu agenda: solo esos numeros."
+          title="Ayúdanos a confirmar que eres tú"
+          detail="Si nos autorizas, la app cuenta cuántos contactos tienes y si tus referencias están entre ellos. No enviamos nombres ni teléfonos de tu agenda: solo esos números."
         />
         <CheckRow
           label="Permitir analizar mi agenda"

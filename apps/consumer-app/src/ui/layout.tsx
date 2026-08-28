@@ -5,6 +5,7 @@
  * resolviera a su manera, la app terminaria con seis comportamientos distintos ante el mismo
  * teclado, que es exactamente como se siente una app portada desde escritorio.
  */
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import {
@@ -17,7 +18,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { color, radius, space, touch } from '../theme/tokens';
+import { color, radius, space, stroke, touch } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { Appear, PressSurface } from './motion';
 import { AtlasText, Overline } from './primitives';
@@ -125,7 +126,50 @@ export function Screen({
         <View style={[styles.flex, body]}>{bodyChildren}</View>
       )}
 
-      {footer ? <View style={[styles.footer, { paddingBottom: Math.max(space.base, insets.bottom) }]}>{footer}</View> : null}
+      {/*
+        El desvanecido de ARRIBA: donde el contenido se mete bajo el reloj.
+
+        `Screen` reserva el area segura como relleno, asi que en reposo nada invade la barra de
+        estado. Pero en cuanto la pantalla se desplaza —y el alta mide varios miles de pixeles— el
+        texto pasa POR DEBAJO del reloj, del wifi y de la isla dinamica, y las dos cosas se leen
+        superpuestas: se ve en la captura del registro, con «9:21» encima de «Correo electronico».
+
+        Recortar el contenido no sirve: dejaria un filo duro atravesando la pantalla. Lo que hace
+        falta es que el texto se DISUELVA en el papel justo antes de llegar ahi, que es lo que hacen
+        los sistemas operativos con sus propias barras. El degradado no intercepta toques.
+      */}
+      {scroll && padded ? (
+        <LinearGradient
+          colors={[color.paperFade.from, color.paperFade.from, color.paperFade.to]}
+          /*
+            Opaco hasta el borde del area segura y desvanecido SOLO despues.
+
+            Con un degradado lineal de arriba abajo, a la altura del reloj el papel va ya por la
+            mitad de su opacidad y el texto de debajo se sigue leyendo a traves: se cambia una
+            colision por una transparencia, que es igual de sucia. Con la parada intermedia, la zona
+            del reloj queda cubierta del todo y el desvanecido gasta sus veinte pixeles justo por
+            debajo, que es donde sirve para algo.
+          */
+          locations={[0, insets.top / (insets.top + space.lg), 1]}
+          style={[styles.fadeTop, { height: insets.top + space.lg }]}
+          pointerEvents="none"
+        />
+      ) : null}
+
+      {footer ? (
+        <View style={[styles.footer, { paddingBottom: Math.max(space.base, insets.bottom) }]}>
+          {/*
+            El mismo desvanecido, del reves, justo encima de la accion fija. El pie es opaco: sin
+            esto la ultima linea visible del contenido se corta a media altura contra su borde.
+          */}
+          <LinearGradient
+            colors={[color.paperFade.to, color.paperFade.from]}
+            style={styles.fadeFooter}
+            pointerEvents="none"
+          />
+          {footer}
+        </View>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -215,7 +259,14 @@ export function ScreenHeader({
 
       <View style={styles.headerText}>
         {eyebrow ? <Overline>{eyebrow}</Overline> : null}
-        <AtlasText variant="h1">{title}</AtlasText>
+        {/*
+          Dos lineas como tope, igual que en las cabeceras de tarjeta y de seccion. Un titulo de
+          pantalla que crece a tres renglones empuja la accion de la derecha fuera de su fila y deja
+          la cabecera con dos alturas distintas segun la pantalla en la que se esta.
+        */}
+        <AtlasText variant="h1" numberOfLines={2}>
+          {title}
+        </AtlasText>
         {subtitle ? (
           <AtlasText variant="body" tone="secondary">
             {subtitle}
@@ -223,7 +274,8 @@ export function ScreenHeader({
         ) : null}
       </View>
 
-      {action}
+      {/* La accion de la cabecera es un boton de 48 px: no cede ancho al titulo. */}
+      {action ? <View style={styles.headerActionSlot}>{action}</View> : null}
     </View>
   );
 }
@@ -288,8 +340,17 @@ const styles = StyleSheet.create({
   // `flex-start`, no `center`: en cuanto el titulo pasa a dos lineas —«Preferencias de avisos»— con
   // `center` el boton de volver baja al medio del bloque y deja de estar donde el pulgar lo busca,
   // que es arriba a la izquierda.
+  fadeTop: { position: 'absolute', top: 0, left: 0, right: 0 },
+  /*
+    Va FUERA del pie, hacia arriba: `bottom: '100%'` lo cuelga justo encima de su borde superior.
+    Treinta y dos pixeles es un renglon y medio: lo justo para que una linea de texto se apague
+    entera en vez de cortarse, y no tanto como para empezar a esconder contenido que todavia hay
+    que poder leer.
+  */
+  fadeFooter: { position: 'absolute', bottom: '100%', left: 0, right: 0, height: space.xxl },
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, marginBottom: space.sm },
   headerText: { flex: 1, gap: space.xxs, paddingTop: space.xs },
+  headerActionSlot: { flexShrink: 0 },
   backButton: {
     width: touch.minSize,
     height: touch.minSize,
@@ -319,8 +380,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     paddingTop: space.md,
     backgroundColor: color.surface.primary,
-    borderTopWidth: 1,
-    borderTopColor: color.border.subtle,
+    borderTopWidth: stroke.hairline,
+    borderTopColor: color.border.hairline,
     gap: space.sm,
     width: '100%',
     maxWidth: 560,

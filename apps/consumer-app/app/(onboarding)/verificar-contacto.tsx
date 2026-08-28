@@ -7,7 +7,7 @@
  */
 import { StyleSheet, View, type ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
@@ -41,7 +41,14 @@ type Channel = 'sms' | 'whatsapp' | 'email';
  * si el backend cambia la ventana, esta pantalla la sigue sin tocar una linea.
  */
 function useRestante(expiresAt: string | null): number {
-  const calcular = () => (expiresAt ? Math.max(0, Math.round((new Date(expiresAt).getTime() - Date.now()) / 1000)) : 0);
+  /*
+   * Memorizada por `expiresAt`: sin esto la funcion se recreaba en cada render y el efecto que la
+   * usa no podia declararla como dependencia sin relanzarse a cada fotograma —o mentir en su lista.
+   */
+  const calcular = useCallback(
+    () => (expiresAt ? Math.max(0, Math.round((new Date(expiresAt).getTime() - Date.now()) / 1000)) : 0),
+    [expiresAt],
+  );
   const [restante, setRestante] = useState(calcular);
 
   useEffect(() => {
@@ -58,7 +65,7 @@ function useRestante(expiresAt: string | null): number {
       if (quedan === 0) clearInterval(id);
     }, 1000);
     return () => clearInterval(id);
-  }, [expiresAt]);
+  }, [expiresAt, calcular]);
 
   return restante;
 }
@@ -193,7 +200,7 @@ export default function VerifyContact() {
           title={channelUnavailable ? 'Canal no disponible' : described.title}
           detail={
             channelUnavailable
-              ? 'Ese canal no esta habilitado en este momento. Prueba con otro.'
+              ? 'Ese canal no está habilitado en este momento. Prueba con otro.'
               : described.detail
           }
           reference={described.reference}

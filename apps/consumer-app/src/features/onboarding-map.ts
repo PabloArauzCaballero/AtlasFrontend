@@ -88,7 +88,7 @@ const BLOCKER_COPY: Record<string, { title: string; detail: string; actionable: 
   ACCOUNT_NOT_ACTIVE: { title: 'Cuenta en proceso', detail: 'Tu cuenta todavía no está activa.', actionable: false },
   CONTACT_NOT_VERIFIED: { title: 'Teléfono sin verificar', detail: 'Confirma el código que te enviamos.', actionable: true },
   FINANCIAL_PROFILE_INCOMPLETE: { title: 'Falta tu información económica', detail: 'Completa trabajo, ingresos y gastos.', actionable: true },
-  ADDRESS_MISSING: { title: 'Falta tu domicilio', detail: 'Indica donde vives.', actionable: true },
+  ADDRESS_MISSING: { title: 'Falta tu domicilio', detail: 'Indica dónde vives.', actionable: true },
   REFERENCES_INSUFFICIENT: { title: 'Faltan referencias', detail: 'Necesitamos dos contactos de referencia.', actionable: true },
   IDENTITY_DOCUMENT_MISSING: { title: 'Falta tu documento', detail: 'Sube tu carnet de identidad.', actionable: true },
   IDENTITY_NOT_VERIFIED: { title: 'Documento en verificación', detail: 'Estamos validando tu identidad.', actionable: false },
@@ -112,11 +112,11 @@ const LIFECYCLE_COPY: Record<string, { title: string; detail: string }> = {
   observed: { title: 'Necesitamos una correccion', detail: 'Revisa las observaciones y vuelve a enviar.' },
   active: { title: 'Cuenta activa', detail: 'Ya puedes comprar con Atlas.' },
   rejected: { title: 'Solicitud no aprobada', detail: 'Por ahora no podemos habilitar tu línea.' },
-  suspended: { title: 'Cuenta suspendida', detail: 'Comunicate con soporte para revisar tu caso.' },
+  suspended: { title: 'Cuenta suspendida', detail: 'Comunícate con soporte para revisar tu caso.' },
 };
 
 export function describeLifecycle(status: string): { title: string; detail: string } {
-  return LIFECYCLE_COPY[status] ?? { title: 'Registro en curso', detail: 'Continua donde lo dejaste.' };
+  return LIFECYCLE_COPY[status] ?? { title: 'Registro en curso', detail: 'Continúa donde lo dejaste.' };
 }
 
 /**

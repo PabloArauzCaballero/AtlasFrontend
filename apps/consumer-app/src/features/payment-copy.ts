@@ -64,7 +64,7 @@ const ORDER_STATUS_COPY: Record<OrderStatus, { label: string; tone: BadgeTone; d
   REVIEW: { label: 'en revisión', tone: 'info', detail: 'Un analista está revisando esta compra.' },
   CREDIT_APPROVED: { label: 'aprobada', tone: 'success', detail: 'Crédito aprobado.' },
   PENDING_MERCHANT_ACCEPTANCE: { label: 'esperando comercio', tone: 'warning', detail: 'El comercio debe confirmar la venta.' },
-  REJECTED_BY_MERCHANT: { label: 'rechazada', tone: 'danger', detail: 'El comercio rechazo la operacion.' },
+  REJECTED_BY_MERCHANT: { label: 'rechazada', tone: 'danger', detail: 'El comercio rechazó la operación.' },
   EXPIRED: { label: 'expirada', tone: 'neutral', detail: 'La compra expiró sin confirmarse.' },
   CANCELLED: { label: 'cancelada', tone: 'neutral', detail: 'Cancelaste esta compra.' },
   COMMITTED: { label: 'confirmada', tone: 'success', detail: 'La compra quedo registrada.' },

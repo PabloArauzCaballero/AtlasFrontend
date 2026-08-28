@@ -94,7 +94,7 @@ export function agendaNoCompartida(referenciasDeclaradas: number, ahora: string)
  * `uniquePhoneCount` cuenta NUMEROS distintos. Aplanando antes, una ficha con tres numeros contaria
  * como tres contactos y el ratio de unicos saldria del reves.
  */
-export function contarAgenda(porContacto: ReadonlyArray<readonly string[]>): {
+export function contarAgenda(porContacto: readonly (readonly string[])[]): {
   contactsWithPhone: number;
   uniques: string[];
   bolivianPhoneCount: number;

@@ -88,8 +88,18 @@ export type SessionStartInput = {
   locationPermissionGranted?: boolean;
 };
 
+/**
+ * Abrir sesion de telemetria.
+ *
+ * Devuelve tambien `deviceId`, y la app lo estaba descartando: el tipo solo declaraba `sessionId`.
+ * Sin el, el lote de telemetria no se puede mandar —el backend lo exige para atar los eventos al
+ * dispositivo—, asi que la sesion se abria y nunca se le escribia nada.
+ */
 export const startSession = (customerId: string, body: SessionStartInput) =>
-  request<{ sessionId: string }>(`/customers/${customerId}/sessions/start`, { method: 'POST', idempotent: true, body });
+  request<{ sessionId: string; deviceId: string; deviceTrustLevel?: string; nextStep?: string }>(
+    `/customers/${customerId}/sessions/start`,
+    { method: 'POST', idempotent: true, body },
+  );
 
 export const endSession = (customerId: string, sessionId: string, reasonCode = 'customer_logout') =>
   request<{ ended: boolean }>(`/customers/${customerId}/sessions/${sessionId}/end`, {

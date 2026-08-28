@@ -51,6 +51,6 @@ export async function downloadSpendingReport(customerId: string, now = new Date(
     await Sharing.shareAsync(file.uri, { mimeType: 'application/pdf', dialogTitle: 'Informe de gastos Atlas' });
     return { ok: true };
   } catch {
-    return { ok: false, reason: 'No pudimos generar tu informe. Intentalo de nuevo.' };
+    return { ok: false, reason: 'No pudimos generar tu informe. Inténtalo de nuevo.' };
   }
 }

@@ -64,7 +64,7 @@ type Estado = identityEngine.IdentityVerificationState;
 const COPY: Record<Estado, { titulo: string; detalle: string; tono: 'success' | 'warning' | 'danger' | 'info' }> = {
   PENDING: {
     titulo: 'Estamos revisando tu documento',
-    detalle: 'Tarda unos segundos. No cierres la app todavia.',
+    detalle: 'Tarda unos segundos. No cierres la app todavía.',
     tono: 'info',
   },
   VERIFIED: {
@@ -73,20 +73,20 @@ const COPY: Record<Estado, { titulo: string; detalle: string; tono: 'success' | 
     tono: 'success',
   },
   IN_REVIEW: {
-    titulo: 'Lo esta revisando una persona',
+    titulo: 'Lo está revisando una persona',
     detalle:
-      'Tu caso necesita una segunda mirada. Sigue con el registro: te avisamos en cuanto termine, normalmente el mismo dia.',
+      'Tu caso necesita una segunda mirada. Sigue con el registro: te avisamos en cuanto termine, normalmente el mismo día.',
     tono: 'warning',
   },
   REJECTED: {
     titulo: 'No pudimos validar tu documento',
     detalle:
-      'Lo mas comun es que la foto salga movida, con reflejo o con el carnet cortado. Puedes volver a intentarlo, y si crees que hay un error escribenos.',
+      'Lo más común es que la foto salga movida, con reflejo o con el carnet cortado. Puedes volver a intentarlo, y si crees que hay un error escríbenos.',
     tono: 'danger',
   },
   UNAVAILABLE: {
     titulo: 'No pudimos verificarlo automaticamente',
-    detalle: 'Tu documento quedo guardado y lo revisara una persona. No tienes que hacer nada mas.',
+    detalle: 'Tu documento quedó guardado y lo revisará una persona. No tienes que hacer nada más.',
     tono: 'info',
   },
 };
@@ -209,7 +209,7 @@ export default function EstadoDeVerificacion() {
       }
     >
       <ScreenHeader
-        title="Estado de tu verificacion"
+        title="Estado de tu verificación"
         subtitle="Lo que sabemos ahora mismo de tu caso."
         onBack="auto"
       />
@@ -221,8 +221,8 @@ export default function EstadoDeVerificacion() {
           <CardHeader
             icon="alerta"
             iconTone="warning"
-            title="No hay ningun caso que consultar"
-            detail="Vuelve al paso del documento y envia tus fotos."
+            title="No hay ningún caso que consultar"
+            detail="Vuelve al paso del documento y envía tus fotos."
             divider={false}
           />
           <Button
@@ -290,7 +290,7 @@ export default function EstadoDeVerificacion() {
               <CardHeader
                 icon="telefono"
                 title={entrada.title ?? 'Pedir ayuda'}
-                detail={entrada.subtitle ?? 'Escribenos y lo miramos contigo.'}
+                detail={entrada.subtitle ?? 'Escríbenos y lo miramos contigo.'}
                 divider={false}
               />
               <ContentActionButton action={entrada.action} onScreen={(ruta) => router.push(ruta as never)} />
@@ -304,7 +304,7 @@ export default function EstadoDeVerificacion() {
 function etiqueta(estado: Estado): string {
   if (estado === 'VERIFIED') return 'verificado';
   if (estado === 'REJECTED') return 'rechazado';
-  if (estado === 'IN_REVIEW') return 'en revision';
+  if (estado === 'IN_REVIEW') return 'en revisión';
   if (estado === 'UNAVAILABLE') return 'pendiente';
   return 'procesando';
 }

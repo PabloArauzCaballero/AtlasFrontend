@@ -98,7 +98,30 @@ export default function Profile() {
           <AtlasText variant="h1" numberOfLines={2}>
             {fullName}
           </AtlasText>
-          {me?.customer.customerCode ? <Overline>Cliente {me.customer.customerCode}</Overline> : null}
+          {/*
+            El codigo de cliente, ABREVIADO a su tramo final.
+
+            Llega como `CUS-` mas un UUID de 36 caracteres. En versalitas —que es lo que pide un
+            antetitulo— y con el interletraje abierto al +14 % que llevan, esos cuarenta caracteres
+            ocupan DOS renglones enteros justo debajo del nombre: el identificador tecnico acaba
+            midiendo mas que la persona a la que identifica, y es lo primero que se lee al entrar en
+            la unica pantalla que habla de ella.
+
+            Nadie teclea un UUID de memoria. Lo que se hace con este codigo es DICTARLO cuando
+            soporte lo pide, y para eso el tramo final basta: seis digitos hexadecimales separan a
+            un cliente de otro en cuanto se dan junto al nombre, que es como se pide por telefono.
+
+            El codigo entero viaja en la etiqueta de accesibilidad, donde no ocupa sitio y donde
+            quien no ve la pantalla si lo necesita completo. Es el UNICO lugar de la app que lo
+            tiene: si algun dia soporte pide el UUID entero, el sitio de ponerlo es «Tu cuenta»,
+            con un boton de copiar, y no esta cabecera.
+          */}
+          {me?.customer.customerCode ? (
+            <Overline accessibilityLabel={`Cliente ${me.customer.customerCode}`}>
+              Cliente ·{'\u00A0'}
+              {me.customer.customerCode.slice(-6)}
+            </Overline>
+          ) : null}
         </View>
       </View>
 
@@ -224,6 +247,15 @@ export default function Profile() {
           subtitle="Idioma, género y avisos"
           onPress={() => router.push('/(app)/editar-perfil')}
           accessibilityHint="Abrir para cambiar tus preferencias"
+        />
+        <Divider inset />
+        {/* Los permisos se daban en el alta y no habia donde revisarlos ni retirarlos. */}
+        <ListRow
+          icon="candado"
+          title="Tus datos"
+          subtitle="Permisos que diste y qué puedes pedir sobre tu información"
+          onPress={() => router.push('/(app)/privacidad')}
+          accessibilityHint="Abrir privacidad y derechos sobre tus datos"
         />
       </Card>
 

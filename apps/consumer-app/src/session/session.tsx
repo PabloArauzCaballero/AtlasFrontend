@@ -9,8 +9,9 @@ import { configureClient } from '../api/client';
 import * as authApi from '../api/endpoints/auth';
 import * as customerApi from '../api/endpoints/customer';
 import * as onboardingApi from '../api/endpoints/onboarding';
+import * as telemetryApi from '../api/endpoints/telemetry';
 import { deviceIdentity } from '../device/device';
-import { permisosDecididos } from '../device/permissions';
+import { permisosDecididos, type PermissionReport } from '../device/permissions';
 import { profileStorage, secureTokenStore, type StoredProfile } from './token-storage';
 
 export type SessionStatus = 'restoring' | 'anonymous' | 'authenticated';
@@ -39,6 +40,42 @@ export type RegisterInput = {
   permissions?: { permissionCode: 'notifications' | 'camera' | 'location'; granted: boolean }[];
 };
 
+/**
+ * Los permisos decididos, como eventos de telemetria.
+ *
+ * Sin `deviceId` no se manda nada: el backend ata cada evento al vinculo cliente-dispositivo, y
+ * mandarlo sin el produce un 4xx que no arregla nadie. Sin permisos decididos tampoco: un lote
+ * vacio es una escritura sin informacion.
+ */
+async function enviarTelemetriaDePermisos(
+  customerId: string,
+  sessionId: string,
+  deviceId: string | undefined,
+  permisos: PermissionReport[],
+): Promise<void> {
+  if (!deviceId || permisos.length === 0) return;
+
+  const momentos = permisos
+    .map((permiso) => permiso.decidedAt)
+    .filter((valor): valor is string => Boolean(valor))
+    .sort();
+  const ahora = new Date().toISOString();
+
+  await telemetryApi.enviarLote(customerId, {
+    sessionId,
+    deviceId,
+    capturedFrom: momentos[0] ?? ahora,
+    capturedUntil: momentos[momentos.length - 1] ?? ahora,
+    events: permisos.map((permiso) => ({
+      eventType: 'permission_event' as const,
+      eventCode: permiso.granted ? 'permission_granted' : 'permission_denied',
+      occurredAt: permiso.decidedAt ?? ahora,
+      // Que permiso se decidio, nunca lo que hay detras de el.
+      metadata: { permissionCode: permiso.permissionCode },
+    })),
+  });
+}
+
 const SessionContext = createContext<SessionValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
@@ -47,6 +84,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   // El identificador de la sesion de telemetria abierta, para poder cerrarla al salir. En una
   // referencia y no en estado: cambiarlo no tiene que repintar nada.
   const sesionTelemetria = useRef<string | null>(null);
+  /* El dispositivo con el que se abrio la sesion: el lote de telemetria no se puede atar sin el. */
+  const dispositivoTelemetria = useRef<string | null>(null);
   const [onboarding, setOnboarding] = useState<onboardingApi.OnboardingStatus | null>(null);
   const [me, setMe] = useState<customerApi.CustomerMe | null>(null);
 
@@ -112,7 +151,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     try {
       const device = await deviceIdentity();
       const permisos = await permisosDecididos();
-      const { sessionId } = await customerApi.startSession(customerId, {
+      const { sessionId, deviceId } = await customerApi.startSession(customerId, {
         device: {
           deviceFingerprintHash: device.deviceFingerprintHash,
           fingerprintVersion: device.fingerprintVersion,
@@ -123,8 +162,22 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         locationPermissionGranted: permisos.find((permiso) => permiso.permissionCode === 'location')?.granted,
       });
       sesionTelemetria.current = sessionId;
+      dispositivoTelemetria.current = deviceId ?? null;
+
+      /*
+       * Y ahora se ESCRIBE en la sesion recien abierta.
+       *
+       * Abrirla y no mandar nada era lo que pasaba hasta aqui: los permisos que la persona ya habia
+       * decidido se consultaban para el alta y se tiraban. Van como `permission_event` —que hubo una
+       * decision y cuando—, nunca el contenido detras del permiso.
+       *
+       * Falla en silencio por la misma razon que abrir la sesion: una anotacion que no se puede
+       * escribir no puede impedir que alguien entre a ver cuanto debe.
+       */
+      await enviarTelemetriaDePermisos(customerId, sessionId, deviceId, permisos);
     } catch {
       sesionTelemetria.current = null;
+      dispositivoTelemetria.current = null;
     }
   }, []);
 

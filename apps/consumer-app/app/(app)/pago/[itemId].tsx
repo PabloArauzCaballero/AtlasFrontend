@@ -152,7 +152,7 @@ export default function PaymentScreen() {
           <Button label="Entendido" onPress={() => router.back()} />
         ) : (
           <Button
-            label={enviando ? 'Enviando tu aviso...' : 'Ya realice el pago'}
+            label={enviando ? 'Enviando tu aviso…' : 'Ya realicé el pago'}
             onPress={() => void reportPayment()}
             disabled={!instruction || enviando}
             blockedReason={instruction ? null : 'Estamos preparando las instrucciones de pago.'}
@@ -268,7 +268,7 @@ export default function PaymentScreen() {
             divider={false}
           />
           <Button
-            label="El comercio confirma que recibio el pago"
+            label="El comercio confirma que recibió el pago"
             variant="secondary"
             onPress={() => {
               sandbox.confirmMerchantReceipt(item.id);

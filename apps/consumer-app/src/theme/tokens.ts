@@ -9,6 +9,8 @@
  * Regla: ningun componente escribe un color literal. Si un color no esta aqui, no existe.
  */
 
+import { StyleSheet } from 'react-native';
+
 /** Paleta cruda de marca. No usar directamente en pantallas: usar los tokens semanticos. */
 export const palette = {
   navy: '#0C2C50',
@@ -104,6 +106,15 @@ export const color = {
     subtle: palette.line,
     strong: palette.line2,
     focus: palette.brand400,
+    /**
+     * El color de una linea de UN PIXEL FISICO. Ver `stroke.hairline`.
+     *
+     * Va mas subido que `subtle` porque cubre la tercera parte de superficie: en un telefono a 3x,
+     * `subtle` a un pixel fisico se queda por debajo del umbral en el que el ojo distingue una
+     * linea de un cambio de tono, y el separador desaparece. Mismo peso percibido, un tercio de
+     * grosor: eso es lo que se lee como «nitido» y no como «fino».
+     */
+    hairline: 'rgba(255,255,255,0.20)',
   },
   action: {
     primary: palette.brand400,
@@ -134,6 +145,19 @@ export const color = {
    * segun lo que quede debajo, que es una lectura distinta en cada pantalla.
    */
   overlay: { scrim: 'rgba(3,10,20,0.72)' },
+  /**
+   * El PAPEL desvaneciendose. Del fondo de pantalla opaco al mismo fondo con opacidad cero.
+   *
+   * Es lo que se pone donde el contenido pasa por debajo de algo: la barra de estado arriba, la
+   * accion fija abajo. Sin el, un parrafo que se desplaza se mete DEBAJO del reloj y de la isla
+   * dinamica y las dos cosas se leen a la vez, superpuestas; y el pie corta la frase que tiene
+   * encima por la mitad, con un filo duro que parece un fallo de dibujo.
+   *
+   * El color de destino se escribe con alfa cero SOBRE EL MISMO NAVY y no como `transparent`:
+   * `transparent` es negro con alfa cero, asi que el degradado pasa por grises sucios antes de
+   * desaparecer y el desvanecido se ve como una mancha oscura en vez de como nada.
+   */
+  paperFade: { from: palette.bg, to: 'rgba(6,20,38,0)' },
   brandGradient: [palette.brand500, palette.brand400, palette.brand300] as const,
   /**
    * Lavado de marca para superficies grandes.
@@ -274,11 +298,29 @@ export const type = {
   h3: { fontFamily: font.displayBold, fontSize: 17, lineHeight: 23, letterSpacing: track(17, -2.5) },
   /** Titulo de FILA: nombra un elemento de una lista, no encabeza una seccion. Va en Manrope. */
   title: { fontFamily: font.bodyBold, fontSize: 15, lineHeight: 20, letterSpacing: track(15, -1) },
-  body: { fontFamily: font.bodyMedium, fontSize: 15, lineHeight: 23 },
-  bodyStrong: { fontFamily: font.bodyBold, fontSize: 15, lineHeight: 23 },
-  caption: { fontFamily: font.bodyMedium, fontSize: 13, lineHeight: 19 },
+  /*
+    El cuerpo era el UNICO hueco de la curva: no declaraba interletraje.
+
+    Sin `letterSpacing`, `body` se dibuja con el que trae Manrope de fabrica, que es el de una fuente
+    pensada para texto pequeno en pantallas anchas y a 15 px se lee suelto. Se notaba justo donde
+    peor: `title` —que va al lado, en la misma fila y al mismo tamano— si estaba corregido al -1 %,
+    asi que el titulo de una fila y su descripcion tenian dos ritmos distintos en el mismo renglon.
+    El mismo -1 % los pone en la misma retícula.
+  */
+  body: { fontFamily: font.bodyMedium, fontSize: 15, lineHeight: 23, letterSpacing: track(15, -1) },
+  bodyStrong: { fontFamily: font.bodyBold, fontSize: 15, lineHeight: 23, letterSpacing: track(15, -1) },
+  /*
+    Aqui la curva se APLANA, y a proposito.
+
+    Por debajo de 14 px la correccion cambia de signo: lo que ayuda a un titular —cerrar el espacio
+    para que las letras formen una palabra— perjudica a un apunte, porque el ojo necesita separar
+    las formas antes de reconocerlas, y sobre fondo oscuro todavia mas: el texto claro «engorda»
+    opticamente sobre el navy y se come su propio espacio entre letras. Cero es el valor correcto,
+    no el valor que falta; se escribe para que nadie lo complete «por coherencia» con la escala.
+  */
+  caption: { fontFamily: font.bodyMedium, fontSize: 13, lineHeight: 19, letterSpacing: 0 },
   /** El dato de un par etiqueta/valor cuando no es dinero: se lee como valor, no como parrafo. */
-  captionStrong: { fontFamily: font.bodyBold, fontSize: 13, lineHeight: 19 },
+  captionStrong: { fontFamily: font.bodyBold, fontSize: 13, lineHeight: 19, letterSpacing: 0 },
   /** Etiquetas y estados. Va en versalita espaciada: a 11 px el peso solo no basta para jerarquia. */
   micro: { fontFamily: font.bodyBold, fontSize: 11, lineHeight: 15, letterSpacing: track(11, 5) },
   /**
@@ -411,6 +453,60 @@ export const spring = {
 export const press = {
   scale: 0.97,
   scaleSubtle: 0.985,
+} as const;
+
+/**
+ * Grosores de linea.
+ *
+ * ## Por que un separador no mide 1
+ *
+ * `1` en React Native es un punto logico, y en un telefono moderno un punto son TRES pixeles
+ * fisicos. Es el grosor correcto para un CONTORNO —lo que dibuja el canto de un objeto y tiene que
+ * sostener una esquina redondeada—, y es el triple de lo que necesita un SEPARADOR, que solo tiene
+ * que decir «aqui acaba una fila y empieza otra». A tres pixeles, esa raya se lee como un borde
+ * pintado; a uno, como un filo. Es literalmente la diferencia entre una interfaz de definicion
+ * estandar y una de alta definicion, y es el detalle por el que las listas del sistema en iOS se
+ * ven mas afiladas que las de las apps que las imitan.
+ *
+ * `hairline` vale 1 pixel FISICO en el telefono donde se ejecuta —0,33 a 3x, 0,5 a 2x, 1 a 1x—, asi
+ * que la linea es siempre la mas fina que la pantalla puede dibujar sin difuminarla. Su color no es
+ * el del contorno: ver `color.border.hairline`.
+ */
+export const stroke = {
+  /** Separadores: la linea mas fina que la pantalla puede dibujar. */
+  hairline: StyleSheet.hairlineWidth,
+  /** Contornos: el canto de un objeto. Un punto logico, en todas las pantallas. */
+  edge: 1,
+  /** Contorno con foco: engorda para que se vea cual de seis campos tiene el cursor. */
+  focus: 1.5,
+} as const;
+
+/**
+ * Cromo del SISTEMA dentro de un campo de texto.
+ *
+ * Todo lo que dibuja el sistema operativo encima de la app y que, si no se declara, sale con los
+ * valores de fabrica: el teclado, el cursor, el asa de seleccion y el resaltado del texto elegido.
+ * Son cuatro elementos pequenos y son los unicos pixeles de la pantalla que la marca no controla.
+ *
+ * ## El teclado claro es el fallo mas caro de la lista
+ *
+ * En iOS, `keyboardAppearance` vale `light` por defecto. En una app entera en navy, eso significa
+ * que en cada uno de los treinta y tantos campos del alta sube desde abajo una lamina BLANCA que
+ * ocupa media pantalla. No es un detalle de gusto: es el momento en que la app deja de parecer un
+ * producto y pasa a parecer un formulario dentro de un navegador. Con `dark`, el teclado pertenece
+ * a la misma pantalla que el campo que lo ha llamado.
+ *
+ * ## El cursor azul
+ *
+ * `selectionColor` sin declarar deja el cursor y la seleccion en el azul del sistema —#007AFF en
+ * iOS, el acento del fabricante en Android—, que es el unico color de la app que no sale de esta
+ * paleta y aparece justo donde la persona esta mirando mientras teclea. `cursorColor` es el mismo
+ * ajuste para Android, donde el cursor y el resaltado se tinen por separado.
+ */
+export const inputChrome = {
+  keyboardAppearance: 'dark',
+  selectionColor: palette.brand400,
+  cursorColor: palette.brand400,
 } as const;
 
 /**

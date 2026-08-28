@@ -253,7 +253,9 @@ function TourOverlay({
         : null,
     // Memorizado por sus numeros: el objeto se recalcula en cada render —la medida de un objetivo
     // que llega tarde provoca uno— y sin esto el efecto que mueve el foco se relanzaria con el
-    // mismo destino, cortando el muelle a medio camino y dejandolo lento.
+    // mismo destino, cortando el muelle a medio camino y dejandolo lento. Depender de `rect` es lo
+    // que la regla pide y lo que rompe la animacion: la excepcion es intencionada.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [rect?.x, rect?.y, rect?.width, rect?.height, screenWidth],
   );
 

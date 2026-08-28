@@ -101,7 +101,7 @@ export default function PurchaseDetail() {
       {commitError ? (
         <ErrorState
           title="No pudimos confirmar la compra"
-          detail={COMMIT_FAILURE_COPY[commitError] ?? 'Algo cambio antes de confirmar. Pide al comercio iniciar la compra otra vez.'}
+          detail={COMMIT_FAILURE_COPY[commitError] ?? 'Algo cambió antes de confirmar. Pide al comercio iniciar la compra otra vez.'}
         />
       ) : null}
 
@@ -152,7 +152,7 @@ export default function PurchaseDetail() {
       {!order.decision && origin?.source === 'backend-unavailable' ? (
         <ErrorState
           title="No pudimos evaluar tu compra"
-          detail={`El servicio de decision no respondio (${origin.code}). Tu compra sigue abierta y nadie la rechazo. Vuelve a intentarlo en un momento.`}
+          detail={`El servicio de decisión no respondió (${origin.code}). Tu compra sigue abierta y nadie la rechazó. Vuelve a intentarlo en un momento.`}
         />
       ) : null}
 

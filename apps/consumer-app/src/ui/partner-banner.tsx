@@ -37,7 +37,7 @@ export type PartnerBannerContent = {
  */
 export const SAMPLE_PARTNER_BANNER: PartnerBannerContent = {
   partnerName: 'Libreria Altiplano',
-  headline: '2x1 en utiles escolares',
+  headline: '2x1 en útiles escolares',
   detail: 'Paga en 3 cuotas sin interés con tu línea Atlas. Válido hasta fin de mes.',
   ctaLabel: 'Ver la promocion',
   icon: 'educacion',

@@ -146,7 +146,7 @@ export function PaymentCalendarView({
 
   const daysInMonth = new Date(cursor.year, cursor.month + 1, 0).getDate();
   const blanks = leadingBlanks(cursor.year, cursor.month);
-  const cells: Array<{ key: string; day: number | null }> = [
+  const cells: { key: string; day: number | null }[] = [
     ...Array.from({ length: blanks }, (_, index) => ({ key: `blank-${index}`, day: null })),
     ...Array.from({ length: daysInMonth }, (_, index) => ({ key: `day-${index + 1}`, day: index + 1 })),
   ];

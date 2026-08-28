@@ -53,7 +53,7 @@ export type LoanInstallment = {
 
 export type LoanDetail = LoanSummary & {
   schedule: LoanInstallment[];
-  payments: Array<{ paymentId: string; amount: string; receivedAt: string; status: string }>;
+  payments: { paymentId: string; amount: string; receivedAt: string; status: string }[];
 };
 
 export const listLoans = (customerId: string) => request<{ items: LoanSummary[] }>(`/customers/${customerId}/loans`);
@@ -70,14 +70,14 @@ export type CategorySpend = {
   loanCount: number;
   overdueLoanCount: number;
   share: number;
-  merchants: Array<{
+  merchants: {
     partnerProfileId: string | null;
     displayName: string;
     financed: number;
     outstanding: number;
     overdue: number;
     loanCount: number;
-  }>;
+  }[];
 };
 
 export type SpendingByCategory = {

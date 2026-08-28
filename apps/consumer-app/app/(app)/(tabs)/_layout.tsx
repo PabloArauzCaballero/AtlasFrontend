@@ -14,7 +14,8 @@
  */
 import { Tabs } from 'expo-router';
 import { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { color, radius, space, spring, touch, type } from '../../../src/theme/tokens';
 import { Icon, type IconName } from '../../../src/ui/icons';
@@ -62,14 +63,34 @@ function TabIcon({ name, focused, highlighted }: { name: IconName; focused: bool
   );
 }
 
+/** Alto de la barra SIN contar el area segura. Lo fijan el icono (30 px) y su etiqueta. */
+const BAR_HEIGHT = 72;
+
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
+
+  /*
+    El area segura de ABAJO, que la barra se estaba comiendo.
+
+    `tabBarStyle` con un `height` literal SUSTITUYE al alto que React Navigation calcula, y ese
+    calculo era el unico sitio donde se sumaba el hueco del indicador de inicio. Con `height: 72`
+    fijo, la barra medía 72 px de borde a borde de pantalla: las etiquetas «Escanear» y «Pagos»
+    quedaban debajo de la barra de gestos de Android y detras del indicador de iOS, medio tachadas
+    por una pastilla blanca. Se ve en las dos capturas de evidencia, en las dos plataformas.
+
+    El alto propio se mantiene —la barra tiene que medir lo mismo en todos los telefonos— y el area
+    seg. se anade encima como relleno inferior, que es lo que hace que el contenido suba y el hueco
+    del sistema quede vacio, que es justo para lo que existe.
+  */
+  const bar = [styles.bar, { height: BAR_HEIGHT + insets.bottom, paddingBottom: insets.bottom }];
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: color.action.primary,
         tabBarInactiveTintColor: color.text.tertiary,
-        tabBarStyle: styles.bar,
+        tabBarStyle: bar,
         tabBarLabelStyle: styles.label,
         sceneStyle: { backgroundColor: color.surface.primary },
       }}
@@ -105,8 +126,7 @@ const styles = StyleSheet.create({
   bar: {
     backgroundColor: color.surface.secondary,
     borderTopColor: color.border.subtle,
-    borderTopWidth: 1,
-    height: 72,
+    borderTopWidth: StyleSheet.hairlineWidth,
     paddingTop: space.md,
   },
   /*
@@ -117,7 +137,19 @@ const styles = StyleSheet.create({
     El interletraje se sube de 0,2 a 0,4: a 11 px, cinco palabras cortas puestas en fila se leen
     apretadas contra sus vecinas, y es el unico sitio de la app donde cinco textos comparten renglon.
   */
-  label: { ...type.micro, letterSpacing: 0.4, marginTop: space.xs, textTransform: 'none' },
+  label: {
+    ...type.micro,
+    letterSpacing: 0.4,
+    marginTop: space.xs,
+    textTransform: 'none',
+    /*
+      Sin el relleno vertical de Android. Es el mismo ajuste que hace `render` en `ui/primitives`
+      para el resto de la app, y aqui importa el doble: la etiqueta va pegada al borde inferior de
+      la pantalla, asi que los 3 px que Android anade debajo de la palabra son 3 px que empujan las
+      cinco etiquetas hacia la barra de gestos.
+    */
+    ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
+  },
   icon: { minWidth: touch.minSize / 2, alignItems: 'center', justifyContent: 'center' },
   /*
     La pastilla de «Escanear» se TINE y lleva contorno; enfocada se rellena.

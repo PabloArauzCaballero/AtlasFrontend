@@ -35,7 +35,7 @@ function toHex(bytes: Uint8Array): string {
   return out;
 }
 
-const MAGIC_BYTES: ReadonlyArray<{ mimeType: EvidenceMimeType; signature: readonly number[] }> = [
+const MAGIC_BYTES: readonly { mimeType: EvidenceMimeType; signature: readonly number[] }[] = [
   { mimeType: 'image/jpeg', signature: [0xff, 0xd8, 0xff] },
   { mimeType: 'image/png', signature: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
 ];

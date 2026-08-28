@@ -48,7 +48,7 @@ const PROVENANCE_COPY: Record<string, { label: string; tone: string }> = {
 };
 
 /** Las entradas que de verdad mueven el puntaje. El resto son controles y no se listan. */
-const SHOWN_INPUTS: Array<{ key: string; label: string }> = [
+const SHOWN_INPUTS: { key: string; label: string }[] = [
   { key: "disposable_income", label: "Tu ingreso disponible" },
   { key: "payment_history_score", label: "Cómo pagas en Atlas" },
   { key: "income_stability_score", label: "Estabilidad de tu ingreso" },

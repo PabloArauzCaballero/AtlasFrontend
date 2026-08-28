@@ -78,7 +78,7 @@ export default function PersonalData() {
       <IconField icon="perfil" label="Apellido" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
 
       <SelectField<Gender>
-        label="Genero declarado"
+        label="Género declarado"
         value={gender}
         onChange={setGender}
         opciones={[

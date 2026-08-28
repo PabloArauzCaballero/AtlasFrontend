@@ -247,8 +247,8 @@ export default function Identity() {
   if (activeStep) {
     if (!permission?.granted) {
       return (
-        <Screen scrollRef={scroll} footer={<Button label="Permitir camara" onPress={() => void requestPermission()} />}>
-          <ScreenHeader title="Necesitamos tu camara" subtitle="Solo se usa para fotografiar tu documento." onBack={() => setCapturing(null)} />
+        <Screen scrollRef={scroll} footer={<Button label="Permitir cámara" onPress={() => void requestPermission()} />}>
+          <ScreenHeader title="Necesitamos tu cámara" subtitle="Solo se usa para fotografiar tu documento." onBack={() => setCapturing(null)} />
           <Card>
             <AtlasText variant="body" tone="secondary">
               La foto se sube cifrada y queda asociada unicamente a tu expediente. No accedemos a tu galeria.

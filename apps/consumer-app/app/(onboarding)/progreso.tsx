@@ -13,18 +13,34 @@ import { SECTION_LABEL, SECTION_ROUTE, describeLifecycle } from '../../src/featu
 import { useSession } from '../../src/session/session';
 import { space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, ListRow, Overline, ProgressBar, SectionHeader, Skeleton } from '../../src/ui/primitives';
+import { AtlasText, Badge, Button, Card, Divider, ErrorState, ListRow, Overline, ProgressBar, SectionHeader, Skeleton } from '../../src/ui/primitives';
 
 export default function OnboardingProgress() {
   const router = useRouter();
   const session = useSession();
   const [refreshing, setRefreshing] = useState(false);
+  /*
+    Si la primera lectura YA TERMINO. No es lo mismo «todavia no ha llegado» que «se pidio y no
+    llego», y esta pantalla las estaba dibujando igual: ver el bloque `if (!status)` de abajo.
+  */
+  const [settled, setSettled] = useState(false);
 
   // Al volver de cualquier paso se relee el estado: es el servidor quien decide si esa seccion
   // quedo completa, no la pantalla que acaba de guardar.
   useFocusEffect(
     useCallback(() => {
-      void session.refresh();
+      let vigente = true;
+      /*
+        `refresh` se traga sus errores a proposito —no queremos que un fallo de red tumbe la sesion
+        entera— asi que aqui no hay excepcion que capturar: lo que se mira es si, una vez terminada
+        la lectura, el estado sigue vacio. Eso solo puede significar que la peticion fallo.
+      */
+      void session.refresh().finally(() => {
+        if (vigente) setSettled(true);
+      });
+      return () => {
+        vigente = false;
+      };
     }, [session]),
   );
 
@@ -33,13 +49,40 @@ export default function OnboardingProgress() {
 
   const onRefresh = async () => {
     setRefreshing(true);
+    setSettled(false);
     await session.refresh();
+    setSettled(true);
     setRefreshing(false);
   };
 
+  /*
+    Cargando y NO PUDE CARGAR son dos pantallas distintas.
+
+    Antes eran la misma: mientras `status` fuera nulo se dibujaban tres esqueletos, sin importar por
+    que. Si la lectura fallaba —y en local falla cada vez que el servidor tarda mas que el tiempo
+    maximo de la peticion— los esqueletos se quedaban latiendo para siempre: sin explicacion, sin
+    boton, y sin siquiera el gesto de tirar para recargar, porque `onRefresh` solo estaba conectado
+    en la pantalla ya cargada. La persona se queda mirando una animacion que no lleva a ningun sitio
+    y lo unico que puede hacer es cerrar la app.
+
+    Con la lectura ya terminada y el estado todavia vacio, lo honesto es decirlo y ofrecer el
+    reintento.
+  */
   if (!status) {
+    if (settled) {
+      return (
+        <Screen>
+          <ScreenHeader title="Tu registro" />
+          <ErrorState
+            title="No pudimos cargar tu registro"
+            detail="Revisa tu conexión e inténtalo de nuevo. Lo que ya enviaste está guardado."
+            onRetry={() => void onRefresh()}
+          />
+        </Screen>
+      );
+    }
     return (
-      <Screen>
+      <Screen onRefresh={onRefresh} refreshing={refreshing}>
         <ScreenHeader title="Tu registro" />
         <Card>
           <Skeleton height={11} width="55%" />

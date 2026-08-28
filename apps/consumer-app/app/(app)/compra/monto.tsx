@@ -87,7 +87,7 @@ export default function PurchaseAmount() {
             [Boolean(amount), 'Escribe el monto total que te indica el comercio.'],
             [
               !rejection,
-              rejection ? describeAmountRejection(rejection, STANDARD_POLICY_V1) : 'El monto esta fuera de rango.',
+              rejection ? describeAmountRejection(rejection, STANDARD_POLICY_V1) : 'El monto está fuera de rango.',
             ],
             // El detalle exacto ya esta arriba, en su propio aviso con las dos cifras. Repetirlo
             // aqui obligaria a leer dos veces lo mismo.

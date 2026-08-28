@@ -6,7 +6,7 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -20,13 +20,13 @@
       "supportsTablet": false,
       "bundleIdentifier": "bo.atlas.consumer",
       "infoPlist": {
-        "NSCameraUsageDescription": "Atlas usa la camara para escanear el QR del comercio e iniciar tu compra.",
+        "NSCameraUsageDescription": "Atlas usa la cámara para escanear el QR del comercio e iniciar tu compra.",
         "NSPhotoLibraryUsageDescription": "Atlas usa tus fotos para adjuntar el comprobante de un pago.",
-        "NSLocationWhenInUseUsageDescription": "Atlas usa tu ubicacion solo al declarar tu domicilio durante la verificacion.",
+        "NSLocationWhenInUseUsageDescription": "Atlas usa tu ubicación solo al declarar tu domicilio durante la verificación.",
         "NSDocumentsFolderUsageDescription": "Atlas accede a tus archivos solo para que elijas el extracto bancario que quieres subir.",
         "NSFaceIDUsageDescription": "Atlas usa Face ID para que entres con tu rostro en lugar de escribir tu PIN.",
         "ITSAppUsesNonExemptEncryption": false,
-        "NSContactsUsageDescription": "Atlas accede a tus contactos solo cuando eliges una referencia desde tu agenda. Se lee el contacto que tu selecciones y nada mas: no copiamos ni guardamos tu agenda."
+        "NSContactsUsageDescription": "Atlas accede a tus contactos solo cuando eliges una referencia desde tu agenda. Se lee el contacto que tú selecciones y nada más: no copiamos ni guardamos tu agenda."
       }
     },
     "android": {
@@ -73,7 +73,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Atlas usa la camara para escanear el QR del comercio."
+          "cameraPermission": "Atlas usa la cámara para escanear el QR del comercio."
         }
       ],
       [
@@ -85,7 +85,7 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Atlas usa tu ubicacion solo al declarar tu domicilio."
+          "locationAlwaysAndWhenInUsePermission": "Atlas usa tu ubicación solo al declarar tu domicilio."
         }
       ],
       [

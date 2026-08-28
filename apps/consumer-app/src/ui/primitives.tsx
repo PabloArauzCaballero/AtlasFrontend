@@ -26,7 +26,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 import Reanimated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
-import { color, palette, press, radius, shadow, space, spring, touch, type } from '../theme/tokens';
+import { color, palette, press, radius, shadow, space, spring, stroke, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { AnimatedPressable, PressSurface } from './motion';
 
@@ -46,17 +46,61 @@ const TONE: Record<TextTone, string> = {
   onBrand: color.text.onBrand,
 };
 
+/**
+ * Correccion de RENDERIZADO de Android, aplicada una vez y valida para toda la app.
+ *
+ * Android reserva, encima y debajo de cada linea de texto, el hueco que la FUENTE declara en sus
+ * metricas (`ascent`/`descent`), no el que pide el `lineHeight` que se le da. Sora y Manrope
+ * declaran metricas generosas —estan pensadas para tipografia de pantalla ancha—, asi que ese
+ * relleno anade entre 2 y 5 px arriba y una cantidad DISTINTA abajo. Las consecuencias se ven en
+ * todas partes y ninguna se sabe nombrar mirando una captura:
+ *
+ *  - la etiqueta de un boton se dibuja un pelo por encima del centro de la pildora;
+ *  - el texto de una pastilla de estado no queda centrado en su fondo;
+ *  - un titulo de dos lineas separa sus renglones mas de lo que dice `lineHeight`;
+ *  - y lo peor: iOS NO hace nada de esto, asi que las dos plataformas dejan de coincidir y la
+ *    version de Android se lee como una copia mal calcada de la de iPhone.
+ *
+ * Con el relleno apagado, la caja del texto pasa a medir exactamente `lineHeight` y el interlineado
+ * calculado en `theme/tokens` es el que se dibuja. Es el ajuste que mas separa una app hecha con
+ * cuidado de una app hecha con los valores por defecto.
+ */
+const render: TextStyle = Platform.OS === 'android' ? { includeFontPadding: false } : {};
+
+/**
+ * Tope de ampliacion del texto del sistema, POR ROL.
+ *
+ * El ajuste de «texto mas grande» del telefono llega hasta el 235 %. A ese factor, `Bs 12.480,50`
+ * en `amountHero` mide mas que el ancho de la pantalla y se corta por la mitad: quien necesita el
+ * texto grande acaba viendo MENOS de su saldo que quien no lo necesita. Por eso lo que ya es
+ * grande —titulares e importes— se limita, y lo que se lee de verdad —cuerpo, apuntes, etiquetas,
+ * que es donde la ampliacion de verdad sirve— se deja crecer sin tope.
+ *
+ * No es una excepcion de accesibilidad: es lo contrario. Un importe recortado no es accesible por
+ * ser grande.
+ */
+const MAX_SCALE: Partial<Record<TypeVariant, number>> = {
+  display: 1.3,
+  hero: 1.3,
+  h1: 1.4,
+  h2: 1.5,
+  amountHero: 1.3,
+  amount: 1.4,
+};
+
 export function AtlasText({
   variant = 'body',
   tone = 'primary',
   align,
   style,
+  maxFontSizeMultiplier,
   ...rest
 }: TextProps & { variant?: TypeVariant; tone?: TextTone; align?: TextStyle['textAlign'] }) {
   return (
     <Text
       {...rest}
-      style={[type[variant] as TextStyle, { color: TONE[tone] }, align ? { textAlign: align } : null, style]}
+      maxFontSizeMultiplier={maxFontSizeMultiplier ?? MAX_SCALE[variant]}
+      style={[type[variant] as TextStyle, render, { color: TONE[tone] }, align ? { textAlign: align } : null, style]}
     />
   );
 }
@@ -82,7 +126,7 @@ export function Overline({
   ...rest
 }: TextProps & { tone?: TextTone }) {
   return (
-    <Text {...rest} style={[type.overline as TextStyle, styles.overline, { color: TONE[tone] }, style]}>
+    <Text {...rest} style={[type.overline as TextStyle, render, styles.overline, { color: TONE[tone] }, style]}>
       {children}
     </Text>
   );
@@ -369,14 +413,28 @@ export function CardHeader({
         {icon ? <IconChip name={icon} tone={iconTone} size="sm" /> : null}
         <View style={styles.cardHeaderText}>
           {eyebrow ? <Overline>{eyebrow}</Overline> : null}
-          <AtlasText variant="h3">{title}</AtlasText>
+          {/*
+            Dos lineas como maximo. El titulo de una tarjeta suele ser un dato del servidor —el
+            nombre de un comercio—, y «CPA Centro de Preparacion Academica» a 17 px ocupa TRES
+            renglones: la cabecera crece hasta triplicar su alto, la pastilla de estado que va a su
+            derecha queda flotando junto al primero de los tres, y la tarjeta deja de empezar a la
+            misma altura que las de arriba y abajo. Se ve en la captura de «Tus pagos».
+          */}
+          <AtlasText variant="h3" numberOfLines={2}>
+            {title}
+          </AtlasText>
           {detail ? (
-            <AtlasText variant="caption" tone="secondary">
+            <AtlasText variant="caption" tone="secondary" numberOfLines={2}>
               {detail}
             </AtlasText>
           ) : null}
         </View>
-        {trailing}
+        {/*
+          Lo de la derecha no se encoge. Sin esto, un titulo largo le roba ancho a la pastilla hasta
+          partirle la palabra —«EN / MORA»—, que es peor que recortar el titulo: el estado es UNA
+          palabra corta y es lo que se lee de reojo.
+        */}
+        {trailing ? <View style={styles.cardHeaderTrailing}>{trailing}</View> : null}
       </View>
       {divider ? <Divider /> : null}
     </>
@@ -408,14 +466,16 @@ export function SectionHeader({
     <View style={[styles.sectionHeader, style]}>
       <View style={styles.sectionHeaderText}>
         {eyebrow ? <Overline>{eyebrow}</Overline> : null}
-        <AtlasText variant="h2">{title}</AtlasText>
+        <AtlasText variant="h2" numberOfLines={2}>
+          {title}
+        </AtlasText>
         {detail ? (
           <AtlasText variant="caption" tone="secondary">
             {detail}
           </AtlasText>
         ) : null}
       </View>
-      {action}
+      {action ? <View style={styles.sectionHeaderAction}>{action}</View> : null}
     </View>
   );
 }
@@ -613,7 +673,16 @@ export function Badge({
         La caja alta la pone `textTransform`, no el literal. Con el texto ya en mayusculas, el
         lector de pantalla anuncia «V-E-N-C-I-D-A» deletreado; asi anuncia la palabra.
       */}
-      <Text style={[type.micro as TextStyle, styles.badgeLabel, { color: foreground }]}>{label}</Text>
+      <Text
+        style={[type.micro as TextStyle, render, styles.badgeLabel, { color: foreground }]}
+        /*
+          La pastilla no crece con el texto del sistema: su alto lo fijan el radio de pildora y el
+          relleno, y a partir de ~1,3x la palabra se sale por los lados en vez de ensancharla.
+        */
+        maxFontSizeMultiplier={1.3}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -768,9 +837,16 @@ export function Chip({
       scaleTo={press.scale}
     >
       {icon ? <Icon name={icon} size={15} tint={tint} /> : null}
-      <Text style={[type.micro as TextStyle, { color: tint }]}>{label}</Text>
+      <Text style={[type.micro as TextStyle, render, { color: tint }]} maxFontSizeMultiplier={1.3}>
+        {label}
+      </Text>
       {typeof count === 'number' ? (
-        <Text style={[type.micro as TextStyle, { color: selected ? color.action.primary : color.text.tertiary }]}>{count}</Text>
+        <Text
+          style={[type.micro as TextStyle, render, { color: selected ? color.action.primary : color.text.tertiary }]}
+          maxFontSizeMultiplier={1.3}
+        >
+          {count}
+        </Text>
       ) : null}
     </PressSurface>
   );
@@ -940,14 +1016,17 @@ export function ListRow({
       */}
       {icon ? <IconChip name={icon} tone="neutral" size="sm" /> : null}
       <View style={styles.rowText}>
-        <AtlasText variant="title">{title}</AtlasText>
+        <AtlasText variant="title" numberOfLines={2}>
+          {title}
+        </AtlasText>
         {subtitle ? (
-          <AtlasText variant="caption" tone="secondary">
+          <AtlasText variant="caption" tone="secondary" numberOfLines={2}>
             {subtitle}
           </AtlasText>
         ) : null}
       </View>
-      {right}
+      {/* Lo de la derecha de una fila es casi siempre un importe: no se parte ni se encoge. */}
+      {right ? <View style={styles.rowTrailing}>{right}</View> : null}
       {/* La punta de flecha solo aparece si la fila lleva a algun sitio: es la unica senal fiable de
           que se puede tocar cuando no hay ninguna otra affordance. */}
       {onPress && !right ? <Icon name="adelante" size={18} tint={color.text.tertiary} /> : null}
@@ -1022,7 +1101,7 @@ const styles = StyleSheet.create({
     una tarjeta con cabecera se leyera como tres bloques sueltos con una raya en medio en vez de como
     un bloque con su titulo.
   */
-  divider: { height: 1, backgroundColor: color.border.subtle, marginVertical: space.xs },
+  divider: { height: stroke.hairline, backgroundColor: color.border.hairline, marginVertical: space.xs },
   // 32 + 12: el ancho del chip de icono pequeno mas el hueco de la fila. La linea arranca justo
   // debajo de la primera letra del titulo.
   dividerInset: { marginLeft: 32 + space.md },
@@ -1072,6 +1151,7 @@ const styles = StyleSheet.create({
   */
   cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   cardHeaderText: { flex: 1, gap: space.xxs },
+  cardHeaderTrailing: { flexShrink: 0 },
 
   sectionHeader: {
     flexDirection: 'row',
@@ -1085,13 +1165,14 @@ const styles = StyleSheet.create({
     marginBottom: -space.xs,
   },
   sectionHeaderText: { flex: 1, gap: space.xxs },
+  sectionHeaderAction: { flexShrink: 0 },
 
   stat: { gap: space.xxs },
   statRow: { flexDirection: 'row', alignItems: 'stretch' },
   statCell: { flex: 1 },
   // El filo entre dos cifras. `alignSelf: 'stretch'` para que mida lo que mida la mas alta de las
   // dos y no haya que darle una altura fija que se quede corta en cuanto una lleve apunte.
-  statRule: { width: 1, alignSelf: 'stretch', backgroundColor: color.border.subtle, marginHorizontal: space.base },
+  statRule: { width: stroke.hairline, alignSelf: 'stretch', backgroundColor: color.border.hairline, marginHorizontal: space.base },
 
   keyValue: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: space.base, minHeight: 24 },
   // La etiqueta cede el ancho antes que el valor: en un detalle de credito, lo que no puede partirse
@@ -1134,4 +1215,5 @@ const styles = StyleSheet.create({
     paddingVertical: space.sm,
   },
   rowText: { flex: 1, gap: space.xxs },
+  rowTrailing: { flexShrink: 0, alignItems: 'flex-end' },
 });

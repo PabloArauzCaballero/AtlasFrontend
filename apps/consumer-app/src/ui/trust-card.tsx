@@ -43,7 +43,7 @@ import React from 'react';
 import { LayoutAnimation, Platform, Pressable, StyleSheet, UIManager, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
-import { color, palette, radius, space, spring } from '../theme/tokens';
+import { color, palette, radius, space, spring, stroke } from '../theme/tokens';
 import { BrandHalo } from './brand';
 import { Icon, type IconName } from './icons';
 import { AtlasText } from './primitives';
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
 
   list: { gap: space.xs },
   row: { gap: space.xs },
-  rowSeparada: { borderTopWidth: 1, borderTopColor: color.border.subtle, paddingTop: space.sm },
+  rowSeparada: { borderTopWidth: stroke.hairline, borderTopColor: color.border.hairline, paddingTop: space.sm },
   rowHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm, minHeight: 36 },
   rowIcon: {
     width: 28,

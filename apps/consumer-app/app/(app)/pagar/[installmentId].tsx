@@ -45,12 +45,12 @@ import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, KeyVal
 /** Por que no hay QR, dicho de forma que se sepa a quien reclamar. */
 const SIN_QR: Record<string, { titulo: string; detalle: string }> = {
   LOAN_WITHOUT_PARTNER: {
-    titulo: 'Este credito no tiene comercio asociado',
-    detalle: 'Escribenos desde ayuda y te decimos a donde pagar esta cuota. No la des por vencida mientras lo revisamos.',
+    titulo: 'Este crédito no tiene comercio asociado',
+    detalle: 'Escríbenos desde ayuda y te decimos adónde pagar esta cuota. No la des por vencida mientras lo revisamos.',
   },
   PARTNER_HAS_NO_PAYMENT_QR: {
-    titulo: 'El comercio todavia no publico su QR de cobro',
-    detalle: 'Pideselo directamente: es el unico que puede subirlo desde su portal. Tu cuota sigue esperando, no se pierde.',
+    titulo: 'El comercio todavía no publicó su QR de cobro',
+    detalle: 'Pídeselo directamente: es el único que puede subirlo desde su portal. Tu cuota sigue esperando, no se pierde.',
   },
   PAYMENT_QR_OBJECT_MISSING: {
     titulo: 'No pudimos recuperar el QR del comercio',
@@ -90,7 +90,7 @@ export default function PayInstallmentScreen() {
     return (
       <Screen>
         <ScreenHeader title="Pagar cuota" onBack="auto" />
-        <ErrorState title="Sesion no iniciada" detail="Vuelve a entrar para ver como pagar esta cuota." />
+        <ErrorState title="Sesión no iniciada" detail="Vuelve a entrar para ver cómo pagar esta cuota." />
       </Screen>
     );
   }

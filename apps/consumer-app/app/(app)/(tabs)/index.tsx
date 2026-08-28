@@ -290,7 +290,10 @@ export default function Home() {
                   */}
                   <ProgressBar value={item.share} label={look.label + ': ' + item.share.toFixed(0) + ' por ciento'} />
                   <AtlasText variant="caption" tone="tertiary">
-                    {item.share.toFixed(0)} % · {item.merchants[0]?.displayName ?? 'sin comercio'}
+                    {item.share.toFixed(0)}
+                    {/* Espacio duro: el porcentaje y su signo son una sola unidad y no se separan al final de un renglon. */}
+                    {'\u00A0% · '}
+                    {item.merchants[0]?.displayName ?? 'sin comercio'}
                     {others > 0 ? ' y ' + others + ' más' : ''}
                   </AtlasText>
                 </View>
@@ -304,7 +307,7 @@ export default function Home() {
             para reescribirlo en disco no anade nada y deja una copia del documento en el teléfono.
           */}
           <Button
-            label={reportBusy ? 'Preparando informe...' : 'Descargar informe en PDF'}
+            label={reportBusy ? 'Preparando informe…' : 'Descargar informe en PDF'}
             variant="secondary"
             disabled={reportBusy}
             onPress={() => {

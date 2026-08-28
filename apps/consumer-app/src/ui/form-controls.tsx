@@ -18,7 +18,7 @@
 import DateTimePicker, { type DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { forwardRef, useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
-import { color, press, radius, shadow, space, touch, type } from '../theme/tokens';
+import { color, inputChrome, press, radius, shadow, space, stroke, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
@@ -56,6 +56,7 @@ export const IconField = forwardRef<TextInput, IconFieldProps>(function IconFiel
         <Icon name={icon} size={20} tint={focused ? color.action.primary : color.text.tertiary} />
         <TextInput
           ref={ref}
+          {...inputChrome}
           {...rest}
           accessibilityLabel={rest.accessibilityLabel ?? label}
           placeholderTextColor={color.text.placeholder}
@@ -430,6 +431,7 @@ export function SelectField<T extends string = string>({
             <View style={styles.buscador}>
               <Icon name="lista" size={18} tint={color.text.tertiary} />
               <TextInput
+                {...inputChrome}
                 value={busqueda}
                 onChangeText={setBusqueda}
                 placeholder="Buscar"
@@ -522,6 +524,7 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
         <View style={styles.dialSeparator} />
 
         <TextInput
+          {...inputChrome}
           value={value}
           // Solo digitos: pegar un numero con espacios o guiones no puede romper el formato.
           onChangeText={(next) => onChangeText(next.replace(/[^0-9]/g, ''))}
@@ -659,10 +662,14 @@ const styles = StyleSheet.create({
     padding: 0,
     color: color.text.primary,
     ...(type.body as object),
+    // Ver `ui/fields`: sin esto Android suma su propio relleno vertical dentro de la caja y lo
+    // tecleado se dibuja por encima del centro del control.
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   phoneControl: { paddingLeft: space.sm },
   dial: { flexDirection: 'row', alignItems: 'center', gap: space.xxs, paddingHorizontal: space.xs, minHeight: touch.minSize },
-  dialSeparator: { width: 1, height: 24, backgroundColor: color.border.subtle },
+  dialSeparator: { width: stroke.hairline, height: 24, backgroundColor: color.border.hairline },
   flag: { fontSize: 20 },
   // El mismo velo que el recorrido guiado (`color.overlay.scrim`): negro puro al 55 % era un
   // segundo oscurecedor, mas claro y sin el tinte navy, en una app que ya tenia el suyo.
@@ -693,8 +700,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: space.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: color.border.subtle,
+    borderBottomWidth: stroke.hairline,
+    borderBottomColor: color.border.hairline,
   },
   sheetList: { maxHeight: 380 },
   buscador: {
@@ -708,7 +715,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: color.surface.sunken,
   },
-  buscadorInput: { flex: 1, color: color.text.primary, ...type.body },
+  buscadorInput: { flex: 1, color: color.text.primary, ...type.body, includeFontPadding: false, textAlignVertical: 'center' },
   sinResultados: { paddingHorizontal: space.lg, paddingVertical: space.lg },
   countryRow: {
     flexDirection: 'row',

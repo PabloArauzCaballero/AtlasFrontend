@@ -14,7 +14,7 @@
  */
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { color, radius, space, touch } from '../theme/tokens';
+import { color, radius, space, stroke, touch } from '../theme/tokens';
 import { Icon } from './icons';
 import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
@@ -179,14 +179,14 @@ const styles = StyleSheet.create({
     gap: space.md,
     padding: space.lg,
     paddingTop: space.xxl,
-    borderBottomWidth: 1,
-    borderBottomColor: color.border.subtle,
+    borderBottomWidth: stroke.hairline,
+    borderBottomColor: color.border.hairline,
   },
   sheetTitle: { flex: 1, gap: space.xxs },
   sheetBody: { padding: space.lg, paddingBottom: space.xxl },
   bodyHeading: { marginTop: space.md },
   bodyParagraph: { marginTop: space.xs },
-  sheetFoot: { padding: space.lg, borderTopWidth: 1, borderTopColor: color.border.subtle },
+  sheetFoot: { padding: space.lg, borderTopWidth: stroke.hairline, borderTopColor: color.border.hairline },
   acceptButton: {
     minHeight: touch.minSize,
     borderRadius: radius.pill,
