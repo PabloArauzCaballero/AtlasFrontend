@@ -26,7 +26,7 @@ import { useRouter } from 'expo-router';
 import * as contentApi from '../../src/api/endpoints/app-content';
 import { ContentActionButton, ContentBullets } from '../../src/ui/content';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
-import { Accordion, AtlasText, Card, CardHeader, Divider, EmptyState, SectionHeader, Skeleton } from '../../src/ui/primitives';
+import { Accordion, AtlasText, Button, Card, CardHeader, Divider, EmptyState, SectionHeader, Skeleton } from '../../src/ui/primitives';
 import { resetTour, useTour } from '../../src/ui/tour';
 import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS } from '../../src/features/tour-inicio';
 
@@ -81,6 +81,18 @@ export default function Ayuda() {
           <Skeleton height={23} width="64%" />
         </Card>
       ) : null}
+
+      {/*
+        Hablar con una persona, arriba del todo.
+
+        Quien abre esta pantalla ya tiene un problema; obligarle a leer seis respuestas antes de
+        encontrar como hablar con alguien es hacerle pagar por nuestra organizacion del contenido.
+        Lleva al centro de soporte, donde ademas puede buscar y ver sus casos abiertos.
+      */}
+      <Card>
+        <CardHeader icon="ayuda" title="¿Necesitas hablar con alguien?" detail="Te respondemos por chat y queda registrado en tu caso." divider={false} />
+        <Button label="Ir a soporte" onPress={() => router.push('/(app)/soporte' as never)} />
+      </Card>
 
       {help.map((entry) => (
         <Card key={entry.contentKey}>

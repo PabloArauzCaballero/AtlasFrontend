@@ -1,0 +1,92 @@
+# El soporte del cliente: buscar una respuesta y hablar con una persona.
+#
+#   maestro test -e CORREO=… -e PIN=… e2e/04-soporte.yaml
+#
+# Recorre lo que ninguna prueba unitaria puede: que la pantalla llegue desde el perfil, que el
+# buscador devuelva algo del servidor y que abrir la conversación deje un chat con el aviso de
+# seguridad que escribe el sistema — la prueba de que el canal se creó de verdad.
+#
+# `clearState` a propósito, igual que en el ingreso: entrar con una sesión guardada probaría otra
+# cosa.
+appId: bo.atlas.consumer
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil: { visible: 'Ya tengo cuenta', timeout: 30000 }
+- tapOn: 'Ya tengo cuenta'
+- tapOn:
+    below:
+      text: 'Correo o teléfono *'
+- inputText: "${CORREO}"
+# El teclado tapa el campo del PIN: sin bajarlo, «tocar debajo de PIN» cae sobre el teclado y el
+# foco se queda en el correo — el PIN acababa escrito al final del correo. `hideKeyboard` no
+# funciona en esta app, así que se toca el subtítulo, que no es interactivo.
+- tapOn: 'Usa el correo o teléfono con el que te registraste.'
+- tapOn:
+    below:
+      text: 'PIN *'
+- inputText: "${PIN}"
+- tapOn: 'Usa el correo o teléfono con el que te registraste.'
+# «Ingresar» aparece dos veces —el título y el botón—, así que se toma el segundo.
+- tapOn:
+    text: 'Ingresar'
+    index: 1
+# No se afirma una pantalla concreta: según el avance del registro, entrar deja al cliente en el
+# progreso o en el inicio. Lo que importa aquí es que la sesión existe, y eso lo prueba el perfil.
+# Tras entrar pueden interponerse dos cosas, y ninguna es segura que aparezca.
+#
+# **«¿Guardar contraseña?»** lo pinta iOS, no la app. Es modal y pertenece a OTRO proceso, así que
+# Maestro no lo ve en el árbol: `visible: 'Ahora no'` da falso aunque el botón esté delante. Lo que
+# sí se puede comprobar es lo contrario — si la pantalla de inicio NO se ve, es que algo la tapa— y
+# entonces se pulsa por posición. Es la única forma de descartarlo sin apagar el autorrelleno del
+# simulador entero.
+#
+# **El tour de bienvenida** sí es de la app y se comprueba por texto; sale siempre con `clearState`.
+- waitForAnimationToEnd: { timeout: 8000 }
+- runFlow:
+    when:
+      notVisible: 'Tu línea Atlas'
+    commands:
+      - tapOn:
+          point: '31%,64%'
+- extendedWaitUntil: { visible: 'Tu línea Atlas', timeout: 40000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- runFlow:
+    when:
+      visible: 'Saltar'
+    commands:
+      - tapOn: 'Saltar'
+
+# Desde el perfil hasta la ayuda, que es el camino real: nadie llega al soporte por una URL.
+- tapOn: 'Perfil'
+- extendedWaitUntil: { visible: 'Ayuda', timeout: 20000 }
+- takeScreenshot: soporte-01-perfil
+- tapOn: 'Preguntas frecuentes'
+- extendedWaitUntil: { visible: 'Ir a soporte', timeout: 20000 }
+- takeScreenshot: soporte-02-ayuda
+
+- tapOn: 'Ir a soporte'
+- extendedWaitUntil: { visible: 'Hablar con soporte', timeout: 30000 }
+- takeScreenshot: soporte-03-centro
+
+# El buscador contra el servidor: se escribe como escribe la gente, sin tildes.
+- tapOn:
+    below:
+      text: 'Buscar en la ayuda'
+- inputText: 'no me llega el codigo'
+- extendedWaitUntil: { visible: 'Resultados', timeout: 20000 }
+- takeScreenshot: soporte-04-busqueda
+
+# Abrir la conversación. El aviso de seguridad lo escribe el SISTEMA al crear el canal, así que su
+# presencia prueba que el backend lo creó y que la transcripción llegó a la pantalla.
+- tapOn: 'Hablar con soporte'
+- extendedWaitUntil: { visible: 'nunca te pedirá', timeout: 40000 }
+- takeScreenshot: soporte-05-chat
+
+- tapOn:
+    below:
+      text: 'Tu mensaje'
+- inputText: 'Hola, tengo una duda con mi cuota de septiembre.'
+- tapOn: 'Enviar'
+- extendedWaitUntil: { visible: 'duda con mi cuota', timeout: 30000 }
+- takeScreenshot: soporte-06-mensaje-enviado
