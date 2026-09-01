@@ -104,6 +104,13 @@ const RECHAZO: Record<string, { titulo: string; accion: string }> = {
     accion:
       "En tu banca por internet elige el periodo de los últimos 3 meses completos y vuelve a subirlo.",
   },
+  // El vencido es la contraria del anterior: no le faltan meses hacia atras, le falta el presente.
+  // Con un solo motivo, a quien sube doce meses cerrados en marzo se le pedia «mas meses».
+  EXTRACTO_VENCIDO: {
+    titulo: "Ese extracto ya venció",
+    accion:
+      "Su último movimiento es de hace demasiado. Descarga el extracto hasta la fecha de hoy y vuelve a subirlo.",
+  },
   ARCHIVO_ILEGIBLE: {
     titulo: "No pudimos abrir el archivo",
     accion:
