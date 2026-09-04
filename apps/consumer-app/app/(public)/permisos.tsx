@@ -183,8 +183,9 @@ export default function Permisos() {
           </View>
           <Gap size="sm" />
           <AtlasText variant="caption" tone="tertiary">
-            Android te mostrará un aviso permanente mientras esté activo, para que sepas siempre que
-            se está registrando. Puedes quitarlo cuando quieras.
+            {enAndroid
+              ? 'Tu teléfono mostrará un aviso permanente mientras esté activo, para que sepas siempre que se está registrando. Puedes quitarlo cuando quieras.'
+              : 'Puedes quitarlo cuando quieras desde «Privacidad» o desde los ajustes de tu teléfono.'}
           </AtlasText>
         </Card>
       </Screen>
