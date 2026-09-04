@@ -12,6 +12,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from 'react';
 import * as customerApi from '../../src/api/endpoints/customer';
 import { describeError } from '../../src/api/errors';
+import { FINALIDAD_AGENDA, FINALIDAD_UBICACION } from '../../src/session/device-signals';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { StyleSheet, View, type ScrollView } from 'react-native';
@@ -24,6 +25,14 @@ import { PinField } from '../../src/ui/pin-field';
 import { AtlasText, Button, Card, Divider, ErrorState, Overline, SectionHeader, Skeleton } from '../../src/ui/primitives';
 import { TRUST_REGISTRO } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
+
+/**
+ * Los documentos que gobierna la pantalla de permisos y que por eso no se listan en el alta.
+ *
+ * Son los mismos codigos que declara `session/device-signals.ts`; se importan de alli para que
+ * añadir un tercero no obligue a acordarse de este archivo.
+ */
+const PERMISOS_DE_ARRANQUE = new Set<string>([FINALIDAD_AGENDA, FINALIDAD_UBICACION]);
 
 /** Edad minima exigida por la regla de habilitacion del backend. */
 const MIN_AGE = 18;
@@ -81,7 +90,17 @@ export default function Register() {
     setLoadError(null);
     customerApi
       .listActiveConsents()
-      .then((list) => {
+      .then((todos) => {
+        /*
+          Los dos permisos del arranque NO salen aqui.
+
+          `device_address_book` y `location_tracking` ya se decidieron en la pantalla de permisos, y
+          su consentimiento lo registra `session/device-signals.ts` en cuanto hay cuenta. Volver a
+          pintarlos aqui como dos casillas sueltas le pediria a la persona lo mismo dos veces en el
+          mismo minuto y —peor— dejaria que las respuestas se contradijeran: la casilla diria «no» y
+          el permiso del sistema, concedido hace un momento, diria «si».
+        */
+        const list = todos.filter((documento) => !PERMISOS_DE_ARRANQUE.has(documento.documentCode));
         setDocuments(list);
         setAccepted(Object.fromEntries(list.map((document) => [document.id, false])));
       })

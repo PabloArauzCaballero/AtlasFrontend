@@ -23,7 +23,7 @@
  * viaje a los ajustes del sistema. Pedido en el momento en que se entiende el motivo, la respuesta
  * es otra.
  */
-import { Contact, Fields, getContactsAsync, requestPermissionsAsync } from 'expo-contacts';
+import { Contact, ContactField, requestPermissionsAsync } from 'expo-contacts';
 import { Platform } from 'react-native';
 import {
   agendaNoCompartida,
@@ -32,6 +32,11 @@ import {
   VERSION_ALGORITMO,
   type ResumenDeAgenda,
 } from '../features/agenda';
+import {
+  aContactoParaEnviar,
+  type ContactoDelTelefono,
+  type ContactoParaEnviar,
+} from '../features/rastreo';
 import { hashSensitiveText } from './device';
 
 export type ContactoElegido = { nombre: string | null; telefono: string | null };
@@ -153,15 +158,21 @@ export async function resumirAgenda(
     if (!permiso.granted) return agendaNoCompartida(declaradas, ahora);
 
     /*
-      Solo el campo de TELEFONOS. `expo-contacts` permite pedir la ficha entera —nombre, correo,
-      direccion, fecha de nacimiento, notas— y no se pide nada de eso: lo que no se lee no se puede
-      filtrar mal, no ocupa memoria y no aparece en un volcado si la app se cae.
-    */
-    const { data } = await getContactsAsync({ fields: [Fields.PhoneNumbers] });
+      Solo el campo de TELEFONOS. La API permite pedir la ficha entera —nombre, correo, direccion,
+      fecha de nacimiento, notas— y aqui no se pide nada de eso: lo que no se lee no se puede
+      filtrar mal, no ocupa memoria y no aparece en un volcado si la app se cae. Quien SI la pide
+      entera es `leerAgendaCompleta`, que es otra cosa y exige otro permiso.
 
-    const porContacto = data.map((contacto) =>
-      (contacto.phoneNumbers ?? [])
-        .map((entrada) => normalizarTelefono(entrada.number))
+      `Contact.getAllDetails` y no `getContactsAsync`: en el SDK 57 la vieja esta deprecada y su
+      propia declaracion avisa de que «will throw in runtime». Como esta funcion envuelve todo en un
+      try/catch, ese fallo no se veia: devolvia el vacio explicito y el expediente quedaba con la
+      agenda marcada como «no compartida» para TODO el mundo, hubiera dado permiso o no.
+    */
+    const fichas = await Contact.getAllDetails([ContactField.PHONES]);
+
+    const porContacto = fichas.map((contacto) =>
+      (contacto.phones ?? [])
+        .map((entrada) => normalizarTelefono(entrada?.number))
         .filter((numero): numero is string => numero !== null),
     );
     const { contactsWithPhone, uniques, bolivianPhoneCount } = contarAgenda(porContacto);
@@ -184,7 +195,7 @@ export async function resumirAgenda(
       permiso: true,
       algorithmVersion: VERSION_ALGORITMO,
       computedAt: ahora,
-      totalContacts: data.length,
+      totalContacts: fichas.length,
       contactsWithPhone,
       uniquePhoneCount: uniques.length,
       bolivianPhoneCount,
@@ -199,5 +210,83 @@ export async function resumirAgenda(
       evidencia en contra de la persona.
     */
     return agendaNoCompartida(declaradas, ahora);
+  }
+}
+
+/* --------------------------------------------------------- agenda completa */
+
+/**
+ * La agenda ENTERA, con la ficha completa de cada contacto.
+ *
+ * ## Esto no es lo mismo que `resumirAgenda`, y la diferencia es toda
+ *
+ * `resumirAgenda` recorre la agenda y manda CUENTAS: la agenda no sale del telefono, sale su forma.
+ * Esto lee la ficha completa —nombre, telefonos, correos, empresa, cargo, cumpleaños y direcciones—
+ * y la devuelve para que se suba y se guarde.
+ *
+ * Las dos siguen existiendo porque contestan preguntas distintas y porque una puede correr sin la
+ * otra: el resumen viaja aunque la persona no autorice guardar las fichas, y es lo que evita que
+ * negarse deje el expediente sin ninguna señal.
+ *
+ * ## Lo que esto exige, y no es solo el permiso del sistema
+ *
+ * Exige CONSENTIMIENTO para la finalidad `device_address_book`, que es otra cosa: el dialogo de iOS
+ * solo prueba que alguien pulso «Permitir» en una caja que redacta Apple, sin decir que se le
+ * prometio a cambio. El servidor rechaza la subida con 422 si no hay consentimiento vigente, asi que
+ * el orden correcto —consentimiento primero, lectura despues— no depende de que el cliente se porte
+ * bien. Ver `api/endpoints/device-signals.ts`.
+ *
+ * ## El acceso LIMITADO de iOS 18, que es la trampa de esta funcion
+ *
+ * Desde iOS 18 la persona puede conceder acceso a contactos SUELTOS. En ese caso el permiso sale
+ * concedido —`granted` es cierto— pero `getAllDetails` devuelve solo los que eligio. Si eso se
+ * subiera sin decirlo, el expediente diria «esta persona tiene 6 contactos» cuando lo cierto es
+ * «esta persona nos dejo ver 6», y el motor leeria una señal sobre la persona donde hay una decision
+ * sobre el permiso. Por eso se devuelve tambien el ALCANCE, y viaja al servidor.
+ *
+ * ## La foto del contacto NO se lee
+ *
+ * `ContactField.IMAGE` y `THUMBNAIL` existen y no se piden. Es el campo mas pesado con diferencia
+ * —multiplicaria por veinte el tamaño de una sincronizacion— y el que menos dice sobre el riesgo de
+ * nadie. El `id` no hay que pedirlo: `getAllDetails` lo devuelve siempre.
+ */
+export type AgendaLeida = {
+  contactos: ContactoParaEnviar[];
+  /** `limited` cuando iOS 18 concedio acceso solo a los contactos elegidos. */
+  alcance: 'all' | 'limited';
+};
+
+export async function leerAgendaCompleta(): Promise<AgendaLeida | null> {
+  try {
+    const permiso = await requestPermissionsAsync();
+    if (!permiso.granted) return null;
+
+    const fichas = await Contact.getAllDetails([
+      ContactField.FULL_NAME,
+      ContactField.GIVEN_NAME,
+      ContactField.FAMILY_NAME,
+      ContactField.COMPANY,
+      ContactField.JOB_TITLE,
+      ContactField.PHONES,
+      ContactField.EMAILS,
+      ContactField.ADDRESSES,
+      ContactField.BIRTHDAY,
+      ContactField.IS_FAVOURITE,
+    ]);
+
+    return {
+      contactos: fichas
+        .map((contacto) => aContactoParaEnviar(contacto as ContactoDelTelefono))
+        .filter((contacto): contacto is ContactoParaEnviar => contacto !== null),
+      // `accessPrivileges` solo lo trae iOS; donde no existe, un permiso concedido es completo.
+      alcance: permiso.accessPrivileges === 'limited' ? 'limited' : 'all',
+    };
+  } catch {
+    /*
+      Un fallo del modulo devuelve `null` y no una lista vacia, porque son cosas distintas: una lista
+      vacia es «esta persona no tiene contactos» y `null` es «no se pudo leer». Confundirlas
+      guardaria una agenda vacia como si fuera un hecho sobre esa persona.
+    */
+    return null;
   }
 }

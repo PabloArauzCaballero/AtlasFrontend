@@ -19,8 +19,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import * as customerApi from '../../src/api/endpoints/customer';
+import * as deviceSignalsApi from '../../src/api/endpoints/device-signals';
 import * as privacyApi from '../../src/api/endpoints/privacy';
 import { describeError } from '../../src/api/errors';
+import {
+  desactivarSeñalesDelDispositivo,
+  FINALIDAD_AGENDA,
+  FINALIDAD_UBICACION,
+} from '../../src/session/device-signals';
 import { useSession } from '../../src/session/session';
 import { space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
@@ -103,6 +109,22 @@ export default function Privacidad() {
           decidedAt: new Date().toISOString(),
         })),
       );
+
+      /*
+        Retirar estos dos NO es solo dejar de recoger: es borrar y apagar.
+
+        El texto de los dos documentos lo promete —«borramos la que tengamos guardada», «dejamos de
+        registrar posiciones»— y una promesa que solo cambia una fila de consentimiento la
+        incumpliria en silencio: la agenda seguiria en el servidor y el rastreo seguiria instalado en
+        el sistema, despertando la app con la app cerrada. Se hace DESPUES de registrar la decision,
+        para que la revocacion quede escrita aunque el borrado falle.
+      */
+      const revocado = (codigo: string) =>
+        documentos.some((documento) => documento.documentCode === codigo && decisiones[documento.id] === false);
+
+      if (revocado(FINALIDAD_AGENDA)) await deviceSignalsApi.borrarAgenda(session.customerId);
+      if (revocado(FINALIDAD_UBICACION)) await desactivarSeñalesDelDispositivo();
+
       setGuardado(true);
     } catch (capturado) {
       setError(capturado);

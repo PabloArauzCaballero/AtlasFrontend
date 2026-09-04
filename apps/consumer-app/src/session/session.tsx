@@ -12,7 +12,10 @@ import * as onboardingApi from '../api/endpoints/onboarding';
 import * as telemetryApi from '../api/endpoints/telemetry';
 import { deviceIdentity } from '../device/device';
 import { permisosDecididos, type PermissionReport } from '../device/permissions';
+import type { ContextoDeRastreo } from '../device/tracking-context';
+import { activarSeñalesDelDispositivo, desactivarSeñalesDelDispositivo } from './device-signals';
 import { profileStorage, secureTokenStore, type StoredProfile } from './token-storage';
+import { useRastreoEnPrimerPlano } from './use-rastreo-primer-plano';
 
 export type SessionStatus = 'restoring' | 'anonymous' | 'authenticated';
 
@@ -88,6 +91,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const dispositivoTelemetria = useRef<string | null>(null);
   const [onboarding, setOnboarding] = useState<onboardingApi.OnboardingStatus | null>(null);
   const [me, setMe] = useState<customerApi.CustomerMe | null>(null);
+  /*
+    El contexto del rastreo SI va en estado y no en una referencia, al reves que los dos de arriba.
+
+    Es lo unico de aqui que tiene que hacer repintar: el temporizador de primer plano
+    (`useRastreoEnPrimerPlano`) se enciende cuando aparece y se apaga cuando desaparece, y con una
+    referencia el efecto no se enteraria de que ya hay sesion con la que medir.
+  */
+  const [rastreo, setRastreo] = useState<ContextoDeRastreo | null>(null);
 
   useEffect(() => {
     configureClient({
@@ -111,28 +122,6 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if (statusResult.status === 'fulfilled') setOnboarding(statusResult.value);
     if (meResult.status === 'fulfilled') setMe(meResult.value);
   }, []);
-
-  const restore = useCallback(async () => {
-    const tokens = await secureTokenStore.read();
-    const stored = await profileStorage.read();
-    if (!tokens || !stored) {
-      setStatus('anonymous');
-      return;
-    }
-    setProfile(stored);
-    try {
-      await loadCustomerState(stored.customerId);
-      setStatus('authenticated');
-    } catch {
-      // Token invalido o servidor caido: se conserva el perfil para poder reintentar, pero no se
-      // deja entrar al area autenticada con datos que no se pudieron verificar.
-      setStatus('anonymous');
-    }
-  }, [loadCustomerState]);
-
-  useEffect(() => {
-    void restore();
-  }, [restore]);
 
   /*
     La sesion de telemetria: se abre al entrar y se cierra al salir.
@@ -175,11 +164,53 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
        * escribir no puede impedir que alguien entre a ver cuanto debe.
        */
       await enviarTelemetriaDePermisos(customerId, sessionId, deviceId, permisos);
+
+      /*
+       * Y ahora las dos señales que la persona autorizo al arrancar: la agenda y la ubicacion.
+       *
+       * Va DESPUES de abrir la sesion de telemetria porque necesita su `deviceId` y su `sessionId`:
+       * el servidor ata cada entrega al vinculo cliente-dispositivo y sin el responde 403. Ver
+       * `session/device-signals.ts`, que registra el consentimiento antes de leer nada.
+       */
+      if (deviceId) {
+        setRastreo({ customerId, deviceId, sessionId });
+        await activarSeñalesDelDispositivo({ customerId, deviceId, sessionId });
+      }
     } catch {
       sesionTelemetria.current = null;
       dispositivoTelemetria.current = null;
     }
   }, []);
+
+  const restore = useCallback(async () => {
+    const tokens = await secureTokenStore.read();
+    const stored = await profileStorage.read();
+    if (!tokens || !stored) {
+      setStatus('anonymous');
+      return;
+    }
+    setProfile(stored);
+    try {
+      await loadCustomerState(stored.customerId);
+      setStatus('authenticated');
+      /*
+        Al RESTAURAR tambien se abre sesion de telemetria y se reactivan las señales.
+        
+        Sin esto, quien abre la app con sesion valida —que es el caso normal a partir del segundo
+        dia— no volvia a medir nunca hasta el siguiente login, y el rastreo de segundo plano se
+        quedaba apuntando a la sesion de telemetria del dia que se registro.
+      */
+      void abrirSesionTelemetria(stored.customerId, 'restored_session');
+    } catch {
+      // Token invalido o servidor caido: se conserva el perfil para poder reintentar, pero no se
+      // deja entrar al area autenticada con datos que no se pudieron verificar.
+      setStatus('anonymous');
+    }
+  }, [abrirSesionTelemetria, loadCustomerState]);
+
+  useEffect(() => {
+    void restore();
+  }, [restore]);
 
   const signIn = useCallback<SessionValue['signIn']>(
     async (identifier, password) => {
@@ -231,6 +262,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signOut = useCallback<SessionValue['signOut']>(async () => {
+    /*
+      Se apaga el rastreo ANTES de revocar el token.
+      
+      El sistema recuerda la tarea de ubicacion entre arranques de la app: si no se detiene aqui,
+      sigue despertando el bundle y mandando posiciones de alguien que ya cerro sesion, con un token
+      que ya no vale. La tarea sabe apagarse sola al no encontrar contexto, pero eso ocurre en la
+      siguiente posicion y no ahora.
+    */
+    setRastreo(null);
+    await desactivarSeñalesDelDispositivo();
+
     const abierta = sesionTelemetria.current;
     const salienteId = profile?.customerId;
     if (abierta && salienteId) {
@@ -256,6 +298,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if (!profile) return;
     await loadCustomerState(profile.customerId);
   }, [loadCustomerState, profile]);
+
+  // El temporizador de primer plano vive aqui porque aqui esta el contexto y aqui se sabe si la
+  // persona tiene sesion: montarlo en una pantalla lo apagaria al navegar a otra.
+  useRastreoEnPrimerPlano(rastreo, status === 'authenticated' && rastreo !== null);
 
   const value = useMemo<SessionValue>(
     () => ({

@@ -1,0 +1,38 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_ATLAS_API_URL": "https://n2vmpw58-80.brs.devtunnels.ms/api/v1",
+        "EXPO_PUBLIC_ATLAS_TENANT_ID": "1",
+        "EXPO_PUBLIC_ATLAS_TIMEOUT_MS": "20000",
+        "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",
+        "EXPO_PUBLIC_ATLAS_DECISION_SOURCE": "backend"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_ATLAS_API_URL": "https://n2vmpw58-80.brs.devtunnels.ms/api/v1",
+        "EXPO_PUBLIC_ATLAS_TENANT_ID": "1",
+        "EXPO_PUBLIC_ATLAS_TIMEOUT_MS": "20000",
+        "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",
+        "EXPO_PUBLIC_ATLAS_DECISION_SOURCE": "backend"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

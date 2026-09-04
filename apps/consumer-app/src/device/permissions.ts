@@ -80,3 +80,24 @@ export async function permisosDecididos(): Promise<PermissionReport[]> {
 
   return reportes;
 }
+
+/* ----------------------------------------------------------- pedir, no leer */
+
+/**
+ * Pide el permiso de CONTACTOS, con dialogo del sistema.
+ *
+ * Es la unica funcion de este archivo que abre un dialogo, y esta aqui —y no en `device/contacts.ts`—
+ * porque la pantalla de arranque pide los dos permisos juntos y no tiene por que saber en que modulo
+ * vive cada uno. La lectura de la agenda sigue viviendo alli.
+ *
+ * Devuelve `false` ante cualquier fallo del modulo: no poder preguntar es, a efectos de lo que la
+ * app hara despues, lo mismo que un no.
+ */
+export async function pedirPermisoDeContactos(): Promise<boolean> {
+  try {
+    const estado = await Contacts.requestPermissionsAsync();
+    return estado.granted === true;
+  } catch {
+    return false;
+  }
+}
