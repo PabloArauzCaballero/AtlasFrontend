@@ -46,7 +46,8 @@
         "android.permission.ACCESS_BACKGROUND_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_LOCATION",
-        "android.permission.READ_CONTACTS"
+        "android.permission.READ_CONTACTS",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "intentFilters": [
         {
@@ -101,6 +102,14 @@
         "expo-contacts",
         {
           "contactsPermission": "Atlas usa tus contactos para verificar tus referencias y detectar solicitudes coordinadas. Si lo autorizas, guardamos tu agenda cifrada."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#2BE0A8",
+          "defaultChannel": "default"
         }
       ],
       "expo-task-manager",

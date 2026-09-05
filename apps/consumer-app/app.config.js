@@ -91,13 +91,34 @@ module.exports = ({ config }) => {
    */
   const androidMapsKey = process.env.ANDROID_MAPS_API_KEY;
 
+  /*
+   * El fichero de Firebase, si esta.
+   *
+   * `expo-notifications` en Android entrega por FCM, y FCM necesita el `google-services.json` del
+   * proyecto de Firebase con el paquete `bo.atlas.consumer` dentro. Sin el, la app compila e
+   * instala igual, pero `getDevicePushTokenAsync()` lanza y `push.ts` lo degrada a
+   * `no-disponible`: los avisos se pueden configurar y no llega ninguno.
+   *
+   * Se declara SOLO si el fichero existe. Ponerlo fijo en `app.json` rompe la compilacion de
+   * cualquiera que no lo tenga —el plugin aborta con «file not found»— y ese es un precio alto por
+   * una funcion opcional. Asi, el dia que se deje el fichero al lado de este, el siguiente build lo
+   * recoge sin tocar configuracion.
+   *
+   * No se versiona: identifica el proyecto de Firebase y se regenera desde su consola.
+   */
+  const googleServices = path.join(__dirname, 'google-services.json');
+  const hayFirebase = fs.existsSync(googleServices);
+
   const withExtra = {
     ...config,
-    ...(androidMapsKey
+    ...(androidMapsKey || hayFirebase
       ? {
           android: {
             ...config.android,
-            config: { ...config.android?.config, googleMaps: { apiKey: androidMapsKey } },
+            ...(hayFirebase ? { googleServicesFile: './google-services.json' } : {}),
+            ...(androidMapsKey
+              ? { config: { ...config.android?.config, googleMaps: { apiKey: androidMapsKey } } }
+              : {}),
           },
         }
       : {}),

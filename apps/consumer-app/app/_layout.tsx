@@ -21,6 +21,7 @@ import * as SystemUI from 'expo-system-ui';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { prepararAvisos } from '../src/device/push';
 import { SandboxProvider } from '../src/sandbox/store';
 import { SonidoMarcaProvider } from '../src/ui/brand-sound';
 import { AnimatedSplash } from '../src/ui/splash';
@@ -107,6 +108,12 @@ export default function RootLayout() {
 
   useEffect(() => {
     void SystemUI.setBackgroundColorAsync(color.surface.primary);
+    /*
+      El canal de avisos se crea al arrancar, no al conceder el permiso. En Android una notificacion
+      dirigida a un canal inexistente se descarta en silencio, y el permiso puede venir concedido de
+      una sesion anterior sin que nadie vuelva a pasar por la pantalla de avisos.
+    */
+    void prepararAvisos();
   }, []);
 
   return (

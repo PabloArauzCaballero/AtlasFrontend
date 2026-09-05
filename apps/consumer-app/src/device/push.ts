@@ -29,6 +29,65 @@ import * as customerApi from '../api/endpoints/customer';
 export type EstadoAvisos = 'concedido' | 'denegado' | 'no-disponible';
 
 /**
+ * El canal de Android.
+ *
+ * Desde Android 8 **toda** notificacion pertenece a un canal, y una que llega para un canal que no
+ * existe se descarta: no se ve, no suena y no queda rastro en ningun log de la app. Es el fallo mas
+ * caro de este dominio porque se parece exactamente a «el servidor no envio nada», y lleva a buscar
+ * el problema en el backend.
+ *
+ * El identificador viaja tambien en el mensaje que manda el servidor; si algun dia cambia aqui, hay
+ * que cambiarlo alli.
+ */
+const CANAL_AVISOS = 'default';
+
+/**
+ * Que hacer cuando llega un aviso **con la app abierta**.
+ *
+ * Sin esto, Android e iOS entregan la notificacion al proceso y no la enseñan: el sistema asume que
+ * una app en primer plano ya esta mostrando lo que sea que la notificacion anuncia. Para una app de
+ * credito eso es falso —el aviso puede ser de una cuota que vence mientras miras otra pantalla—, y
+ * el sintoma es «los avisos solo llegan con la app cerrada», que suena a bug del servidor.
+ *
+ * `shouldShowBanner` y `shouldShowList` son la API nueva; `shouldShowAlert`, que hacia las dos
+ * cosas, esta marcada como obsoleta en esta version.
+ */
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+/**
+ * Crea el canal de Android si no existia. En iOS no hay canales y no hace nada.
+ *
+ * Se llama al arrancar la app, no al conceder el permiso: el canal tiene que existir **antes** de
+ * que llegue el primer mensaje, y puede llegar en un dispositivo donde el permiso ya se concedio en
+ * una sesion anterior, sin que nadie vuelva a pasar por la pantalla de avisos.
+ */
+export async function prepararAvisos(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  try {
+    await Notifications.setNotificationChannelAsync(CANAL_AVISOS, {
+      name: 'Avisos de Atlas',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
+      sound: 'default',
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#2BE0A8',
+    });
+  } catch {
+    /*
+      Un canal que no se puede crear no puede impedir que la app arranque. Lo unico que se pierde
+      son los avisos, y el resto de la app no depende de ellos.
+    */
+  }
+}
+
+/**
  * Pide el permiso —si no estaba ya decidido— y registra el dispositivo.
  *
  * Devuelve el estado para que la pantalla pueda decir la verdad: un interruptor encendido con el
@@ -46,6 +105,7 @@ export async function activarAvisos(customerId: string): Promise<EstadoAvisos> {
     const decidido = actual.granted ? actual : await Notifications.requestPermissionsAsync();
     if (!decidido.granted) return 'denegado';
 
+    await prepararAvisos();
     const token = await Notifications.getDevicePushTokenAsync();
     await customerApi.registerDeviceToken(customerId, {
       platform: Platform.OS === 'ios' ? 'ios' : 'android',
