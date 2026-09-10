@@ -21,7 +21,7 @@
  * manda el mensaje con su clave. La imagen no pasa por la API, y por eso un reintento no la vuelve
  * a subir entera.
  */
-import { readAccessToken, request } from '../client';
+import { readAccessToken, request, newCorrelationId } from '../client';
 import { apiConfig } from '../config';
 
 export type FaqArticle = {
@@ -245,7 +245,13 @@ export async function readAttachment(attachmentId: string): Promise<string | nul
   if (!token) return null;
 
   const response = await fetch(`${apiConfig.baseUrl}/support/attachments/${attachmentId}/content`, {
-    headers: { Authorization: `Bearer ${token}`, 'x-tenant-id': apiConfig.tenantId },
+    // Esta descarga no pasa por `request` —arma la autorizacion a mano—, asi que la correlacion se
+    // pone aqui o esta peticion queda como la unica de la app que el backend no puede atar a nada.
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'x-tenant-id': apiConfig.tenantId,
+      'x-correlation-id': newCorrelationId(),
+    },
   });
   if (!response.ok) return null;
 

@@ -56,7 +56,30 @@ export function newIdempotencyKey(): string {
   return `atlas-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
-async function rawRequest<T>(path: string, options: RequestOptions, accessToken: string | null): Promise<{ data: T; requestId: string | null }> {
+/**
+ * Un identificador por operacion, para que el backend pueda atar lo que hizo la app.
+ *
+ * AtlasBackend lo guarda en `system_action_logs` y solo acepta el valor entrante si cumple
+ * `/^[A-Za-z0-9_-]{1,64}$/`; lo que no encaje se descarta y se genera otro del lado del servidor, con
+ * lo que la correlacion se pierde sin avisar. Los dos formatos de aqui caben.
+ *
+ * Se reutiliza la misma forma que `newIdempotencyKey` —y su respaldo— porque `crypto.randomUUID` no
+ * existe en todos los runtimes de RN, no porque sean lo mismo: la llave de idempotencia dice «esto
+ * ya se hizo, no lo repitas» y esto dice «esto es lo mismo que aquello». Mezclarlas haria que un
+ * reintento deduplicado y una operacion nueva compartieran identidad.
+ */
+export function newCorrelationId(): string {
+  const globalCrypto = (globalThis as { crypto?: { randomUUID?: () => string } }).crypto;
+  if (globalCrypto?.randomUUID) return globalCrypto.randomUUID();
+  return `app-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+async function rawRequest<T>(
+  path: string,
+  options: RequestOptions,
+  accessToken: string | null,
+  correlationId: string,
+): Promise<{ data: T; requestId: string | null }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), apiConfig.requestTimeoutMs);
   if (options.signal) options.signal.addEventListener('abort', () => controller.abort(), { once: true });
@@ -68,6 +91,11 @@ async function rawRequest<T>(path: string, options: RequestOptions, accessToken:
       headers: {
         accept: 'application/json',
         'x-tenant-id': apiConfig.tenantId,
+        // Un id por OPERACION, no por intento: si el 401 dispara un refresco y se reintenta, las dos
+        // peticiones comparten id y en el backend se ven como lo que son, un solo gesto del usuario.
+        // Con uno por intento, el reintento parecia una operacion distinta y la traza se partia justo
+        // en el caso que mas interesa mirar.
+        'x-correlation-id': correlationId,
         ...(options.body !== undefined ? { 'content-type': 'application/json' } : {}),
         ...(options.idempotent ? { 'x-idempotency-key': newIdempotencyKey() } : {}),
         ...(accessToken && !options.anonymous ? { authorization: `Bearer ${accessToken}` } : {}),
@@ -133,9 +161,10 @@ async function rawRequest<T>(path: string, options: RequestOptions, accessToken:
 /** Punto unico de salida a red. Refresca el token una sola vez ante 401 y no reintenta mas. */
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const tokens = options.anonymous ? null : ((await tokenStore?.read()) ?? null);
+  const correlationId = newCorrelationId();
 
   try {
-    const result = await rawRequest<T>(path, options, tokens?.accessToken ?? null);
+    const result = await rawRequest<T>(path, options, tokens?.accessToken ?? null, correlationId);
     return result.data;
   } catch (error) {
     const isAuthError = error instanceof AtlasApiError && error.kind === 'auth';
@@ -147,6 +176,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
         '/auth/refresh',
         { method: 'POST', body: { refreshToken: tokens.refreshToken }, anonymous: true },
         null,
+        // El refresco lleva la correlacion de la operacion que lo provoco: sin eso, en el log
+        // aparece un `/auth/refresh` suelto que no se sabe de donde salio.
+        correlationId,
       );
       refreshed = { accessToken: result.data.accessToken, refreshToken: result.data.refreshToken };
     } catch {
@@ -156,7 +188,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     }
 
     await tokenStore.write(refreshed);
-    const retried = await rawRequest<T>(path, options, refreshed.accessToken);
+    const retried = await rawRequest<T>(path, options, refreshed.accessToken, correlationId);
     return retried.data;
   }
 }
