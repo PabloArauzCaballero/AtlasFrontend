@@ -21,6 +21,7 @@ import * as SystemUI from 'expo-system-ui';
 import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ScreenTracker } from '../src/api/screen-tracker';
 import { prepararAvisos } from '../src/device/push';
 import { SandboxProvider } from '../src/sandbox/store';
 import { SonidoMarcaProvider } from '../src/ui/brand-sound';
@@ -55,6 +56,8 @@ function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
 
   return (
     <>
+    {/* ANTES que la pila: tiene que fijar la ruta antes de que la pantalla nueva pida sus datos. */}
+    <ScreenTracker />
     <Stack
       screenOptions={{
         headerShown: false,

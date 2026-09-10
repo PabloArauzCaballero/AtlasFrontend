@@ -21,7 +21,7 @@
  * manda el mensaje con su clave. La imagen no pasa por la API, y por eso un reintento no la vuelve
  * a subir entera.
  */
-import { readAccessToken, request, newCorrelationId } from '../client';
+import { readAccessToken, request, newCorrelationId, originHeaders } from '../client';
 import { apiConfig } from '../config';
 
 export type FaqArticle = {
@@ -251,6 +251,7 @@ export async function readAttachment(attachmentId: string): Promise<string | nul
       Authorization: `Bearer ${token}`,
       'x-tenant-id': apiConfig.tenantId,
       'x-correlation-id': newCorrelationId(),
+      ...originHeaders(),
     },
   });
   if (!response.ok) return null;

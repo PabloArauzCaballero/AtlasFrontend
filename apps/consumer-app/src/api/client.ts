@@ -13,6 +13,7 @@
  * dispositivo lo implementa SecureStore; en tests, memoria. El cliente no sabe donde vive el token.
  */
 import { apiConfig } from './config';
+import { getCurrentScreen } from './current-screen';
 import { AtlasApiError, kindFromStatus } from './errors';
 
 export type TokenPair = { accessToken: string; refreshToken: string };
@@ -74,11 +75,25 @@ export function newCorrelationId(): string {
   return `app-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
+/** Identifica a la app ante el backend, que lo normaliza a `CONSUMER_APP`: el codigo del catalogo de pantallas. */
+export const ATLAS_PRODUCT = 'consumer-app';
+
+/**
+ * Cabeceras de origen: que cliente llama y desde que pantalla. Ver `current-screen.ts`.
+ *
+ * `x-atlas-product` no cambia el rotulo de los correos de codigo: el backend lo resuelve contra una
+ * lista cerrada donde la app no esta, y cae al mismo rotulo generico que sin cabecera.
+ */
+export function originHeaders(pantalla: string | null = getCurrentScreen()): Record<string, string> {
+  return { 'x-atlas-product': ATLAS_PRODUCT, ...(pantalla ? { 'x-atlas-flow': pantalla } : {}) };
+}
+
 async function rawRequest<T>(
   path: string,
   options: RequestOptions,
   accessToken: string | null,
   correlationId: string,
+  pantalla: string | null,
 ): Promise<{ data: T; requestId: string | null }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), apiConfig.requestTimeoutMs);
@@ -96,6 +111,7 @@ async function rawRequest<T>(
         // Con uno por intento, el reintento parecia una operacion distinta y la traza se partia justo
         // en el caso que mas interesa mirar.
         'x-correlation-id': correlationId,
+        ...originHeaders(pantalla),
         ...(options.body !== undefined ? { 'content-type': 'application/json' } : {}),
         ...(options.idempotent ? { 'x-idempotency-key': newIdempotencyKey() } : {}),
         ...(accessToken && !options.anonymous ? { authorization: `Bearer ${accessToken}` } : {}),
@@ -162,9 +178,12 @@ async function rawRequest<T>(
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const tokens = options.anonymous ? null : ((await tokenStore?.read()) ?? null);
   const correlationId = newCorrelationId();
+  // La pantalla se fija al EMPEZAR la operacion, igual que el id: si el usuario navega mientras se
+  // refresca el token, el reintento sigue siendo de la pantalla que lo pidio, no de la nueva.
+  const pantalla = getCurrentScreen();
 
   try {
-    const result = await rawRequest<T>(path, options, tokens?.accessToken ?? null, correlationId);
+    const result = await rawRequest<T>(path, options, tokens?.accessToken ?? null, correlationId, pantalla);
     return result.data;
   } catch (error) {
     const isAuthError = error instanceof AtlasApiError && error.kind === 'auth';
@@ -179,6 +198,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
         // El refresco lleva la correlacion de la operacion que lo provoco: sin eso, en el log
         // aparece un `/auth/refresh` suelto que no se sabe de donde salio.
         correlationId,
+        pantalla,
       );
       refreshed = { accessToken: result.data.accessToken, refreshToken: result.data.refreshToken };
     } catch {
@@ -188,7 +208,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     }
 
     await tokenStore.write(refreshed);
-    const retried = await rawRequest<T>(path, options, refreshed.accessToken, correlationId);
+    const retried = await rawRequest<T>(path, options, refreshed.accessToken, correlationId, pantalla);
     return retried.data;
   }
 }
