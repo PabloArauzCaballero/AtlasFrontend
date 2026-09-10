@@ -3,8 +3,9 @@
 #   maestro test -e CORREO=… -e PIN=… e2e/04-soporte.yaml
 #
 # Recorre lo que ninguna prueba unitaria puede: que la pantalla llegue desde el perfil, que el
-# buscador devuelva algo del servidor y que abrir la conversación deje un chat con el aviso de
-# seguridad que escribe el sistema — la prueba de que el canal se creó de verdad.
+# buscador devuelva algo del servidor, que el motivo se pueda elegir y que abrir la conversación deje
+# un chat con el aviso de seguridad que escribe el sistema — la prueba de que el canal se creó de
+# verdad.
 #
 # `clearState` a propósito, igual que en el ingreso: entrar con una sesión guardada probaría otra
 # cosa.
@@ -77,11 +78,43 @@ appId: bo.atlas.consumer
 - extendedWaitUntil: { visible: 'Resultados', timeout: 20000 }
 - takeScreenshot: soporte-04-busqueda
 
-# Abrir la conversación. El aviso de seguridad lo escribe el SISTEMA al crear el canal, así que su
-# presencia prueba que el backend lo creó y que la transcripción llegó a la pantalla.
+# Abrir la conversación, pasando por el motivo.
+#
+# Desde 2026-09-09 «Hablar con soporte» no abre el chat: abre el paso del motivo, que es lo que
+# decide a qué cola entra la conversación y con qué plazo se mide. El paso es CONDICIONAL en esta
+# prueba a propósito: si el catálogo de la base contra la que se corre está vacío, la app se lo salta
+# y habla directamente — y esta prueba debe medir el recorrido real, no fallar por un dato que falta.
+#
+# Se toca la PRIMERA fila de la lista en vez de un motivo por su nombre: el catálogo lo administra
+# soporte y puede reorganizarlo sin avisar a nadie. Una prueba atada a «Pagos y cuotas» se pondría
+# roja el día que alguien renombre esa etiqueta, y ese rojo no diría nada sobre el producto.
+#
+# Se repite la condición porque el árbol tiene dos niveles: si la primera fila tiene submotivos, se
+# baja un nivel y hay que elegir otra vez.
 - tapOn: 'Hablar con soporte'
+- waitForAnimationToEnd: { timeout: 5000 }
+- runFlow:
+    when:
+      visible: '¿Sobre qué es?'
+    commands:
+      - takeScreenshot: soporte-05-motivo
+      - tapOn:
+          below:
+            text: '¿Sobre qué es?'
+      - waitForAnimationToEnd: { timeout: 5000 }
+- runFlow:
+    when:
+      visible: '¿Sobre qué es?'
+    commands:
+      - takeScreenshot: soporte-06-submotivo
+      - tapOn:
+          below:
+            text: '¿Sobre qué es?'
+
+# El aviso de seguridad lo escribe el SISTEMA al crear el canal, así que su presencia prueba que el
+# backend lo creó y que la transcripción llegó a la pantalla.
 - extendedWaitUntil: { visible: 'nunca te pedirá', timeout: 40000 }
-- takeScreenshot: soporte-05-chat
+- takeScreenshot: soporte-07-chat
 
 - tapOn:
     below:
@@ -89,4 +122,4 @@ appId: bo.atlas.consumer
 - inputText: 'Hola, tengo una duda con mi cuota de septiembre.'
 - tapOn: 'Enviar'
 - extendedWaitUntil: { visible: 'duda con mi cuota', timeout: 30000 }
-- takeScreenshot: soporte-06-mensaje-enviado
+- takeScreenshot: soporte-08-mensaje-enviado

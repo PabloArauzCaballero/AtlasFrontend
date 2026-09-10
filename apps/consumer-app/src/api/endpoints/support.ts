@@ -145,6 +145,32 @@ export function rateCase(caseId: string, csatScore: number, comment?: string) {
   return request(`/mobile/support/cases/${caseId}/feedback`, { method: 'POST', body: { csatScore, comment } });
 }
 
+/**
+ * Un motivo del catalogo, tal y como lo ve quien va a pedir ayuda.
+ *
+ * NO trae cola, sensibilidad, impacto ni urgencia: esos cuatro campos son la politica interna de
+ * atencion, y publicarlos ensenaria que motivo elegir para caer en la cola especializada o para
+ * nacer con prioridad alta. Quien abre un caso describe su problema; la consecuencia la decide el
+ * servidor.
+ */
+export type SupportCategory = {
+  categoryCode: string;
+  label: string;
+  description: string | null;
+  requiresSpecialist: boolean;
+  subcategories?: SupportCategory[];
+};
+
+/**
+ * Los motivos por los que esta persona puede abrir un caso.
+ *
+ * Las audiencias las deriva el servidor del token: si viajaran como parametro, pedir el catalogo
+ * del comercio seria tan facil como cambiar una cadena en la URL.
+ */
+export function listCategories(): Promise<{ categories: SupportCategory[] }> {
+  return request('/mobile/support/categories');
+}
+
 /** Abre —o recupera— la conversacion viva. Pedirla dos veces no crea dos chats. */
 export function openChannel(input: { categoryCode?: string; caseId?: string } = {}): Promise<{
   channelId: string;
