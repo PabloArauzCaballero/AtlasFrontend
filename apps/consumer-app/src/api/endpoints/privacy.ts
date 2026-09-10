@@ -16,7 +16,7 @@
  * su evidencia, porque una decision de credito tiene que poder explicarse despues. Para pedir el
  * borrado esta la solicitud de derechos, que es otro tramite y tiene otros plazos.
  */
-import { request } from '../client';
+import { request, type RequestOptions } from '../client';
 
 export type ConsentDecision = 'granted' | 'declined' | 'revoked';
 
@@ -28,11 +28,16 @@ export type ConsentDecisionInput = {
 };
 
 /** Se mandan en lote: cambiar tres casillas es UNA decision de la persona, no tres. */
-export const registrarDecisiones = (customerId: string, decisions: ConsentDecisionInput[]) =>
+export const registrarDecisiones = (
+  customerId: string,
+  decisions: ConsentDecisionInput[],
+  origen: Pick<RequestOptions, 'sinPantalla'> = {},
+) =>
   request<Record<string, unknown>>(`/customers/${customerId}/privacy/consent-decisions`, {
     method: 'POST',
     idempotent: true,
     body: { decisions },
+    ...origen,
   });
 
 export type DataSubjectRequestType =

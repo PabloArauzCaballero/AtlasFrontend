@@ -78,7 +78,8 @@ async function registrarConsentimientos(
   añadir(FINALIDAD_UBICACION, decision.ubicacion);
   if (decisiones.length === 0) return;
 
-  await privacyApi.registrarDecisiones(customerId, decisiones);
+  // Igual que la lista de consentimientos de arriba: lo registra la sesion en segundo plano.
+  await privacyApi.registrarDecisiones(customerId, decisiones, { sinPantalla: true });
 }
 
 /**

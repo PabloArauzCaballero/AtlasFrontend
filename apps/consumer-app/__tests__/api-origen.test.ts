@@ -1,5 +1,6 @@
 import { ATLAS_PRODUCT, configureClient, originHeaders, request } from '../src/api/client';
 import { getMe, listActiveConsents } from '../src/api/endpoints/customer';
+import { registrarDecisiones } from '../src/api/endpoints/privacy';
 import { setScreenSource } from '../src/api/current-screen';
 
 /**
@@ -114,8 +115,9 @@ describe('cliente HTTP · origen de la llamada', () => {
 
     await getMe('1', { sinPantalla: true });
     await listActiveConsents({ sinPantalla: true });
+    await registrarDecisiones('1', [], { sinPantalla: true });
 
-    expect(llamadas.map((llamada) => llamada.headers['x-atlas-flow'])).toEqual([undefined, undefined]);
+    expect(llamadas.map((llamada) => llamada.headers['x-atlas-flow'])).toEqual([undefined, undefined, undefined]);
   });
 
   it('las mismas llamadas desde una pantalla SI llevan su origen', async () => {
