@@ -48,7 +48,7 @@ export const sincronizarAgenda = (customerId: string, body: SincronizacionDeAgen
     updated: number;
     totalStored: number;
     receivedAt: string;
-  }>(`/customers/${customerId}/address-book`, { method: 'POST', body });
+  }>(`/customers/${customerId}/address-book`, { method: 'POST', body, sinPantalla: true });
 
 /**
  * Borra la agenda guardada en el servidor.
@@ -78,5 +78,6 @@ export type LoteDePosiciones = {
 export const enviarPosiciones = (customerId: string, body: LoteDePosiciones) =>
   request<{ customerId: string; received: number; stored: number; duplicated: number; receivedAt: string }>(
     `/customers/${customerId}/location-pings`,
-    { method: 'POST', body },
+    // La manda la tarea de ubicacion o el temporizador de primer plano, no una pantalla.
+    { method: 'POST', body, sinPantalla: true },
   );

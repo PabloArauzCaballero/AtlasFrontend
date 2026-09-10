@@ -31,6 +31,12 @@ export type RequestOptions = {
   idempotent?: boolean;
   /** Salta la cabecera de autorizacion (login, refresh, catalogos publicos). */
   anonymous?: boolean;
+  /**
+   * La llamada no sale de una pantalla: tarea de ubicacion, telemetria, sincronizacion de fondo. Sin
+   * esto se atribuiria a la pantalla que este arriba, y un seguimiento periodico marcaria como usada
+   * cualquier pantalla abierta y llenaria su lista de llamadas con señales del dispositivo.
+   */
+  sinPantalla?: boolean;
   signal?: AbortSignal;
 };
 
@@ -180,7 +186,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   const correlationId = newCorrelationId();
   // La pantalla se fija al EMPEZAR la operacion, igual que el id: si el usuario navega mientras se
   // refresca el token, el reintento sigue siendo de la pantalla que lo pidio, no de la nueva.
-  const pantalla = getCurrentScreen();
+  const pantalla = options.sinPantalla ? null : getCurrentScreen();
 
   try {
     const result = await rawRequest<T>(path, options, tokens?.accessToken ?? null, correlationId, pantalla);

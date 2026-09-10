@@ -61,6 +61,8 @@ export const enviarLote = (customerId: string, lote: TelemetryBatch) =>
     {
       method: 'POST',
       idempotent: true,
+      // La telemetria de la sesion no sale de ninguna pantalla.
+      sinPantalla: true,
       body: { ...lote, clientBatchId: newIdempotencyKey() },
     },
   );

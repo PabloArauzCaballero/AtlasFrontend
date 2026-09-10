@@ -1,33 +1,59 @@
 /**
- * La pantalla que esta abierta ahora mismo, para que cada llamada al backend diga de donde viene.
+ * La pantalla que esta abierta cuando sale una peticion, para que el backend sepa de donde viene.
  *
  * ## Para que sirve
  *
  * AtlasBackend guarda `x-atlas-flow` en `system_action_logs.origin_screen` y `x-atlas-product` en
  * `origin_client`. Con los dos, una pantalla del catalogo pasa de «existe en el codigo» a «alguien la
- * uso de verdad». Sin esto las pantallas de la app no tenian forma de verificarse: la app era un
- * cliente mudo, y «0 verificadas» se leia como «nadie la usa».
+ * uso de verdad».
+ *
+ * ## Por que se lee del router AL ENVIAR, y no de un componente que la fije
+ *
+ * La primera version la fijaba un componente en la raiz durante su render, con el argumento de que
+ * React renderiza en orden de arbol. Era falso, y lo demostro una revision: la raiz no se vuelve a
+ * renderizar al navegar hasta que el contenedor de navegacion avisa, y avisa desde un EFECTO, que corre
+ * despues de los efectos de montaje de la pantalla nueva. La primera llamada anonima de cada pantalla
+ * salia con la ruta de la anterior.
+ *
+ * expo-router, en cambio, fija la ruta enfocada DURANTE el render de la propia pantalla
+ * (`store.setFocusedState` en `build/useScreens.js`, sin avisar a nadie), antes de cualquier efecto
+ * suyo. Leer `store.getRouteInfo()` en el momento de enviar da la pantalla correcta tambien en su
+ * primera carga. Leido en el codigo de expo-router 57.0.15; la ruta de importacion es interna del
+ * paquete, asi que si una version la mueve, falla la comprobacion de tipos y no el origen en silencio.
  *
  * ## Por que se manda la ruta CONCRETA
  *
- * `/comercio/123`, no `/comercio/:partnerId`. Quien sabe que segmento es dinamico sin adivinar es el
- * backend, que tiene el catalogo con las plantillas; adivinarlo aqui identificaria mal una pantalla
- * en cuanto un identificador coincida con un segmento fijo. Es la misma regla que el portal interno.
+ * `/comercio/123`, no `/comercio/:partnerId`: la plantilla la resuelve el backend, que tiene el
+ * catalogo. Adivinarla aqui identificaria mal una pantalla en cuanto un id coincida con un segmento fijo.
  *
- * ## Que pasa cuando no esta puesta
+ * ## Cuando no se manda
  *
- * No viaja la cabecera y el backend guarda un nulo, que significa «nadie dijo de donde venia». Nunca
- * se inventa un origen: una tarea de segundo plano no tiene pantalla.
+ * Antes de que la navegacion este lista el router devuelve `/` por defecto, y eso seria inventar un
+ * origen: se devuelve nulo. Y las llamadas que no salen de una pantalla (ubicacion, telemetria,
+ * sincronizacion de fondo) lo piden con `sinPantalla` en `request`.
  */
-let pantallaActual: string | null = null;
+import { store } from 'expo-router/build/global-state/router-store';
 
 /** Formato aceptado por el backend; lo que no encaje se descarta alli, asi que no se manda. */
 const RUTA = /^\/[A-Za-z0-9/_:.-]{0,199}$/;
 
-export function setCurrentScreen(ruta: string | null): void {
-  pantallaActual = ruta && RUTA.test(ruta) ? ruta : null;
+type Fuente = () => string | null | undefined;
+
+const desdeElRouter: Fuente = () => (store.navigationRef?.isReady() ? store.getRouteInfo().pathname : null);
+
+let fuente: Fuente = desdeElRouter;
+
+/** Solo para pruebas: de donde se lee la ruta. `null` vuelve al router. */
+export function setScreenSource(nueva: Fuente | null): void {
+  fuente = nueva ?? desdeElRouter;
 }
 
 export function getCurrentScreen(): string | null {
-  return pantallaActual;
+  let ruta: string | null | undefined;
+  try {
+    ruta = fuente();
+  } catch {
+    return null;
+  }
+  return ruta && RUTA.test(ruta) ? ruta : null;
 }

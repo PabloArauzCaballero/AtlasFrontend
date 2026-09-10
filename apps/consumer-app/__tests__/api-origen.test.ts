@@ -1,12 +1,13 @@
 import { ATLAS_PRODUCT, configureClient, originHeaders, request } from '../src/api/client';
-import { setCurrentScreen } from '../src/api/current-screen';
+import { setScreenSource } from '../src/api/current-screen';
 
 /**
  * AtlasBackend guarda `x-atlas-flow` en `origin_screen` y `x-atlas-product` en `origin_client`, y con
- * los dos marca VERIFICADA una pantalla del catalogo. Lo que se protege aqui son las tres formas de
- * que eso mienta sin fallar: un codigo de producto que no casa con el catalogo (cero coincidencias,
- * que se lee «nadie la usa»), una ruta que el backend descarta en silencio, y un reintento que se
- * atribuye a la pantalla a la que el usuario navego despues.
+ * los dos marca VERIFICADA una pantalla del catalogo. Lo que se protege aqui son las formas de que eso
+ * mienta sin fallar: un codigo de producto que no casa con el catalogo, una ruta que el backend
+ * descarta en silencio, un reintento atribuido a la pantalla a la que el usuario navego despues, un
+ * origen inventado antes de que la navegacion exista, y una tarea de fondo atribuida a la pantalla
+ * que este arriba.
  */
 type Llamada = { url: string; headers: Record<string, string> };
 
@@ -26,7 +27,7 @@ describe('cliente HTTP · origen de la llamada', () => {
 
   beforeEach(() => {
     llamadas.length = 0;
-    setCurrentScreen(null);
+    setScreenSource(() => null);
     configureClient({
       tokenStore: {
         read: async () => ({ accessToken: 'viejo', refreshToken: 'refresco' }),
@@ -38,7 +39,7 @@ describe('cliente HTTP · origen de la llamada', () => {
 
   afterEach(() => {
     globalThis.fetch = originalFetch;
-    setCurrentScreen(null);
+    setScreenSource(null);
   });
 
   const capturar = (respuestas: Response[], alLlamar?: (i: number) => void) => {
@@ -51,12 +52,11 @@ describe('cliente HTTP · origen de la llamada', () => {
   };
 
   it('el producto se normaliza al codigo del catalogo de pantallas', () => {
-    // Misma traduccion que `originClient` en el interceptor del backend. Si no da CONSUMER_APP, las
-    // pantallas de la app no casan con nada y se quedan sin verificar sin que nada lo diga.
+    // Misma traduccion que `originClient` en el interceptor del backend.
     expect(ATLAS_PRODUCT.replace(/-/g, '_').toUpperCase()).toBe('CONSUMER_APP');
   });
 
-  it('sin pantalla declarada va el producto y NO se inventa un origen', async () => {
+  it('sin pantalla va el producto y NO se inventa un origen', async () => {
     capturar([respuesta(200, { data: { ok: true } })]);
 
     await request('/algo');
@@ -65,32 +65,57 @@ describe('cliente HTTP · origen de la llamada', () => {
     expect(llamadas[0]?.headers).not.toHaveProperty('x-atlas-flow');
   });
 
-  it('con pantalla abierta viaja la ruta concreta', async () => {
-    capturar([respuesta(200, { data: { ok: true } })]);
-    setCurrentScreen('/comercio/123');
+  it('antes de que la navegacion este lista no se manda el `/` por defecto del router', () => {
+    setScreenSource(null);
+    expect(originHeaders()).not.toHaveProperty('x-atlas-flow');
+  });
 
-    await request('/algo');
+  it('con pantalla abierta viaja la ruta concreta, tambien en una llamada anonima', async () => {
+    capturar([respuesta(200, { data: [] })]);
+    setScreenSource(() => '/registro');
 
-    expect(llamadas[0]?.headers['x-atlas-flow']).toBe('/comercio/123');
+    await request('/consents/active', { anonymous: true });
+
+    expect(llamadas[0]?.headers['x-atlas-flow']).toBe('/registro');
   });
 
   it('una ruta que el backend descartaria no se manda', () => {
-    setCurrentScreen('/comercio/a b');
+    setScreenSource(() => '/comercio/a b');
     expect(originHeaders()).not.toHaveProperty('x-atlas-flow');
-    setCurrentScreen('/comercio/%C3%B1');
+    setScreenSource(() => '/comercio/%C3%B1');
     expect(originHeaders()).not.toHaveProperty('x-atlas-flow');
   });
 
+  it('si el router falla al leerse, no se manda origen y la peticion sigue', async () => {
+    capturar([respuesta(200, { data: { ok: true } })]);
+    setScreenSource(() => {
+      throw new Error('router no montado');
+    });
+
+    await request('/algo');
+
+    expect(llamadas[0]?.headers).not.toHaveProperty('x-atlas-flow');
+  });
+
+  it('una llamada de fondo no se atribuye a la pantalla que este arriba', async () => {
+    capturar([respuesta(200, { data: { ok: true } })]);
+    setScreenSource(() => '/inicio');
+
+    await request('/customers/1/location-pings', { method: 'POST', body: {}, sinPantalla: true });
+
+    expect(llamadas[0]?.headers).not.toHaveProperty('x-atlas-flow');
+    expect(llamadas[0]?.headers['x-atlas-product']).toBe('consumer-app');
+  });
+
   it('el refresco y el reintento son de la pantalla que PIDIO, aunque el usuario ya navegara', async () => {
-    setCurrentScreen('/pagar');
+    setScreenSource(() => '/pagar');
     capturar(
       [
         respuesta(401, { message: 'token vencido' }),
         respuesta(200, { data: { accessToken: 'nuevo', refreshToken: 'otro' } }),
         respuesta(200, { data: { ok: true } }),
       ],
-      // El usuario cambia de pantalla justo despues de la primera peticion.
-      (i) => (i === 0 ? setCurrentScreen('/avisos') : undefined),
+      (i) => (i === 0 ? setScreenSource(() => '/avisos') : undefined),
     );
 
     await request('/cuotas/1/pagar', { method: 'POST', body: {} });
