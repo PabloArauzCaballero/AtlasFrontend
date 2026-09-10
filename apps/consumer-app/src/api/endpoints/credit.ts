@@ -7,7 +7,7 @@
  * `executionId` de la ejecucion que lo produjo. Ese identificador es la prueba de que la decision
  * viene del motor y no de una regla escrita en el telefono.
  */
-import { newIdempotencyKey, request } from '../client';
+import { newIdempotencyKey, request, type RequestOptions } from '../client';
 
 export type CreditProduct = {
   productId: string;
@@ -98,8 +98,11 @@ export type CreditApplicationSummary = {
   businessAcceptanceAt?: string | null;
 };
 
-export const listCreditApplications = (customerId: string) =>
-  request<{ customerId: string; applications: CreditApplicationSummary[] }>(`/customers/${customerId}/credit-applications`);
+export const listCreditApplications = (customerId: string, origen: Pick<RequestOptions, 'sinPantalla'> = {}) =>
+  request<{ customerId: string; applications: CreditApplicationSummary[] }>(
+    `/customers/${customerId}/credit-applications`,
+    origen,
+  );
 
 /** Reexportado para que quien construya una solicitud vea de donde sale la clave de reintento. */
 export { newIdempotencyKey };

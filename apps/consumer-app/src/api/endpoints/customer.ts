@@ -2,7 +2,7 @@
  * Perfil, habilitacion crediticia, consentimientos, notificaciones y sesion del cliente final.
  * Espeja `customers`, `consents`, `notifications` y `sessions` de AtlasBackend.
  */
-import { request } from '../client';
+import { request, type RequestOptions } from '../client';
 import type { Blocker, OnboardingSection } from './onboarding';
 
 export type CustomerMe = {
@@ -13,7 +13,11 @@ export type CustomerMe = {
   contacts: { contactType: string; status: string; isPrimary: boolean; valueLast4: string | null }[];
 };
 
-export const getMe = (customerId: string) => request<CustomerMe>(`/customers/${customerId}/me`);
+/** `sinPantalla` cuando lo pide la sesion al arrancar, no una pantalla. Ver `RequestOptions`. */
+export type OrigenDeLlamada = Pick<RequestOptions, 'sinPantalla'>;
+
+export const getMe = (customerId: string, origen: OrigenDeLlamada = {}) =>
+  request<CustomerMe>(`/customers/${customerId}/me`, origen);
 
 export type Eligibility = {
   eligible: boolean;
@@ -50,8 +54,8 @@ export type ConsentDocument = {
   status: string;
 };
 
-export const listActiveConsents = () =>
-  request<ConsentDocument[]>('/consent-documents/active', { anonymous: true });
+export const listActiveConsents = (origen: OrigenDeLlamada = {}) =>
+  request<ConsentDocument[]>('/consent-documents/active', { anonymous: true, ...origen });
 
 export type AppNotification = {
   id: string;
@@ -95,10 +99,10 @@ export type SessionStartInput = {
  * Sin el, el lote de telemetria no se puede mandar —el backend lo exige para atar los eventos al
  * dispositivo—, asi que la sesion se abria y nunca se le escribia nada.
  */
-export const startSession = (customerId: string, body: SessionStartInput) =>
+export const startSession = (customerId: string, body: SessionStartInput, origen: OrigenDeLlamada = {}) =>
   request<{ sessionId: string; deviceId: string; deviceTrustLevel?: string; nextStep?: string }>(
     `/customers/${customerId}/sessions/start`,
-    { method: 'POST', idempotent: true, body },
+    { method: 'POST', idempotent: true, body, ...origen },
   );
 
 export const endSession = (customerId: string, sessionId: string, reasonCode = 'customer_logout') =>

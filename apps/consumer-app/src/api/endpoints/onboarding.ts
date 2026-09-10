@@ -5,7 +5,7 @@
  * controlador: dos versiones de la app mostrarian avances distintos con los mismos datos. La app
  * los pinta; no los deduce.
  */
-import { request } from '../client';
+import { request, type RequestOptions } from '../client';
 
 export type OnboardingSectionCode =
   | 'contact_verification'
@@ -73,7 +73,8 @@ export const startOnboarding = (body: StartOnboardingInput) =>
     body,
   });
 
-export const getStatus = (customerId: string) => request<OnboardingStatus>(`/customer-onboarding/${customerId}/status`);
+export const getStatus = (customerId: string, origen: Pick<RequestOptions, 'sinPantalla'> = {}) =>
+  request<OnboardingStatus>(`/customer-onboarding/${customerId}/status`, origen);
 
 export const listObservations = (customerId: string) =>
   request<{ observations: { code: string; detail?: string }[]; blockers: Blocker[] }>(

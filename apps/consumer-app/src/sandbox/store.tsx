@@ -498,7 +498,8 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
     const intervalo = setInterval(async () => {
       let resumen;
       try {
-        resumen = await listCreditApplications(customerId);
+        // Sondeo periodico de un proveedor global: no es de ninguna pantalla.
+        resumen = await listCreditApplications(customerId, { sinPantalla: true });
       } catch {
         // Una lectura fallida no cambia nada: se reintenta al siguiente tick. La orden sigue en
         // espera, que es el estado seguro —nunca se habilita el pago por no haber podido preguntar—.

@@ -1,4 +1,5 @@
 import { ATLAS_PRODUCT, configureClient, originHeaders, request } from '../src/api/client';
+import { getMe, listActiveConsents } from '../src/api/endpoints/customer';
 import { setScreenSource } from '../src/api/current-screen';
 
 /**
@@ -105,6 +106,25 @@ describe('cliente HTTP · origen de la llamada', () => {
 
     expect(llamadas[0]?.headers).not.toHaveProperty('x-atlas-flow');
     expect(llamadas[0]?.headers['x-atlas-product']).toBe('consumer-app');
+  });
+
+  it('lo que pide la sesion o un sondeo de fondo tampoco se atribuye a la pantalla de arriba', async () => {
+    capturar([respuesta(200, { data: {} })]);
+    setScreenSource(() => '/');
+
+    await getMe('1', { sinPantalla: true });
+    await listActiveConsents({ sinPantalla: true });
+
+    expect(llamadas.map((llamada) => llamada.headers['x-atlas-flow'])).toEqual([undefined, undefined]);
+  });
+
+  it('las mismas llamadas desde una pantalla SI llevan su origen', async () => {
+    capturar([respuesta(200, { data: [] })]);
+    setScreenSource(() => '/registro');
+
+    await listActiveConsents();
+
+    expect(llamadas[0]?.headers['x-atlas-flow']).toBe('/registro');
   });
 
   it('el refresco y el reintento son de la pantalla que PIDIO, aunque el usuario ya navegara', async () => {

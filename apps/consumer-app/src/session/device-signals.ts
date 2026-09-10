@@ -58,7 +58,8 @@ async function registrarConsentimientos(
   customerId: string,
   decision: { ubicacion: boolean; contactos: boolean; decidedAt: string },
 ): Promise<void> {
-  const documentos = await customerApi.listActiveConsents();
+  // Se registra en segundo plano al activar las señales, no desde una pantalla.
+  const documentos = await customerApi.listActiveConsents({ sinPantalla: true });
   const porCodigo = new Map(documentos.map((documento) => [documento.documentCode, documento.id]));
 
   const decisiones: privacyApi.ConsentDecisionInput[] = [];

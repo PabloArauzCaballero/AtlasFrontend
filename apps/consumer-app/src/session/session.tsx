@@ -116,8 +116,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     // Se piden juntos y se toleran fallos parciales: que el perfil no cargue no debe impedir
     // entrar si el estado de onboarding si llego.
     const [statusResult, meResult] = await Promise.allSettled([
-      onboardingApi.getStatus(customerId),
-      customerApi.getMe(customerId),
+      // Lo pide la sesion (al restaurar o tras entrar), no una pantalla: sin esto la carga de cada
+      // arranque marcaba como usada la pantalla de entrada, tambien a quien sigue en el registro.
+      onboardingApi.getStatus(customerId, { sinPantalla: true }),
+      customerApi.getMe(customerId, { sinPantalla: true }),
     ]);
     if (statusResult.status === 'fulfilled') setOnboarding(statusResult.value);
     if (meResult.status === 'fulfilled') setMe(meResult.value);
@@ -149,7 +151,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         },
         authMethod,
         locationPermissionGranted: permisos.find((permiso) => permiso.permissionCode === 'location')?.granted,
-      });
+      }, { sinPantalla: true });
       sesionTelemetria.current = sessionId;
       dispositivoTelemetria.current = deviceId ?? null;
 
