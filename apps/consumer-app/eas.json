@@ -16,12 +16,32 @@
         "EXPO_PUBLIC_ATLAS_TIMEOUT_MS": "20000",
         "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",
         "EXPO_PUBLIC_ATLAS_DECISION_SOURCE": "backend"
+      },
+      "ios": {
+        "simulator": false
       }
     },
     "production": {
       "channel": "production",
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EXPO_PUBLIC_ATLAS_API_URL": "https://n2vmpw58-80.brs.devtunnels.ms/api/v1",
+        "EXPO_PUBLIC_ATLAS_TENANT_ID": "1",
+        "EXPO_PUBLIC_ATLAS_TIMEOUT_MS": "20000",
+        "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",
+        "EXPO_PUBLIC_ATLAS_DECISION_SOURCE": "backend"
+      },
+      "ios": {
+        "autoIncrement": true
+      }
+    },
+    "simulador-ios": {
+      "distribution": "internal",
+      "channel": "preview",
+      "ios": {
+        "simulator": true
       },
       "env": {
         "EXPO_PUBLIC_ATLAS_API_URL": "https://n2vmpw58-80.brs.devtunnels.ms/api/v1",
