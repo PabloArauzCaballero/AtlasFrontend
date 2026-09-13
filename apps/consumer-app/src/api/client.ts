@@ -7,6 +7,7 @@
  *  - generar `x-idempotency-key` en TODA operacion critica reintentable (R75);
  *  - timeout y cancelacion (nunca una request sin limite);
  *  - refrescar el access token una sola vez ante 401 y reintentar (sin bucles);
+ *  - repetir, con presupuesto acotado, lo que falla porque el API no estaba (ver `reintentos.ts`);
  *  - NO reintentar de forma infinita ni silenciar errores.
  *
  * El almacenamiento del token entra por PUERTO (`TokenStore`), no por dependencia directa: en el
@@ -15,6 +16,7 @@
 import { apiConfig } from './config';
 import { getCurrentScreen } from './current-screen';
 import { AtlasApiError, kindFromStatus } from './errors';
+import { conReintentos, repeticionDe } from './reintentos';
 
 export type TokenPair = { accessToken: string; refreshToken: string };
 
@@ -100,6 +102,7 @@ async function rawRequest<T>(
   accessToken: string | null,
   correlationId: string,
   pantalla: string | null,
+  idempotencyKey: string | null,
 ): Promise<{ data: T; requestId: string | null }> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), apiConfig.requestTimeoutMs);
@@ -119,7 +122,10 @@ async function rawRequest<T>(
         'x-correlation-id': correlationId,
         ...originHeaders(pantalla),
         ...(options.body !== undefined ? { 'content-type': 'application/json' } : {}),
-        ...(options.idempotent ? { 'x-idempotency-key': newIdempotencyKey() } : {}),
+        // La clave llega de fuera: es una por OPERACION y se repite en cada intento. Generada aqui,
+        // cada reintento parecia una operacion nueva y el backend no podia deduplicar el cobro que
+        // el primer intento quiza ya habia hecho.
+        ...(idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {}),
         ...(accessToken && !options.anonymous ? { authorization: `Bearer ${accessToken}` } : {}),
       },
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
@@ -138,9 +144,15 @@ async function rawRequest<T>(
 
   const text = await response.text();
   let envelope: Envelope<T> = {};
+  // Ver `AtlasApiError.fromGateway`: si el cuerpo no es un objeto JSON, no lo escribio el API.
+  let fromGateway = true;
   if (text) {
     try {
-      envelope = JSON.parse(text) as Envelope<T>;
+      const parsed: unknown = JSON.parse(text);
+      if (parsed !== null && typeof parsed === 'object') {
+        envelope = parsed as Envelope<T>;
+        fromGateway = false;
+      }
     } catch {
       envelope = {};
     }
@@ -152,7 +164,10 @@ async function rawRequest<T>(
     // asumir una y perder el codigo de negocio.
     const flat = envelope as unknown as { code?: string; message?: string };
     const code = envelope.error?.code ?? flat.code ?? 'UNKNOWN_ERROR';
-    const rawMessage = envelope.error?.message ?? flat.message ?? response.statusText;
+    // Sin sobre —lo contesto la pasarela— no hay mensaje de negocio, y `statusText` puede faltar: por
+    // HTTP/2, que es como llega el tunel, el motivo va vacio. Sin respaldo, el `split` de abajo
+    // reventaba y un fallo transitorio salia como un TypeError que ninguna pantalla sabe pintar.
+    const rawMessage = envelope.error?.message ?? flat.message ?? (response.statusText || `HTTP ${response.status}`);
     // `CODIGO_DE_NEGOCIO: detalle` -> se conserva el codigo de negocio, que es lo accionable.
     const businessCode = /^[A-Z0-9_]+$/.test(rawMessage.split(':')[0]?.trim() ?? '') ? (rawMessage.split(':')[0] as string).trim() : code;
     throw new AtlasApiError({
@@ -162,6 +177,7 @@ async function rawRequest<T>(
       status: response.status,
       requestId,
       details: envelope,
+      fromGateway,
     });
   }
 
@@ -180,16 +196,32 @@ async function rawRequest<T>(
   return { data: body as T, requestId };
 }
 
-/** Punto unico de salida a red. Refresca el token una sola vez ante 401 y no reintenta mas. */
+/**
+ * Punto unico de salida a red.
+ *
+ * Dos mecanismos distintos, que no se mezclan:
+ *  - ante 401 refresca el token UNA vez y repite (sin bucles);
+ *  - ante un fallo de infraestructura —el API no estaba— repite con presupuesto acotado, segun las
+ *    reglas de `reintentos.ts`.
+ */
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const tokens = options.anonymous ? null : ((await tokenStore?.read()) ?? null);
   const correlationId = newCorrelationId();
   // La pantalla se fija al EMPEZAR la operacion, igual que el id: si el usuario navega mientras se
   // refresca el token, el reintento sigue siendo de la pantalla que lo pidio, no de la nueva.
   const pantalla = options.sinPantalla ? null : getCurrentScreen();
+  // Una clave por operacion, compartida por todos sus intentos. Ver `rawRequest`.
+  const idempotencyKey = options.idempotent ? newIdempotencyKey() : null;
+  const repeticion = repeticionDe(options.method, options.idempotent);
+
+  const intentar = (accessToken: string | null) =>
+    conReintentos(() => rawRequest<T>(path, options, accessToken, correlationId, pantalla, idempotencyKey), {
+      repeticion,
+      signal: options.signal,
+    });
 
   try {
-    const result = await rawRequest<T>(path, options, tokens?.accessToken ?? null, correlationId, pantalla);
+    const result = await intentar(tokens?.accessToken ?? null);
     return result.data;
   } catch (error) {
     const isAuthError = error instanceof AtlasApiError && error.kind === 'auth';
@@ -197,26 +229,49 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
     let refreshed: TokenPair;
     try {
-      const result = await rawRequest<{ accessToken: string; refreshToken: string }>(
-        '/auth/refresh',
-        { method: 'POST', body: { refreshToken: tokens.refreshToken }, anonymous: true },
-        null,
-        // El refresco lleva la correlacion de la operacion que lo provoco: sin eso, en el log
-        // aparece un `/auth/refresh` suelto que no se sabe de donde salio.
-        correlationId,
-        pantalla,
+      const result = await conReintentos(
+        () =>
+          rawRequest<{ accessToken: string; refreshToken: string }>(
+            '/auth/refresh',
+            { method: 'POST', body: { refreshToken: tokens.refreshToken }, anonymous: true },
+            null,
+            // El refresco lleva la correlacion de la operacion que lo provoco: sin eso, en el log
+            // aparece un `/auth/refresh` suelto que no se sabe de donde salio.
+            correlationId,
+            pantalla,
+            null,
+          ),
+        // Un refresco que SI llego no se repite: el backend rota el token y el viejo ya no vale.
+        { repeticion: 'solo-si-no-llego', signal: options.signal },
       );
       refreshed = { accessToken: result.data.accessToken, refreshToken: result.data.refreshToken };
-    } catch {
-      await tokenStore.clear();
-      onSessionExpired?.();
-      throw error;
+    } catch (refreshError) {
+      /*
+        La sesion se cierra SOLO si el backend rechazo el refresco.
+
+        Antes se cerraba ante cualquier fallo, y un refresco que coincidia con un despliegue —el API
+        sin servir, la pasarela contestando— echaba a la persona de la app con un token de refresco
+        perfectamente valido. Si el API no contesto, el token sigue siendo bueno: se conserva y se
+        informa del fallo, que la siguiente operacion resolvera sola.
+      */
+      if (sesionRechazada(refreshError)) {
+        await tokenStore.clear();
+        onSessionExpired?.();
+        throw error;
+      }
+      throw refreshError;
     }
 
     await tokenStore.write(refreshed);
-    const retried = await rawRequest<T>(path, options, refreshed.accessToken, correlationId, pantalla);
+    const retried = await intentar(refreshed.accessToken);
     return retried.data;
   }
+}
+
+/** El backend —no la red ni la pasarela— dijo que ese token de refresco no sirve. */
+function sesionRechazada(error: unknown): boolean {
+  if (!(error instanceof AtlasApiError) || error.fromGateway) return false;
+  return error.kind === 'auth' || error.kind === 'permission' || error.kind === 'validation';
 }
 
 /**

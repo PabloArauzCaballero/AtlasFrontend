@@ -9,6 +9,7 @@
  * Nada de esto salda la cuota: la salda el comercio cuando ve el dinero en su cuenta.
  */
 import { request } from '../client';
+import { fetchRepetible } from '../reintentos';
 
 export type ProofTicket = {
   uploadUrl: string;
@@ -90,7 +91,7 @@ export const requestProofTicket = (customerId: string, input: { contentType: str
 /** Sube la imagen al almacén con la URL firmada. No pasa por la API. */
 export async function uploadProof(ticket: ProofTicket, fileUri: string, contentType: string): Promise<void> {
   const blob = await (await fetch(fileUri)).blob();
-  const respuesta = await fetch(ticket.uploadUrl, {
+  const respuesta = await fetchRepetible(ticket.uploadUrl, {
     method: 'PUT',
     headers: { 'content-type': contentType, ...(ticket.headers ?? {}) },
     body: blob,

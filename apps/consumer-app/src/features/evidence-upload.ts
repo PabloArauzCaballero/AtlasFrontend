@@ -14,6 +14,7 @@ import * as Crypto from 'expo-crypto';
 import { File } from 'expo-file-system';
 import * as onboardingApi from '../api/endpoints/onboarding';
 import { AtlasApiError } from '../api/errors';
+import { fetchRepetible } from '../api/reintentos';
 
 export type EvidenceKind = 'identity_front' | 'identity_back' | 'selfie';
 
@@ -88,7 +89,8 @@ export async function uploadEvidence(input: {
     sizeBytes: bytes.length,
   });
 
-  const response = await fetch(ticket.uploadUrl, {
+  // Repetible: el almacén se despliega con el backend y puede no estar unos segundos.
+  const response = await fetchRepetible(ticket.uploadUrl, {
     method: ticket.method,
     headers: ticket.requiredHeaders,
     body: bytes as unknown as BodyInit,

@@ -18,6 +18,7 @@ import * as Crypto from 'expo-crypto';
 import { File } from 'expo-file-system';
 import * as supportApi from '../api/endpoints/support';
 import { AtlasApiError } from '../api/errors';
+import { fetchRepetible } from '../api/reintentos';
 
 /** Cada cuanto se pregunta por lo nuevo con la pantalla abierta. */
 export const CHAT_POLL_MS = 4000;
@@ -69,7 +70,7 @@ export async function subirFotoAlChat(input: { channelId: string; localUri: stri
   const sha256 = toHex(new Uint8Array(digest));
 
   const ticket = await supportApi.attachmentTicket(input.channelId, { contentType: mimeType, sizeBytes: bytes.length });
-  const response = await fetch(ticket.uploadUrl, {
+  const response = await fetchRepetible(ticket.uploadUrl, {
     method: ticket.method,
     headers: ticket.requiredHeaders,
     body: bytes as unknown as BodyInit,

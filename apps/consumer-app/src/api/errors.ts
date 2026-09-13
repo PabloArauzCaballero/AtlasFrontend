@@ -25,6 +25,16 @@ export class AtlasApiError extends Error {
   readonly status: number | null;
   readonly requestId: string | null;
   readonly details: unknown;
+  /**
+   * La respuesta HTTP no la produjo AtlasBackend sino lo que tiene delante: el proxy de Next del
+   * portal o Traefik.
+   *
+   * Se distingue por el cuerpo. El backend contesta SIEMPRE con su sobre JSON —hasta un 404 de una
+   * ruta que no existe trae `requestId`—; el proxy de Next responde `Internal Server Error` en texto
+   * plano cuando no encuentra el API, y Traefik `404 page not found` cuando no hay contenedor detrás.
+   * Es lo que permite saber que una petición no llegó, y por tanto que repetirla no duplica nada.
+   */
+  readonly fromGateway: boolean;
 
   constructor(input: {
     kind: AtlasErrorKind;
@@ -33,6 +43,7 @@ export class AtlasApiError extends Error {
     status?: number | null;
     requestId?: string | null;
     details?: unknown;
+    fromGateway?: boolean;
   }) {
     super(input.message);
     this.name = 'AtlasApiError';
@@ -41,6 +52,7 @@ export class AtlasApiError extends Error {
     this.status = input.status ?? null;
     this.requestId = input.requestId ?? null;
     this.details = input.details;
+    this.fromGateway = input.fromGateway ?? false;
   }
 }
 

@@ -23,6 +23,7 @@
  */
 import { readAccessToken, request, newCorrelationId, originHeaders } from '../client';
 import { apiConfig } from '../config';
+import { fetchRepetible } from '../reintentos';
 
 export type FaqArticle = {
   articleId: string;
@@ -244,16 +245,21 @@ export async function readAttachment(attachmentId: string): Promise<string | nul
   const token = await readAccessToken();
   if (!token) return null;
 
-  const response = await fetch(`${apiConfig.baseUrl}/support/attachments/${attachmentId}/content`, {
-    // Esta descarga no pasa por `request` —arma la autorizacion a mano—, asi que la correlacion se
-    // pone aqui o esta peticion queda como la unica de la app que el backend no puede atar a nada.
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'x-tenant-id': apiConfig.tenantId,
-      'x-correlation-id': newCorrelationId(),
-      ...originHeaders(),
-    },
-  });
+  let response: Response;
+  try {
+    response = await fetchRepetible(`${apiConfig.baseUrl}/support/attachments/${attachmentId}/content`, {
+      // Esta descarga no pasa por `request` —arma la autorizacion a mano—, asi que la correlacion se
+      // pone aqui o esta peticion queda como la unica de la app que el backend no puede atar a nada.
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'x-tenant-id': apiConfig.tenantId,
+        'x-correlation-id': newCorrelationId(),
+        ...originHeaders(),
+      },
+    });
+  } catch {
+    return null;
+  }
   if (!response.ok) return null;
 
   const contentType = response.headers.get('content-type') ?? 'image/jpeg';
