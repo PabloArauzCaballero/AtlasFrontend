@@ -57,3 +57,11 @@ assets/audio/tomas/
 # Clave de cuenta de servicio de Firebase: permite enviar push a TODOS los usuarios.
 # Nunca a git; el backend la lee de su entorno.
 *firebase-adminsdk*.json
+
+# Credenciales de Apple. El `.p8` ya lo cubre la regla de arriba; esto añade la carpeta donde se
+# guarda y los perfiles y certificados de firma. La llave de App Store Connect sólo se descarga UNA
+# vez y firma subidas a TestFlight en nombre de la cuenta: si entra al repo, se queda en el historial
+# aunque se borre después. El identificador de la llave y el del emisor no son secretos; el fichero sí.
+/credentials/
+*.mobileprovision
+*.p12

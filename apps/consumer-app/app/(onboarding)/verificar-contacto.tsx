@@ -82,7 +82,20 @@ export default function VerifyContact() {
   const session = useSession();
   const customerId = session.customerId;
 
-  const [channel, setChannel] = useState<Channel>('sms');
+  /*
+    Arranca en CORREO, no en SMS.
+
+    El canal por defecto tiene que ser uno que el servidor pueda entregar de verdad. Los tres
+    proveedores se encienden por separado en el backend (`MAIL_PROVIDER`, `SMS_PROVIDER`,
+    `WHATSAPP_PROVIDER`) y pedir un codigo por un canal apagado responde
+    `VERIFICATION_CHANNEL_UNAVAILABLE`. La pantalla lo explica, pero quien llega aqui ya ha hecho
+    todo el alta: el primer intento no puede ser un callejon sin salida que obligue a adivinar cual
+    de los tres funciona. El correo es el unico que ha estado siempre encendido.
+
+    Cuando el backend publique que canales tiene disponibles, esto deberia elegir el primero de esa
+    lista en vez de fijar uno.
+  */
+  const [channel, setChannel] = useState<Channel>('email');
   const [sent, setSent] = useState<{ expiresAt: string; deliveryStatus: string } | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -224,9 +237,9 @@ export default function VerifyContact() {
           setError(null);
         }}
         opciones={[
+          { valor: 'email', etiqueta: 'Correo', detalle: 'A tu correo registrado.' },
           { valor: 'sms', etiqueta: 'SMS', detalle: 'A tu número registrado.' },
           { valor: 'whatsapp', etiqueta: 'WhatsApp', detalle: 'Al mismo número.' },
-          { valor: 'email', etiqueta: 'Correo', detalle: 'A tu correo registrado.' },
         ]}
       />
 
