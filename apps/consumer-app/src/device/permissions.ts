@@ -30,7 +30,7 @@ import { Camera } from 'expo-camera';
 import * as Contacts from 'expo-contacts';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
-import * as Notifications from 'expo-notifications';
+import { cargarAvisos } from './avisos-modulo';
 
 /** Los codigos que acepta el backend (`ALLOWED_PERMISSION_CODES`). */
 export type PermissionCode = 'location' | 'camera' | 'contacts' | 'notifications' | 'storage';
@@ -73,8 +73,14 @@ export async function permisosDecididos(): Promise<PermissionReport[]> {
       iOS, un detalle de que se autorizo exactamente —alerta, sonido, insignia—. Se normaliza a lo
       que el backend entiende: concedido si el sistema dice `granted`.
     */
-    Notifications.getPermissionsAsync()
-      .then((estado) => añadir('notifications', { granted: estado.granted, status: estado.status }))
+    /*
+      `cargarAvisos()` puede devolver `null`: en Expo Go el módulo no existe (ver `avisos-modulo.ts`).
+      Entonces NO se informa nada de este permiso, que es lo correcto — decir «denegado» sobre algo
+      que el anfitrión ni siquiera sabe preguntar ensuciaría el expediente con una decisión que la
+      persona no tomó.
+    */
+    (cargarAvisos()?.getPermissionsAsync() ?? Promise.resolve(null))
+      .then((estado) => (estado ? añadir('notifications', { granted: estado.granted, status: estado.status }) : undefined))
       .catch(() => undefined),
   ]);
 

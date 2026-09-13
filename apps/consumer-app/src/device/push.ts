@@ -22,7 +22,7 @@
  * debe poder hacerse con la direccion a la que alguien nos deja escribirle.
  */
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
+import { cargarAvisos } from './avisos-modulo';
 import { Platform } from 'react-native';
 import * as customerApi from '../api/endpoints/customer';
 
@@ -52,7 +52,8 @@ const CANAL_AVISOS = 'default';
  * `shouldShowBanner` y `shouldShowList` son la API nueva; `shouldShowAlert`, que hacia las dos
  * cosas, esta marcada como obsoleta en esta version.
  */
-Notifications.setNotificationHandler({
+const avisosAlArrancar = cargarAvisos();
+avisosAlArrancar?.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
     shouldShowList: true,
@@ -70,6 +71,8 @@ Notifications.setNotificationHandler({
  */
 export async function prepararAvisos(): Promise<void> {
   if (Platform.OS !== 'android') return;
+  const Notifications = cargarAvisos();
+  if (!Notifications) return;
   try {
     await Notifications.setNotificationChannelAsync(CANAL_AVISOS, {
       name: 'Avisos de Atlas',
@@ -99,6 +102,12 @@ export async function activarAvisos(customerId: string): Promise<EstadoAvisos> {
     antes de pedir permiso para no dejar registrado un «denegado» que no lo es.
   */
   if (!Device.isDevice) return 'no-disponible';
+  /*
+    En Expo Go no hay avisos remotos desde el SDK 53 (ver `avisos-modulo.ts`). Se informa igual que
+    un simulador: no se puede, y la pantalla ya sabe decirlo sin prometer nada.
+  */
+  const Notifications = cargarAvisos();
+  if (!Notifications) return 'no-disponible';
 
   try {
     const actual = await Notifications.getPermissionsAsync();
@@ -125,6 +134,8 @@ export async function activarAvisos(customerId: string): Promise<EstadoAvisos> {
 /** Lo que ya decidio el sistema, sin preguntar nada. */
 export async function estadoAvisos(): Promise<EstadoAvisos> {
   if (!Device.isDevice) return 'no-disponible';
+  const Notifications = cargarAvisos();
+  if (!Notifications) return 'no-disponible';
   try {
     const permiso = await Notifications.getPermissionsAsync();
     if (permiso.granted) return 'concedido';
