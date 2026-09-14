@@ -194,7 +194,12 @@ export default function ExtractoBancario() {
       );
 
       const file = new File(asset.uri);
-      const bytes = file.bytes();
+      // `bytes()` es ASÍNCRONO en expo-file-system 57 (la síncrona es `bytesSync`). Sin el `await` se
+      // mandaba una Promise como cuerpo: el PDF nunca llegaba y el `content-length` firmado no cuadraba.
+      const bytes = await file.bytes();
+      if (bytes.length !== size) {
+        throw new Error('El archivo cambió de tamaño mientras se leía. Vuelve a elegirlo.');
+      }
       const response = await fetchRepetible(permit.uploadUrl, {
         method: permit.method,
         headers: permit.requiredHeaders,

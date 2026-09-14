@@ -11,10 +11,18 @@
 import { request } from '../client';
 import { fetchRepetible } from '../reintentos';
 
+/**
+ * Lo que devuelve `proof-tickets`: la MISMA forma que `UploadTicket` del backend
+ * (`document-storage.service.ts`). Las cabeceras firmadas se llaman `requiredHeaders` y llevan
+ * `content-type` y `content-length`: si el PUT no las manda tal cual, la firma no cuadra y el
+ * almacén responde 403 aunque el archivo sea correcto.
+ */
 export type ProofTicket = {
   uploadUrl: string;
   storageKey: string;
-  headers?: Record<string, string>;
+  method: 'PUT';
+  requiredHeaders: Record<string, string>;
+  expiresAt: string;
 };
 
 export type PaymentClaim = {
@@ -91,9 +99,11 @@ export const requestProofTicket = (customerId: string, input: { contentType: str
 /** Sube la imagen al almacén con la URL firmada. No pasa por la API. */
 export async function uploadProof(ticket: ProofTicket, fileUri: string, contentType: string): Promise<void> {
   const blob = await (await fetch(fileUri)).blob();
+  // Las cabeceras van EXACTAMENTE como las firmó el backend; `content-type` sólo se añade si el
+  // ticket no lo trae (nunca debería pasar, pero un PUT sin tipo lo rechaza el almacén).
   const respuesta = await fetchRepetible(ticket.uploadUrl, {
-    method: 'PUT',
-    headers: { 'content-type': contentType, ...(ticket.headers ?? {}) },
+    method: ticket.method ?? 'PUT',
+    headers: { 'content-type': contentType, ...ticket.requiredHeaders },
     body: blob,
   });
   if (!respuesta.ok) {
