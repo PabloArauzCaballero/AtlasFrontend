@@ -95,7 +95,10 @@ services:
       # desenlaces si no se define aparte: las dos son del plano de gestion, y ninguna de las dos
       # es la de ejecucion — quien decide no puede escribir el permiso que le autoriza a decidir.
       DECISION_ENGINE_GOVERNANCE_API_KEY: ${ATLAS_DEV_DECISION_ENGINE_GOVERNANCE_KEY:-${ATLAS_DEV_DECISION_ENGINE_MANAGEMENT_KEY:-}}
-      DECISION_ENGINE_CREDIT_ARTIFACT: ${ATLAS_DEV_DECISION_ENGINE_ARTIFACT:-credit_underwriting}
+      # El defecto es el código REAL del artefacto. `credit_underwriting` no existe en el Motor: toda
+      # solicitud caía en 404 silencioso y se resolvía como engine_unavailable_manual.
+      DECISION_ENGINE_CREDIT_ARTIFACT: ${ATLAS_DEV_DECISION_ENGINE_ARTIFACT:-ATLAS_BNPL_UNDERWRITING}
+      DECISION_ENGINE_RISK_ARTIFACT: ${ATLAS_DEV_DECISION_ENGINE_RISK_ARTIFACT:-RIESGO_ONBOARDING_CLIENTE}
       # El ENTORNO del motor contra el que se decide. En local apunta a TEST porque es donde vive
       # la version desplegada de la politica; sin declararlo, el motor resuelve el suyo por defecto
       # y una version publicada en TEST no se estaria usando nunca.
