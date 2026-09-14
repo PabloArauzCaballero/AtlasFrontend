@@ -11,7 +11,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_ATLAS_API_URL": "https://n2vmpw58-80.brs.devtunnels.ms/api/v1",
+        "EXPO_PUBLIC_ATLAS_API_URL": "https://pablo-h310.taila8f993.ts.net/api/v1",
         "EXPO_PUBLIC_ATLAS_TENANT_ID": "1",
         "EXPO_PUBLIC_ATLAS_TIMEOUT_MS": "20000",
         "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",
@@ -27,7 +27,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_ATLAS_API_URL": "https://n2vmpw58-80.brs.devtunnels.ms/api/v1",
+        "EXPO_PUBLIC_ATLAS_API_URL": "https://pablo-h310.taila8f993.ts.net/api/v1",
         "EXPO_PUBLIC_ATLAS_TENANT_ID": "1",
         "EXPO_PUBLIC_ATLAS_TIMEOUT_MS": "20000",
         "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",
@@ -44,7 +44,7 @@
         "simulator": true
       },
       "env": {
-        "EXPO_PUBLIC_ATLAS_API_URL": "https://n2vmpw58-80.brs.devtunnels.ms/api/v1",
+        "EXPO_PUBLIC_ATLAS_API_URL": "https://pablo-h310.taila8f993.ts.net/api/v1",
         "EXPO_PUBLIC_ATLAS_TENANT_ID": "1",
         "EXPO_PUBLIC_ATLAS_TIMEOUT_MS": "20000",
         "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",
