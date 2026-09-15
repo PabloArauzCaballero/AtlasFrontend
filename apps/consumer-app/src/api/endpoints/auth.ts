@@ -43,6 +43,9 @@ export const confirmPasswordReset = (input: { email: string; code: string; newPa
     body: { actorType: 'customer', identifier: input.email, code: input.code, newPassword: input.newPassword },
   });
 
-/** MFA opt-in del cliente. */
+/**
+ * MFA opt-in del cliente. El backend responde `{ mfaEnabled }` (no `enabled`); con MFA activo el
+ * próximo login pide el PIN por correo. Activarlo exige correo configurado en el servidor (503 si no).
+ */
 export const setMfaPreference = (enabled: boolean) =>
-  request<{ enabled: boolean }>('/auth/mfa', { method: 'POST', body: { enabled } });
+  request<{ mfaEnabled: boolean }>('/auth/mfa', { method: 'POST', body: { enabled } });

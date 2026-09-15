@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import * as contentApi from '../../../src/api/endpoints/app-content';
+import { setMfaPreference } from '../../../src/api/endpoints/auth';
 import { ContentActionButton } from '../../../src/ui/content';
 import { describeCustomerStatus } from '../../../src/features/onboarding-map';
 import { useSession } from '../../../src/session/session';
@@ -35,6 +36,8 @@ export default function Profile() {
   const router = useRouter();
   const session = useSession();
   const [signingOut, setSigningOut] = useState(false);
+  /** `null` = no consultado (el backend no lo publica); un booleano = lo que contestó al cambiarlo. */
+  const [mfa, setMfa] = useState<boolean | null>(null);
   const tour = useTour();
 
   /*
@@ -63,6 +66,23 @@ export default function Profile() {
 
   const me = session.me;
   const fullName = [me?.profile.firstName, me?.profile.lastName].filter(Boolean).join(' ') || 'Tu cuenta';
+
+  const elegirSegundoFactor = () => {
+    Alert.alert('Verificación en dos pasos', '¿Quieres que te pidamos un PIN por correo cada vez que entres?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Desactivar', style: 'destructive', onPress: () => void cambiarSegundoFactor(false) },
+      { text: 'Activar', onPress: () => void cambiarSegundoFactor(true) },
+    ]);
+  };
+
+  const cambiarSegundoFactor = async (enabled: boolean) => {
+    try {
+      const respuesta = await setMfaPreference(enabled);
+      setMfa(respuesta.mfaEnabled);
+    } catch {
+      Alert.alert('No pudimos guardar el cambio', 'Puede que el correo de verificación no esté disponible ahora. Inténtalo más tarde.');
+    }
+  };
 
   const confirmSignOut = () => {
     // Cerrar sesión es reversible pero interrumpe: se confirma antes, con el patron nativo.
@@ -250,6 +270,25 @@ export default function Profile() {
         />
         <Divider inset />
         {/* Los permisos se daban en el alta y no habia donde revisarlos ni retirarlos. */}
+        {/*
+          El segundo factor. `setMfaPreference` existía en el cliente de API y no tenía pantalla:
+          nadie podía activarlo. El backend no publica el estado actual en `/auth/me`, así que la
+          fila no lo afirma: ofrece las dos acciones y enseña lo que el servidor contestó.
+        */}
+        <ListRow
+          icon="escudo"
+          title="Verificación en dos pasos"
+          subtitle={
+            mfa === null
+              ? 'Un PIN por correo cada vez que entras. Toca para activarla o desactivarla.'
+              : mfa
+                ? 'Activada: al entrar te pediremos un PIN por correo.'
+                : 'Desactivada: entras sólo con tu contraseña.'
+          }
+          onPress={elegirSegundoFactor}
+          accessibilityHint="Activar o desactivar el PIN por correo al entrar"
+        />
+        <Divider inset />
         <ListRow
           icon="candado"
           title="Tus datos"

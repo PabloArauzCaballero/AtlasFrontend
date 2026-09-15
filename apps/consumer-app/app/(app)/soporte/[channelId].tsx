@@ -18,8 +18,8 @@
  * una entidad financiera. Corregir manda un mensaje nuevo, como en la vida real.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ScrollView, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { Alert, ScrollView, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as supportApi from '../../../src/api/endpoints/support';
 import { CHAT_POLL_MS, fueLeido, mezclarMensajes, subirFotoAlChat, ultimaSecuencia } from '../../../src/features/support-chat';
@@ -35,6 +35,7 @@ function nuevoClientMessageId(): string {
 
 export default function Conversacion() {
   const { channelId } = useLocalSearchParams<{ channelId: string }>();
+  const router = useRouter();
   const [mensajes, setMensajes] = useState<supportApi.SupportMessage[]>([]);
   const [readState, setReadState] = useState<supportApi.ReadState[]>([]);
   const [texto, setTexto] = useState('');
@@ -46,6 +47,32 @@ export default function Conversacion() {
   const pendiente = useRef<{ cuerpo: string; clientMessageId: string } | null>(null);
 
   const canal = String(channelId ?? '');
+
+  /**
+   * Cerrar la conversación desde el teléfono.
+   *
+   * `closeChannel` existía en el cliente de API y no tenía botón: la persona sólo podía dejar de
+   * escribir, y el canal seguía abierto en la cola del agente. Se confirma antes porque cerrar no
+   * se deshace; después la pantalla vuelve atrás porque ya no hay hilo que mirar.
+   */
+  const cerrarConversacion = () => {
+    Alert.alert('Cerrar la conversación', 'Podrás abrir otra cuando quieras.', [
+      { text: 'Seguir hablando', style: 'cancel' },
+      {
+        text: 'Cerrar',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await supportApi.closeChannel(canal);
+            if (router.canGoBack()) router.back();
+            else router.replace('/(app)/ayuda');
+          } catch {
+            setError('No pudimos cerrar la conversación. Inténtalo de nuevo.');
+          }
+        },
+      },
+    ]);
+  };
 
   /**
    * Trae lo nuevo y marca leido en la misma pasada.
@@ -197,7 +224,12 @@ export default function Conversacion() {
         </View>
       }
     >
-      <ScreenHeader title="Soporte" subtitle="Estamos del otro lado." onBack="auto" />
+      <ScreenHeader
+        title="Soporte"
+        subtitle="Estamos del otro lado."
+        onBack="auto"
+        action={<Button label="Cerrar" variant="secondary" icon={null} onPress={cerrarConversacion} disabled={cargando} />}
+      />
 
       {cargando ? (
         <Card>
