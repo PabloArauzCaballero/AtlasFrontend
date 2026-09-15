@@ -9,6 +9,8 @@ import { StyleSheet, View, type ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
+import type { CanalDeVerificacion } from '../../src/api/endpoints/onboarding';
+import { canalElegido, canalesOfrecidos, type CanalesOfrecidos } from '../../src/features/onboarding/canales-de-verificacion';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { space } from '../../src/theme/tokens';
@@ -19,6 +21,45 @@ import { StepHeader } from '../../src/ui/step-header';
 import { AtlasText, Button, Card, CardHeader, ErrorState, IconChip } from '../../src/ui/primitives';
 
 type Channel = 'sms' | 'whatsapp' | 'email';
+
+/**
+ * Los canales que el SERVIDOR puede entregar ahora mismo.
+ *
+ * Pregunta a `/customer-onboarding/verification-channels`; toda la decision sobre lo que vuelve vive
+ * en `canales-de-verificacion.ts`, que se prueba sin montar React. Aqui solo queda el ciclo de vida.
+ *
+ * `sinPantalla` a proposito: si esta consulta falla no es culpa de quien usa la app ni le impide
+ * seguir —se cae al respaldo—, asi que no merece una pantalla de error.
+ */
+function useCanales(): CanalesOfrecidos & { cargando: boolean } {
+  const [catalogo, setCatalogo] = useState<CanalDeVerificacion[] | null>(null);
+  const [resuelto, setResuelto] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    onboardingApi
+      .listVerificationChannels()
+      .then((r) => {
+        if (!vivo) return;
+        setCatalogo(r.channels);
+        setResuelto(true);
+      })
+      .catch(() => {
+        if (vivo) setResuelto(true);
+      });
+    return () => {
+      vivo = false;
+    };
+  }, []);
+
+  /*
+    `cargando` bloquea el boton de pedir el codigo mientras no se sabe que canales hay. Son decimas
+    de segundo, pero sin ello un toque inmediato pedia el codigo por el canal por defecto —que puede
+    no ser el que el servidor tiene encendido— y devolvia VERIFICATION_CHANNEL_UNAVAILABLE a quien no
+    hizo nada mal.
+  */
+  return { ...canalesOfrecidos(catalogo), cargando: !resuelto };
+}
 
 /**
  * Cuanto le queda de vida al codigo, en segundos, contando de verdad.
@@ -83,19 +124,27 @@ export default function VerifyContact() {
   const customerId = session.customerId;
 
   /*
-    Arranca en CORREO, no en SMS.
+    El canal por defecto YA NO se fija aqui: lo dice el servidor.
 
-    El canal por defecto tiene que ser uno que el servidor pueda entregar de verdad. Los tres
-    proveedores se encienden por separado en el backend (`MAIL_PROVIDER`, `SMS_PROVIDER`,
-    `WHATSAPP_PROVIDER`) y pedir un codigo por un canal apagado responde
-    `VERIFICATION_CHANNEL_UNAVAILABLE`. La pantalla lo explica, pero quien llega aqui ya ha hecho
-    todo el alta: el primer intento no puede ser un callejon sin salida que obligue a adivinar cual
-    de los tres funciona. El correo es el unico que ha estado siempre encendido.
+    Los tres proveedores se encienden por separado en el backend y pedir un codigo por uno apagado
+    responde `VERIFICATION_CHANNEL_UNAVAILABLE`. Quien llega a esta pantalla ya hizo todo el alta,
+    asi que el primer intento no puede ser un callejon sin salida que obligue a adivinar cual de los
+    tres funciona. Antes se fijaba «correo» porque era el unico encendido — un parche, y rotulado
+    como tal: el dia que se encendiera SMS habria hecho falta publicar una app nueva para ofrecerlo.
 
-    Cuando el backend publique que canales tiene disponibles, esto deberia elegir el primero de esa
-    lista en vez de fijar uno.
+    `useCanales` pregunta y esta pantalla usa lo que venga.
   */
+  const { opciones, unico, cargando } = useCanales();
   const [channel, setChannel] = useState<Channel>('email');
+
+  /*
+    Al llegar el catalogo, si el canal elegido no esta entre los que el servidor puede entregar, se
+    cambia al primero que si. No pelea con la eleccion de la persona: el catalogo llega una vez y no
+    vuelve a cambiar, asi que esto solo corrige el valor inicial.
+  */
+  useEffect(() => {
+    setChannel((actual) => canalElegido(actual, opciones));
+  }, [opciones]);
   const [sent, setSent] = useState<{ expiresAt: string; deliveryStatus: string } | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -202,7 +251,7 @@ export default function VerifyContact() {
             </>
           )
         ) : (
-          <Button label="Enviarme el código" onPress={sendCode} loading={busy} disabled={busy} />
+          <Button label="Enviarme el código" onPress={sendCode} loading={busy || cargando} disabled={busy || cargando} />
         )
       }
     >
@@ -236,11 +285,12 @@ export default function VerifyContact() {
           setSent(null);
           setError(null);
         }}
-        opciones={[
-          { valor: 'email', etiqueta: 'Correo', detalle: 'A tu correo registrado.' },
-          { valor: 'sms', etiqueta: 'SMS', detalle: 'A tu número registrado.' },
-          { valor: 'whatsapp', etiqueta: 'WhatsApp', detalle: 'Al mismo número.' },
-        ]}
+        opciones={opciones}
+        /*
+          Con un solo canal el desplegable no ofrece nada que elegir, asi que se bloquea DICIENDO por
+          que. Dejarlo abierto con una sola opcion invita a buscar alternativas que no existen.
+        */
+        deshabilitadoPorque={unico ? `Ahora mismo el código solo se puede enviar por ${unico}.` : null}
       />
 
       {sent && !deliveryFailed ? (

@@ -83,6 +83,22 @@ export const listObservations = (customerId: string) =>
 
 export type VerificationChannel = 'sms' | 'email' | 'whatsapp';
 
+export type CanalDeVerificacion = { channel: VerificationChannel; available: boolean };
+
+/**
+ * Que canales puede entregar el servidor, en su orden de preferencia.
+ *
+ * Anonimo porque se pide durante el alta, antes de tener credenciales. Devuelve los TRES con su
+ * disponibilidad: la pantalla necesita distinguir «apagado» de «no existe» para poder explicarlo,
+ * y el ORDEN lo decide el servidor —la app toma el primero disponible, asi que cambiar la
+ * preferencia no obliga a publicar una version nueva—.
+ */
+export const listVerificationChannels = () =>
+  request<{ channels: CanalDeVerificacion[] }>('/customer-onboarding/verification-channels', {
+    anonymous: true,
+    sinPantalla: true,
+  });
+
 export const requestContactVerification = (
   customerId: string,
   body: { contactType: 'phone' | 'email'; verificationChannel: VerificationChannel },
