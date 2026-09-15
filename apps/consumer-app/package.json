@@ -66,7 +66,8 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "jest --passWithNoTests"
+    "check:field-help": "node scripts/check-field-help.mjs",
+    "test": "node scripts/check-field-help.mjs && jest --passWithNoTests"
   },
   "private": true
 }

@@ -29,5 +29,11 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      # Ningún campo sin «qué poner», ninguna opción sin «qué significa». También corre dentro de
+      # `verify` (es el primer paso del `test` de la app); aquí va aparte para que un rojo diga
+      # directamente qué campo o qué opción, sin buscarlo en la salida de jest.
+      - name: Ayuda de campos y opciones
+        run: npm run check:field-help --workspace=atlas-consumer-app
+
       - name: Verificación (tipos, lint y pruebas)
         run: npm run verify
