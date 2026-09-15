@@ -22,6 +22,7 @@ import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { prepararAvisos } from '../src/device/push';
+import { useAbrirAvisoTocado } from '../src/device/push-navigation';
 import { SandboxProvider } from '../src/sandbox/store';
 import { SonidoMarcaProvider } from '../src/ui/brand-sound';
 import { AnimatedSplash } from '../src/ui/splash';
@@ -48,6 +49,8 @@ function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
     sistema y cambiarla a Sora un instante despues, con el salto de todos los textos a la vista.
   */
   const listo = session.status !== 'restoring' && fontsReady;
+  // Tocar un aviso de campaña abre la pantalla que eligió operaciones; sólo con sesión, o el enlace rebota al ingreso.
+  useAbrirAvisoTocado(session.status === 'authenticated');
 
   useEffect(() => {
     void SplashScreen.hideAsync();
