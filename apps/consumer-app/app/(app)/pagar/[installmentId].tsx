@@ -52,6 +52,11 @@ const SIN_QR: Record<string, { titulo: string; detalle: string }> = {
     titulo: 'El comercio todavía no publicó su QR de cobro',
     detalle: 'Pídeselo directamente: es el único que puede subirlo desde su portal. Tu cuota sigue esperando, no se pierde.',
   },
+  /* El comercio ya lo subió; falta que Atlas lo apruebe. Sólo un QR aprobado se enseña aquí. */
+  PARTNER_PAYMENT_QR_PENDING_REVIEW: {
+    titulo: 'El QR del comercio está pendiente de aprobación',
+    detalle: 'El comercio ya lo subió y Atlas lo está revisando. Vuelve en un rato: tu cuota sigue esperando, no se pierde.',
+  },
   PAYMENT_QR_OBJECT_MISSING: {
     titulo: 'No pudimos recuperar el QR del comercio',
     detalle: 'Vuelve a intentarlo en un momento. Si sigue igual, avisanos desde ayuda.',

@@ -55,6 +55,8 @@ export default function AppLayout() {
       <Stack.Screen name="compra/monto" options={TAREA_ACOTADA} />
       <Stack.Screen name="compra/[orderId]" />
       <Stack.Screen name="pago/[itemId]" options={TAREA_ACOTADA} />
+      {/* La pantalla de pago REAL (cuota de un préstamo del backend): misma presentación acotada. */}
+      <Stack.Screen name="pagar/[installmentId]" options={TAREA_ACOTADA} />
     </Stack>
   );
 }

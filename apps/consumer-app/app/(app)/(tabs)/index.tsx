@@ -58,6 +58,17 @@ export default function Home() {
   const spending = book.spending;
   const creditLine = book.creditLine;
   const currency = spending?.currencyCode ?? 'BOB';
+  /*
+   * La próxima cuota REAL, del calendario del backend: vencidas primero, después la más cercana.
+   * Es a donde lleva «Ver cómo pagar» cuando existe; la de la compra simulada sólo si no hay ninguna.
+   * Antes la portada mandaba siempre a la pantalla simulada, que enseñaba un QR que ningún banco lee.
+   */
+  const proximaCuotaReal = (() => {
+    const entradas = book.calendar?.entries ?? [];
+    const pendientes = entradas.filter((entrada) => entrada.state === 'overdue' || entrada.state === 'upcoming');
+    pendientes.sort((a, b) => (a.state === b.state ? a.dueDate.localeCompare(b.dueDate) : a.state === 'overdue' ? -1 : 1));
+    return pendientes[0] ?? null;
+  })();
   const activeOrders = sandbox.state.orders.filter((order) => order.status === 'ACTIVE' || order.status === 'WAITING_INITIAL_PAYMENT');
 
   const tour = useTour();
@@ -215,7 +226,32 @@ export default function Home() {
       </TourTarget>
 
       <TourTarget id={TOUR_INICIO_TARGETS.pagos}>
-        {sandbox.nextDue ? (
+        {proximaCuotaReal ? (
+          <Card>
+            <CardHeader
+              icon="reloj"
+              title="Tu próximo pago"
+              trailing={
+                <Badge
+                  dot
+                  label={proximaCuotaReal.state === 'overdue' ? 'vencida' : 'próxima'}
+                  tone={proximaCuotaReal.state === 'overdue' ? 'danger' : 'warning'}
+                />
+              }
+            />
+            <View>
+              <AtlasText variant="amount">{formatAmount(proximaCuotaReal.pendingAmount, proximaCuotaReal.currencyCode)}</AtlasText>
+              <AtlasText variant="caption" tone="secondary">
+                {`${proximaCuotaReal.merchant.displayName} · cuota ${proximaCuotaReal.installmentNumber} · vence ${proximaCuotaReal.dueDate}`}
+              </AtlasText>
+            </View>
+            <Button
+              label="Ver cómo pagar"
+              variant="secondary"
+              onPress={() => router.push(`/(app)/cuota/${proximaCuotaReal.loanId}/${proximaCuotaReal.installmentNumber}`)}
+            />
+          </Card>
+        ) : sandbox.nextDue ? (
           <Card>
             <CardHeader
               icon="reloj"

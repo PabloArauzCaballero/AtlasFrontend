@@ -28,6 +28,10 @@ import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, Overline } from '../../../src/ui/primitives';
 
+/** Lo que se le dice al cliente cuando la compra es simulada y toca un botón de dinero. */
+const AVISO_DEMOSTRACION =
+  'Esta compra es de demostración: el aviso no se envía a ningún comercio. Los pagos reales se avisan desde Pagos, abriendo la cuota.';
+
 export default function PaymentScreen() {
   const router = useRouter();
   const sandbox = useSandbox();
@@ -105,10 +109,14 @@ export default function PaymentScreen() {
   const reportPayment = async () => {
     if (!instruction) return;
 
+    /*
+     * En una compra de DEMOSTRACIÓN el aviso no sale del teléfono, y se dice: antes esto marcaba
+     * «reportado» con vibración de éxito y el cliente creía haber avisado a un comercio que nunca
+     * se enteró. Los pagos reales se avisan desde Pagos › la cuota, que sí llega al backend.
+     */
     if (isSandboxPurchase || !session.customerId) {
       sandbox.claimPayment({ instructionId: instruction.id, reference: reference.trim() || null, proofUri });
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setReported(true);
+      setFallo(AVISO_DEMOSTRACION);
       return;
     }
 
@@ -247,12 +255,21 @@ export default function PaymentScreen() {
           detail="Si pagaste y sigue apareciendo pendiente, abre una revisión. No se borra el vencimiento mientras la revisamos."
           divider={false}
         />
+        {/*
+          Antes esto abría una «disputa» en el motor local y volvía atrás sin decir nada, en cualquier
+          modo: la queja no salía del teléfono. Con una compra real, el camino que sí llega a alguien es
+          Ayuda; con una simulada, se dice que es simulada.
+        */}
         <Button
-          label="Reportar un problema con este pago"
+          label={isSandboxPurchase ? 'Reportar un problema (demostración)' : 'Pedir ayuda con este pago'}
           variant="ghost"
           onPress={() => {
-            sandbox.openDispute(item.id, 'CONSUMER_CLAIMS_PAID');
-            router.back();
+            if (isSandboxPurchase || !session.customerId) {
+              sandbox.openDispute(item.id, 'CONSUMER_CLAIMS_PAID');
+              setFallo(AVISO_DEMOSTRACION);
+              return;
+            }
+            router.push('/(app)/soporte');
           }}
         />
       </Card>
