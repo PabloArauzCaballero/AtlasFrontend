@@ -49,3 +49,19 @@ export const confirmPasswordReset = (input: { email: string; code: string; newPa
  */
 export const setMfaPreference = (enabled: boolean) =>
   request<{ mfaEnabled: boolean }>('/auth/mfa', { method: 'POST', body: { enabled } });
+
+/**
+ * Cambio de PIN con la sesión abierta: dos pasos, igual que el login.
+ *
+ * El backend valida el PIN actual en el primer paso y manda un código de 6 dígitos al correo de la
+ * cuenta; el segundo paso lo canjea por el PIN nuevo. Quién cambia se toma del access token: no hay
+ * forma de cambiar el PIN de otra persona por aquí.
+ */
+export const requestPinChange = (currentPassword: string) =>
+  request<{ pinChallengeRequired: boolean; challengeToken: string; expiresInMinutes: number }>('/auth/password/change/request', {
+    method: 'POST',
+    body: { currentPassword },
+  });
+
+export const confirmPinChange = (input: { challengeToken: string; code: string; newPassword: string }) =>
+  request<{ updated: boolean }>('/auth/password/change/confirm', { method: 'POST', body: input });

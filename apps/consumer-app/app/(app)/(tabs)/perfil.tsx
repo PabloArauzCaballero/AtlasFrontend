@@ -303,8 +303,8 @@ export default function Profile() {
         <ListRow
           title="Cambiar mi PIN"
           icon="candado"
-          subtitle="Te enviamos un código por correo"
-          onPress={() => router.push('/(auth)/recuperar')}
+          subtitle="Con tu PIN actual y un código al correo"
+          onPress={() => router.push('/(app)/cambiar-pin')}
         />
         <Divider inset />
         <ListRow title="Sesión" subtitle="Tus tokens se guardan cifrados en este dispositivo" />
