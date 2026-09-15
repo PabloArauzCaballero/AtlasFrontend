@@ -148,7 +148,13 @@ export default function Soporte() {
 
       <Card>
         <CardHeader icon="ayuda" title="¿Con qué te ayudamos?" detail="Escribe tu duda en tus palabras." divider={false} />
-        <Field label="Buscar en la ayuda" value={busqueda} onChangeText={setBusqueda} placeholder="Ej.: no me llega el código" />
+        <Field
+          label="Buscar en la ayuda"
+          value={busqueda}
+          onChangeText={setBusqueda}
+          placeholder="Ej.: no me llega el código"
+          ayuda="Escribe con tus palabras lo que te pasa y la lista se filtra mientras escribes. Ej.: «no me llega el código». Si nada coincide, abre una conversación y te atiende una persona."
+        />
         <Button label="Hablar con soporte" onPress={empezar} loading={abriendo} />
       </Card>
 

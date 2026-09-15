@@ -236,6 +236,7 @@ export default function PaymentScreen() {
             onChangeText={setReference}
             autoCapitalize="characters"
             placeholder="Ej. 4839201"
+            ayuda="El número de operación que muestra el comprobante de tu banco o billetera, tal como aparece. Ej.: 4839201. Con él el comercio encuentra tu pago en su extracto y lo confirma antes."
           />
           <Button label={proofUri ? 'Comprobante adjunto' : 'Adjuntar comprobante'} variant="secondary" onPress={attachProof} />
           {fallo ? (

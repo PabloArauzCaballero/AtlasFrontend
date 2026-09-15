@@ -35,15 +35,15 @@ type Gender = 'female' | 'male' | 'other' | 'undisclosed';
 
 /** Solo los idiomas en los que la app existe. Ver la nota en `(onboarding)/perfil.tsx`. */
 const LANGUAGES: OpcionSelect<Language>[] = [
-  { valor: 'es', etiqueta: 'Español' },
-  { valor: 'en', etiqueta: 'Inglés' },
+  { valor: 'es', etiqueta: 'Español', detalle: 'Te escribimos en español, como ahora.' },
+  { valor: 'en', etiqueta: 'Inglés', detalle: 'Te escribimos en inglés cuando esté disponible.' },
 ];
 
 const GENDERS: OpcionSelect<Gender>[] = [
-  { valor: 'female', etiqueta: 'Mujer' },
-  { valor: 'male', etiqueta: 'Hombre' },
-  { valor: 'other', etiqueta: 'Otro' },
-  { valor: 'undisclosed', etiqueta: 'Prefiero no decirlo' },
+  { valor: 'female', etiqueta: 'Mujer', detalle: 'Te reconoces como mujer.' },
+  { valor: 'male', etiqueta: 'Hombre', detalle: 'Te reconoces como hombre.' },
+  { valor: 'other', etiqueta: 'Otro', detalle: 'Ninguna de las dos anteriores te describe.' },
+  { valor: 'undisclosed', etiqueta: 'Prefiero no decirlo', detalle: 'No queda registrado ningún género.' },
 ];
 
 export default function EditProfile() {
@@ -116,12 +116,25 @@ export default function EditProfile() {
         <Card>
           <CardHeader icon="editar" title="Tus preferencias" />
 
-          <SelectField<Language> label="Idioma" opciones={LANGUAGES} value={language} onChange={setLanguage} />
-          <SelectField<Gender> label="Género" opciones={GENDERS} value={gender} onChange={setGender} />
+          <SelectField<Language>
+            label="Idioma"
+            opciones={LANGUAGES}
+            value={language}
+            onChange={setLanguage}
+            ayuda="En qué idioma te escribimos los avisos de cuotas, los correos y la atención de soporte. Cambiarlo no toca tu contrato, que queda en el idioma en que lo firmaste."
+          />
+          <SelectField<Gender>
+            label="Género"
+            opciones={GENDERS}
+            value={gender}
+            onChange={setGender}
+            ayuda="Lo declaras tú y no se toma del carnet. Sirve para dirigirnos a ti como corresponde y para informes de inclusión agregados y sin nombres; no cambia tu línea de crédito."
+          />
 
           <CheckRow
             label="Quiero recibir novedades y promociones"
             detail="Puedes desactivarlo cuando quieras. No afecta a los avisos de tus pagos."
+            ayuda="Marcarlo autoriza que te escribamos sobre comercios nuevos, descuentos y cambios del producto. Desmarcarlo no afecta a tu crédito: los avisos de tus cuotas y de tus pagos siguen llegando porque no son publicidad."
             checked={marketing}
             onToggle={setMarketing}
           />

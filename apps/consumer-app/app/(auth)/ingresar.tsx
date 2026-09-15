@@ -120,6 +120,7 @@ export default function SignIn() {
         textContentType="username"
         autoComplete="username"
         returnKeyType="next"
+        ayuda="El correo o el número de celular con el que creaste tu cuenta. El teléfono va sin el código de país. Ej.: valeria.mendez@gmail.com o 76500123."
         required
       />
 
@@ -133,6 +134,7 @@ export default function SignIn() {
         autoComplete="current-password"
         returnKeyType="go"
         onSubmitEditing={submit}
+        ayuda="Los cuatro dígitos que elegiste al registrarte. Tras cinco intentos fallidos la cuenta se bloquea un rato por seguridad; si no lo recuerdas, usa «Recuperar acceso» antes de agotarlos."
         required
         trailing={
           <Pressable

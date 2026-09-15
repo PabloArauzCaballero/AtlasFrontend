@@ -235,6 +235,17 @@ export default function PreferenciasAvisos() {
                         onValueChange={(next) => void toggle(preference, next)}
                         disabled={preference.isMandatory || saving === keyOf(preference)}
                         accessibilityLabel={`${channel.label} para ${preference.label}`}
+                        /*
+                          La ayuda la escribe el SERVIDOR: `description` dice qué es el aviso y
+                          `mandatoryReason` por qué no se puede apagar. La app no reescribe con sus
+                          palabras lo que Operaciones redactó para cada aviso; sin ninguno de los dos,
+                          no hay ⓘ antes que una explicación inventada.
+                        */
+                        ayuda={
+                          [preference.description, preference.isMandatory ? preference.mandatoryReason : null]
+                            .filter(Boolean)
+                            .join(' ') || undefined
+                        }
                       />
                     </View>
                   );

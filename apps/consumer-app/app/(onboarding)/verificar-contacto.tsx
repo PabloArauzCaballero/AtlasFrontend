@@ -286,6 +286,7 @@ export default function VerifyContact() {
           setError(null);
         }}
         opciones={opciones}
+        ayuda="Por dónde quieres que te llegue el código de seis dígitos que confirma tu contacto. Elige el que revises ahora mismo: el código vence en pocos minutos."
         /*
           Con un solo canal el desplegable no ofrece nada que elegir, asi que se bloquea DICIENDO por
           que. Dejarlo abierto con una sola opcion invita a buscar alternativas que no existen.
@@ -338,6 +339,7 @@ export default function VerifyContact() {
             label="Código recibido"
             value={code}
             onChangeText={(next) => setCode(next.replace(/\D/g, '').slice(0, 8))}
+            ayuda="Los dígitos que acabas de recibir, sin espacios. Sirven una sola vez y vencen en pocos minutos; si ya venció, pide otro y usa el último que llegó."
             keyboardType="number-pad"
             textContentType="oneTimeCode"
             autoComplete="one-time-code"

@@ -36,7 +36,7 @@ export type Actividad = { codigo: string; nombre: string; detalle?: string; icon
 export const ACTIVIDADES: Actividad[] = [
   { codigo: 'G-COMERCIO', nombre: 'Comercio y ventas', detalle: 'Tienda, puesto de mercado, venta por catálogo.', icono: 'comercio' },
   { codigo: 'H-TRANSPORTE', nombre: 'Transporte', detalle: 'Taxi, micro, camión, mensajería.', icono: 'transporte' },
-  { codigo: 'I-GASTRONOMIA', nombre: 'Comida y hospedaje', detalle: 'Restaurante, pensión, alojamiento.', icono: 'supermercado' },
+  { codigo: 'I-GASTRONOMIA', nombre: 'Comida y hospedaje', detalle: 'Restaurante, pensión, venta de comida, alojamiento.', icono: 'supermercado' },
   { codigo: 'F-CONSTRUCCION', nombre: 'Construcción', detalle: 'Albañilería, electricidad, plomería, acabados.', icono: 'hogar' },
   { codigo: 'C-MANUFACTURA', nombre: 'Manufactura y talleres', detalle: 'Costura, carpintería, metalmecánica, panadería.', icono: 'ropa' },
   { codigo: 'Q-SALUD', nombre: 'Salud', detalle: 'Consultorio, farmacia, laboratorio, enfermería.', icono: 'salud' },
@@ -45,7 +45,7 @@ export const ACTIVIDADES: Actividad[] = [
   { codigo: 'J-TECNOLOGIA', nombre: 'Tecnología y comunicaciones', detalle: 'Informática, celulares, internet, publicidad.', icono: 'celulares' },
   { codigo: 'M-PROFESIONAL', nombre: 'Servicios profesionales', detalle: 'Contabilidad, derecho, arquitectura, consultoría.', icono: 'documento' },
   { codigo: 'A-AGROPECUARIA', nombre: 'Agricultura y ganadería', detalle: 'Cultivo, ganado, avicultura, pesca.', icono: 'chispa' },
-  { codigo: 'K-FINANCIERO', nombre: 'Servicios financieros', detalle: 'Seguros, cambio, cobranza.', icono: 'billetera' },
+  { codigo: 'K-FINANCIERO', nombre: 'Servicios financieros', detalle: 'Seguros, casa de cambio, cobranza, microcrédito.', icono: 'billetera' },
   { codigo: 'O-PUBLICO', nombre: 'Sector público', detalle: 'Administración pública, policía, fuerzas armadas.', icono: 'escudo' },
   { codigo: 'B-MINERIA', nombre: 'Minería e hidrocarburos', detalle: 'Extracción, cooperativa minera, petróleo.', icono: 'grafico' },
   { codigo: 'D-ENERGIA', nombre: 'Energía, agua y residuos', detalle: 'Electricidad, gas, agua, saneamiento.', icono: 'electronica' },

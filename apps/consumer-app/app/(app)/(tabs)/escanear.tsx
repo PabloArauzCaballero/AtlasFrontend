@@ -202,7 +202,14 @@ export default function ScanScreen() {
           title="Ingresar el código a mano"
           detail="Si el QR no se lee, el comercio puede dictarte el código que aparece debajo del QR."
         />
-        <Field label="Código del comercio" value={manual} onChangeText={setManual} autoCapitalize="none" autoCorrect={false} />
+        <Field
+          label="Código del comercio"
+          value={manual}
+          onChangeText={setManual}
+          autoCapitalize="none"
+          autoCorrect={false}
+          ayuda="El código impreso debajo del QR de la caja, de al menos ocho caracteres. Pídeselo al comercio si la cámara no lee el QR; identifica la caja exacta donde estás comprando."
+        />
         <Button
           label="Continuar"
           variant="secondary"

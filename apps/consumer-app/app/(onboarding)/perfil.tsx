@@ -74,18 +74,33 @@ export default function PersonalData() {
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
-      <IconField icon="perfil" label="Nombre" value={firstName} onChangeText={setFirstName} autoComplete="given-name" />
-      <IconField icon="perfil" label="Apellido" value={lastName} onChangeText={setLastName} autoComplete="family-name" />
+      <IconField
+        icon="perfil"
+        label="Nombre"
+        value={firstName}
+        onChangeText={setFirstName}
+        autoComplete="given-name"
+        ayuda="Tu nombre tal como figura en tu carnet de identidad, sin apodos. Es el que aparece en tu contrato y el que se compara con el documento."
+      />
+      <IconField
+        icon="perfil"
+        label="Apellido"
+        value={lastName}
+        onChangeText={setLastName}
+        autoComplete="family-name"
+        ayuda="Tus apellidos completos como están en el carnet. Si no coinciden con el documento, la verificación se detiene y la revisa una persona."
+      />
 
       <SelectField<Gender>
         label="Género declarado"
         value={gender}
         onChange={setGender}
+        ayuda="Lo declaras tú; no se toma del carnet. Sirve para dirigirnos a ti como corresponde y para los informes de inclusión que la ley nos pide, agregados y sin nombres. No cambia tu evaluación."
         opciones={[
-          { valor: 'female', etiqueta: 'Femenino' },
-          { valor: 'male', etiqueta: 'Masculino' },
-          { valor: 'other', etiqueta: 'Otro' },
-          { valor: 'undisclosed', etiqueta: 'Prefiero no decirlo' },
+          { valor: 'female', etiqueta: 'Femenino', detalle: 'Te reconoces como mujer.' },
+          { valor: 'male', etiqueta: 'Masculino', detalle: 'Te reconoces como hombre.' },
+          { valor: 'other', etiqueta: 'Otro', detalle: 'Ninguna de las dos anteriores te describe.' },
+          { valor: 'undisclosed', etiqueta: 'Prefiero no decirlo', detalle: 'No queda registrado ningún género.' },
         ]}
       />
 
@@ -93,15 +108,17 @@ export default function PersonalData() {
         label="Idioma preferido"
         value={language}
         onChange={setLanguage}
+        ayuda="En qué idioma quieres que te escribamos: los avisos de cuotas, los correos y la atención de soporte. Son los dos idiomas en los que existe la app hoy."
         opciones={[
-          { valor: 'es', etiqueta: 'Español' },
-          { valor: 'en', etiqueta: 'Inglés' },
+          { valor: 'es', etiqueta: 'Español', detalle: 'Te escribimos en español, como ahora.' },
+          { valor: 'en', etiqueta: 'Inglés', detalle: 'Te escribimos en inglés cuando esté disponible.' },
         ]}
       />
 
       <CheckRow
         label="Quiero recibir novedades y promociones"
         detail="Puedes desactivarlo cuando quieras desde tu perfil."
+        ayuda="Marcarlo autoriza que te escribamos sobre comercios nuevos, descuentos y cambios del producto. No marcarlo no afecta a tu crédito ni a tu evaluación: los avisos de tus cuotas y de tus pagos llegan igual, porque esos no son publicidad."
         checked={marketingOptIn}
         onToggle={setMarketingOptIn}
       />

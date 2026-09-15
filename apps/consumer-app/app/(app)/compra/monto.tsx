@@ -123,6 +123,7 @@ export default function PurchaseAmount() {
 
       <AmountField
         value={raw}
+        ayuda="El precio total que te dice el comercio, en bolivianos y con centavos si los hay. Ej.: 1250,50. Con este monto se calculan tu pago inicial y tus cuotas; si supera tu disponible, la app te lo dice antes de seguir."
         autoFocus
         onChangeAmount={(next, parsed) => {
           setRaw(next);

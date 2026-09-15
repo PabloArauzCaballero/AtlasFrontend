@@ -182,6 +182,7 @@ export default function Privacidad() {
               <CheckRow
                 label={documento.title ?? documento.documentCode}
                 detail={documento.summary ?? `Version ${documento.versionCode}`}
+                ayuda={`Marcado, sigue vigente el permiso que diste al aceptar «${documento.title ?? documento.documentCode}». Si lo desmarcas y guardas, deja de usarse desde ese momento; lo que ya se hizo con él antes no se deshace.`}
                 checked={decisiones[documento.id] !== false}
                 onToggle={(siguiente) =>
                   setDecisiones((actual) => ({ ...actual, [documento.id]: siguiente }))
@@ -214,6 +215,7 @@ export default function Privacidad() {
         />
         <OptionGroup
           label="Que quieres pedir"
+          ayuda="Elige qué derecho quieres ejercer sobre tus datos personales. La solicitud queda registrada con su fecha y te respondemos por los avisos que tengas activos; puedes enviar otra distinta después."
           options={DERECHOS}
           value={derecho}
           onChange={setDerecho}

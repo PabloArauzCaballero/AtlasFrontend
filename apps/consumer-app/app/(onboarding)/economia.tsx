@@ -139,15 +139,16 @@ export default function FinancialProfile() {
           if (next !== 'employee' && next !== 'business_owner') setSeniority('');
           if (next !== 'employee') setEmployerName('');
         }}
+        ayuda="De dónde sale el dinero con el que vas a pagar tus cuotas. Lo que elijas cambia lo que se te pregunta después —empleador, antigüedad— y cuánta estabilidad se le supone a tu ingreso."
         opciones={[
-          { valor: 'employee', etiqueta: 'Trabajo en relación de dependencia' },
-          { valor: 'self_employed', etiqueta: 'Trabajo por mi cuenta' },
-          { valor: 'business_owner', etiqueta: 'Tengo un negocio' },
-          { valor: 'student', etiqueta: 'Estudio' },
+          { valor: 'employee', etiqueta: 'Trabajo en relación de dependencia', detalle: 'Tienes un empleador que te paga un sueldo.' },
+          { valor: 'self_employed', etiqueta: 'Trabajo por mi cuenta', detalle: 'Cobras por trabajo hecho, sin patrón fijo.' },
+          { valor: 'business_owner', etiqueta: 'Tengo un negocio', detalle: 'Vives de un negocio tuyo, con o sin empleados.' },
+          { valor: 'student', etiqueta: 'Estudio', detalle: 'Tu ocupación principal es estudiar.' },
           // Faltaban las dos, y el servidor las acepta: sin ellas, quien no trabaja no puede
           // terminar el alta —ni eligiendo otra cosa, porque estaria declarando algo falso—.
-          { valor: 'unemployed', etiqueta: 'Ahora no trabajo' },
-          { valor: 'retired', etiqueta: 'Estoy jubilado' },
+          { valor: 'unemployed', etiqueta: 'Ahora no trabajo', detalle: 'Sin ingreso propio por trabajo en este momento.' },
+          { valor: 'retired', etiqueta: 'Estoy jubilado', detalle: 'Cobras una jubilación o una renta.' },
         ]}
       />
 
@@ -156,6 +157,7 @@ export default function FinancialProfile() {
           label="Nombre de tu empleador"
           value={employerName}
           onChangeText={setEmployerName}
+          ayuda="El nombre de la empresa o la persona que te paga, como figura en tu boleta de pago. Ej.: «Farmacorp S.A.». Sirve para confirmar el ingreso que declaras."
           required
           error={employerRequired ? 'Necesitamos el nombre de tu empleador.' : null}
         />
@@ -168,6 +170,11 @@ export default function FinancialProfile() {
           onChangeText={(v) => setSeniority(v.replace(/\D/g, ''))}
           keyboardType="number-pad"
           hint={employmentStatus === 'business_owner' ? 'Cuánto tiempo llevas con tu negocio.' : 'Cuánto tiempo llevas con tu empleador actual.'}
+          ayuda={
+            employmentStatus === 'business_owner'
+              ? 'Cuántos meses llevas con este negocio, en números. Dos años son 24. Un negocio que ya pasó su primer año sostiene mejor una cuota que uno recién abierto.'
+              : 'Cuántos meses llevas con tu empleador actual, en números. Dos años son 24. Cuanto más tiempo, más estable se considera el ingreso que declaras.'
+          }
         />
       ) : null}
 
@@ -177,9 +184,18 @@ export default function FinancialProfile() {
         onChangeText={setIncome}
         keyboardType="decimal-pad"
         inputMode="decimal"
+        ayuda="Lo que te queda cada mes de tu trabajo principal, ya descontados aportes e impuestos. Ej.: 4500. Es la base del cálculo de cuánto puedes pagar cómodamente: inflarlo solo consigue una cuota que no vas a poder pagar."
         required
       />
-      <IconField icon="billetera" label="Otros ingresos mensuales (Bs)" value={otherIncome} onChangeText={setOtherIncome} keyboardType="decimal-pad" inputMode="decimal" />
+      <IconField
+        icon="billetera"
+        label="Otros ingresos mensuales (Bs)"
+        value={otherIncome}
+        onChangeText={setOtherIncome}
+        keyboardType="decimal-pad"
+        inputMode="decimal"
+        ayuda="Lo que entra cada mes además de tu trabajo principal: alquileres, remesas, pensiones, un segundo empleo. Si no hay nada más, déjalo vacío. Ej.: 800."
+      />
       <IconField icon="grafico"
         label="Gastos mensuales (Bs)"
         value={expenses}
@@ -187,6 +203,7 @@ export default function FinancialProfile() {
         keyboardType="decimal-pad"
         inputMode="decimal"
         hint="Alquiler, servicios, deudas y gastos fijos."
+        ayuda="Lo que se te va cada mes sí o sí: alquiler, luz, agua, colegio, cuotas de otras deudas. Ej.: 2200. Es lo que se resta a tus ingresos para ver cuánto queda libre; declararlo de menos hace que te ofrezcamos una cuota que te aprieta."
         required
       />
 
@@ -197,6 +214,7 @@ export default function FinancialProfile() {
         opciones={OPCIONES_ACTIVIDAD}
         placeholder="Elige tu rubro"
         hint={nombreActividad(activity) ? undefined : 'Busca por rubro: comercio, transporte, salud…'}
+        ayuda="A qué se dedica el trabajo o el negocio del que vives, elegido de la lista. Si no encuentras el tuyo, escribe una palabra en el buscador de la hoja; si aun así no está, usa «Otra actividad» en vez de elegir uno parecido."
         required
         buscable
       />
@@ -205,14 +223,15 @@ export default function FinancialProfile() {
         label="Origen principal de tus ingresos"
         value={sourceOfFunds}
         onChange={setSourceOfFunds}
+        ayuda="De dónde viene la mayor parte del dinero que declaraste arriba. La ley contra el lavado obliga a preguntarlo y a que la respuesta cuadre con tu situación laboral; elige la fuente que más pesa, no todas las que tienes."
         opciones={[
-          { valor: 'salary', etiqueta: 'Salario' },
-          { valor: 'business_income', etiqueta: 'Mi negocio' },
-          { valor: 'rental_income', etiqueta: 'Alquileres' },
-          { valor: 'remittances', etiqueta: 'Remesas del exterior' },
-          { valor: 'pension', etiqueta: 'Jubilación o renta' },
-          { valor: 'savings', etiqueta: 'Ahorros' },
-          { valor: 'other', etiqueta: 'Otro' },
+          { valor: 'salary', etiqueta: 'Salario', detalle: 'Un sueldo que te paga un empleador.' },
+          { valor: 'business_income', etiqueta: 'Mi negocio', detalle: 'Las ventas o los servicios de tu propio negocio.' },
+          { valor: 'rental_income', etiqueta: 'Alquileres', detalle: 'Rentas de una casa, un local o un vehículo.' },
+          { valor: 'remittances', etiqueta: 'Remesas del exterior', detalle: 'Dinero que te envía alguien desde otro país.' },
+          { valor: 'pension', etiqueta: 'Jubilación o renta', detalle: 'Una jubilación, una renta o una pensión.' },
+          { valor: 'savings', etiqueta: 'Ahorros', detalle: 'Vives de dinero que ahorraste antes.' },
+          { valor: 'other', etiqueta: 'Otro', detalle: 'Ninguna de las anteriores describe tu caso.' },
         ]}
       />
 

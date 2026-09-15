@@ -234,6 +234,7 @@ export default function Register() {
           autoComplete="given-name"
           textContentType="givenName"
           placeholder="Valeria"
+          ayuda="Tu nombre tal como figura en tu carnet de identidad, sin apodos. Tiene que coincidir con el documento que vas a fotografiar más adelante: si no coincide, la verificación se detiene y la revisa una persona."
           required
           error={form.firstName ? errors.firstName : null}
         />
@@ -245,6 +246,7 @@ export default function Register() {
           autoComplete="family-name"
           textContentType="familyName"
           placeholder="Mendez"
+          ayuda="Tus dos apellidos como están en el carnet, incluido el de casada si aparece ahí. Es lo que se compara con el documento al verificar tu identidad."
           required
           error={form.lastName ? errors.lastName : null}
         />
@@ -256,6 +258,7 @@ export default function Register() {
           maximumDate={latestBirth}
           initialDate={latestBirth}
           hint={`Debes tener al menos ${MIN_AGE} años.`}
+          ayuda={`El día que naciste, el mismo que figura en tu carnet. Con menos de ${MIN_AGE} años no se puede firmar un crédito en Bolivia, y la edad también entra en el cálculo de cuánto puedes pagar cómodamente.`}
           required
           error={form.birthDate ? errors.birthDate : null}
         />
@@ -269,6 +272,7 @@ export default function Register() {
           country={country}
           onChangeCountry={setCountry}
           hint="Ahí te enviamos el código de verificación."
+          ayuda="Tu número de celular, sin el código de país: ese se elige aparte. Ahí llega el código que confirma que la línea es tuya, y es por donde te avisamos de tus cuotas, así que tiene que ser un número al que tengas acceso hoy."
           required
           error={form.phone ? errors.phone : null}
         />
@@ -283,6 +287,7 @@ export default function Register() {
           autoComplete="email"
           textContentType="emailAddress"
           placeholder="tu@correo.com"
+          ayuda="Un correo que revises de verdad: por ahí llegan el contrato, tus comprobantes de pago y el código para recuperar el PIN si lo olvidas. Ej.: valeria.mendez@gmail.com."
           required
           error={form.email ? errors.email : null}
         />
@@ -303,6 +308,7 @@ export default function Register() {
           onChangeText={(v) => setForm({ ...form, password: v })}
           error={form.password ? errors.password : null}
           hint="Cuatro dígitos que recuerdes. Evita 1234, tu año de nacimiento o cuatro iguales."
+          ayuda="Cuatro dígitos con los que entras a la app y autorizas tus compras. No lo compartas con nadie: quien lo tenga puede comprar a tu nombre. El servidor rechaza los fáciles de adivinar y bloquea la cuenta un rato tras cinco intentos fallidos."
         />
       </FormSection>
 

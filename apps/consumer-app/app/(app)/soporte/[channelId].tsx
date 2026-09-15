@@ -207,6 +207,7 @@ export default function Conversacion() {
               if (valor.length === 1) void supportApi.announceTyping(canal).catch(() => undefined);
             }}
             placeholder="Escribe aquí…"
+            ayuda="Cuéntanos qué pasó con tus palabras: qué intentabas hacer, qué viste y cuándo. Nunca escribas tu PIN ni el código que te llega por SMS o correo: nadie de Atlas te los va a pedir."
             multiline
           />
           <View style={{ flexDirection: 'row', gap: space.sm }}>

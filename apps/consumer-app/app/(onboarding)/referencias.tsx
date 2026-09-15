@@ -160,11 +160,12 @@ export default function References() {
             label="Qué relación tienen"
             value={draft.relationshipType}
             onChange={(next) => update(index, { relationshipType: next })}
+            ayuda="Qué es esta persona para ti. Sirve para saber a quién llamar primero si un día no conseguimos ubicarte; no se le pide que responda por tu deuda ni se le consulta tu historial."
             opciones={[
-              { valor: 'family', etiqueta: 'Familiar' },
-              { valor: 'friend', etiqueta: 'Amistad' },
-              { valor: 'coworker', etiqueta: 'Compañero de trabajo' },
-              { valor: 'employer', etiqueta: 'Empleador' },
+              { valor: 'family', etiqueta: 'Familiar', detalle: 'Alguien de tu familia: padres, hermanos, pareja.' },
+              { valor: 'friend', etiqueta: 'Amistad', detalle: 'Una amiga o un amigo de confianza.' },
+              { valor: 'coworker', etiqueta: 'Compañero de trabajo', detalle: 'Alguien con quien trabajas a diario.' },
+              { valor: 'employer', etiqueta: 'Empleador', detalle: 'Tu jefe o la persona que te contrata.' },
             ]}
           />
 
@@ -198,6 +199,7 @@ export default function References() {
             label="Nombre completo"
             value={draft.fullName}
             onChangeText={(value) => update(index, { fullName: value })}
+            ayuda="El nombre y los apellidos de tu referencia, para saber por quién preguntar al llamar. Ej.: «Rosa Mendez Villca»."
             required
           />
           <IconField icon="telefono"
@@ -205,12 +207,14 @@ export default function References() {
             value={draft.phone}
             onChangeText={(value) => update(index, { phone: value })}
             keyboardType="phone-pad"
+            ayuda="El celular al que se puede llamar a esa persona. Cópialo de tus contactos con el botón de arriba: un número tecleado de memoria sale mal una de cada tres veces, y entonces la referencia no sirve de nada."
             required
           />
 
           <CheckRow
             label="Le avisé que lo pondría como referencia"
             detail="Si no le avisaste, igual puedes continuar."
+            ayuda="Marcarlo dice que esa persona ya sabe que diste su número. No es obligatorio y no cambia tu evaluación, pero avisarle evita que reciba una llamada nuestra sin entender por qué."
             checked={draft.informed}
             onToggle={(next) => update(index, { informed: next })}
           />
@@ -238,6 +242,7 @@ export default function References() {
         <CheckRow
           label="Permitir analizar mi agenda"
           detail="Puedes continuar sin autorizarlo."
+          ayuda="Marcarlo autoriza que la app cuente cuántos contactos tienes y cuántas de tus referencias están entre ellos, y envíe solo esos dos números. No salen del teléfono ni nombres ni números de tu agenda. Es opcional y no marcarlo no impide terminar el alta."
           checked={analizarAgenda}
           onToggle={setAnalizarAgenda}
         />

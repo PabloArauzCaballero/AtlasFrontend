@@ -384,6 +384,7 @@ export default function Identity() {
         value={documentNumber}
         onChangeText={setDocumentNumber}
         keyboardType="number-pad"
+        ayuda="El número de tu cédula de identidad, solo los dígitos y sin el complemento alfanumérico. Ej.: 8452136. Tiene que ser el mismo que se lee en la foto que acabas de tomar."
         required
         error={documentNumber && !documentOk ? 'Revisa el número de tu carnet.' : null}
       />
@@ -397,6 +398,8 @@ export default function Identity() {
         label="Expedido en"
         value={issuedIn || null}
         onChange={setIssuedIn}
+        ayuda="El departamento que emitió tu carnet, tal como aparece impreso en él. No tiene por qué ser donde vives hoy: es el lugar donde te lo dieron."
+        // sin-ayuda: los nueve departamentos de Bolivia son nombres propios, igual que en el domicilio.
         opciones={DEPARTAMENTOS.map((departamento) => ({ valor: departamento.nombre, etiqueta: departamento.nombre }))}
         placeholder="Elige el departamento"
       />
@@ -415,6 +418,7 @@ export default function Identity() {
         minimumDate={manana}
         initialDate={dentroDeCincoAnos}
         hint="La que figura en tu carnet."
+        ayuda="La fecha de caducidad impresa en tu carnet. Un documento vencido no sirve para verificar tu identidad, así que el calendario no deja elegir una fecha que ya pasó."
         required
         error={expiresAt && !expiryOk ? 'El documento debe estar vigente.' : null}
       />

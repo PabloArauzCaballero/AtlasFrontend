@@ -14,7 +14,7 @@ export type Canal = VerificationChannel;
 export const ETIQUETAS: Record<Canal, { etiqueta: string; detalle: string }> = {
   email: { etiqueta: 'Correo', detalle: 'A tu correo registrado.' },
   sms: { etiqueta: 'SMS', detalle: 'A tu número registrado.' },
-  whatsapp: { etiqueta: 'WhatsApp', detalle: 'Al mismo número.' },
+  whatsapp: { etiqueta: 'WhatsApp', detalle: 'Por WhatsApp, al mismo número.' },
 };
 
 /**

@@ -109,6 +109,7 @@ export default function RecoverPassword() {
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="email"
+          ayuda="El correo con el que te registraste. Ahí te enviamos un código de seis dígitos para poner un PIN nuevo; si escribes otro correo no llegará nada, y por seguridad la pantalla no te lo dirá."
           required
         />
       ) : (
@@ -121,6 +122,7 @@ export default function RecoverPassword() {
             textContentType="oneTimeCode"
             autoComplete="one-time-code"
             maxLength={6}
+            ayuda="Los seis dígitos que te acabamos de enviar por correo, sin espacios. Sirven una sola vez y vencen en pocos minutos; si no llegó, revisa la carpeta de spam antes de pedir otro."
             required
           />
           {/*
@@ -138,6 +140,7 @@ export default function RecoverPassword() {
             value={newPassword}
             onChangeText={setNewPassword}
             hint="Cuatro dígitos que recuerdes. Evita 1234, tu año de nacimiento o cuatro iguales."
+            ayuda="Cuatro dígitos nuevos con los que vas a entrar y autorizar tus compras desde ahora. El PIN anterior deja de servir en cuanto guardes. El servidor rechaza los fáciles de adivinar, como 1234 o cuatro iguales."
           />
         </>
       )}

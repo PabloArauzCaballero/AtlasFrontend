@@ -99,7 +99,12 @@ export default function ChangePin() {
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
       {step === 'current' ? (
-        <PinField label="Tu PIN actual" value={currentPin} onChangeText={setCurrentPin} />
+        <PinField
+          label="Tu PIN actual"
+          value={currentPin}
+          onChangeText={setCurrentPin}
+          ayuda="Los cuatro dígitos con los que entras hoy a la app. Se piden para confirmar que eres tú quien cambia el PIN y no alguien con tu teléfono desbloqueado."
+        />
       ) : (
         <>
           <Field
@@ -110,6 +115,7 @@ export default function ChangePin() {
             textContentType="oneTimeCode"
             autoComplete="one-time-code"
             maxLength={6}
+            ayuda="Los seis dígitos que te acabamos de enviar por correo, sin espacios. Sirven una sola vez y vencen en pocos minutos; si no llegó, revisa la carpeta de spam antes de pedir otro."
             required
           />
           <PinField
@@ -117,6 +123,7 @@ export default function ChangePin() {
             value={newPin}
             onChangeText={setNewPin}
             hint="Cuatro dígitos que recuerdes. Evita 1234, tu año de nacimiento o cuatro iguales."
+            ayuda="Cuatro dígitos nuevos con los que vas a entrar y autorizar tus compras desde ahora. El PIN anterior deja de servir en cuanto guardes. El servidor rechaza los fáciles de adivinar, como 1234 o cuatro iguales."
           />
         </>
       )}

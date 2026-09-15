@@ -139,6 +139,8 @@ export default function Address() {
       <SelectField
         label="Departamento"
         value={department}
+        ayuda="El departamento donde vives ahora, no donde naciste ni donde te expidieron el carnet. De él dependen la ciudad y la zona que se ofrecen después, y también qué comercios tienes cerca."
+        // sin-ayuda: los nueve departamentos de Bolivia son nombres propios; inventarles una explicación sería texto de relleno.
         opciones={DEPARTAMENTOS.map((departamento) => ({ valor: departamento.codigo, etiqueta: departamento.nombre }))}
         onChange={(elegido) => {
           setDepartment(elegido);
@@ -154,6 +156,8 @@ export default function Address() {
       <SelectField
         label="Ciudad"
         value={city}
+        ayuda="La ciudad o el municipio donde está tu casa. Se elige de una lista y no se escribe a mano porque «Santa Cruz», «santa cruz» y «SCZ» son la misma ciudad para ti y tres distintas para nosotros."
+        // sin-ayuda: las ciudades y municipios son nombres propios, igual que los departamentos.
         opciones={ciudades.map((ciudad) => ({ valor: ciudad.codigo, etiqueta: ciudad.nombre }))}
         onChange={(elegida) => {
           setCity(elegida);
@@ -175,6 +179,8 @@ export default function Address() {
         label="Zona o barrio"
         value={zone || null}
         onChange={setZone}
+        ayuda="La zona o el barrio donde vives dentro de esa ciudad. Es el nivel al que decidimos dónde abrir un comercio nuevo y a dónde va la cobranza si hiciera falta."
+        // sin-ayuda: las zonas y barrios son nombres propios de cada ciudad.
         opciones={zonasDe(city).map((z) => ({ valor: z.codigo, etiqueta: z.nombre }))}
         placeholder="Elige tu zona"
         deshabilitadoPorque={city ? null : 'Elige primero tu ciudad.'}
@@ -193,6 +199,7 @@ export default function Address() {
         onChangeText={setAddressLine}
         placeholder="Av. San Martín 123, entre 2do y 3er anillo"
         hint="Se guarda cifrada. Solo se usa para verificar tu domicilio y para cobranza."
+        ayuda="La calle, el número y una referencia para llegar. Ej.: «Av. San Martín 123, entre 2do y 3er anillo, portón verde». Es opcional y el servidor la guarda cifrada; solo sirve para confirmar que vives donde dices y, si dejaras de pagar, para presentarnos en la puerta."
         multiline
       />
 
