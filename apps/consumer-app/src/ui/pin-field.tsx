@@ -22,6 +22,7 @@
 import { useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { color, inputChrome, radius, space } from '../theme/tokens';
+import { FieldFoot, FieldLabel } from './help-sheet';
 import { Icon } from './icons';
 import { AtlasText } from './primitives';
 
@@ -33,6 +34,7 @@ export function PinField({
   onChangeText,
   error,
   hint,
+  ayuda,
   autoFocus = false,
   onComplete,
 }: {
@@ -41,6 +43,8 @@ export function PinField({
   onChangeText: (next: string) => void;
   error?: string | null;
   hint?: string;
+  /** Que PIN se pide aqui y para que sirve. Abre en la hoja del ⓘ, junto al rotulo. */
+  ayuda?: string;
   autoFocus?: boolean;
   /** Se dispara al completar los cuatro digitos: evita pedir un toque mas para nada. */
   onComplete?: (pin: string) => void;
@@ -58,19 +62,28 @@ export function PinField({
 
   return (
     <View style={styles.wrapper}>
-      <View style={styles.labelRow}>
-        <AtlasText variant="caption" tone="secondary">
-          {label} *
-        </AtlasText>
-        <Pressable
-          onPress={() => setVisible(!visible)}
-          hitSlop={12}
-          accessibilityRole="button"
-          accessibilityLabel={visible ? 'Ocultar PIN' : 'Mostrar PIN'}
-        >
-          <Icon name={visible ? 'ojo-tachado' : 'ojo'} size={20} tint={visible ? color.action.primary : color.text.tertiary} />
-        </Pressable>
-      </View>
+      {/*
+        El rotulo pasa a ser el MISMO `FieldLabel` que el resto de los controles.
+
+        Aqui se dibujaba con `caption` —el estilo del texto de ayuda de debajo— y con el asterisco
+        escrito a mano en el literal, asi que el unico campo del alta que se lee como un campo era
+        justo el que no lo parecia. El ojo sigue a la derecha, ahora como `trailing` de la fila.
+      */}
+      <FieldLabel
+        label={label}
+        required
+        ayuda={ayuda}
+        trailing={
+          <Pressable
+            onPress={() => setVisible(!visible)}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={visible ? 'Ocultar PIN' : 'Mostrar PIN'}
+          >
+            <Icon name={visible ? 'ojo-tachado' : 'ojo'} size={20} tint={visible ? color.action.primary : color.text.tertiary} />
+          </Pressable>
+        }
+      />
 
       {/*
         Las casillas son la superficie tocable del campo, y hasta ahora no tenian nombre.
@@ -137,15 +150,7 @@ export function PinField({
         />
       </Pressable>
 
-      {error ? (
-        <AtlasText variant="caption" tone="danger">
-          {error}
-        </AtlasText>
-      ) : hint ? (
-        <AtlasText variant="caption" tone="tertiary">
-          {hint}
-        </AtlasText>
-      ) : null}
+      <FieldFoot error={error} hint={hint} />
     </View>
   );
 }
@@ -154,7 +159,6 @@ const BOX = 64;
 
 const styles = StyleSheet.create({
   wrapper: { gap: space.xs },
-  labelRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   boxes: { flexDirection: 'row', gap: space.md, justifyContent: 'center' },
   /*
     La casilla es un HUECO, no un pedestal.

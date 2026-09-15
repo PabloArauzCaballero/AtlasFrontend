@@ -42,13 +42,13 @@ import {
   Skeleton,
 } from '../../src/ui/primitives';
 
-const DERECHOS: { value: privacyApi.DataSubjectRequestType; label: string; detail: string }[] = [
-  { value: 'access', label: 'Ver mis datos', detail: 'Que se sabe de mi y de donde salio.' },
-  { value: 'rectification', label: 'Corregir un dato', detail: 'Algo esta mal escrito o desactualizado.' },
-  { value: 'portability', label: 'Llevarme mis datos', detail: 'Recibirlos en un archivo que pueda usar en otro sitio.' },
-  { value: 'restriction', label: 'Limitar el uso', detail: 'Que dejen de usarse para algo concreto.' },
-  { value: 'revocation', label: 'Retirar consentimientos', detail: 'Dejar sin efecto los permisos que di.' },
-  { value: 'deletion', label: 'Borrar mi cuenta', detail: 'Se revisa: hay datos que la ley obliga a conservar.' },
+const DERECHOS: { value: privacyApi.DataSubjectRequestType; label: string; detalle: string }[] = [
+  { value: 'access', label: 'Ver mis datos', detalle: 'Que se sabe de mi y de donde salio.' },
+  { value: 'rectification', label: 'Corregir un dato', detalle: 'Algo esta mal escrito o desactualizado.' },
+  { value: 'portability', label: 'Llevarme mis datos', detalle: 'Recibirlos en un archivo que pueda usar en otro sitio.' },
+  { value: 'restriction', label: 'Limitar el uso', detalle: 'Que dejen de usarse para algo concreto.' },
+  { value: 'revocation', label: 'Retirar consentimientos', detalle: 'Dejar sin efecto los permisos que di.' },
+  { value: 'deletion', label: 'Borrar mi cuenta', detalle: 'Se revisa: hay datos que la ley obliga a conservar.' },
 ];
 
 export default function Privacidad() {

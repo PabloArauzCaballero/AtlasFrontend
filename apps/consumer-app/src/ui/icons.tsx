@@ -48,6 +48,9 @@ export type IconName =
   | 'documento'
   | 'editar'
   | 'ayuda'
+  // La ayuda de un CAMPO. `ayuda` es la interrogacion del soporte —«tengo una duda»—; esta es la
+  // «i» de «esto es lo que hay que poner aqui», que es otra cosa y va en otro sitio.
+  | 'info'
   | 'salir'
   | 'copiar'
   | 'ubicacion'
@@ -178,6 +181,20 @@ const PATHS: Record<IconName, (stroke: string, width: number) => React.ReactNode
       <Circle cx={12} cy={12} r={8.5} stroke={s} strokeWidth={w} />
       <Path d="M9.6 9.4a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.5" stroke={s} strokeWidth={w} strokeLinecap="round" />
       <Circle cx={12} cy={16.4} r={0.9} fill={s} />
+    </>
+  ),
+  /*
+    La «i» dentro del circulo, sobre la MISMA rejilla de 24 y el mismo radio de 8.5 que `ayuda`.
+
+    El punto va arriba y el asta abajo —al reves que la interrogacion, que tiene el gancho arriba y
+    el punto abajo—: es lo unico que distingue los dos iconos de un vistazo a 18 px, y por eso el
+    radio del punto y el grosor del asta son los mismos que alli.
+  */
+  info: (s, w) => (
+    <>
+      <Circle cx={12} cy={12} r={8.5} stroke={s} strokeWidth={w} />
+      <Circle cx={12} cy={8.2} r={0.9} fill={s} />
+      <Path d="M12 11.4v5" stroke={s} strokeWidth={w} strokeLinecap="round" />
     </>
   ),
   salir: (s, w) => (

@@ -8,46 +8,31 @@ import { forwardRef, useState } from 'react';
 import { StyleSheet, TextInput, type TextInputProps, View, type ViewStyle, Switch as RNSwitch } from 'react-native';
 import { type Currency, type Minor, formatMoney, parseAmountInput } from '../domain/money';
 import { color, inputChrome, press, radius, space, touch, type } from '../theme/tokens';
+import { FieldFoot, FieldLabel, HelpButton } from './help-sheet';
 import { Icon } from './icons';
 import { PressSurface } from './motion';
-import { AtlasText, Overline } from './primitives';
+import { AtlasText } from './primitives';
 
 export type FieldProps = TextInputProps & {
   label: string;
+  /** Pie corto y siempre visible. La explicacion completa va en `ayuda`, detras del ⓘ. */
   hint?: string;
+  /** Que poner aqui y por que importa, con ejemplo si el formato no es obvio. */
+  ayuda?: string;
   error?: string | null;
   required?: boolean;
   containerStyle?: ViewStyle;
 };
 
 export const Field = forwardRef<TextInput, FieldProps>(function Field(
-  { label, hint, error, required, containerStyle, style, ...rest },
+  { label, hint, ayuda, error, required, containerStyle, style, ...rest },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
 
   return (
     <View style={[styles.field, containerStyle]}>
-      {/*
-        La etiqueta va en `label`, no en `caption`.
-
-        `caption` es el estilo del texto de ayuda que va DEBAJO del campo, y usarlo tambien arriba
-        dejaba la etiqueta y su ayuda dibujadas exactamente igual: el formulario se leia como tres
-        lineas de texto con un rectangulo en medio, en lugar de como un campo. `label` es medio paso
-        mas pesado y va ligeramente abierto, que es lo que hace que se lea como el nombre de algo.
-
-        El asterisco de obligatorio va en color de marca y con su propia etiqueta accesible: un
-        asterisco gris del mismo color que la etiqueta no se ve, y sin leyenda que lo explique no
-        significa nada para quien usa un lector de pantalla.
-      */}
-      <AtlasText variant="label" tone="secondary">
-        {label}
-        {required ? (
-          <AtlasText variant="label" tone="brand" accessibilityLabel="obligatorio">
-            {' *'}
-          </AtlasText>
-        ) : null}
-      </AtlasText>
+      <FieldLabel label={label} required={required} ayuda={ayuda} />
 
       <TextInput
         ref={ref}
@@ -66,15 +51,7 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
         style={[styles.input, focused && styles.inputFocused, error ? styles.inputError : null, style]}
       />
 
-      {error ? (
-        <AtlasText variant="caption" tone="danger">
-          {error}
-        </AtlasText>
-      ) : hint ? (
-        <AtlasText variant="caption" tone="tertiary">
-          {hint}
-        </AtlasText>
-      ) : null}
+      <FieldFoot error={error} hint={hint} />
     </View>
   );
 });
@@ -90,19 +67,26 @@ export function AmountField({
   onChangeAmount,
   currency = 'BOB',
   error,
+  ayuda,
   autoFocus,
 }: {
   value: string;
   onChangeAmount: (raw: string, parsed: Minor | null) => void;
   currency?: Currency;
   error?: string | null;
+  /** Que importe se escribe aqui y con que se compara. Abre en la hoja del ⓘ. */
+  ayuda?: string;
   autoFocus?: boolean;
 }) {
   const parsed = parseAmountInput(value, currency);
 
   return (
     <View style={styles.amountBox}>
-      <Overline>Monto total de la compra</Overline>
+      {/*
+        El rotulo en versalitas se conserva —es el unico campo de la app que va dentro de una caja
+        con su nombre arriba— pero ya lo dibuja `FieldLabel`, que es quien sabe colgarle el ⓘ.
+      */}
+      <FieldLabel label="Monto total de la compra" variante="overline" ayuda={ayuda} />
       <View style={styles.amountRow}>
         <AtlasText variant="amount" tone="secondary">
           Bs
@@ -121,19 +105,10 @@ export function AmountField({
           style={styles.amountInput}
         />
       </View>
-      {error ? (
-        <AtlasText variant="caption" tone="danger">
-          {error}
-        </AtlasText>
-      ) : parsed ? (
-        <AtlasText variant="caption" tone="tertiary">
-          {formatMoney(parsed, currency)}
-        </AtlasText>
-      ) : (
-        <AtlasText variant="caption" tone="tertiary">
-          Escribe el monto que te indica el comercio.
-        </AtlasText>
-      )}
+      <FieldFoot
+        error={error}
+        hint={parsed ? formatMoney(parsed, currency) : 'Escribe el monto que te indica el comercio.'}
+      />
     </View>
   );
 }
@@ -144,19 +119,25 @@ export function OptionGroup<T extends string>({
   options,
   value,
   onChange,
+  ayuda,
   error,
 }: {
   label: string;
-  options: { value: T; label: string; detail?: string }[];
+  /**
+   * `detalle` y no `detail`: es la MISMA palabra que `OpcionSelect` en `form-controls.tsx`, y
+   * mientras fueron dos, mover una lista de un control al otro exigia renombrarla a mano —y el
+   * guardian `check-field-help` tenia que conocer dos nombres para lo mismo—.
+   */
+  options: { value: T; label: string; detalle?: string }[];
   value: T | null;
   onChange: (value: T) => void;
+  /** Que se elige aqui y por que importa. Abre en la hoja del ⓘ. */
+  ayuda?: string;
   error?: string | null;
 }) {
   return (
     <View style={styles.field}>
-      <AtlasText variant="label" tone="secondary">
-        {label}
-      </AtlasText>
+      <FieldLabel label={label} ayuda={ayuda} />
       <View style={styles.options}>
         {options.map((option) => {
           const selected = option.value === value;
@@ -173,7 +154,9 @@ export function OptionGroup<T extends string>({
               key={option.value}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
-              accessibilityLabel={option.label}
+              // El detalle entra en el nombre accesible: `PressSurface` con etiqueta esconde el
+              // texto de sus hijos, asi que sin esto el lector nunca lee la segunda linea.
+              accessibilityLabel={option.detalle ? `${option.label}. ${option.detalle}` : option.label}
               onPress={() => onChange(option.value)}
               scaleTo={press.scaleSubtle}
               style={[styles.option, selected && styles.optionSelected]}
@@ -181,20 +164,16 @@ export function OptionGroup<T extends string>({
               <AtlasText variant="title" tone={selected ? 'brand' : 'primary'}>
                 {option.label}
               </AtlasText>
-              {option.detail ? (
+              {option.detalle ? (
                 <AtlasText variant="caption" tone={selected ? 'secondary' : 'tertiary'}>
-                  {option.detail}
+                  {option.detalle}
                 </AtlasText>
               ) : null}
             </PressSurface>
           );
         })}
       </View>
-      {error ? (
-        <AtlasText variant="caption" tone="danger">
-          {error}
-        </AtlasText>
-      ) : null}
+      <FieldFoot error={error} />
     </View>
   );
 }
@@ -203,43 +182,61 @@ export function OptionGroup<T extends string>({
 export function CheckRow({
   label,
   detail,
+  ayuda,
   checked,
   onToggle,
 }: {
   label: string;
+  /** La linea gris de debajo, siempre visible. Corta: lo largo va en `ayuda`. */
   detail?: string;
+  /** Que se acepta al marcar esto y que pasa si no se marca. Abre en la hoja del ⓘ. */
+  ayuda?: string;
   checked: boolean;
   onToggle: (next: boolean) => void;
 }) {
   return (
-    <PressSurface
-      accessibilityRole="checkbox"
-      accessibilityState={{ checked }}
-      accessibilityLabel={label}
-      onPress={() => onToggle(!checked)}
-      scaleTo={press.scaleSubtle}
-      style={styles.checkRow}
-    >
-      {/*
-        La marca es el icono del set, no el caracter «✓».
+    <View style={styles.checkWrapper}>
+      <PressSurface
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked }}
+        accessibilityLabel={label}
+        onPress={() => onToggle(!checked)}
+        scaleTo={press.scaleSubtle}
+        style={styles.checkRow}
+      >
+        {/*
+          La marca es el icono del set, no el caracter «✓».
 
-        El glifo lo dibujaba la fuente del sistema —Manrope no lo trae— asi que la unica marca de
-        verificacion de la app se dibujaba con un trazo, un grosor y unos remates que no eran los de
-        ninguna otra cosa en pantalla, y ademas cambiaba de forma entre iOS y Android. El icono
-        comparte rejilla y grosor con los otros cuarenta.
+          El glifo lo dibujaba la fuente del sistema —Manrope no lo trae— asi que la unica marca de
+          verificacion de la app se dibujaba con un trazo, un grosor y unos remates que no eran los de
+          ninguna otra cosa en pantalla, y ademas cambiaba de forma entre iOS y Android. El icono
+          comparte rejilla y grosor con los otros cuarenta.
+        */}
+        <View style={[styles.checkBox, checked && styles.checkBoxChecked]}>
+          {checked ? <Icon name="check" size={15} tint={color.text.onBrand} /> : null}
+        </View>
+        <View style={styles.checkText}>
+          <AtlasText variant="body">{label}</AtlasText>
+          {detail ? (
+            <AtlasText variant="caption" tone="tertiary">
+              {detail}
+            </AtlasText>
+          ) : null}
+        </View>
+      </PressSurface>
+      {/*
+        El ⓘ va FUERA de la fila pulsable, no dentro.
+
+        Dentro, cada toque en el icono habria marcado tambien la casilla —el area tactil de la fila es
+        toda la fila, que es justo lo que la hace comoda— y quien abre la ayuda de una autorizacion la
+        habria aceptado sin leerla.
       */}
-      <View style={[styles.checkBox, checked && styles.checkBoxChecked]}>
-        {checked ? <Icon name="check" size={15} tint={color.text.onBrand} /> : null}
-      </View>
-      <View style={styles.checkText}>
-        <AtlasText variant="body">{label}</AtlasText>
-        {detail ? (
-          <AtlasText variant="caption" tone="tertiary">
-            {detail}
-          </AtlasText>
-        ) : null}
-      </View>
-    </PressSurface>
+      {ayuda ? (
+        <View style={styles.checkHelp}>
+          <HelpButton ayuda={ayuda} etiqueta={label} />
+        </View>
+      ) : null}
+    </View>
   );
 }
 
@@ -343,7 +340,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
 
-  checkRow: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start', minHeight: touch.minSize, paddingVertical: space.sm },
+  checkWrapper: { flexDirection: 'row', alignItems: 'flex-start' },
+  checkRow: { flex: 1, flexDirection: 'row', gap: space.md, alignItems: 'flex-start', minHeight: touch.minSize, paddingVertical: space.sm },
+  // Alineado con la primera linea del rotulo, no centrado en una fila que puede medir tres lineas.
+  checkHelp: { paddingTop: space.sm + 2, paddingLeft: space.xs },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   checkBox: {
     width: 24,
     height: 24,
@@ -373,13 +374,20 @@ export function Switch({
   onValueChange,
   disabled = false,
   accessibilityLabel,
+  ayuda,
 }: {
   value: boolean;
   onValueChange: (next: boolean) => void;
   disabled?: boolean;
   accessibilityLabel?: string;
+  /**
+   * Que enciende o apaga este interruptor. En los avisos lo escribe el SERVIDOR
+   * (`description` / `mandatoryReason` de cada preferencia): la app no reescribe con sus palabras
+   * lo que Operaciones ya redacto para ese aviso.
+   */
+  ayuda?: string;
 }) {
-  return (
+  const control = (
     <RNSwitch
       value={value}
       onValueChange={onValueChange}
@@ -390,5 +398,16 @@ export function Switch({
       ios_backgroundColor={color.surface.sunken}
       style={disabled ? { opacity: 0.5 } : undefined}
     />
+  );
+
+  if (!ayuda) return control;
+
+  // El ⓘ a la IZQUIERDA del interruptor: a la derecha quedaria en el borde de la pantalla, donde ya
+  // esta el gesto de volver atras de iOS, y medio toque de cada dos abriria la navegacion.
+  return (
+    <View style={styles.switchRow}>
+      <HelpButton ayuda={ayuda} etiqueta={accessibilityLabel ?? 'este aviso'} />
+      {control}
+    </View>
   );
 }

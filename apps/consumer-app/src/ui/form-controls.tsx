@@ -17,8 +17,9 @@
  */
 import DateTimePicker, { type DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { forwardRef, useMemo, useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
-import { color, inputChrome, press, radius, shadow, space, stroke, touch, type } from '../theme/tokens';
+import { Platform, Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
+import { color, inputChrome, press, radius, space, stroke, touch, type } from '../theme/tokens';
+import { BottomSheet, FieldFoot, FieldLabel } from './help-sheet';
 import { Icon, type IconName } from './icons';
 import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
@@ -30,7 +31,13 @@ const CONTROL_HEIGHT = 56;
 export type IconFieldProps = TextInputProps & {
   label: string;
   icon: IconName;
+  /**
+   * Pie corto y SIEMPRE visible. Es la pista que se lee sin pedirla («Alquiler, servicios,
+   * deudas»); la explicacion completa vive en `ayuda`, detras del ⓘ, y las dos conviven.
+   */
   hint?: string;
+  /** Que poner aqui y por que importa, con ejemplo si el formato no es obvio. Abre en la hoja del ⓘ. */
+  ayuda?: string;
   error?: string | null;
   required?: boolean;
   /** Accion a la derecha del campo: mostrar la contrasena, limpiar, lo que el campo necesite. */
@@ -38,14 +45,14 @@ export type IconFieldProps = TextInputProps & {
 };
 
 export const IconField = forwardRef<TextInput, IconFieldProps>(function IconField(
-  { label, icon, hint, error, required, trailing, style, ...rest },
+  { label, icon, hint, ayuda, error, required, trailing, style, ...rest },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
 
   return (
     <View style={styles.block}>
-      <FieldLabel label={label} required={required} />
+      <FieldLabel label={label} required={required} ayuda={ayuda} />
 
       <View style={[styles.control, focused && styles.controlFocused, error ? styles.controlError : null]}>
         {/*
@@ -113,6 +120,8 @@ export type DateFieldProps = {
   value: string;
   onChange: (iso: string) => void;
   hint?: string;
+  /** Que fecha se pide y por que importa. Abre en la hoja del ⓘ. */
+  ayuda?: string;
   error?: string | null;
   required?: boolean;
   placeholder?: string;
@@ -137,6 +146,7 @@ export function DateField({
   value,
   onChange,
   hint,
+  ayuda,
   error,
   required,
   placeholder = 'Elige tu fecha',
@@ -176,7 +186,7 @@ export function DateField({
 
   return (
     <View style={styles.block}>
-      <FieldLabel label={label} required={required} />
+      <FieldLabel label={label} required={required} ayuda={ayuda} />
 
       <PressSurface
         onPress={() => setOpen(true)}
@@ -207,30 +217,18 @@ export function DateField({
       ) : null}
 
       {Platform.OS === 'ios' ? (
-        <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-          <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
-          <View style={styles.sheet}>
-            <View style={styles.grabber} />
-            <View style={styles.sheetHead}>
-              <AtlasText variant="h3">{label}</AtlasText>
-              <Pressable onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel="Listo" hitSlop={12}>
-                <AtlasText variant="bodyStrong" tone="brand">
-                  Listo
-                </AtlasText>
-              </Pressable>
-            </View>
-            <DateTimePicker
-              value={current}
-              mode="date"
-              display="spinner"
-              onValueChange={handleValueChange}
-              onDismiss={handleDismiss}
-              minimumDate={minimumDate}
-              maximumDate={maximumDate}
-              themeVariant="dark"
-            />
-          </View>
-        </Modal>
+        <BottomSheet visible={open} titulo={label} onClose={() => setOpen(false)}>
+          <DateTimePicker
+            value={current}
+            mode="date"
+            display="spinner"
+            onValueChange={handleValueChange}
+            onDismiss={handleDismiss}
+            minimumDate={minimumDate}
+            maximumDate={maximumDate}
+            themeVariant="dark"
+          />
+        </BottomSheet>
       ) : null}
     </View>
   );
@@ -281,6 +279,8 @@ export type PhoneFieldProps = {
   country: Country;
   onChangeCountry: (country: Country) => void;
   hint?: string;
+  /** Para que se pide el numero y como se escribe. Abre en la hoja del ⓘ. */
+  ayuda?: string;
   error?: string | null;
   required?: boolean;
 };
@@ -337,6 +337,7 @@ export function SelectField<T extends string = string>({
   onChange,
   placeholder = 'Elige una opción',
   hint,
+  ayuda,
   error,
   required,
   deshabilitadoPorque,
@@ -348,6 +349,8 @@ export function SelectField<T extends string = string>({
   onChange: (valor: T) => void;
   placeholder?: string;
   hint?: string;
+  /** Que se elige aqui y por que importa. Abre en la hoja del ⓘ, junto a la etiqueta. */
+  ayuda?: string;
   error?: string | null;
   required?: boolean;
   deshabilitadoPorque?: string | null;
@@ -385,7 +388,7 @@ export function SelectField<T extends string = string>({
 
   return (
     <View style={styles.block}>
-      <FieldLabel label={label} required={required} />
+      <FieldLabel label={label} required={required} ayuda={ayuda} />
 
       <PressSurface
         onPress={() => setAbierto(true)}
@@ -396,7 +399,7 @@ export function SelectField<T extends string = string>({
           bloqueado
             ? `${label}. ${deshabilitadoPorque}`
             : elegida
-              ? `${label}: ${elegida.etiqueta}. Tocar para cambiar`
+              ? `${label}: ${elegida.etiqueta}.${elegida.detalle ? ` ${elegida.detalle}` : ''} Tocar para cambiar`
               : `${label}. Tocar para elegir`
         }
         style={[styles.control, error ? styles.controlError : null, bloqueado ? styles.controlBloqueado : null]}
@@ -414,98 +417,109 @@ export function SelectField<T extends string = string>({
         hint={bloqueado ? (deshabilitadoPorque ?? undefined) : (hint ?? elegida?.detalle)}
       />
 
-      <Modal visible={abierto} transparent animationType="slide" onRequestClose={cerrar}>
-        <Pressable style={styles.backdrop} onPress={cerrar} />
-        <View style={styles.sheet}>
-          <View style={styles.grabber} />
-          <View style={styles.sheetHead}>
-            <AtlasText variant="h3">{label}</AtlasText>
-            <Pressable onPress={cerrar} accessibilityRole="button" accessibilityLabel="Cerrar" hitSlop={12}>
-              <AtlasText variant="bodyStrong" tone="brand">
-                Listo
-              </AtlasText>
-            </Pressable>
-          </View>
+      <BottomSheet visible={abierto} titulo={label} onClose={cerrar}>
+        {/*
+          La ayuda del campo, tambien DENTRO de la hoja.
 
-          {conBuscador ? (
-            <View style={styles.buscador}>
-              <Icon name="lista" size={18} tint={color.text.tertiary} />
-              <TextInput
-                {...inputChrome}
-                value={busqueda}
-                onChangeText={setBusqueda}
-                placeholder="Buscar"
-                placeholderTextColor={color.text.placeholder}
-                autoCorrect={false}
-                autoCapitalize="none"
-                accessibilityLabel={`Buscar en ${label}`}
-                style={styles.buscadorInput}
-              />
-              {busqueda ? (
-                <Pressable onPress={() => setBusqueda('')} accessibilityRole="button" accessibilityLabel="Borrar la búsqueda">
-                  <AtlasText variant="caption" tone="secondary">
-                    Borrar
-                  </AtlasText>
-                </Pressable>
-              ) : null}
+          Quien abre la lista esta mirando siete rotulos que no conocia y el ⓘ se quedo detras del
+          velo: repetirla aqui es la diferencia entre elegir y adivinar. Va antes del buscador
+          porque es lo que explica por que se pregunta esto.
+        */}
+        {ayuda ? (
+          <View style={styles.ayudaEnHoja}>
+            <Icon name="info" size={16} tint={color.text.tertiary} />
+            <AtlasText variant="caption" tone="secondary" style={styles.ayudaTexto}>
+              {ayuda}
+            </AtlasText>
+          </View>
+        ) : null}
+
+        {conBuscador ? (
+          <View style={styles.buscador}>
+            <Icon name="lista" size={18} tint={color.text.tertiary} />
+            <TextInput
+              {...inputChrome}
+              value={busqueda}
+              onChangeText={setBusqueda}
+              placeholder="Buscar"
+              placeholderTextColor={color.text.placeholder}
+              autoCorrect={false}
+              autoCapitalize="none"
+              accessibilityLabel={`Buscar en ${label}`}
+              style={styles.buscadorInput}
+            />
+            {busqueda ? (
+              <Pressable onPress={() => setBusqueda('')} accessibilityRole="button" accessibilityLabel="Borrar la búsqueda">
+                <AtlasText variant="caption" tone="secondary">
+                  Borrar
+                </AtlasText>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        <ScrollView style={styles.sheetList} keyboardShouldPersistTaps="handled">
+          {/*
+            Sin resultados se DICE, no se deja la hoja en blanco: una lista vacía y sin explicación
+            se lee como que el catálogo no cargó.
+          */}
+          {visibles.length === 0 ? (
+            <View style={styles.sinResultados}>
+              <AtlasText variant="body" tone="secondary">
+                Nada coincide con «{busqueda}».
+              </AtlasText>
             </View>
           ) : null}
+          {visibles.map((opcion) => {
+            const seleccionada = opcion.valor === value;
+            return (
+              <PressSurface
+                key={opcion.valor}
+                onPress={() => {
+                  onChange(opcion.valor);
+                  cerrar();
+                }}
+                style={[styles.countryRow, seleccionada && styles.countryRowSelected]}
+                scaleTo={press.scaleSubtle}
+                accessibilityRole="button"
+                accessibilityState={{ selected: seleccionada }}
+                /*
+                  El detalle va DENTRO del nombre accesible de la fila.
 
-          <ScrollView style={styles.sheetList} keyboardShouldPersistTaps="handled">
-            {/*
-              Sin resultados se DICE, no se deja la hoja en blanco: una lista vacía y sin explicación
-              se lee como que el catálogo no cargó.
-            */}
-            {visibles.length === 0 ? (
-              <View style={styles.sinResultados}>
-                <AtlasText variant="body" tone="secondary">
-                  Nada coincide con «{busqueda}».
-                </AtlasText>
-              </View>
-            ) : null}
-            {visibles.map((opcion) => {
-              const seleccionada = opcion.valor === value;
-              return (
-                <PressSurface
-                  key={opcion.valor}
-                  onPress={() => {
-                    onChange(opcion.valor);
-                    cerrar();
-                  }}
-                  style={[styles.countryRow, seleccionada && styles.countryRowSelected]}
-                  scaleTo={press.scaleSubtle}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: seleccionada }}
-                  accessibilityLabel={opcion.etiqueta}
-                >
-                  <View style={styles.countryName}>
-                    <AtlasText variant="body">{opcion.etiqueta}</AtlasText>
-                    {opcion.detalle ? (
-                      <AtlasText variant="caption" tone="tertiary">
-                        {opcion.detalle}
-                      </AtlasText>
-                    ) : null}
-                  </View>
-                  {seleccionada ? <Icon name="check" size={18} tint={color.action.primary} /> : null}
-                </PressSurface>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </Modal>
+                  `PressSurface` lleva `accessibilityLabel`, y eso esconde el texto de sus hijos:
+                  quien usa VoiceOver oia «Salario» y nunca «de un trabajo con sueldo fijo», que
+                  es justo lo que distingue esa opcion de la de al lado. Con el detalle dentro, la
+                  fila se anuncia igual que se ve.
+                */
+                accessibilityLabel={opcion.detalle ? `${opcion.etiqueta}. ${opcion.detalle}` : opcion.etiqueta}
+              >
+                <View style={styles.countryName}>
+                  <AtlasText variant="body">{opcion.etiqueta}</AtlasText>
+                  {opcion.detalle ? (
+                    <AtlasText variant="caption" tone="tertiary">
+                      {opcion.detalle}
+                    </AtlasText>
+                  ) : null}
+                </View>
+                {seleccionada ? <Icon name="check" size={18} tint={color.action.primary} /> : null}
+              </PressSurface>
+            );
+          })}
+        </ScrollView>
+      </BottomSheet>
     </View>
   );
 }
 
 /* ------------------------------------------------------------- telefono */
 
-export function PhoneField({ label, value, onChangeText, country, onChangeCountry, hint, error, required }: PhoneFieldProps) {
+export function PhoneField({ label, value, onChangeText, country, onChangeCountry, hint, ayuda, error, required }: PhoneFieldProps) {
   const [focused, setFocused] = useState(false);
   const [picking, setPicking] = useState(false);
 
   return (
     <View style={styles.block}>
-      <FieldLabel label={label} required={required} />
+      <FieldLabel label={label} required={required} ayuda={ayuda} />
 
       <View style={[styles.control, styles.phoneControl, focused && styles.controlFocused, error ? styles.controlError : null]}>
         <PressSurface
@@ -543,96 +557,40 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
 
       <FieldFoot error={error} hint={hint} />
 
-      <Modal visible={picking} transparent animationType="slide" onRequestClose={() => setPicking(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setPicking(false)} />
-        <View style={styles.sheet}>
-          <View style={styles.grabber} />
-          <View style={styles.sheetHead}>
-            <AtlasText variant="h3">Código de país</AtlasText>
-            <Pressable onPress={() => setPicking(false)} accessibilityRole="button" accessibilityLabel="Cerrar" hitSlop={12}>
-              <AtlasText variant="bodyStrong" tone="brand">
-                Listo
+      <BottomSheet visible={picking} titulo="Código de país" onClose={() => setPicking(false)}>
+        <ScrollView style={styles.sheetList}>
+        {COUNTRIES.map((item) => {
+          const selected = item.code === country.code;
+          return (
+            <PressSurface
+              key={item.code}
+              onPress={() => {
+                onChangeCountry(item);
+                setPicking(false);
+              }}
+              style={[styles.countryRow, selected && styles.countryRowSelected]}
+              scaleTo={press.scaleSubtle}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`${item.name} ${item.dial}`}
+            >
+              <AtlasText variant="body" style={styles.flag}>
+                {item.flag}
               </AtlasText>
-            </Pressable>
-          </View>
-          <ScrollView style={styles.sheetList}>
-            {COUNTRIES.map((item) => {
-              const selected = item.code === country.code;
-              return (
-                <PressSurface
-                  key={item.code}
-                  onPress={() => {
-                    onChangeCountry(item);
-                    setPicking(false);
-                  }}
-                  style={[styles.countryRow, selected && styles.countryRowSelected]}
-                  scaleTo={press.scaleSubtle}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`${item.name} ${item.dial}`}
-                >
-                  <AtlasText variant="body" style={styles.flag}>
-                    {item.flag}
-                  </AtlasText>
-                  <AtlasText variant="body" style={styles.countryName}>
-                    {item.name}
-                  </AtlasText>
-                  <AtlasText variant="body" tone="secondary">
-                    {item.dial}
-                  </AtlasText>
-                  {selected ? <Icon name="check" size={18} tint={color.action.primary} /> : null}
-                </PressSurface>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </Modal>
+              <AtlasText variant="body" style={styles.countryName}>
+                {item.name}
+              </AtlasText>
+              <AtlasText variant="body" tone="secondary">
+                {item.dial}
+              </AtlasText>
+          {selected ? <Icon name="check" size={18} tint={color.action.primary} /> : null}
+        </PressSurface>
+      );
+    })}
+        </ScrollView>
+      </BottomSheet>
     </View>
   );
-}
-
-/* ------------------------------------------------------------------ comun */
-
-/**
- * La etiqueta de un control.
- *
- * Estaba escrita cuatro veces, identica, en los cuatro controles de este archivo, y las cuatro con
- * `variant="caption"`: el mismo estilo exacto que el texto de ayuda de DEBAJO del campo. Un
- * formulario donde el nombre del dato y su explicacion se dibujan igual se lee como tres renglones
- * de texto con un rectangulo en medio.
- *
- * El asterisco va aparte y en color de marca, con su propia etiqueta accesible: gris y pegado al
- * final de la palabra no se ve, y sin nombre no significa nada para un lector de pantalla.
- */
-function FieldLabel({ label, required }: { label: string; required?: boolean }) {
-  return (
-    <AtlasText variant="label" tone="secondary">
-      {label}
-      {required ? (
-        <AtlasText variant="label" tone="brand" accessibilityLabel="obligatorio">
-          {' *'}
-        </AtlasText>
-      ) : null}
-    </AtlasText>
-  );
-}
-
-function FieldFoot({ error, hint }: { error?: string | null; hint?: string }) {
-  if (error) {
-    return (
-      <AtlasText variant="caption" tone="danger">
-        {error}
-      </AtlasText>
-    );
-  }
-  if (hint) {
-    return (
-      <AtlasText variant="caption" tone="tertiary">
-        {hint}
-      </AtlasText>
-    );
-  }
-  return null;
 }
 
 const styles = StyleSheet.create({
@@ -671,38 +629,16 @@ const styles = StyleSheet.create({
   dial: { flexDirection: 'row', alignItems: 'center', gap: space.xxs, paddingHorizontal: space.xs, minHeight: touch.minSize },
   dialSeparator: { width: stroke.hairline, height: 24, backgroundColor: color.border.hairline },
   flag: { fontSize: 20 },
-  // El mismo velo que el recorrido guiado (`color.overlay.scrim`): negro puro al 55 % era un
-  // segundo oscurecedor, mas claro y sin el tinte navy, en una app que ya tenia el suyo.
-  backdrop: { flex: 1, backgroundColor: color.overlay.scrim },
-  sheet: {
-    backgroundColor: color.surface.sheet,
-    borderTopLeftRadius: radius.xxl,
-    borderTopRightRadius: radius.xxl,
-    paddingBottom: space.xl,
-    ...shadow.sheet,
-  },
-  /*
-    El tirador. No se arrastra —la hoja se cierra tocando fuera o con «Listo»— y aun asi vale la
-    pena: es la senal con la que ambos sistemas operativos dicen «esto es una hoja que cubre lo de
-    debajo, no una pantalla nueva». Sin el, la hoja aparecia como un bloque que sube desde el borde
-    y no quedaba claro si volver era retroceder o cerrar.
-  */
-  grabber: {
-    width: 36,
-    height: 4,
-    borderRadius: radius.pill,
-    backgroundColor: color.border.strong,
-    alignSelf: 'center',
-    marginTop: space.md,
-  },
-  sheetHead: {
+  // El velo, la hoja, el tirador y su cabecera vivian aqui en TRES copias (pais, opciones,
+  // calendario de iOS). Ahora son `BottomSheet` en `ui/help-sheet.tsx`, una sola vez.
+  ayudaEnHoja: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: space.lg,
-    borderBottomWidth: stroke.hairline,
-    borderBottomColor: color.border.hairline,
+    alignItems: 'flex-start',
+    gap: space.sm,
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
   },
+  ayudaTexto: { flex: 1 },
   sheetList: { maxHeight: 380 },
   buscador: {
     flexDirection: 'row',
