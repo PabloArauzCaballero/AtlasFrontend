@@ -23,7 +23,7 @@
  * tirones justo en el momento en que el usuario mas atento esta.
  */
 import React from 'react';
-import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   FadeInUp,
@@ -81,6 +81,7 @@ export function Appear({
 }) {
   const reduced = useReducedMotion();
   if (reduced) return <Animated.View style={style}>{children}</Animated.View>;
+  if (Platform.OS === 'web') return <AppearWeb index={index} style={style}>{children}</AppearWeb>;
 
   return (
     <Animated.View
@@ -93,6 +94,28 @@ export function Appear({
       {children}
     </Animated.View>
   );
+}
+
+/**
+ * La misma entrada escalonada, para el NAVEGADOR.
+ *
+ * En web la animacion de montaje `entering` de Reanimated deja los bloques de la pantalla unos
+ * encima de otros: mientras la anima, la vista sale del flujo del documento y el formulario se
+ * pinta con el titulo, los campos y el boton apilados en el mismo sitio (se vio en el ingreso y en
+ * el inicio, en la primera captura de la web). Aqui se anima lo mismo —opacidad y doce pixeles de
+ * subida— con un valor compartido y `useAnimatedStyle`, que en web es un `transform` de CSS sobre
+ * una vista que nunca abandona el flujo.
+ */
+function AppearWeb({ children, index, style }: { children: React.ReactNode; index: number; style?: ViewStyle }) {
+  const avance = useSharedValue(0);
+  React.useEffect(() => {
+    avance.value = withTiming(1, { duration: motion.base + index * motion.stagger, easing: CURVE });
+  }, [avance, index]);
+  const animado = useAnimatedStyle(() => ({
+    opacity: avance.value,
+    transform: [{ translateY: 12 * (1 - avance.value) }],
+  }));
+  return <Animated.View style={[style, animado]}>{children}</Animated.View>;
 }
 
 /**

@@ -19,6 +19,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { prepararAvisos } from '../src/device/push';
@@ -34,9 +35,38 @@ import { TourProvider } from '../src/ui/tour';
 
 void SplashScreen.preventAutoHideAsync();
 
+/**
+ * En el navegador la secuencia de marca se ve UNA vez por pestaña.
+ *
+ * En el teléfono la app arranca pocas veces al día y el intro de 3,5 s es el relevo del splash
+ * nativo. En web cada recarga —y cada enlace abierto a mano— vuelve a montar el árbol desde cero;
+ * repetir el intro en cada una convierte un F5 en cuatro segundos de espera y se lee como una web
+ * lenta, no como una marca. `sessionStorage` vive lo que vive la pestaña: cerrarla y volver a abrir
+ * la web vuelve a mostrarlo, que es lo más parecido a «abrir la app».
+ */
+const CLAVE_ARRANQUE = 'atlas.arranque.visto';
+
+function arranqueYaVisto(): boolean {
+  if (Platform.OS !== 'web') return false;
+  try {
+    return globalThis.sessionStorage?.getItem(CLAVE_ARRANQUE) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function recordarArranque(): void {
+  if (Platform.OS !== 'web') return;
+  try {
+    globalThis.sessionStorage?.setItem(CLAVE_ARRANQUE, '1');
+  } catch {
+    /* sin almacenamiento de sesión: se verá otra vez, no pasa nada */
+  }
+}
+
 function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
   const session = useSession();
-  const [arranqueVisible, setArranqueVisible] = useState(true);
+  const [arranqueVisible, setArranqueVisible] = useState(() => !arranqueYaVisto());
 
   /*
     El splash NATIVO se retira en cuanto hay algo que dibujar, y lo que se ve debajo es la capa
@@ -86,7 +116,15 @@ function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
       <Stack.Screen name="(app)" />
     </Stack>
     <BienvenidaHablada />
-    {arranqueVisible ? <AnimatedSplash listo={listo} onDone={() => setArranqueVisible(false)} /> : null}
+    {arranqueVisible ? (
+      <AnimatedSplash
+        listo={listo}
+        onDone={() => {
+          recordarArranque();
+          setArranqueVisible(false);
+        }}
+      />
+    ) : null}
     </>
   );
 }

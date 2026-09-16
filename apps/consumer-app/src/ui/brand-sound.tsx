@@ -47,6 +47,22 @@
  */
 import React from 'react';
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import { Platform } from 'react-native';
+
+/**
+ * En el navegador el audio solo puede arrancar despues de un gesto de la persona.
+ *
+ * Sin gesto, `play()` rechaza con «the user didn't interact with the document first», y como el
+ * reproductor web de expo-audio no devuelve esa promesa, el rechazo llega como error de pagina,
+ * no al `catch` de aqui abajo. `navigator.userActivation` dice si ya hubo un gesto en esta pagina;
+ * si no lo hubo, se calla: es mejor que la marca no suene a que la primera pantalla arranque con
+ * un error en consola. En iOS y Android no aplica.
+ */
+function elNavegadorDejaSonar(): boolean {
+  if (Platform.OS !== 'web') return true;
+  const nav = (globalThis as { navigator?: { userActivation?: { hasBeenActive?: boolean } } }).navigator;
+  return nav?.userActivation?.hasBeenActive === true;
+}
 
 /** El activo de marca. Se genera con `tools/generar-sonido-marca.mjs`. */
 const MARCA = require('../../assets/audio/atlas-marca.mp3');
@@ -142,6 +158,7 @@ export function SonidoMarcaProvider({ children }: { children: React.ReactNode })
   const valor = React.useMemo<SonidoMarca>(
     () => ({
       marca: () => {
+        if (!elNavegadorDejaSonar()) return;
         if (yaSono.current) return;
         const reproductor = marcaRef.current;
         if (!reproductor) return;
@@ -163,7 +180,7 @@ export function SonidoMarcaProvider({ children }: { children: React.ReactNode })
       },
       voz: (uri: string) => {
         const reproductor = vozRef.current;
-        if (!reproductor) return;
+        if (!reproductor || !elNavegadorDejaSonar()) return;
         try {
           reproductor.replace({ uri });
           reproductor.volume = VOLUMEN_VOZ;

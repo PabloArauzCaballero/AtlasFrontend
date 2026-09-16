@@ -17,7 +17,7 @@
  */
 import { Redirect } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { leerDecisionDeArranque, type DecisionDeArranque } from '../src/session/permisos-de-arranque';
 import { areaFor, useSession } from '../src/session/session';
 import { color } from '../src/theme/tokens';
@@ -40,7 +40,13 @@ export default function IndexGate() {
   if (session.status === 'restoring' || decision === undefined) {
     return <View style={{ flex: 1, backgroundColor: color.surface.primary }} />;
   }
-  if (decision === null) return <Redirect href="/(public)/permisos" />;
+  /*
+    En el navegador no hay permisos que pedir al arrancar: no existe la ubicacion continua ni la
+    agenda, y la camara se pide donde se usa. La pantalla que los explica hablaria de dialogos que
+    el navegador nunca va a mostrar, asi que en web se salta y no se guarda ninguna decision: no
+    se le pregunto, y si un dia entra desde el telefono se le preguntara ahi.
+  */
+  if (decision === null && Platform.OS !== 'web') return <Redirect href="/(public)/permisos" />;
 
   const area = areaFor(session);
   if (area === 'auth') return <Redirect href="/(public)/bienvenida" />;
