@@ -65,6 +65,25 @@ sólo en web, el export sí.
 | Fecha de nacimiento | selector nativo | `<input type="date">` |
 | Secuencia de marca | en cada arranque | una vez por pestaña (`sessionStorage`) |
 
+## La identidad web (la de la landing)
+
+Desde 600 px la web deja de ser «el teléfono estirado» y toma la composición de `AtlasLandingPage`;
+por debajo es la app, sin cambios. Todo vive en `src/web/` y se engancha a las primitivas por
+atributos `data-atlas` (`webData()`), así que las 42 pantallas no se tocan:
+
+| Pieza | Archivo | Qué es |
+|---|---|---|
+| Hoja de estilo | `web/estilo.ts` | Variables generadas desde `tokens.ts` con los nombres de `style.css`; botones píldora con brillo y elevación, campos con anillo de foco, tarjetas con hover, entradas subir+escalar+desenfoque, escala tipográfica fluida, rejilla de 12 columnas, `.auth`, `.acard`, `.hero`, `.nav` |
+| Atmósfera | `web/Atmosfera.tsx` | Aurora, grano y malla, fijas detrás de todo (playbook §5) |
+| Cáscara | `web/Cascara.tsx` | Barra superior con marca, píldora que persigue, chip de cuenta y «Escanear QR»; envuelve toda el área `(app)` |
+| Acceso y registro | `(auth)/_layout.web.tsx`, `(onboarding)/_layout.web.tsx`, `web/PanelLateral.tsx` | Dos columnas como `login.html`/`registro.html`: formulario + tarjeta 3D, cita y cifras; en el registro, pasos y «lo que ya está» |
+| Tarjeta 3D | `web/Tarjeta3D.tsx` | La `.acard` de la landing atada al puntero |
+| Bienvenida | `web/HeroBienvenida.tsx` | El hero de `index.html` con la propia web a 390 px dentro del teléfono |
+| Rejilla | `estilo.ts` («rejilla») + `Screen` | Cabecera a lo ancho, bloques alternando en dos columnas; los `Gap` no cuentan |
+
+Regla dura: ningún color literal en `estilo.ts` (salen de `tokens.ts`); nada de esto se carga en iOS
+ni Android; con `prefers-reduced-motion` la aurora se para y las entradas no animan.
+
 ## Despliegue
 
 `docker-compose.coolify.yml` en la raíz del monorepo (contexto de build: la raíz, donde vive el

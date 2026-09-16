@@ -9,6 +9,7 @@ import { StyleSheet, View, type ViewStyle } from 'react-native';
 import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { color, palette, radius, space } from '../theme/tokens';
 import { AtlasText, Overline } from './primitives';
+import { webData } from '../web/estilo';
 
 /**
  * Halo de marca: la atmosfera del fondo.
@@ -71,7 +72,7 @@ export function AtlasMark({ size = 40 }: { size?: number }) {
 
 export function AtlasLogo({ size = 44, style }: { size?: number; style?: ViewStyle }) {
   return (
-    <View style={[styles.logo, style]}>
+    <View style={[styles.logo, style]} {...webData('marca-pantalla')}>
       <AtlasMark size={size} />
       <View style={styles.logoText}>
         {/*

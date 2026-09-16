@@ -29,7 +29,8 @@
  */
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, type ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, type ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { HeroBienvenida } from '../../src/web/HeroBienvenida';
 import Animated, {
   Easing,
   Extrapolation,
@@ -128,6 +129,7 @@ export default function Welcome() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const SCREEN_WIDTH = useAnchoDeColumna();
+  const anchoVentana = useWindowDimensions().width;
   const scroll = useRef<ScrollView>(null);
   const [pagina, setPagina] = useState(0);
   const reduced = useReducedMotion();
@@ -210,6 +212,13 @@ export default function Welcome() {
 
   const irA = (indice: number) => scroll.current?.scrollTo({ x: indice * SCREEN_WIDTH, animated: true });
   const ultima = pagina === pasos.length;
+
+  /*
+    En el navegador, desde 1024 px, la bienvenida es el hero de la landing con la app dentro de un
+    telefono (ver `web/HeroBienvenida.tsx`). Por debajo —y dentro de ese telefono, que mide 390—
+    es esta misma pantalla. Va despues de todos los hooks para no alterar su orden.
+  */
+  if (Platform.OS === 'web' && anchoVentana >= 1024) return <HeroBienvenida pasos={pasos} />;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>

@@ -29,6 +29,7 @@ import Reanimated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpr
 import { color, palette, press, radius, shadow, space, spring, stroke, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { AnimatedPressable, PressSurface } from './motion';
+import { webData } from '../web/estilo';
 
 /* ------------------------------------------------------------------ texto */
 
@@ -99,6 +100,7 @@ export function AtlasText({
   return (
     <Text
       {...rest}
+      {...webData('texto', { variant })}
       maxFontSizeMultiplier={maxFontSizeMultiplier ?? MAX_SCALE[variant]}
       style={[type[variant] as TextStyle, render, { color: TONE[tone] }, align ? { textAlign: align } : null, style]}
     />
@@ -126,7 +128,7 @@ export function Overline({
   ...rest
 }: TextProps & { tone?: TextTone }) {
   return (
-    <Text {...rest} style={[type.overline as TextStyle, render, styles.overline, { color: TONE[tone] }, style]}>
+    <Text {...rest} {...webData('eyebrow')} style={[type.overline as TextStyle, render, styles.overline, { color: TONE[tone] }, style]}>
       {children}
     </Text>
   );
@@ -233,6 +235,7 @@ export function Button({
         setPressed(false);
         rest.onPressOut?.(event);
       }}
+      {...webData('btn', { variant })}
       style={[
         styles.button,
         variant === 'secondary' && styles.buttonSecondary,
@@ -325,6 +328,7 @@ export function Card({
   return (
     <View
       {...rest}
+      {...webData('card')}
       style={[
         styles.card,
         padding === 'tight' && styles.cardTight,
@@ -463,7 +467,7 @@ export function SectionHeader({
   style?: ViewStyle;
 }) {
   return (
-    <View style={[styles.sectionHeader, style]}>
+    <View style={[styles.sectionHeader, style]} {...webData('seccion')}>
       <View style={styles.sectionHeaderText}>
         {eyebrow ? <Overline>{eyebrow}</Overline> : null}
         <AtlasText variant="h2" numberOfLines={2}>
@@ -1036,6 +1040,7 @@ export function ListRow({
   if (!onPress) return content;
   return (
     <PressSurface
+      {...webData('fila')}
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityHint={accessibilityHint}

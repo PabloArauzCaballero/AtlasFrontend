@@ -96,19 +96,27 @@ export default function TabsLayout() {
     `tabBarPosition: 'left'` exige la variante `material` (lo comprueba la propia barra); con ella
     la etiqueta va debajo del icono, que es como se lee en la barra de abajo.
   */
-  const escritorio = useTramo() === 'escritorio';
+  const tramo = useTramo();
+  const escritorio = tramo === 'escritorio';
   const carril = [styles.carril, { paddingTop: insets.top + space.xl, paddingBottom: insets.bottom + space.base }];
 
-  return (
+  /*
+    En la WEB, desde 600 px, la navegacion es la barra superior de la landing (`web/Cascara.tsx`)
+    y la barra de pestanas se oculta: es la misma app, con la cascara del sitio. El carril lateral
+    queda para tabletas nativas grandes.
+  */
+  const conCascara = Platform.OS === 'web' && tramo !== 'telefono';
+
+  const tabs = (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: color.action.primary,
         tabBarInactiveTintColor: color.text.tertiary,
-        tabBarStyle: escritorio ? carril : bar,
+        tabBarStyle: conCascara ? { display: 'none' } : escritorio ? carril : bar,
         tabBarLabelStyle: styles.label,
         sceneStyle: { backgroundColor: color.surface.primary },
-        ...(escritorio ? { tabBarPosition: 'left' as const, tabBarVariant: 'material' as const } : null),
+        ...(escritorio && !conCascara ? { tabBarPosition: 'left' as const, tabBarVariant: 'material' as const } : null),
       }}
     >
       <Tabs.Screen
@@ -136,6 +144,8 @@ export default function TabsLayout() {
       />
     </Tabs>
   );
+
+  return tabs;
 }
 
 const styles = StyleSheet.create({

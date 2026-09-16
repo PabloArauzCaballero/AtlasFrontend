@@ -12,6 +12,7 @@ import { FieldFoot, FieldLabel, HelpButton } from './help-sheet';
 import { Icon } from './icons';
 import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
+import { webData } from '../web/estilo';
 
 export type FieldProps = TextInputProps & {
   label: string;
@@ -38,6 +39,7 @@ export const Field = forwardRef<TextInput, FieldProps>(function Field(
         ref={ref}
         {...inputChrome}
         {...rest}
+        {...webData('campo')}
         accessibilityLabel={rest.accessibilityLabel ?? label}
         placeholderTextColor={color.text.placeholder}
         onFocus={(event) => {

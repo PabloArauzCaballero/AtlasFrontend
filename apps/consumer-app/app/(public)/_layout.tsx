@@ -7,5 +7,6 @@
 import { Stack } from 'expo-router';
 
 export default function PublicLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  // Fondo transparente: en web el navy lo pone el documento y encima va la atmósfera (aurora, grano).
+  return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />;
 }

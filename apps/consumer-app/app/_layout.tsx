@@ -27,11 +27,16 @@ import { useAbrirAvisoTocado } from '../src/device/push-navigation';
 import { SandboxProvider } from '../src/sandbox/store';
 import { SonidoMarcaProvider } from '../src/ui/brand-sound';
 import { AnimatedSplash } from '../src/ui/splash';
+import { Atmosfera } from '../src/web/Atmosfera';
+import { inyectarEstiloWeb } from '../src/web/estilo';
 import { BienvenidaHablada } from '../src/ui/welcome-voice';
 import { SessionProvider, useSession } from '../src/session/session';
 import { color } from '../src/theme/tokens';
 import { BrandCutProvider } from '../src/ui/brand-cut';
 import { TourProvider } from '../src/ui/tour';
+
+// La hoja de estilo web entra antes del primer dibujado; en el teléfono no hace nada.
+inyectarEstiloWeb();
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -161,6 +166,8 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.surface.primary }}>
       <SafeAreaProvider>
         <StatusBar style="light" />
+        {/* La atmósfera de la landing (aurora, grano, malla). Sólo web; en el teléfono no pinta nada. */}
+        <Atmosfera />
         {/*
           El sonido de marca envuelve a la sesion, no al reves.
 

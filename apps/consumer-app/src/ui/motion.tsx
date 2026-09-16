@@ -23,7 +23,7 @@
  * tirones justo en el momento en que el usuario mas atento esta.
  */
 import React from 'react';
-import { Platform, Pressable, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, Pressable, View, useWindowDimensions, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   FadeInUp,
@@ -35,6 +35,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { easing, motion, press, spring } from '../theme/tokens';
+import { webData } from '../web/estilo';
 
 const CURVE = Easing.bezier(easing.decelerate[0], easing.decelerate[1], easing.decelerate[2], easing.decelerate[3]);
 
@@ -80,8 +81,9 @@ export function Appear({
   style?: ViewStyle;
 }) {
   const reduced = useReducedMotion();
+  // En web va siempre por `AppearWeb`: marca el bloque para la rejilla de escritorio aunque no se anime.
+  if (Platform.OS === 'web') return <AppearWeb index={index} style={style} reducido={reduced}>{children}</AppearWeb>;
   if (reduced) return <Animated.View style={style}>{children}</Animated.View>;
-  if (Platform.OS === 'web') return <AppearWeb index={index} style={style}>{children}</AppearWeb>;
 
   return (
     <Animated.View
@@ -106,15 +108,39 @@ export function Appear({
  * subida— con un valor compartido y `useAnimatedStyle`, que en web es un `transform` de CSS sobre
  * una vista que nunca abandona el flujo.
  */
-function AppearWeb({ children, index, style }: { children: React.ReactNode; index: number; style?: ViewStyle }) {
-  const avance = useSharedValue(0);
+function AppearWeb({
+  children,
+  index,
+  style,
+  reducido,
+}: {
+  children: React.ReactNode;
+  index: number;
+  style?: ViewStyle;
+  reducido: boolean;
+}) {
+  /*
+    A partir de 600 px la entrada la hace la hoja de estilo web (`estilo.ts`): subir + escalar +
+    salir de un desenfoque, escalonada por posicion, con el resorte de la landing. Por debajo, la
+    entrada corta del telefono, con un valor compartido (ver arriba por que no `entering`).
+  */
+  const avance = useSharedValue(reducido ? 1 : 0);
   React.useEffect(() => {
+    if (reducido) return;
     avance.value = withTiming(1, { duration: motion.base + index * motion.stagger, easing: CURVE });
-  }, [avance, index]);
+  }, [avance, index, reducido]);
   const animado = useAnimatedStyle(() => ({
     opacity: avance.value,
     transform: [{ translateY: 12 * (1 - avance.value) }],
   }));
+  const escritorio = useWindowDimensions().width >= 600;
+  if (escritorio) {
+    return (
+      <View style={style} {...webData('aparece', { indice: String(Math.min(index, 11)) })}>
+        {children}
+      </View>
+    );
+  }
   return <Animated.View style={[style, animado]}>{children}</Animated.View>;
 }
 

@@ -19,6 +19,7 @@ import DateTimePicker, { type DateTimePickerChangeEvent } from '@react-native-co
 import { forwardRef, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
 import { color, inputChrome, press, radius, space, stroke, touch, type } from '../theme/tokens';
+import { webData } from '../web/estilo';
 import { BottomSheet, FieldFoot, FieldLabel } from './help-sheet';
 import { Icon, type IconName } from './icons';
 import { PressSurface } from './motion';
@@ -54,7 +55,7 @@ export const IconField = forwardRef<TextInput, IconFieldProps>(function IconFiel
     <View style={styles.block}>
       <FieldLabel label={label} required={required} ayuda={ayuda} />
 
-      <View style={[styles.control, focused && styles.controlFocused, error ? styles.controlError : null]}>
+      <View {...webData('campo')} style={[styles.control, focused && styles.controlFocused, error ? styles.controlError : null]}>
         {/*
           El icono va DENTRO del borde y con el tono del texto secundario: es una pista de que dato
           se pide, no un boton. Pintarlo del color de marca lo convertiria en algo que invita a
@@ -563,7 +564,7 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
     <View style={styles.block}>
       <FieldLabel label={label} required={required} ayuda={ayuda} />
 
-      <View style={[styles.control, styles.phoneControl, focused && styles.controlFocused, error ? styles.controlError : null]}>
+      <View {...webData('campo')} style={[styles.control, styles.phoneControl, focused && styles.controlFocused, error ? styles.controlError : null]}>
         <PressSurface
           onPress={() => setPicking(true)}
           style={styles.dial}

@@ -6,7 +6,7 @@
  * teclado, que es exactamente como se siente una app portada desde escritorio.
  */
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import React from 'react';
 import {
   KeyboardAvoidingView,
@@ -22,6 +22,24 @@ import { color, radius, space, stroke, touch } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { Appear, PressSurface } from './motion';
 import { AtlasText, Overline } from './primitives';
+import { webData } from '../web/estilo';
+
+/**
+ * Que composicion de escritorio le toca a una ruta (ver `estilo.ts`, «rejilla»).
+ *
+ * Las pantallas no cambian: sus bloques se colocan en una rejilla de doce columnas segun la ruta.
+ * `inicio`, `pagos` y `perfil` tienen su reparto propio; el resto del area de cliente va a
+ * «doble» (documento a siete columnas + panel a cinco). Fuera del area de cliente no hay rejilla.
+ */
+function rejillaPara(pathname: string): string {
+  if (pathname === '/' || pathname === '/index') return 'inicio';
+  if (pathname === '/pagos') return 'pagos';
+  if (pathname === '/perfil') return 'perfil';
+  if (/^\/(escanear|avisos|soporte|compra|pago|pagar|credito|cuota|comercio|politica-mora|extracto-bancario|privacidad|preferencias-avisos|ayuda|editar-perfil|cambiar-pin)/.test(pathname)) {
+    return 'doble';
+  }
+  return 'ninguna';
+}
 
 export function Screen({
   children,
@@ -64,6 +82,7 @@ export function Screen({
   scrollRef?: React.RefObject<ScrollView | null>;
 }) {
   const insets = useSafeAreaInsets();
+  const pathname = usePathname();
   /*
     El area segura de ARRIBA, que faltaba.
 
@@ -95,7 +114,11 @@ export function Screen({
   */
   const bodyChildren = animate
     ? React.Children.map(children, (child, index) =>
-        child === null || child === undefined || typeof child === 'boolean' ? child : <Appear index={index}>{child}</Appear>,
+        child === null || child === undefined || typeof child === 'boolean' || esHueco(child) ? (
+          child
+        ) : (
+          <Appear index={index}>{child}</Appear>
+        ),
       )
     : children;
 
@@ -117,6 +140,7 @@ export function Screen({
       {scroll ? (
         <ScrollView
           ref={scrollRef}
+          {...webData('screen', { rejilla: rejillaPara(pathname) })}
           style={styles.flex}
           contentContainerStyle={[body, { paddingBottom: space.xxl + insets.bottom }]}
           keyboardShouldPersistTaps="handled"
@@ -129,7 +153,9 @@ export function Screen({
           {bodyChildren}
         </ScrollView>
       ) : (
-        <View style={[styles.flex, body]}>{bodyChildren}</View>
+        <View style={[styles.flex, body]} {...webData('escena')}>
+          {bodyChildren}
+        </View>
       )}
 
       {/*
@@ -163,7 +189,7 @@ export function Screen({
       ) : null}
 
       {footer ? (
-        <View style={[styles.footer, { paddingBottom: Math.max(space.base, insets.bottom) }]}>
+        <View style={[styles.footer, { paddingBottom: Math.max(space.base, insets.bottom) }]} {...webData('pie')}>
           {/*
             El mismo desvanecido, del reves, justo encima de la accion fija. El pie es opaco: sin
             esto la ultima linea visible del contenido se corta a media altura contra su borde.
@@ -320,6 +346,14 @@ export function HeaderAction({
 }
 
 /** Espaciador vertical explicito: mas legible que un `marginTop` suelto repartido por la pantalla. */
+/**
+ * Un `Gap` no es un bloque: no se anima ni cuenta en la rejilla de escritorio (ver `web/estilo.ts`).
+ * Envuelto en `Appear` era un bloque «vacío» que corría toda la composición una posición.
+ */
+function esHueco(child: React.ReactNode): boolean {
+  return React.isValidElement(child) && child.type === Gap;
+}
+
 export function Gap({ size = 'base' }: { size?: keyof typeof space }) {
   return <View style={{ height: space[size] }} />;
 }

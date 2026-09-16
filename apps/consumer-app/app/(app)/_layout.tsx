@@ -8,9 +8,12 @@
  * en cada peticion. Ocultar un boton nunca es un control de acceso.
  */
 import { Redirect, Stack } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { areaFor, useSession } from '../../src/session/session';
 import { color } from '../../src/theme/tokens';
+import { useTramo } from '../../src/ui/responsive';
+import { BarraSuperior } from '../../src/web/Cascara';
+import { webData } from '../../src/web/estilo';
 
 /**
  * Opciones de las pantallas que se presentan como tarea acotada.
@@ -31,6 +34,7 @@ const TAREA_ACOTADA = {
 
 export default function AppLayout() {
   const session = useSession();
+  const tramo = useTramo();
 
   if (session.status === 'restoring') return null;
 
@@ -38,11 +42,18 @@ export default function AppLayout() {
   if (area === 'auth') return <Redirect href="/(public)/bienvenida" />;
   if (area === 'onboarding') return <Redirect href="/(onboarding)/progreso" />;
 
-  return (
+  /*
+    En la WEB, desde 600 px, toda el area de cliente —pestanas, compra, pago, soporte, cuenta— va
+    bajo la barra superior de la landing (`web/Cascara.tsx`) y con el pie del sitio. Por debajo, y
+    en el telefono, la pila va sola.
+  */
+  const conCascara = Platform.OS === 'web' && tramo !== 'telefono';
+
+  const pila = (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: color.surface.primary },
+        contentStyle: { backgroundColor: conCascara ? 'transparent' : color.surface.primary },
         // Misma correccion que en la raiz y en el registro: `slide_from_right` esta documentado como
         // solo-Android en Expo 57, y forzarlo aqui cambia el empuje nativo de iOS —paralaje de la
         // pantalla de abajo, sombra, y sobre todo el gesto INTERACTIVO de volver— por un
@@ -59,4 +70,14 @@ export default function AppLayout() {
       <Stack.Screen name="pagar/[installmentId]" options={TAREA_ACOTADA} />
     </Stack>
   );
+
+  if (!conCascara) return pila;
+  return (
+    <View style={styles.cascara} {...webData('cascara', { area: 'app' })}>
+      <BarraSuperior />
+      {pila}
+    </View>
+  );
 }
+
+const styles = StyleSheet.create({ cascara: { flex: 1 } });
