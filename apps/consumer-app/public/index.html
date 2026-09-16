@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es-BO">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#061426" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="Atlas: compra hoy en los comercios afiliados y paga después, desde el navegador o desde la app." />
+    <title>Atlas</title>
+    <style>
+      /*
+        Lo que el navegador necesita para que la app se sienta como la app:
+        - el documento no se desplaza en horizontal (el carrusel de la bienvenida y las hojas se
+          recortan al ancho de la ventana, no lo ensanchan);
+        - el fondo es el navy de marca desde el primer byte, antes de que llegue el bundle, para
+          que no haya un fogonazo blanco;
+        - la raíz mide la ventana entera, que es lo que react-native-web espera para `flex: 1`.
+      */
+      html, body, #root { height: 100%; }
+      body { margin: 0; overflow-x: hidden; background: #061426; color: #f3f7fb; -webkit-font-smoothing: antialiased; }
+      #root { display: flex; }
+      /* Foco visible sólo cuando se navega con teclado: el anillo de marca, no el azul del sistema. */
+      :focus { outline: none; }
+      :focus-visible { outline: 2px solid #4ee6b5; outline-offset: 2px; border-radius: 12px; }
+    </style>
+  </head>
+  <body>
+    <noscript>Atlas necesita JavaScript para funcionar.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

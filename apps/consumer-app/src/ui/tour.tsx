@@ -29,6 +29,7 @@ import { Modal, StyleSheet, View, useWindowDimensions, type LayoutRectangle } fr
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, radius, space, spring } from '../theme/tokens';
+import { ANCHO_COLUMNA } from './responsive';
 import { Icon } from './icons';
 import { Appear } from './motion';
 import { AtlasText, Button, Card, IconChip, Overline } from './primitives';
@@ -295,6 +296,9 @@ function TourOverlay({
           style={{
             ...styles.cardHolder,
             ...(fitsBelow ? { top: below } : { bottom: screenHeight - (focus?.y ?? screenHeight) + space.base }),
+            // Sobre el elemento senalado, no sobre el centro de la ventana: con el carril lateral de
+            // escritorio la columna ya no esta en el medio, y la nota tiene que caer donde cae el foco.
+            ...(focus ? { left: focus.x, right: undefined, width: focus.width } : null),
           }}
         >
           <Card style={styles.card}>
@@ -327,8 +331,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: color.action.primary,
   },
-  cardHolder: { position: 'absolute', left: space.lg, right: space.lg },
-  card: { backgroundColor: color.surface.sheet },
+  /*
+    La tarjeta del paso no se estira con la ventana: en escritorio una tarjeta de 1.400 px de ancho
+    con dos frases dentro deja de leerse como una nota y se lee como una franja. Se centra y se
+    limita a la columna de lectura, que es lo que senala.
+  */
+  cardHolder: { position: 'absolute', left: space.lg, right: space.lg, alignItems: 'center' },
+  card: { backgroundColor: color.surface.sheet, width: '100%', maxWidth: ANCHO_COLUMNA - space.lg * 2 },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   cardActions: { flexDirection: 'row', gap: space.sm, marginTop: space.xs },
   action: { flex: 1 },

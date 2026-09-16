@@ -77,7 +77,13 @@ export function Screen({
     Solo cuando `padded`: una pantalla a sangre —la camara del escaner— coloca sus propios controles
     y meterle un hueco arriba le partiria el visor.
   */
-  const body = padded ? [styles.content, { paddingTop: insets.top + space.base }, contentStyle] : contentStyle;
+  /*
+    En el navegador no hay barra de estado y `insets.top` vale cero: el titulo quedaba pegado al
+    borde superior de la ventana, a la altura exacta donde el ojo espera un margen. Se le da el
+    mismo aire que a los lados. En el telefono no cambia nada: ahi el area segura ya lo pone.
+  */
+  const aireArriba = Platform.OS === 'web' ? Math.max(insets.top, space.md) : insets.top;
+  const body = padded ? [styles.content, { paddingTop: aireArriba + space.base }, contentStyle] : contentStyle;
 
   /*
     Se envuelve cada hijo por separado, no el conjunto: escalonar exige que cada bloque tenga su

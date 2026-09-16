@@ -25,6 +25,7 @@
  */
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ANCHO_COLUMNA, useTramo } from './responsive';
 import { color, radius, shadow, space, stroke, touch } from '../theme/tokens';
 import { Icon } from './icons';
 import { AtlasText, Overline } from './primitives';
@@ -45,6 +46,12 @@ export function BottomSheet({
   cierre?: string;
   children: React.ReactNode;
 }) {
+  /*
+    Con aire a los lados, la hoja no ocupa la ventana entera: se estrecha a la columna de lectura y
+    se redondea por los cuatro lados. Una hoja de 1.400 px que sube desde abajo se lee como una
+    cortina, no como una ayuda sobre lo que se estaba mirando.
+  */
+  const estrecha = useTramo() !== 'telefono';
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       {/*
@@ -53,7 +60,7 @@ export function BottomSheet({
         tiene por que anunciar un rectangulo llamado «velo» antes del contenido de la hoja.
       */}
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityElementsHidden importantForAccessibility="no" />
-      <View style={styles.sheet} accessibilityViewIsModal>
+      <View style={[styles.sheet, estrecha && styles.sheetEstrecha]} accessibilityViewIsModal>
         <View style={styles.grabber} />
         <View style={styles.sheetHead}>
           <AtlasText variant="h3" style={styles.sheetTitle}>
@@ -242,6 +249,13 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.xxl,
     paddingBottom: space.xl,
     ...shadow.sheet,
+  },
+  sheetEstrecha: {
+    width: '100%',
+    maxWidth: ANCHO_COLUMNA,
+    alignSelf: 'center',
+    borderRadius: radius.xxl,
+    marginBottom: space.xxl,
   },
   /*
     El tirador. No se arrastra —la hoja se cierra tocando fuera o con «Listo»— y aun asi vale la

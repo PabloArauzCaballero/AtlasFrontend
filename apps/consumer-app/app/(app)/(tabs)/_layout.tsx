@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { color, radius, space, spring, touch, type } from '../../../src/theme/tokens';
 import { Icon, type IconName } from '../../../src/ui/icons';
+import { ANCHO_CARRIL, useTramo } from '../../../src/ui/responsive';
 
 /**
  * El icono de la pestana activa se asienta; no aparece ya colocado.
@@ -84,15 +85,30 @@ export default function TabsLayout() {
   */
   const bar = [styles.bar, { height: BAR_HEIGHT + insets.bottom, paddingBottom: insets.bottom }];
 
+  /*
+    En escritorio la barra pasa a ser un CARRIL a la izquierda.
+
+    Cinco pestañas repartidas a lo ancho de una ventana de 1.400 px quedan a treinta centímetros
+    unas de otras y a medio metro del contenido, que está centrado: la mirada tiene que bajar y
+    cruzar la pantalla para cambiar de sección. Pegadas en vertical junto a la columna, están donde
+    el ojo ya está. Son los mismos cinco destinos con los mismos iconos; sólo cambia dónde viven.
+
+    `tabBarPosition: 'left'` exige la variante `material` (lo comprueba la propia barra); con ella
+    la etiqueta va debajo del icono, que es como se lee en la barra de abajo.
+  */
+  const escritorio = useTramo() === 'escritorio';
+  const carril = [styles.carril, { paddingTop: insets.top + space.xl, paddingBottom: insets.bottom + space.base }];
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: color.action.primary,
         tabBarInactiveTintColor: color.text.tertiary,
-        tabBarStyle: bar,
+        tabBarStyle: escritorio ? carril : bar,
         tabBarLabelStyle: styles.label,
         sceneStyle: { backgroundColor: color.surface.primary },
+        ...(escritorio ? { tabBarPosition: 'left' as const, tabBarVariant: 'material' as const } : null),
       }}
     >
       <Tabs.Screen
@@ -123,6 +139,16 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  /* El carril de escritorio: ancho fijo, filo a la derecha, mismo fondo que la barra. */
+  carril: {
+    width: ANCHO_CARRIL,
+    // La barra lateral trae un ancho mínimo propio (~360 px) pensado para tabletas; aquí manda la columna.
+    minWidth: ANCHO_CARRIL,
+    backgroundColor: color.surface.secondary,
+    borderRightColor: color.border.subtle,
+    borderRightWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: space.md,
+  },
   bar: {
     backgroundColor: color.surface.secondary,
     borderTopColor: color.border.subtle,

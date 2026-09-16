@@ -29,7 +29,7 @@
  */
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Dimensions, Pressable, type ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, type ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   Extrapolation,
@@ -46,6 +46,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AtlasMark, BrandHalo } from '../../src/ui/brand';
 import { useBrandCut } from '../../src/ui/brand-cut';
+import { useAnchoDeColumna } from '../../src/ui/responsive';
 import { color, radius, space } from '../../src/theme/tokens';
 import * as contentApi from '../../src/api/endpoints/app-content';
 import { Icon, ICON_NAMES, type IconName } from '../../src/ui/icons';
@@ -113,11 +114,20 @@ function pasoDesdeContenido(entry: contentApi.ContentEntry, indice: number): Pas
   };
 }
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+/*
+  El ancho de cada página del carrusel se lee en cada render y no una vez al cargar el módulo.
+
+  `Dimensions.get('window')` al cargar valía para un teléfono, donde la ventana no cambia. En el
+  navegador la misma app se abre a 1.400 px, se redimensiona y se gira; con un ancho fijo el
+  carrusel medía la ventana entera y la página desbordaba la columna de lectura hacia la derecha.
+  Ahora cada página mide la columna (o la ventana si es más estrecha), y el carrusel entero se
+  centra con ese mismo ancho: ver `ui/responsive.ts`.
+*/
 
 export default function Welcome() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const SCREEN_WIDTH = useAnchoDeColumna();
   const scroll = useRef<ScrollView>(null);
   const [pagina, setPagina] = useState(0);
   const reduced = useReducedMotion();
@@ -220,10 +230,11 @@ export default function Welcome() {
         ref={scroll}
         horizontal
         pagingEnabled
+        contentContainerStyle={{ width: SCREEN_WIDTH * (pasos.length + 1) }}
         showsHorizontalScrollIndicator={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
-        style={styles.flex}
+        style={[styles.flex, { width: SCREEN_WIDTH, alignSelf: 'center' }]}
       >
         {/* Pagina 0: la marca sola. Nada mas, a proposito. */}
         <View style={[styles.page, { width: SCREEN_WIDTH }]}>
@@ -310,6 +321,7 @@ function PasoView({
   progreso: SharedValue<number>;
   reduced: boolean;
 }) {
+  const SCREEN_WIDTH = useAnchoDeColumna();
   const pagina = indice + 1;
 
   const contenidoStyle = useAnimatedStyle(() => {
