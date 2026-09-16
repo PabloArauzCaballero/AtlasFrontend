@@ -109,3 +109,20 @@ GET  /payments/:itemId/instruction    → payment_instruction con snapshot del d
 POST /payments/:instructionId/claims  → payment_claim (evidencia, no resolución)
 POST /payments/:itemId/disputes       → payment_dispute_case
 ```
+
+---
+
+## Web
+
+Las mismas rutas se sirven en el navegador (`docs/web.md`). Las que dependen de hardware tienen
+sustituto o lo dicen:
+
+| Ruta | En el navegador |
+|---|---|
+| `/(public)/permisos` | Se salta: no hay agenda ni ubicación continua que pedir. |
+| `/(onboarding)/identidad` | Cámara del navegador (`getUserMedia`); exige HTTPS. |
+| `/(onboarding)/domicilio` | GPS del navegador si lo concede; sin mapa. |
+| `/(onboarding)/referencias` | Sólo entrada manual. |
+| `/(app)/(tabs)/escanear` | Lector de QR con `BarcodeDetector`; siempre queda «pegar el código». |
+| `/(app)/extracto-bancario`, `/(app)/pago/[itemId]`, `/(app)/pagar/[installmentId]`, `/(app)/soporte/[channelId]` | Selector de archivos del navegador; se lee con `fetch`. |
+| `/(app)/preferencias-avisos` | Dice que los avisos llegan a la app del teléfono; sin interruptor. |
