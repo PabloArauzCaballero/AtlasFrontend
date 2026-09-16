@@ -184,6 +184,48 @@ export function DateField({
 
   const handleDismiss = () => setOpen(false);
 
+  /*
+    En el navegador, el selector del navegador.
+
+    `@react-native-community/datetimepicker` no tiene implementacion web: el boton se pulsaba y no
+    pasaba nada, y la fecha de nacimiento era el unico campo del alta que no se podia rellenar.
+    Un `<input type="date">` da el calendario del sistema —el mismo que la persona ya usa en
+    cualquier web—, respeta `min`/`max` (mayoria de edad) y devuelve la fecha ya en ISO, que es el
+    formato del campo. Se viste con el mismo hueco, icono y tipografia que el control nativo.
+  */
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.block}>
+        <FieldLabel label={label} required={required} ayuda={ayuda} />
+        <View style={[styles.control, error ? styles.controlError : null]}>
+          <Icon name="pagos" size={20} tint={color.text.tertiary} />
+          <input
+            type="date"
+            aria-label={label}
+            value={value ?? ''}
+            min={minimumDate ? toIsoDate(minimumDate) : undefined}
+            max={maximumDate ? toIsoDate(maximumDate) : undefined}
+            onChange={(event) => onChange(event.target.value)}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: value ? color.text.primary : color.text.placeholder,
+              font: 'inherit',
+              fontFamily: type.body.fontFamily,
+              fontSize: type.body.fontSize,
+              colorScheme: 'dark',
+              padding: 0,
+            }}
+          />
+        </View>
+        <FieldFoot error={error} hint={hint} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.block}>
       <FieldLabel label={label} required={required} ayuda={ayuda} />
