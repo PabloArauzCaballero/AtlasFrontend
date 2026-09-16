@@ -44,7 +44,7 @@ describe('subidas por URL firmada', () => {
 
   it('el extracto lee los bytes con await (bytes() es asíncrono en expo-file-system 57)', () => {
     const fuente = readFileSync(join(__dirname, '..', 'app', '(app)', 'extracto-bancario.tsx'), 'utf8');
-    expect(fuente).toMatch(/const bytes = await file\.bytes\(\);/);
+    expect(fuente).toMatch(/const bytes = await leerBytes\(asset\.uri\);/);
     expect(fuente).not.toMatch(/const bytes = file\.bytes\(\);/);
   });
 });

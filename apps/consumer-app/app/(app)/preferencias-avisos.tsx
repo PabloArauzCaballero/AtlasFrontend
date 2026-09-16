@@ -22,7 +22,7 @@
  * es de una sola linea.
  */
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Platform } from 'react-native';
 import * as notificationsApi from '../../src/api/endpoints/notifications';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
@@ -159,6 +159,16 @@ export default function PreferenciasAvisos() {
           title="Los avisos están desactivados en tu teléfono"
           detail="Aunque los enciendas aquí, tu teléfono no los va a mostrar. Actívalos para Atlas en los ajustes del sistema."
         />
+      ) : avisos === 'no-disponible' && Platform.OS === 'web' ? (
+        /* El navegador no recibe avisos de Atlas; se dice tal cual, sin un interruptor que no haga nada. */
+        <Card tone="brand">
+          <CardHeader
+            icon="alerta"
+            title="Los avisos llegan a la app del teléfono"
+            detail="Desde el navegador no podemos avisarte. Con la app instalada te avisamos cuando vence una cuota y cuando se aprueba una compra."
+            divider={false}
+          />
+        </Card>
       ) : avisos === 'no-disponible' ? (
         <Card tone="brand">
           <CardHeader

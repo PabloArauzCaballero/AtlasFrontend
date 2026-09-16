@@ -15,7 +15,7 @@
  * se tiene, no la conversacion entera.
  */
 import * as Crypto from 'expo-crypto';
-import { File } from 'expo-file-system';
+import { leerBytes } from '../device/archivos';
 import * as supportApi from '../api/endpoints/support';
 import { AtlasApiError } from '../api/errors';
 import { fetchRepetible } from '../api/reintentos';
@@ -53,8 +53,7 @@ function detectMimeType(bytes: Uint8Array): ChatMimeType | null {
  * firma es el archivo.
  */
 export async function subirFotoAlChat(input: { channelId: string; localUri: string; filename?: string }) {
-  const file = new File(input.localUri);
-  const bytes = await file.bytes();
+  const bytes = await leerBytes(input.localUri);
 
   const mimeType = detectMimeType(bytes);
   if (!mimeType) {

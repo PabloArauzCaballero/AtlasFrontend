@@ -11,7 +11,7 @@
  * deja de servir como control de integridad.
  */
 import * as Crypto from 'expo-crypto';
-import { File } from 'expo-file-system';
+import { leerArchivoEnBase64, leerBytes } from '../device/archivos';
 import * as onboardingApi from '../api/endpoints/onboarding';
 import { AtlasApiError } from '../api/errors';
 import { fetchRepetible } from '../api/reintentos';
@@ -66,8 +66,7 @@ export async function uploadEvidence(input: {
   kind: EvidenceKind;
   localUri: string;
 }): Promise<PreparedEvidence> {
-  const file = new File(input.localUri);
-  const bytes = await file.bytes();
+  const bytes = await leerBytes(input.localUri);
   const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes as unknown as BufferSource);
   const sha256Hash = toHex(new Uint8Array(digest));
 
@@ -125,6 +124,5 @@ export async function uploadEvidence(input: {
  * lee como imagen corrupta.
  */
 export async function leerBase64(localUri: string): Promise<string> {
-  const file = new File(localUri);
-  return file.base64();
+  return leerArchivoEnBase64(localUri);
 }

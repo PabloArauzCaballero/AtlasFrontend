@@ -60,7 +60,8 @@ let moduloDeMapas: ModuloDeMapas | null | undefined;
 function cargarMapas(): ModuloDeMapas | null {
   if (moduloDeMapas !== undefined) return moduloDeMapas;
 
-  if (esExpoGo) {
+  // Tampoco en el navegador: `expo-maps` no tiene componente web. La direccion se muestra en texto.
+  if (esExpoGo || Platform.OS === 'web') {
     moduloDeMapas = null;
     return moduloDeMapas;
   }

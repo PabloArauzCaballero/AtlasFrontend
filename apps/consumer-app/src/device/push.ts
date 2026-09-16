@@ -97,6 +97,8 @@ export async function prepararAvisos(): Promise<void> {
  * permiso denegado es una promesa que el sistema operativo no va a cumplir.
  */
 export async function activarAvisos(customerId: string): Promise<EstadoAvisos> {
+  // En el navegador no hay avisos push de Atlas (haría falta Web Push con su propio registro): se dice, no se finge.
+  if (Platform.OS === 'web') return 'no-disponible';
   /*
     En un simulador no hay push: Apple no emite tokens para un dispositivo que no existe. Se sale
     antes de pedir permiso para no dejar registrado un «denegado» que no lo es.
@@ -133,6 +135,7 @@ export async function activarAvisos(customerId: string): Promise<EstadoAvisos> {
 
 /** Lo que ya decidio el sistema, sin preguntar nada. */
 export async function estadoAvisos(): Promise<EstadoAvisos> {
+  if (Platform.OS === 'web') return 'no-disponible';
   if (!Device.isDevice) return 'no-disponible';
   const Notifications = cargarAvisos();
   if (!Notifications) return 'no-disponible';

@@ -18,7 +18,7 @@
  * seria vender la funcion en vez de explicarla.
  */
 import * as DocumentPicker from "expo-document-picker";
-import { File } from "expo-file-system";
+import { leerBytes } from "../../src/device/archivos";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
@@ -193,10 +193,9 @@ export default function ExtractoBancario() {
         size,
       );
 
-      const file = new File(asset.uri);
       // `bytes()` es ASÍNCRONO en expo-file-system 57 (la síncrona es `bytesSync`). Sin el `await` se
       // mandaba una Promise como cuerpo: el PDF nunca llegaba y el `content-length` firmado no cuadraba.
-      const bytes = await file.bytes();
+      const bytes = await leerBytes(asset.uri);
       if (bytes.length !== size) {
         throw new Error('El archivo cambió de tamaño mientras se leía. Vuelve a elegirlo.');
       }

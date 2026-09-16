@@ -21,7 +21,7 @@
  * cuota agotada, red que se cae a la mitad, un disco lleno— tiene el mismo desenlace correcto:
  * entrar en silencio. Quien llama no tiene ningun `catch` que escribir.
  */
-import { Directory, File, Paths } from 'expo-file-system';
+import { descargarConSesion } from '../device/archivos';
 import { readAccessToken } from '../api/client';
 import { apiConfig } from '../api/config';
 import { getWelcomeAudio, startWelcomeAudio, welcomeAudioPath, type WelcomeAudioState } from '../api/endpoints/welcome-audio';
@@ -64,13 +64,12 @@ export async function traerBienvenida(senal?: AbortSignal): Promise<string | nul
       primera. Ademas, el archivo del intento anterior se queda ahi y no molesta: la cache la
       vacia el sistema cuando le hace falta espacio.
     */
-    const destino = new File(new Directory(Paths.cache), `atlas-bienvenida-${encargo.requestId}.mp3`);
-    if (destino.exists) return destino.uri;
-
-    const archivo = await File.downloadFileAsync(`${apiConfig.baseUrl}${welcomeAudioPath(encargo.requestId)}`, destino, {
+    return await descargarConSesion({
+      url: `${apiConfig.baseUrl}${welcomeAudioPath(encargo.requestId)}`,
       headers: { authorization: `Bearer ${token}`, 'x-tenant-id': apiConfig.tenantId },
+      nombre: `atlas-bienvenida-${encargo.requestId}.mp3`,
+      reutilizar: true,
     });
-    return archivo.uri;
   } catch {
     // Ver la cabecera: entrar en silencio es el desenlace correcto de cualquier fallo aqui.
     return null;
