@@ -1,0 +1,19 @@
+# Lo que NO entra en la imagen de la web (ver apps/consumer-app/Dockerfile.web).
+node_modules
+**/node_modules
+.turbo
+**/.turbo
+**/.expo
+**/dist
+**/android
+**/ios
+**/credentials
+**/google-services.json
+**/*firebase-adminsdk*.json
+**/.env
+**/.env.*
+!**/.env*.example
+**/e2e-web/salida
+.git
+.github
+**/docs/evidence

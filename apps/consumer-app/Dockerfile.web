@@ -1,0 +1,56 @@
+# La app del cliente en el navegador, servida por nginx.
+#
+# Se construye desde la RAÍZ del monorepo (el `package-lock.json` vive ahí, npm workspaces):
+#   docker build -f apps/consumer-app/Dockerfile.web -t atlas-consumer-web .
+#
+# Tres etapas:
+#   1. dependencies: `npm ci` con NODE_ENV=development a propósito. `expo export` necesita
+#      babel-preset-expo y compañía, que son devDependencies; con NODE_ENV=production npm no las
+#      instala y el export muere con «Cannot find module».
+#   2. builder: `expo export --platform web` deja en dist/ una SPA (`web.output: single`).
+#      Las EXPO_PUBLIC_* se HORNEAN en el bundle: cada entorno construye su imagen. La base de la
+#      API es RELATIVA (/api/v1) y nginx la reenvía al backend de su red: la imagen no sabe de
+#      dominios y no hay CORS.
+#   3. runner: nginx sirve dist/ con `try_files` (las rutas las resuelve expo-router en el
+#      navegador) y hace de proxy de /api/v1 hacia $ATLAS_API_ORIGIN, que se fija POR ENTORNO en
+#      tiempo de ejecución (plantilla envsubst de la imagen oficial de nginx).
+#
+# Coolify declara `ARG NODE_ENV` en todas las etapas; por eso cada etapa fija el suyo con ENV.
+
+FROM node:22-alpine AS dependencies
+WORKDIR /app
+ENV NODE_ENV=development
+COPY package.json package-lock.json turbo.json ./
+COPY apps/consumer-app/package.json apps/consumer-app/
+COPY packages ./packages
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm ci --no-audit --no-fund
+
+FROM dependencies AS builder
+ENV NODE_ENV=production
+ARG EXPO_PUBLIC_ATLAS_API_URL=/api/v1
+ARG EXPO_PUBLIC_ATLAS_TENANT_ID=1
+ARG EXPO_PUBLIC_ATLAS_TIMEOUT_MS=20000
+ARG EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE=sandbox
+ARG EXPO_PUBLIC_ATLAS_DECISION_SOURCE=backend
+ENV EXPO_PUBLIC_ATLAS_API_URL=$EXPO_PUBLIC_ATLAS_API_URL \
+    EXPO_PUBLIC_ATLAS_TENANT_ID=$EXPO_PUBLIC_ATLAS_TENANT_ID \
+    EXPO_PUBLIC_ATLAS_TIMEOUT_MS=$EXPO_PUBLIC_ATLAS_TIMEOUT_MS \
+    EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE=$EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE \
+    EXPO_PUBLIC_ATLAS_DECISION_SOURCE=$EXPO_PUBLIC_ATLAS_DECISION_SOURCE \
+    CI=1 \
+    EXPO_NO_TELEMETRY=1
+COPY . .
+WORKDIR /app/apps/consumer-app
+RUN npx expo export --platform web \
+ && test -s dist/index.html \
+ && grep -q "Atlas" dist/index.html
+
+FROM nginx:1.27-alpine AS runner
+ENV PORT=8080 \
+    ATLAS_API_ORIGIN=http://atlas-backend:3005
+COPY apps/consumer-app/nginx.web.conf /etc/nginx/templates/default.conf.template
+COPY --from=builder /app/apps/consumer-app/dist /usr/share/nginx/html
+EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q -O /dev/null "http://127.0.0.1:${PORT}/" || exit 1

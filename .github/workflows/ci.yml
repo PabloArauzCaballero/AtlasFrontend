@@ -37,3 +37,32 @@ jobs:
 
       - name: Verificación (tipos, lint y pruebas)
         run: npm run verify
+
+  web:
+    # La misma app, exportada para el navegador. `tsc` no ve lo que rompe sólo en web (un módulo
+    # nativo que no existe ahí, un `require` que lanza al evaluarse); el export sí.
+    name: Export web
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Exportar la web
+        working-directory: apps/consumer-app
+        env:
+          EXPO_PUBLIC_ATLAS_API_URL: /api/v1
+          EXPO_NO_TELEMETRY: '1'
+        run: npx expo export --platform web
+
+      # Verde sólo si hay una página con la marca dentro, no sólo un exit 0.
+      - name: Comprobar la salida
+        working-directory: apps/consumer-app
+        run: test -s dist/index.html && grep -q "Atlas" dist/index.html && ls dist/_expo/static/js/web/ | grep -q "entry-"

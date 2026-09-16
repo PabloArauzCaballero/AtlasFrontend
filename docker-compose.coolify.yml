@@ -1,0 +1,46 @@
+# La web de la app del cliente en Coolify (H310 con la rama `dev`, Contabo con la rama `test`).
+#
+# Un contenedor de nginx con el export web de `apps/consumer-app`. Se construye desde la raíz del
+# monorepo porque el lockfile vive aquí. Nginx reenvía /api/v1 al backend de la MISMA red de
+# Docker (`coolify`): en el H310 el alias es `atlas-backend`; si en otro servidor se llama distinto,
+# se cambia ATLAS_API_ORIGIN en las variables de Coolify, no la imagen.
+#
+# El dominio lo pone Coolify (`docker_compose_domains` → etiquetas de Traefik); aquí no se fija
+# ninguno para que la misma definición sirva en los dos servidores.
+name: atlas-consumer-web
+services:
+  web:
+    image: atlas-consumer-web:coolify
+    build:
+      context: .
+      dockerfile: apps/consumer-app/Dockerfile.web
+      args:
+        EXPO_PUBLIC_ATLAS_API_URL: '/api/v1'
+        EXPO_PUBLIC_ATLAS_TENANT_ID: '1'
+        EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE: 'sandbox'
+        EXPO_PUBLIC_ATLAS_DECISION_SOURCE: 'backend'
+    networks: ['default', 'coolify']
+    restart: unless-stopped
+    init: true
+    environment:
+      PORT: '8080'
+      ATLAS_API_ORIGIN: ${ATLAS_API_ORIGIN:-http://atlas-backend:3005}
+    expose: ['8080']
+    # El build de la web comparte CPU con el resto de despliegues del servidor: `cpu_shares`
+    # sí reparte (a diferencia de CPUQuota, que no limita `docker build`).
+    cpu_shares: 2048
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    stop_grace_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+networks:
+  default: {}
+  coolify:
+    external: true
+    name: coolify
