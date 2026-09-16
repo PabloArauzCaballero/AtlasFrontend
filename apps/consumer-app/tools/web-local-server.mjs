@@ -17,6 +17,8 @@ import { extname, join, normalize } from 'node:path';
 const port = Number(process.argv[2] ?? 8790);
 const backend = new URL(process.argv[3] ?? 'http://localhost:53005');
 const root = new URL('../dist/', import.meta.url).pathname;
+/** Prefijo bajo el que vive la web (como el Funnel del H310): se recorta antes de servir, igual que hará el proxy. */
+const base = (process.argv[4] ?? '').replace(/\/$/, '');
 
 const types = {
   '.html': 'text/html; charset=utf-8',
@@ -32,6 +34,7 @@ const types = {
 
 http
   .createServer((req, res) => {
+    if (base && req.url.startsWith(base)) req.url = req.url.slice(base.length) || '/';
     if (req.url.startsWith('/api/v1')) {
       const upstream = http.request(
         { host: backend.hostname, port: backend.port, method: req.method, path: req.url, headers: { ...req.headers, host: backend.host } },

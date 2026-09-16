@@ -39,6 +39,7 @@ const PUBLIC_KEYS = [
   'EXPO_PUBLIC_ATLAS_TIMEOUT_MS',
   'EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE',
   'EXPO_PUBLIC_ATLAS_DECISION_SOURCE',
+  'EXPO_PUBLIC_WEB_BASE_URL',
 ];
 
 function parseEnvFile(file) {
@@ -109,8 +110,20 @@ module.exports = ({ config }) => {
   const googleServices = path.join(__dirname, 'google-services.json');
   const hayFirebase = fs.existsSync(googleServices);
 
+  /*
+   * La web bajo un subcamino (sólo web).
+   *
+   * En el H310 no hay IP pública: la web sale por Tailscale Funnel, que ya reparte el dominio por
+   * caminos (`/api/v1`, `/legal`…). Con `EXPO_PUBLIC_WEB_BASE_URL=/app` el bundle referencia sus
+   * archivos y sus rutas bajo `/app`, y el proxy le quita el prefijo antes de llegar a nginx. Sin la
+   * variable (Contabo, local) la web vive en la raíz y no cambia nada. `experiments.baseUrl` no
+   * afecta a iOS ni Android.
+   */
+  const webBaseUrl = env.EXPO_PUBLIC_WEB_BASE_URL;
+
   const withExtra = {
     ...config,
+    ...(webBaseUrl ? { experiments: { ...config.experiments, baseUrl: webBaseUrl } } : {}),
     ...(androidMapsKey || hayFirebase
       ? {
           android: {

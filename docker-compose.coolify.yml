@@ -14,8 +14,12 @@ services:
     build:
       context: .
       dockerfile: apps/consumer-app/Dockerfile.web
+      # Las dos primeras se pueden cambiar por variables de la aplicación en Coolify, sin tocar este
+      # archivo: en el H310 la web vive bajo /app del dominio de Tailscale, así que ahí
+      # EXPO_PUBLIC_WEB_BASE_URL=/app y EXPO_PUBLIC_ATLAS_API_URL=/app/api/v1.
       args:
-        EXPO_PUBLIC_ATLAS_API_URL: '/api/v1'
+        EXPO_PUBLIC_ATLAS_API_URL: ${EXPO_PUBLIC_ATLAS_API_URL:-/api/v1}
+        EXPO_PUBLIC_WEB_BASE_URL: ${EXPO_PUBLIC_WEB_BASE_URL:-}
         EXPO_PUBLIC_ATLAS_TENANT_ID: '1'
         EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE: 'sandbox'
         EXPO_PUBLIC_ATLAS_DECISION_SOURCE: 'backend'
