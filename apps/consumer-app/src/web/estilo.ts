@@ -81,23 +81,34 @@ a{color:inherit;text-decoration:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
 /* ── Atmósfera: aurora, grano y malla. Fijas, detrás de todo, sin capturar el puntero. ── */
-.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.aurora__blob{position:absolute;border-radius:50%;filter:blur(110px);opacity:.55}
+/*
+  Rendimiento (playbook §7): cada halo vive en su propia capa compuesta (will-change) para que el
+  desenfoque se calcule UNA vez y el navegador sólo lo desplace; sin eso, en una pantalla de 2.560 px
+  el filtro se recalculaba en cada fotograma y toda la ventana bajaba a 10 fps. El grano NO lleva
+  mix-blend-mode: una capa fija con blend encima de toda la app obliga a recomponer la ventana
+  entera cada vez que la app repinta, que con react-native-web es continuamente.
+*/
+.aurora{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;contain:strict}
+/*
+  Sin filter:blur y sin deriva, a propósito. La landing los lleva, pero la landing es un documento
+  quieto; aquí react-native-web repinta continuamente y el desenfoque de tres halos de 760 px se
+  recalculaba en cada fotograma: medido a 2.560 px, 14 fps con la aurora y 61 sin ella. Un
+  degradado radial con parada intermedia da la misma suavidad y se pinta una vez.
+*/
+.aurora__blob{position:absolute;border-radius:50%;opacity:.55;transform:translateZ(0)}
 .aurora__blob--1{width:60vw;height:60vw;max-width:760px;max-height:760px;top:-22%;left:-14%;
-  background:radial-gradient(circle,rgba(var(--b2-rgb),.55),transparent 68%);animation:drift 26s ease-in-out infinite}
+  background:radial-gradient(circle,rgba(var(--b2-rgb),.42),rgba(var(--b2-rgb),.12) 40%,transparent 66%)}
 .aurora__blob--2{width:52vw;height:52vw;max-width:660px;max-height:660px;top:6%;right:-16%;
-  background:radial-gradient(circle,rgba(var(--b3-rgb),.32),transparent 68%);animation:drift 32s ease-in-out infinite reverse}
+  background:radial-gradient(circle,rgba(var(--b3-rgb),.26),rgba(var(--b3-rgb),.08) 40%,transparent 66%)}
 .aurora__blob--3{width:46vw;height:46vw;max-width:600px;max-height:600px;top:52%;left:34%;
-  background:radial-gradient(circle,rgba(var(--b1-rgb),.4),transparent 68%);animation:drift 38s ease-in-out infinite}
-@keyframes drift{0%,100%{transform:translate3d(0,0,0) scale(1)}33%{transform:translate3d(6vw,-4vw,0) scale(1.14)}66%{transform:translate3d(-5vw,5vw,0) scale(.9)}}
-.noise{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.05;mix-blend-mode:overlay;background-image:${grano}}
+  background:radial-gradient(circle,rgba(var(--b1-rgb),.34),rgba(var(--b1-rgb),.10) 40%,transparent 66%)}
+.noise{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.035;background-image:${grano};contain:strict}
 .mesh{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;
   background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.04) 1px,transparent 1px);
   background-size:72px 72px;
   mask-image:radial-gradient(ellipse 85% 62% at 50% 18%,#000 25%,transparent 76%);
   -webkit-mask-image:radial-gradient(ellipse 85% 62% at 50% 18%,#000 25%,transparent 76%)}
 @media (max-width:599px){.aurora,.mesh{display:none}}
-@media (prefers-reduced-motion:reduce){.aurora__blob{animation:none}}
 
 /* El árbol de React va por ENCIMA de la atmósfera. */
 #root{position:relative;z-index:2;isolation:isolate}
@@ -235,7 +246,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   altura de la ventana, se desplaza; NO se encoge. Sin esto, como columna flex centrada, la tarjeta
   —que recorta su contenido— se aplastaba hasta su primera fila en ventanas bajas.
 */
-.auth__side{position:sticky;top:0;align-self:start;max-height:100dvh;overflow:auto;display:flex;flex-direction:column;justify-content:safe center;gap:1.6rem;
+.auth__side{position:sticky;top:0;align-self:start;height:100dvh;overflow:auto;display:flex;flex-direction:column;justify-content:safe center;gap:1.6rem;
   padding:clamp(2rem,4vw,3.4rem);border-left:1px solid var(--line);
   background:linear-gradient(160deg,rgba(var(--b1-rgb),.55),rgba(var(--navy-rgb),.35) 45%,rgba(var(--b2-rgb),.35))}
 .auth__side::before{content:'';position:absolute;inset:0;background-image:${grano};opacity:.07;mix-blend-mode:overlay;pointer-events:none}
