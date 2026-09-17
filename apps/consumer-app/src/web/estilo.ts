@@ -230,11 +230,16 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .auth__pantalla [data-atlas="screen"]{flex:0 0 auto !important;overflow:visible !important}
 /* La marca ya está en la cabecera de la columna: la de la pantalla del teléfono sobra aquí. */
 @media (min-width:600px){.auth [data-atlas="marca-pantalla"]{display:none !important}}
-.auth__side{position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:center;gap:1.6rem;
+/*
+  Pegado y con su propio desplazamiento: si el panel (tarjeta + pasos + chips + cifras) no cabe en la
+  altura de la ventana, se desplaza; NO se encoge. Sin esto, como columna flex centrada, la tarjeta
+  —que recorta su contenido— se aplastaba hasta su primera fila en ventanas bajas.
+*/
+.auth__side{position:sticky;top:0;align-self:start;max-height:100dvh;overflow:auto;display:flex;flex-direction:column;justify-content:safe center;gap:1.6rem;
   padding:clamp(2rem,4vw,3.4rem);border-left:1px solid var(--line);
   background:linear-gradient(160deg,rgba(var(--b1-rgb),.55),rgba(var(--navy-rgb),.35) 45%,rgba(var(--b2-rgb),.35))}
 .auth__side::before{content:'';position:absolute;inset:0;background-image:${grano};opacity:.07;mix-blend-mode:overlay;pointer-events:none}
-.auth__side>*{position:relative}
+.auth__side>*{position:relative;flex:none}
 .side__lbl{font-family:var(--body-black);font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.55)}
 .side__quote{font-family:var(--display);font-size:clamp(1.3rem,2vw,1.75rem);line-height:1.2;letter-spacing:-.025em;color:var(--t1);text-wrap:balance;max-width:26ch}
 .side__who{display:flex;align-items:center;gap:.8rem}
@@ -257,7 +262,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 @media (max-width:599px){.auth__top{display:none}}
 
 /* ── La tarjeta de cuenta 3D (.acard de la landing, entera) ── */
-.acard{--rx:0;--ry:0;position:relative;width:min(100%,340px);aspect-ratio:1.585;border-radius:13px;overflow:hidden;
+.acard{--rx:0;--ry:0;position:relative;width:min(100%,340px);aspect-ratio:1.585;min-height:200px;flex:none;border-radius:13px;overflow:hidden;
   padding:1.3rem 1.4rem;display:flex;flex-direction:column;gap:.4rem;isolation:isolate;color:#fff;
   background:linear-gradient(146deg,var(--navy) 4%,var(--b1) 52%,var(--b2) 96%);
   transform:perspective(1000px) rotateY(calc(var(--rx) * 20deg)) rotateX(calc(var(--ry) * -13deg));
