@@ -181,7 +181,10 @@ registro a 768; ingreso a 1024) frente a `antes/m-*.png` (montajes de la primera
   El orden visual sí coincide con el del DOM desde que se quitó `grid-auto-flow: dense`, así que
   el recorrido con teclado y el visual son el mismo.
 - El zoom del navegador se evaluó por viewport equivalente (640 px), no con el zoom real.
-- En Contabo (HTTP plano) la cámara no abre: no es responsivo, es `getUserMedia`.
+- En Contabo (HTTP plano) la cámara no abre para una persona: no es responsivo, es que sin contexto
+  seguro no existe `getUserMedia`. Para **medir** esas pantallas sí hay forma —`--origen-seguro`,
+  que abre Chromium completo tratando el origen como seguro—, y la matriz de pruebas explica la
+  trampa: el headless shell ignora el flag sin decir nada.
 - El servidor de desarrollo de Metro no recogió cambios de archivos en esta máquina (watcher);
   cada verificación se hizo reiniciándolo con `--clear`. El export de producción no se ve afectado.
 

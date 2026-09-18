@@ -69,6 +69,24 @@ capturar (`getByRole('button', { name: 'Saltar' })`).
 | Roles | la web sólo tiene el rol cliente |
 | Movimiento reducido | `page.emulateMedia({ reducedMotion: 'reduce' })` en una pasada manual; las reglas están en `estilo.ts` |
 
+## Medir contra un despliegue por HTTP (el TEST de Contabo)
+
+TEST se sirve por HTTP plano, así que el navegador **no da contexto seguro** y ahí no existen la
+cámara ni `crypto.subtle`: el escáner y el carnet se medirían en su estado degradado, y el alta ni
+siquiera llega al POST. Se arregla con `--origen-seguro`, que abre Chromium completo tratando ese
+origen como seguro. Medido contra `http://app.161.97.85.216.sslip.io` el 2026-09-18:
+
+| Cómo se abre el navegador | `isSecureContext` | `getUserMedia` | `crypto.subtle` |
+|---|---|---|---|
+| Por defecto (headless shell) | no | no | no |
+| Headless shell **con** el flag | no | no | no |
+| `channel: 'chromium'` **con** el flag | sí | sí | sí |
+
+La fila del medio es la trampa: **el headless shell ignora el flag en silencio**, así que sin
+`channel` se cree estar midiendo con cámara y no es verdad. Por eso `--origen-seguro` fuerza el
+canal, y si no está instalado lo dice en vez de seguir. El flag sólo es para medir: no cambia lo
+que ve una persona, que en HTTP seguirá sin cámara.
+
 ## Cómo se corre
 
 ```bash
@@ -80,6 +98,10 @@ PLAYWRIGHT_DIR=<node_modules/playwright> node e2e-web/responsive.mjs --correo �
 
 # apaisado
 PLAYWRIGHT_DIR=… node e2e-web/responsive.mjs --correo … --pin … --anchos 844 --apaisado --estados
+
+# contra el TEST de Contabo (HTTP): con contexto seguro, si no, escáner y carnet salen degradados
+PLAYWRIGHT_DIR=… node e2e-web/responsive.mjs --base http://app.161.97.85.216.sslip.io \
+  --correo … --pin … --origen-seguro --estados
 
 # sólo unas rutas, rápido
 PLAYWRIGHT_DIR=… node e2e-web/responsive.mjs --correo … --pin … --anchos 320,768,1280 --rutas /,/pagos --sin-capturas

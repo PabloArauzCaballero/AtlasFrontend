@@ -17,7 +17,13 @@
  *   PLAYWRIGHT_DIR=<ruta a node_modules/playwright> node e2e-web/responsive.mjs \
  *     --base http://localhost:8790 --correo … --pin … \
  *     [--anchos 320,360,390,430,600,640,768,940,1024,1280,1440,1920,2560] [--rutas /,/pagos] \
- *     [--estados] [--apaisado] [--sin-capturas] [--salida carpeta]
+ *     [--estados] [--apaisado] [--sin-capturas] [--salida carpeta] [--origen-seguro]
+ *
+ * `--origen-seguro` hace falta para medir contra un despliegue por HTTP (el TEST de Contabo): ahí
+ * el navegador no da contexto seguro, así que la cámara del escáner y del carnet no existen y esas
+ * dos pantallas se medirían en su estado degradado. Con el flag se abre Chromium completo tratando
+ * ese origen como seguro. Ojo: el headless shell que Playwright usa por defecto IGNORA el flag
+ * (comprobado contra TEST: `isSecureContext` sigue en false), por eso hace falta `channel`.
  *
  * Termina con código 1 si alguna medida falla, para que sirva de compuerta.
  */
@@ -42,6 +48,7 @@ const SOLO = args.get('rutas')?.split(',');
 const CAPTURAS = !args.has('sin-capturas');
 const ESTADOS = args.has('estados');
 const APAISADO = args.has('apaisado');
+const ORIGEN_SEGURO = args.has('origen-seguro');
 if (!CORREO || !PIN) {
   console.error('Faltan --correo y --pin.');
   process.exit(1);
@@ -102,7 +109,28 @@ const MEDIR_ABIERTO = `(() => {
 })()`;
 
 mkdirSync(SALIDA, { recursive: true });
-const browser = await chromium.launch();
+/*
+  Chromium completo y no el headless shell cuando se pide `--origen-seguro`: el shell ignora
+  `--unsafely-treat-insecure-origin-as-secure` y el origen sigue siendo inseguro, que es justo lo
+  que se quería evitar. Si el canal no está instalado, se dice con todas las letras en vez de
+  seguir y medir un contexto inseguro creyendo lo contrario.
+*/
+const browser = await chromium
+  .launch(ORIGEN_SEGURO ? { channel: 'chromium', args: [`--unsafely-treat-insecure-origin-as-secure=${BASE}`] } : {})
+  .catch((e) => {
+    if (ORIGEN_SEGURO) {
+      console.error(`No se pudo abrir Chromium completo para --origen-seguro (${String(e.message).split('\n')[0]}).`);
+      console.error('Instálalo con `npx playwright install chromium`, o quita --origen-seguro sabiendo que la cámara no existirá.');
+    }
+    throw e;
+  });
+if (ORIGEN_SEGURO) {
+  const sonda = await (await browser.newContext()).newPage();
+  await sonda.goto(BASE, { waitUntil: 'load' }).catch(() => undefined);
+  const seguro = await sonda.evaluate(() => window.isSecureContext).catch(() => false);
+  console.log(`origen seguro: ${seguro ? 'sí' : 'NO — la cámara no existirá y esas pantallas se medirán degradadas'}`);
+  await sonda.context().close();
+}
 const contexto = await browser.newContext({ locale: 'es-BO' });
 // La secuencia de marca se ve una vez por pestaña; aquí se da por vista para medir la app, no el intro.
 await contexto.addInitScript(() => {
