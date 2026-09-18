@@ -33,19 +33,28 @@ export function BarraSuperior() {
   const nombre = session.me?.profile?.firstName ?? session.profile?.displayName ?? null;
   const identificador = session.profile?.identifier ?? null;
 
-  /* La píldora se mueve hasta el enlace activo: se mide en el DOM y se escribe como variables CSS. */
+  /*
+    La píldora se mueve hasta el enlace activo: se mide en el DOM y se escribe como variables CSS.
+    Se vuelve a medir al cambiar el tamaño de la ventana, porque en tableta el menú pasa a su propia
+    fila y los enlaces cambian de sitio (un solo oyente, sin medir en cada render).
+  */
   useEffect(() => {
     if (Platform.OS !== 'web') return;
     const contenedor = menu.current;
     if (!contenedor) return;
-    const activo = contenedor.querySelector<HTMLElement>('[aria-current="page"]');
-    if (!activo) {
-      contenedor.style.setProperty('--po', '0');
-      return;
-    }
-    contenedor.style.setProperty('--px', `${activo.offsetLeft}px`);
-    contenedor.style.setProperty('--pw', `${activo.offsetWidth}px`);
-    contenedor.style.setProperty('--po', '1');
+    const colocar = () => {
+      const activo = contenedor.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!activo) {
+        contenedor.style.setProperty('--po', '0');
+        return;
+      }
+      contenedor.style.setProperty('--px', `${activo.offsetLeft}px`);
+      contenedor.style.setProperty('--pw', `${activo.offsetWidth}px`);
+      contenedor.style.setProperty('--po', '1');
+    };
+    colocar();
+    window.addEventListener('resize', colocar);
+    return () => window.removeEventListener('resize', colocar);
   }, [pathname]);
 
   if (Platform.OS !== 'web') return null;

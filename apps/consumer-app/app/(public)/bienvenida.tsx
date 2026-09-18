@@ -29,7 +29,7 @@
  */
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Platform, Pressable, type ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, type ScrollView, StyleSheet, View } from 'react-native';
 import { HeroBienvenida } from '../../src/web/HeroBienvenida';
 import Animated, {
   Easing,
@@ -47,7 +47,8 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AtlasMark, BrandHalo } from '../../src/ui/brand';
 import { useBrandCut } from '../../src/ui/brand-cut';
-import { useAnchoDeColumna } from '../../src/ui/responsive';
+import { toqueWeb } from '../../src/ui/hit-slop';
+import { useAnchoDeColumna, useTramo } from '../../src/ui/responsive';
 import { color, radius, space } from '../../src/theme/tokens';
 import * as contentApi from '../../src/api/endpoints/app-content';
 import { Icon, ICON_NAMES, type IconName } from '../../src/ui/icons';
@@ -129,7 +130,7 @@ export default function Welcome() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const SCREEN_WIDTH = useAnchoDeColumna();
-  const anchoVentana = useWindowDimensions().width;
+  const tramo = useTramo();
   const scroll = useRef<ScrollView>(null);
   const [pagina, setPagina] = useState(0);
   const reduced = useReducedMotion();
@@ -218,7 +219,7 @@ export default function Welcome() {
     telefono (ver `web/HeroBienvenida.tsx`). Por debajo —y dentro de ese telefono, que mide 390—
     es esta misma pantalla. Va despues de todos los hooks para no alterar su orden.
   */
-  if (Platform.OS === 'web' && anchoVentana >= 1024) return <HeroBienvenida pasos={pasos} />;
+  if (Platform.OS === 'web' && tramo === 'escritorio') return <HeroBienvenida pasos={pasos} />;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -411,6 +412,7 @@ function Punto({
     <Pressable
       onPress={onPress}
       hitSlop={10}
+      {...toqueWeb(10)}
       accessibilityRole="button"
       accessibilityLabel={`Ir a la pantalla ${indice + 1} de ${total}`}
     >
@@ -420,7 +422,12 @@ function Punto({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.surface.primary },
+  /*
+    `overflow: hidden` en la raiz: los dos halos salen 200 px por la derecha y por la izquierda a
+    proposito, y en el telefono la pantalla los recorta sola. En el navegador el documento no
+    recorta nada: crecia 200 px y aparecia una barra horizontal en todos los anchos hasta 1.023 px.
+  */
+  root: { flex: 1, backgroundColor: color.surface.primary, overflow: 'hidden' },
   flex: { flex: 1 },
   /*
     `overflow: hidden` recorta cada pagina a su propio ancho.

@@ -45,6 +45,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { color, palette, radius, space, spring, stroke } from '../theme/tokens';
 import { BrandHalo } from './brand';
+import { toqueWeb } from './hit-slop';
 import { Icon, type IconName } from './icons';
 import { AtlasText } from './primitives';
 
@@ -126,6 +127,7 @@ export function TrustCard({ items, title = 'Por qué te pedimos esto' }: { items
           accessibilityLabel={`${title}. ${abierta ? 'Ocultar' : 'Ver'} qué datos te pedimos, para qué y cómo los protegemos.`}
           style={styles.head}
           hitSlop={6}
+          {...toqueWeb(6)}
         >
           <View style={styles.shield}>
             <Icon name="escudo" size={20} tint={color.action.primary} />

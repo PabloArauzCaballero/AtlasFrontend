@@ -11,6 +11,7 @@ import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { Pressable, StyleSheet } from 'react-native';
 import { IconField } from '../../src/ui/form-controls';
+import { toqueWeb } from '../../src/ui/hit-slop';
 import { Icon } from '../../src/ui/icons';
 import { color, space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
@@ -142,6 +143,7 @@ export default function SignIn() {
             accessibilityRole="button"
             accessibilityLabel={showPassword ? 'Ocultar PIN' : 'Mostrar PIN'}
             hitSlop={10}
+            {...toqueWeb(10)}
           >
             <Icon
               name={showPassword ? 'ojo-tachado' : 'ojo'}

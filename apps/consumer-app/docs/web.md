@@ -33,7 +33,15 @@ PLAYWRIGHT_DIR=<ruta a node_modules/playwright> node e2e-web/humo.mjs --correo �
 # los cuatro flujos de Maestro (bienvenida, alta, ingreso, soporte), dando por bueno cada paso por la
 # respuesta del servidor
 PLAYWRIGHT_DIR=… node e2e-web/flujos.mjs --correo … --pin …
+
+# la matriz responsiva: 13 anchos (320 → 2560), desborde, áreas táctiles, texto pequeño, y con
+# --estados la hoja de ayuda, el selector y las tres vistas de pagos; --apaisado para el teléfono girado
+PLAYWRIGHT_DIR=… node e2e-web/responsive.mjs --correo … --pin … --estados
 ```
+
+Qué mide cada pasada y a qué anchos: [`RESPONSIVE_TEST_MATRIX.md`](RESPONSIVE_TEST_MATRIX.md). Cómo
+está construido lo responsivo (tramos, contenedores, áreas táctiles en web):
+[`RESPONSIVE_DESIGN_SYSTEM.md`](RESPONSIVE_DESIGN_SYSTEM.md).
 
 Un cliente de prueba aprobado se obtiene con `tools/dev-backend/recorrido-completo.mjs`.
 
@@ -44,9 +52,13 @@ sólo en web, el export sí.
 
 | Tramo | Desde | Qué cambia |
 |---|---|---|
-| teléfono | 0 | nada: es la app |
-| tableta | 600 px | aire a los lados de la columna de 560 px; las hojas se estrechan y se redondean |
-| escritorio | 1024 px | las cinco pestañas pasan a un carril lateral de 220 px |
+| teléfono | 0 | nada: es la app, con su barra de pestañas |
+| tableta | 600 px | la cáscara de la landing con la barra superior en DOS filas (marca, cuenta y acción; debajo el menú de los cinco destinos); aire a los lados de la columna de 560 px; las hojas se estrechan y se redondean |
+| (panel lateral) | 940 px | en acceso y registro aparece la segunda columna (tarjeta 3D, cita, pasos) |
+| escritorio | 1024 px | la barra superior en una fila con el menú en el centro; el área de cliente se compone en la rejilla de 12 columnas; la bienvenida es el hero de la landing |
+
+El carril lateral de 220 px de las pestañas queda para tabletas nativas; en la web la navegación
+desde 600 px es siempre la barra superior.
 
 ## Lo que el navegador no hace, y cómo se dice
 

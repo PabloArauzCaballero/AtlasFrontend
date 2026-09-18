@@ -198,7 +198,8 @@ export function DateField({
     return (
       <View style={styles.block}>
         <FieldLabel label={label} required={required} ayuda={ayuda} />
-        <View style={[styles.control, error ? styles.controlError : null]}>
+        {/* `campo` también aquí: la caja entera enfoca y lleva el anillo de foco, como los demás campos. */}
+        <View {...webData('campo')} style={[styles.control, error ? styles.controlError : null]}>
           <Icon name="pagos" size={20} tint={color.text.tertiary} />
           <input
             type="date"
@@ -682,7 +683,8 @@ const styles = StyleSheet.create({
     paddingTop: space.md,
   },
   ayudaTexto: { flex: 1 },
-  sheetList: { maxHeight: 380 },
+  // `flexShrink`: la lista cede cuando la hoja toca su tope (ver `BottomSheet`), en vez de empujarla fuera.
+  sheetList: { maxHeight: 380, flexShrink: 1 },
   buscador: {
     flexDirection: 'row',
     alignItems: 'center',

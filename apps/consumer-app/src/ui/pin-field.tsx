@@ -23,6 +23,7 @@ import { useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { color, inputChrome, radius, space } from '../theme/tokens';
 import { FieldFoot, FieldLabel } from './help-sheet';
+import { toqueWeb } from './hit-slop';
 import { Icon } from './icons';
 import { AtlasText } from './primitives';
 
@@ -77,6 +78,7 @@ export function PinField({
           <Pressable
             onPress={() => setVisible(!visible)}
             hitSlop={12}
+            {...toqueWeb(12)}
             accessibilityRole="button"
             accessibilityLabel={visible ? 'Ocultar PIN' : 'Mostrar PIN'}
           >

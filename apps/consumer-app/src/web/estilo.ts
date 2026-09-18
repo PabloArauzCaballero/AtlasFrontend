@@ -26,7 +26,21 @@
  * playbook se lea igual en los dos repos.
  */
 import { Platform } from 'react-native';
-import { font, palette } from '../theme/tokens';
+import { font, palette, space } from '../theme/tokens';
+import { TOQUES, ladosDe } from '../ui/hit-slop';
+import { ANCHO_REJILLA, TRAMO } from '../ui/responsive';
+
+/*
+  Los cortes de la hoja salen de `ui/responsive.ts`, no de números sueltos: `tableta` (600) es
+  donde la web deja de ser el teléfono, `panelLateral` (940) donde cabe la segunda columna del
+  acceso, `escritorio` (1024) donde entra la rejilla. Si cambian allí, cambian aquí.
+*/
+const DESDE_TABLETA = `(min-width:${TRAMO.tableta}px)`;
+const HASTA_TELEFONO = `(max-width:${TRAMO.tableta - 1}px)`;
+const HASTA_SIN_PANEL = `(max-width:${TRAMO.panelLateral - 1}px)`;
+const DESDE_ESCRITORIO = `(min-width:${TRAMO.escritorio}px)`;
+const HASTA_TABLETA = `(max-width:${TRAMO.escritorio - 1}px)`;
+const REJILLA = `${ANCHO_REJILLA}px`;
 
 const rgb = (hex: string): string => {
   const n = parseInt(hex.slice(1), 16);
@@ -65,18 +79,20 @@ export const variables = `
 
 const grano = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
 
-/** La hoja. Todo lo de escritorio va detrás de `@media (min-width:600px)`: a 390 px la web es la app. */
+/** La hoja. Todo lo de escritorio va detrás de `@media ${DESDE_TABLETA}`: a 390 px la web es la app. */
 export const hoja = `
 ${variables}
 
 /* ── Base ─────────────────────────────────────────────────────────── */
 html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
 body{background:var(--bg);color:var(--t1);-webkit-font-smoothing:antialiased;font-synthesis-weight:none}
 ::selection{background:rgba(var(--b2-rgb),.45);color:#fff}
 ::-webkit-scrollbar{width:11px}::-webkit-scrollbar-track{background:var(--bg)}
 ::-webkit-scrollbar-thumb{background:#1c2137;border-radius:99px;border:3px solid var(--bg)}
 ::-webkit-scrollbar-thumb:hover{background:#2a3050}
-:focus-visible{outline:2px solid var(--b3);outline-offset:3px;border-radius:8px}
+/* El anillo de foco no toca border-radius: con uno fijo, una píldora enfocada cambiaba de forma. */
+:focus-visible{outline:2px solid var(--b3);outline-offset:3px}
 a{color:inherit;text-decoration:none}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 
@@ -108,7 +124,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   background-size:72px 72px;
   mask-image:radial-gradient(ellipse 85% 62% at 50% 18%,#000 25%,transparent 76%);
   -webkit-mask-image:radial-gradient(ellipse 85% 62% at 50% 18%,#000 25%,transparent 76%)}
-@media (max-width:599px){.aurora,.mesh{display:none}}
+@media ${HASTA_TELEFONO}{.aurora,.mesh{display:none}}
 
 /* El árbol de React va por ENCIMA de la atmósfera. */
 #root{position:relative;z-index:2;isolation:isolate}
@@ -119,12 +135,12 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 */
 #root div[style*="background-color: rgb(242, 242, 242)"]{background-color:transparent !important}
 /* Los fondos opacos de las pantallas se vuelven transparentes para que la aurora se vea. */
-@media (min-width:600px){
+@media ${DESDE_TABLETA}{
   [data-atlas="screen"],[data-atlas="screen"]>div,[data-atlas="escena"]{background-color:transparent !important}
 }
 
 /* ── Entradas: subir + escalar + salir de un desenfoque (playbook §4) ── */
-@media (min-width:600px){
+@media ${DESDE_TABLETA}{
   [data-atlas="aparece"]{animation:rise var(--t-slow) var(--spring) both;animation-delay:var(--d,0ms)}
   @keyframes rise{from{opacity:0;transform:translateY(34px) scale(.975);filter:blur(9px)}to{opacity:1;transform:none;filter:blur(0)}}
   ${Array.from({ length: 12 }, (_, i) => `[data-atlas="aparece"][data-indice="${i}"]{--d:${i * 70}ms}`).join('\n  ')}
@@ -145,24 +161,41 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   [data-atlas="btn"][data-variant="ghost"]:not([aria-disabled="true"]):hover{background-color:rgba(var(--b2-rgb),.12) !important;box-shadow:0 20px 50px -24px rgba(var(--b2-rgb),.7)}
 }
 [data-atlas="btn"]:not([aria-disabled="true"]):active{transform:translateY(-1px) scale(.97);transition-duration:.1s}
-@media (prefers-reduced-motion:reduce){[data-atlas="btn"]::after{animation:none}}
+@media (prefers-reduced-motion:reduce){
+  [data-atlas="btn"]::after{animation:none}
+  /* Sin transiciones de hover ni de la píldora: el estado cambia, no viaja. */
+  [data-atlas="btn"],[data-atlas="card"],[data-atlas="fila"],[data-atlas="presionable"],[data-atlas="campo"],
+  .nav__pill,.nav__cta,.nav__salir,.nav__link,.auth__back,.btn,.tag,.paso,.acard,.acard__gloss{transition:none !important}
+}
 
 /* ── Tarjetas y filas: filo, hover con elevación ── */
 [data-atlas="card"]{transition:transform var(--t-base) var(--spring),box-shadow var(--t-base) var(--glide),border-color var(--t-fast)}
-@media (hover:hover) and (min-width:600px){
+@media (hover:hover) and ${DESDE_TABLETA}{
   [data-atlas="card"]:hover{transform:translateY(-2px);box-shadow:var(--sh);border-color:var(--line-2)}
   [data-atlas="fila"]:hover{background-color:var(--ink) !important}
 }
 [data-atlas="fila"],[data-atlas="presionable"]{cursor:pointer;transition:background-color var(--t-fast) var(--glide),transform var(--t-fast) var(--pop)}
 
+/* ── Áreas táctiles: el hitSlop del teléfono, como pseudoelemento (ver ui/hit-slop.ts) ── */
+[data-toque]{position:relative}
+[data-toque]::before{content:'';position:absolute}
+${TOQUES.map((t) => { const l = ladosDe(t); return `[data-toque="${t}"]::before{top:${-l.top}px;right:${-l.right}px;bottom:${-l.bottom}px;left:${-l.left}px}`; }).join('\n')}
+
 /* ── Campos: anillo de foco de 4 px, como .field__box ── */
 [data-atlas="campo"]{transition:border-color .28s,background-color .28s,box-shadow .28s}
 [data-atlas="campo"]:focus,[data-atlas="campo"]:focus-within{outline:none;border-color:var(--b3) !important;background-color:rgba(var(--b2-rgb),.07) !important;box-shadow:0 0 0 4px rgba(var(--b2-rgb),.14)}
 [data-atlas="campo"] input{caret-color:var(--t1)}
+/*
+  En los campos con icono el input va DENTRO de la caja de 56 px y medía sólo su renglón (23 px):
+  el clic en el resto de la caja no enfocaba nada. Estirado a la altura de la caja, toda ella enfoca.
+*/
+[data-atlas="campo"] input,[data-atlas="campo"] textarea{align-self:stretch;height:auto;min-height:0}
+/* Y hasta el borde derecho de la caja cuando es lo último de la fila: el relleno pasa a ser suyo, el texto no se mueve. */
+[data-atlas="campo"]>input:last-child,[data-atlas="campo"]>textarea:last-child{margin-right:${-space.base}px;padding-right:${space.base}px}
 [data-atlas="campo"] input:-webkit-autofill{-webkit-text-fill-color:var(--t1);-webkit-box-shadow:0 0 0 40px #0b2033 inset}
 
 /* ── Tipografía de escritorio: escala fluida sobre las mismas variantes ── */
-@media (min-width:600px){
+@media ${DESDE_TABLETA}{
   [data-variant="display"]{font-size:clamp(2.6rem,5.2vw,4.2rem) !important;line-height:1.04 !important;letter-spacing:-.04em !important}
   [data-variant="hero"]{font-size:var(--fs-h2) !important;line-height:1.06 !important;letter-spacing:-.04em !important}
   [data-variant="h1"]{font-size:clamp(1.9rem,3.4vw,2.5rem) !important;line-height:1.08 !important;letter-spacing:-.035em !important}
@@ -173,10 +206,10 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 }
 
 /* ── La cáscara: barra superior de la landing ── */
-.nav{position:sticky;top:0;z-index:50;height:var(--nav-h);display:flex;align-items:center;
+.nav{position:sticky;top:0;z-index:50;min-height:var(--nav-h);display:flex;align-items:center;
   background:rgba(6,20,38,.55);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
   border-bottom:1px solid var(--line)}
-.nav__inner{width:min(100% - 2.6rem,1220px);margin-inline:auto;display:flex;align-items:center;gap:1.4rem}
+.nav__inner{width:min(100% - 2.6rem,${REJILLA});margin-inline:auto;display:flex;align-items:center;gap:1.4rem}
 .brand{display:inline-flex;align-items:center;gap:.55rem;font-family:var(--display);font-size:1.25rem;letter-spacing:-.03em;color:var(--t1)}
 .nav__menu{position:relative;display:flex;align-items:center;gap:.15rem;margin-inline:auto;padding:.3rem;border-radius:99px;border:1px solid var(--line);background:var(--ink)}
 .nav__link{position:relative;z-index:1;padding:.55rem 1rem;border-radius:99px;font-family:var(--body-semi);font-size:.9rem;color:var(--t2);transition:color .3s var(--glide)}
@@ -184,23 +217,39 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .nav__link[aria-current="page"]{color:var(--on-brand)}
 .nav__pill{position:absolute;top:.3rem;bottom:.3rem;left:var(--px,0);width:var(--pw,0);border-radius:99px;background:var(--g);
   transition:left var(--t-base) var(--spring),width var(--t-base) var(--spring);opacity:var(--po,0)}
-.nav__cuenta{display:inline-flex;align-items:center;gap:.6rem;padding:.35rem .9rem .35rem .35rem;border-radius:99px;border:1px solid var(--line-2);background:var(--ink);font-family:var(--body-semi);font-size:.86rem;color:var(--t1)}
+.nav__cuenta{display:inline-flex;align-items:center;gap:.6rem;padding:.35rem .9rem .35rem .35rem;border-radius:99px;border:1px solid var(--line-2);background:var(--ink);font-family:var(--body-semi);font-size:.86rem;color:var(--t1);min-width:0}
+/* Un nombre largo no empuja el menú: se corta con puntos suspensivos (el nombre completo va en Perfil). */
+.nav__cuenta span:not(.nav__avatar){max-width:14ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nav__avatar{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--g);color:var(--on-brand);font-family:var(--display);font-size:.8rem}
 .nav__cta{padding:.62rem 1.2rem;border-radius:99px;background:var(--g);color:var(--on-brand);font-family:var(--body-bold);font-size:.88rem;
   box-shadow:var(--sh-b);transition:transform var(--t-base) var(--pop),box-shadow var(--t-base) var(--glide)}
 .nav__cta:hover{transform:translateY(-3px);box-shadow:0 30px 70px -18px rgba(var(--b2-rgb),.8)}
 .nav__salir{padding:.55rem .8rem;border-radius:99px;font-family:var(--body-semi);font-size:.86rem;color:var(--t3);transition:.28s var(--e)}
 .nav__salir:hover{color:var(--t1);background:var(--ink-2)}
-@media (max-width:1023px){.nav__menu{display:none}}
-.pie{width:min(100% - 2.6rem,1220px);margin:3rem auto 1.6rem;padding-top:1.4rem;border-top:1px solid var(--line);
+/*
+  En tableta (600–1023 px) la barra se parte en DOS filas: marca, cuenta y acción arriba; el menú
+  con sus cinco destinos y la píldora en una fila propia. Antes el menú se escondía y la barra de
+  pestañas también, así que entre esos anchos no había ningún enlace a Pagos ni a Avisos.
+*/
+@media ${HASTA_TABLETA}{
+  .nav{padding-block:.6rem}
+  .nav__inner{flex-wrap:wrap;gap:.7rem 1rem}
+  /* flex-basis 100 % fuerza la fila propia; max-content encoge la píldora a sus cinco enlaces, centrada. */
+  .nav__menu{order:9;flex-basis:100%;max-width:max-content;justify-content:center;margin-inline:auto}
+  .nav__link{padding:.5rem .85rem;font-size:.86rem}
+  .nav__cta{margin-left:auto}
+}
+/* Los controles de la barra son objetivos de al menos 44 px de alto. */
+.nav__link,.nav__cuenta,.nav__cta,.nav__salir,.brand{min-height:44px;display:inline-flex;align-items:center}
+.pie{width:min(100% - 2.6rem,${REJILLA});margin:3rem auto 1.6rem;padding-top:1.4rem;border-top:1px solid var(--line);
   display:flex;flex-wrap:wrap;gap:1rem 1.6rem;align-items:center;justify-content:space-between;color:var(--t3);font-size:.82rem;font-family:var(--body)}
 .pie a:hover{color:var(--t1)}
 
 /* ── Contenido bajo la cáscara: la columna se ensancha y se compone en rejilla ── */
-@media (min-width:1024px){
-  [data-area="app"] [data-atlas="screen"]>div{max-width:1220px !important;padding-left:1.3rem !important;padding-right:1.3rem !important;padding-top:2.2rem !important}
-  [data-area="app"] [data-atlas="pie"]{max-width:1220px !important}
-  [data-atlas="screen"][data-rejilla]:not([data-rejilla="ninguna"])>div{display:grid !important;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--gap);align-content:start;grid-auto-flow:row dense}
+@media ${DESDE_ESCRITORIO}{
+  [data-area="app"] [data-atlas="screen"]>div{max-width:${REJILLA} !important;padding-left:1.3rem !important;padding-right:1.3rem !important;padding-top:2.2rem !important}
+  [data-area="app"] [data-atlas="pie"]{max-width:${REJILLA} !important}
+  [data-atlas="screen"][data-rejilla]:not([data-rejilla="ninguna"])>div{display:grid !important;grid-template-columns:repeat(12,minmax(0,1fr));column-gap:var(--gap);align-content:start;grid-auto-flow:row}
   [data-atlas="screen"][data-rejilla]:not([data-rejilla="ninguna"])>div>*{grid-column:1 / -1;min-width:0}
   /*
     Se cuentan sólo los BLOQUES de la pantalla (los que entran con "aparece"), no cualquier hijo:
@@ -219,6 +268,20 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   [data-atlas="screen"][data-rejilla="inicio"]>div>:nth-child(2 of [data-atlas="aparece"]){grid-column:1 / -1}
   [data-atlas="screen"][data-rejilla="inicio"]>div>:nth-child(2n+3 of [data-atlas="aparece"]){grid-column:1 / span 6}
   [data-atlas="screen"][data-rejilla="inicio"]>div>:nth-child(2n+4 of [data-atlas="aparece"]){grid-column:7 / -1}
+  /*
+    Sin «dense»: con él, el banner del partner —el último bloque del inicio— subía a rellenar el
+    hueco junto a «Tus pagos», por encima de «Tus compras», y el orden de lectura dejaba de ser el
+    de la pantalla. El orden del DOM manda; los huecos se evitan con las dos reglas de abajo.
+  */
+  /*
+    Un bloque de la columna izquierda ocupa la fila entera cuando es el ÚLTIMO o cuando el
+    siguiente es un título de sección (que abre fila): un bloque a media anchura con un hueco al
+    lado se leía como una tarjeta a la que le faltaba la pareja.
+  */
+  [data-atlas="screen"][data-rejilla]:not([data-rejilla="inicio"])>div>:nth-child(2n of [data-atlas="aparece"]):has(+ [data-atlas="aparece"] > [data-atlas="seccion"]){grid-column:1 / -1}
+  [data-atlas="screen"][data-rejilla="inicio"]>div>:nth-child(2n+3 of [data-atlas="aparece"]):has(+ [data-atlas="aparece"] > [data-atlas="seccion"]){grid-column:1 / -1}
+  [data-atlas="screen"][data-rejilla]:not([data-rejilla="inicio"])>div>:nth-child(2n of [data-atlas="aparece"]):nth-last-child(1 of [data-atlas="aparece"]){grid-column:1 / -1}
+  [data-atlas="screen"][data-rejilla="inicio"]>div>:nth-child(2n+3 of [data-atlas="aparece"]):nth-last-child(1 of [data-atlas="aparece"]){grid-column:1 / -1}
   /* Un título de sección siempre abre fila completa: es lo que dice de qué va lo que viene debajo. */
   [data-atlas="screen"][data-rejilla]>div>[data-atlas="aparece"]:has(>[data-atlas="seccion"]){grid-column:1 / -1 !important}
   /* Lo que no es bloque (huecos, pantallas sin entrada escalonada): a lo ancho; los huecos vacíos ni se pintan. */
@@ -240,7 +303,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .auth__pantalla>div,.auth__pantalla>div>div{flex:0 0 auto !important}
 .auth__pantalla [data-atlas="screen"]{flex:0 0 auto !important;overflow:visible !important}
 /* La marca ya está en la cabecera de la columna: la de la pantalla del teléfono sobra aquí. */
-@media (min-width:600px){.auth [data-atlas="marca-pantalla"]{display:none !important}}
+@media ${DESDE_TABLETA}{.auth [data-atlas="marca-pantalla"]{display:none !important}}
 /*
   Pegado y con su propio desplazamiento: si el panel (tarjeta + pasos + chips + cifras) no cabe en la
   altura de la ventana, se desplaza; NO se encoge. Sin esto, como columna flex centrada, la tarjeta
@@ -256,7 +319,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .side__who{display:flex;align-items:center;gap:.8rem}
 .side__who b{display:block;font-family:var(--body-bold);font-size:.92rem;color:var(--t1)}
 .side__who span{font-family:var(--body-semi);font-size:.8rem;color:var(--t2)}
-.side__stats{display:flex;gap:2.2rem;padding-top:1.4rem;border-top:1px solid var(--line-2)}
+.side__stats{display:flex;flex-wrap:wrap;gap:1.2rem 2.2rem;padding-top:1.4rem;border-top:1px solid var(--line-2)}
 .side__stats b{display:block;font-family:var(--display);font-size:1.6rem;letter-spacing:-.03em;color:var(--t1)}
 .side__stats span{font-family:var(--body);font-size:.84rem;color:var(--t2)}
 .steps{display:flex;flex-direction:column;gap:.7rem}
@@ -269,8 +332,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .ready li{display:flex;align-items:center;gap:.4rem;padding:.32rem .7rem;border-radius:99px;font-family:var(--body-semi);font-size:.74rem;
   color:rgba(255,255,255,.55);background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)}
 .ready .ok{color:#fff;background:rgba(var(--b3-rgb),.18);border-color:rgba(var(--b3-rgb),.5)}
-@media (max-width:939px){.auth{grid-template-columns:1fr}.auth__side{display:none}}
-@media (max-width:599px){.auth__top{display:none}}
+@media ${HASTA_SIN_PANEL}{.auth{grid-template-columns:1fr}.auth__side{display:none}}
+@media ${HASTA_TELEFONO}{.auth__top{display:none}}
 
 /* ── La tarjeta de cuenta 3D (.acard de la landing, entera) ── */
 .acard{--rx:0;--ry:0;position:relative;width:min(100%,340px);aspect-ratio:1.585;min-height:200px;flex:none;border-radius:13px;overflow:hidden;
@@ -295,7 +358,8 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .acard__chip{width:44px;height:32px;border-radius:6px;margin-top:.5rem;
   background:linear-gradient(135deg,#f3d27a,#c9a03c 50%,#f0d58c);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25),inset 0 1px 0 rgba(255,255,255,.6)}
 .acard__no{margin-top:auto;font-family:var(--body-bold);font-size:.94rem;letter-spacing:.08em;color:rgba(255,255,255,.75)}
-.acard__bot{display:flex;justify-content:space-between;font-family:var(--body-bold);font-size:.66rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)}
+/* .7rem (11,2 px) y no los .66 de la landing: aquí el rótulo lleva el nombre y el nivel de la persona, no es adorno. */
+.acard__bot{display:flex;justify-content:space-between;font-family:var(--body-bold);font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.55)}
 .acard__bot b{color:var(--b3)}
 .acard__gloss{position:absolute;inset:0;z-index:3;pointer-events:none;opacity:0;transition:opacity .4s;mix-blend-mode:screen;
   background:radial-gradient(300px circle at var(--gx,50%) var(--gy,50%),rgba(255,255,255,.16),transparent 62%)}
@@ -305,7 +369,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 /* ── El hero de la bienvenida (index.html) ── */
 .portada{min-height:100dvh;background:transparent}
 .hero{position:relative;z-index:2;padding:clamp(100px,14vh,160px) 0 clamp(60px,8vh,100px)}
-.wrap{width:min(100% - 2.6rem,1220px);margin-inline:auto}
+.wrap{width:min(100% - 2.6rem,${REJILLA});margin-inline:auto}
 .hero__grid{display:grid;grid-template-columns:1.06fr .94fr;gap:clamp(2rem,5vw,4.5rem);align-items:center}
 .tag{display:inline-flex;align-items:center;gap:.55rem;padding:.42rem 1rem .42rem .72rem;border-radius:99px;border:1px solid var(--line-2);background:var(--ink);
   font-family:var(--body-semi);font-size:.82rem;color:var(--t2);margin-bottom:1.7rem;transition:border-color .3s,color .3s,transform .35s var(--e)}
@@ -325,7 +389,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .btn--line{border:1px solid var(--line-2);background:var(--ink)}
 .btn--line:hover{transform:translateY(-3px);border-color:rgba(var(--b2-rgb),.6);background:rgba(var(--b2-rgb),.12)}
 .btn:active{transform:translateY(-1px) scale(.96);transition-duration:.1s}
-.hero__stats{display:flex;gap:2rem}
+.hero__stats{display:flex;flex-wrap:wrap;gap:1.2rem 2rem}
 .hero__stats div{padding-left:1rem;border-left:2px solid rgba(var(--b3-rgb),.5)}
 .hero__stats b{display:block;font-family:var(--display);font-size:1.8rem;letter-spacing:-.03em;background:var(--g);-webkit-background-clip:text;background-clip:text;color:transparent}
 .hero__stats span{font-family:var(--body);font-size:.84rem;color:var(--t2)}
@@ -342,15 +406,15 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 .hero__badge small{display:block;font-family:var(--body);font-size:.74rem;color:var(--t2)}
 .hero__badge--ok{top:8%;left:-6%}
 .hero__badge--bs{right:-4%;top:22%;width:74px;height:74px;justify-content:center;border-radius:50%;background:var(--g);color:var(--on-brand);font-family:var(--display);font-size:1.15rem;box-shadow:var(--sh-b)}
-.pasos{width:min(100% - 2.6rem,1220px);margin:0 auto var(--pad);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap)}
+.pasos{width:min(100% - 2.6rem,${REJILLA});margin:0 auto var(--pad);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap)}
 .paso{padding:1.5rem;border-radius:var(--r);background:var(--bg-card);border:1px solid var(--line);border-top-color:rgba(255,255,255,.1);
   transition:transform var(--t-base) var(--spring),box-shadow var(--t-base) var(--glide),border-color var(--t-fast)}
 .paso:hover{transform:translateY(-3px);box-shadow:var(--sh);border-color:var(--line-2)}
 .paso i{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--g-soft);color:var(--b3);margin-bottom:1rem;font-style:normal;font-family:var(--display)}
 .paso h3{font-family:var(--display-bold);font-size:1.05rem;letter-spacing:-.02em;color:var(--t1);margin:0 0 .4rem}
 .paso p{font-family:var(--body);font-size:.9rem;line-height:1.55;color:var(--t2);margin:0}
-@media (max-width:1023px){.hero__grid{grid-template-columns:1fr}.hero__visual{display:none}.pasos{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:599px){.pasos{grid-template-columns:1fr}}
+@media ${HASTA_TABLETA}{.hero__grid{grid-template-columns:1fr}.hero__visual{display:none}.pasos{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media ${HASTA_TELEFONO}{.pasos{grid-template-columns:1fr}}
 `;
 
 let inyectada = false;

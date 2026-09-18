@@ -23,7 +23,7 @@
  * tirones justo en el momento en que el usuario mas atento esta.
  */
 import React from 'react';
-import { Platform, Pressable, View, useWindowDimensions, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, Pressable, View, type PressableProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   Easing,
   FadeInUp,
@@ -36,6 +36,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { easing, motion, press, spring } from '../theme/tokens';
 import { webData } from '../web/estilo';
+import { conToqueWeb } from './hit-slop';
+import { useTramo } from './responsive';
 
 const CURVE = Easing.bezier(easing.decelerate[0], easing.decelerate[1], easing.decelerate[2], easing.decelerate[3]);
 
@@ -133,7 +135,8 @@ function AppearWeb({
     opacity: avance.value,
     transform: [{ translateY: 12 * (1 - avance.value) }],
   }));
-  const escritorio = useWindowDimensions().width >= 600;
+  // El mismo umbral que la hoja de estilo (`@media (min-width: TRAMO.tableta)`), sin repetir el número.
+  const escritorio = useTramo() !== 'telefono';
   if (escritorio) {
     return (
       <View style={style} {...webData('aparece', { indice: String(Math.min(index, 11)) })}>
@@ -178,7 +181,8 @@ export function PressSurface({
 
   return (
     <AnimatedPressable
-      {...rest}
+      // En el navegador `hitSlop` no existe: `data-toque` le da el mismo área (ver `ui/hit-slop.ts`).
+      {...conToqueWeb(rest as PressableProps & { dataSet?: Record<string, string> }, rest.hitSlop)}
       onPressIn={(event) => {
         settle(scaleTo);
         rest.onPressIn?.(event);

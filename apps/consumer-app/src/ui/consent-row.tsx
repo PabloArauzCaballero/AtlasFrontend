@@ -15,7 +15,9 @@
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { color, radius, space, stroke, touch } from '../theme/tokens';
+import { toqueWeb } from './hit-slop';
 import { Icon } from './icons';
+import { ANCHO_COLUMNA } from './responsive';
 import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
 
@@ -102,6 +104,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
           accessibilityRole="button"
           accessibilityLabel={`Leer ${title}`}
           hitSlop={6}
+          {...toqueWeb(6)}
           style={styles.readTarget}
         >
           <AtlasText variant="captionStrong" tone={readable ? 'brand' : 'tertiary'}>
@@ -113,7 +116,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
 
       <Modal visible={reading} animationType="slide" onRequestClose={() => setReading(false)}>
         <View style={styles.sheet}>
-          <View style={styles.sheetHead}>
+          <View style={[styles.sheetHead, styles.lectura]}>
             <View style={styles.sheetTitle}>
               <AtlasText variant="h3">{title}</AtlasText>
               {versionCode ? (
@@ -122,20 +125,20 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
                 </AtlasText>
               ) : null}
             </View>
-            <Pressable onPress={() => setReading(false)} accessibilityRole="button" accessibilityLabel="Cerrar" hitSlop={8}>
+            <Pressable onPress={() => setReading(false)} accessibilityRole="button" accessibilityLabel="Cerrar" hitSlop={8} {...toqueWeb(8)}>
               <AtlasText variant="bodyStrong" tone="brand">
                 Cerrar
               </AtlasText>
             </Pressable>
           </View>
 
-          <ScrollView contentContainerStyle={styles.sheetBody}>{renderBody(bodyMarkdown ?? '')}</ScrollView>
+          <ScrollView contentContainerStyle={[styles.sheetBody, styles.lectura]}>{renderBody(bodyMarkdown ?? '')}</ScrollView>
 
           {/*
             Aceptar desde el propio documento. Quien acaba de leerlo está en el momento exacto de
             decidir; obligarle a cerrar y buscar la casilla es perder esa decision por el camino.
           */}
-          <View style={styles.sheetFoot}>
+          <View style={[styles.sheetFoot, styles.lectura]}>
             <Pressable
               onPress={() => {
                 onToggle(true);
@@ -156,6 +159,9 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
   );
 }
 
+/** La columna de lectura del documento: la de la app mas el aire de una tarjeta a cada lado. */
+const ANCHO_LECTURA = ANCHO_COLUMNA + space.xxl * 2;
+
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start', paddingVertical: space.sm },
   boxTarget: { minHeight: touch.minSize, justifyContent: 'center' },
@@ -172,6 +178,12 @@ const styles = StyleSheet.create({
   text: { flex: 1, gap: space.xxs },
   readTarget: { flexDirection: 'row', alignItems: 'center', gap: space.xxs, paddingVertical: space.xxs },
   sheet: { flex: 1, backgroundColor: color.surface.primary },
+  /*
+    El documento se lee en una columna, no a lo ancho de la ventana. A pantalla completa en un
+    monitor de 1.920 px una linea de terminos medía trescientos caracteres; en el teléfono el tope
+    no llega a actuar porque la ventana es mas estrecha.
+  */
+  lectura: { width: '100%', maxWidth: ANCHO_LECTURA, alignSelf: 'center' },
   sheetHead: {
     flexDirection: 'row',
     alignItems: 'flex-start',

@@ -27,6 +27,7 @@ import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ANCHO_COLUMNA, useTramo } from './responsive';
 import { color, radius, shadow, space, stroke, touch } from '../theme/tokens';
+import { toqueWeb } from './hit-slop';
 import { Icon } from './icons';
 import { AtlasText, Overline } from './primitives';
 
@@ -66,7 +67,7 @@ export function BottomSheet({
           <AtlasText variant="h3" style={styles.sheetTitle}>
             {titulo}
           </AtlasText>
-          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={cierre} hitSlop={12}>
+          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={cierre} hitSlop={12} {...toqueWeb(12)}>
             <AtlasText variant="bodyStrong" tone="brand">
               {cierre}
             </AtlasText>
@@ -138,6 +139,7 @@ export function HelpButton({ ayuda, etiqueta }: { ayuda: string; etiqueta: strin
         accessibilityLabel={`Ayuda: ${etiqueta}`}
         accessibilityHint="Abre una hoja con la explicación de este campo"
         hitSlop={HIT_SLOP}
+        {...toqueWeb(HIT_SLOP)}
         style={styles.helpTarget}
         testID={`ayuda-${etiqueta}`}
       >
@@ -248,6 +250,14 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.xxl,
     borderTopRightRadius: radius.xxl,
     paddingBottom: space.xl,
+    /*
+      Nunca mas alta que la ventana. Con un telefono apaisado (388 px de alto) o un selector de
+      cuarenta opciones, la hoja media mas que la pantalla y —como el velo es `flex: 1` y ella no
+      cedia— salia por ARRIBA, con el titulo y el «Listo» fuera de la vista. Con tope y `flexShrink`
+      es la lista de dentro la que se desplaza; en vertical, donde siempre cupo, no cambia nada.
+    */
+    maxHeight: '92%',
+    flexShrink: 1,
     ...shadow.sheet,
   },
   sheetEstrecha: {
@@ -281,6 +291,6 @@ const styles = StyleSheet.create({
     borderBottomColor: color.border.hairline,
   },
   sheetTitle: { flex: 1 },
-  cuerpo: { maxHeight: 320 },
+  cuerpo: { maxHeight: 320, flexShrink: 1 },
   cuerpoContenido: { padding: space.lg, paddingBottom: space.xl },
 });
