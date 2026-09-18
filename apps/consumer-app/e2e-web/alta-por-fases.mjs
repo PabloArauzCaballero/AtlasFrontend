@@ -256,7 +256,10 @@ await paso('carnet: tres capturas con la cámara falsa y datos del documento', a
     await page.getByText(laminas[i], { exact: true }).first().waitFor({ timeout: 15000 });
     await boton('Tomar foto').first().click(); // abre la cámara de esa lámina
     await boton('Cancelar').first().waitFor({ timeout: 15000 }); // el visor está abierto
-    await page.waitForTimeout(1200); // que la cámara falsa entregue su primer cuadro
+    // Cada apertura de la cámara reinicia el vídeo falso en el cuadro 0: con el mismo retraso, dos
+    // capturas salen IGUALES (mismo SHA-256 → 409 por `ux_evidence_documents_customer_hash`).
+    // El disparo se escalona por lámina para caer en cuadros distintos del marcador móvil.
+    await page.waitForTimeout(1200 + i * 1500);
     await boton('Tomar foto').first().click(); // el disparador
     // Vuelve al carrusel con la foto subida: la acción pasa a «Repetir».
     await boton('Repetir').first().waitFor({ timeout: 45000 });
