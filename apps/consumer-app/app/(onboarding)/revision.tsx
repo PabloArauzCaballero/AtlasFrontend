@@ -18,6 +18,7 @@ import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, ListRow } from '../../src/ui/primitives';
+import { bitacora } from '../../src/features/bitacora';
 import { useBrandCut } from '../../src/ui/brand-cut';
 
 export default function Review() {
@@ -56,7 +57,9 @@ export default function Review() {
     setBusy(true);
     setError(null);
     try {
-      await onboardingApi.submitForReview(session.customerId);
+      await bitacora.medirEnvio(() => onboardingApi.submitForReview(session.customerId!));
+      // El alta termino: lo que quede de bitacora sale ahora y la cola se borra del disco.
+      await bitacora.cerrar().catch(() => undefined);
       /*
         El mismo corte de marca que abre la app, ahora para cerrarla.
 
@@ -127,6 +130,7 @@ export default function Review() {
           <Button label="Actualizar estado" variant="secondary" onPress={onRefresh} loading={refreshing} />
         ) : (
           <Button
+            bitacora="enviar_solicitud"
             label="Enviar mi solicitud"
             onPress={submit}
             loading={busy}

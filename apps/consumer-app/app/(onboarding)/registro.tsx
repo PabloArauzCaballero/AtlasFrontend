@@ -1,9 +1,10 @@
 /**
  * Creacion de cuenta.
  *
- * Un solo paso con lo minimo indispensable: quien eres, como te contactamos, tu contrasena y el
- * consentimiento explicito. Todo lo demas —economia, domicilio, documento, referencias— llega
- * despues, cuando la persona ya tiene una cuenta que recuperar si abandona.
+ * Un solo paso con lo minimo indispensable: como te contactamos, tu PIN y el consentimiento
+ * explicito. Desde el 2026-09-18 NO se pide el nombre ni la fecha de nacimiento: los lee el carnet
+ * en la fase 2 y la persona los CONFIRMA. Pedirlos aqui era teclear dos veces lo mismo, y el orden
+ * al reves impedia cruzar lo tecleado con lo leido hasta el final.
  *
  * El consentimiento no es una casilla decorativa: el backend exige al menos uno y guarda cual
  * version se acepto.
@@ -17,7 +18,7 @@ import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { StyleSheet, View, type ScrollView } from 'react-native';
 import { ConsentRow } from '../../src/ui/consent-row';
-import { type Country, DEFAULT_COUNTRY, DateField, IconField, PhoneField } from '../../src/ui/form-controls';
+import { type Country, DEFAULT_COUNTRY, IconField, PhoneField } from '../../src/ui/form-controls';
 import { Icon, type IconName } from '../../src/ui/icons';
 import { color, space } from '../../src/theme/tokens';
 import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
@@ -25,6 +26,7 @@ import { PinField } from '../../src/ui/pin-field';
 import { AtlasText, Button, Card, Divider, ErrorState, Overline, SectionHeader, Skeleton } from '../../src/ui/primitives';
 import { TRUST_REGISTRO } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
+import { bitacora } from '../../src/features/bitacora';
 
 /**
  * Los documentos que gobierna la pantalla de permisos y que por eso no se listan en el alta.
@@ -33,22 +35,6 @@ import { TrustCard } from '../../src/ui/trust-card';
  * añadir un tercero no obligue a acordarse de este archivo.
  */
 const PERMISOS_DE_ARRANQUE = new Set<string>([FINALIDAD_AGENDA, FINALIDAD_UBICACION]);
-
-/** Edad minima exigida por la regla de habilitacion del backend. */
-const MIN_AGE = 18;
-
-const isIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
-
-function ageFrom(birthDate: string): number | null {
-  if (!isIsoDate(birthDate)) return null;
-  const birth = new Date(`${birthDate}T00:00:00.000Z`);
-  if (Number.isNaN(birth.getTime())) return null;
-  const now = new Date();
-  let age = now.getUTCFullYear() - birth.getUTCFullYear();
-  const monthDiff = now.getUTCMonth() - birth.getUTCMonth();
-  if (monthDiff < 0 || (monthDiff === 0 && now.getUTCDate() < birth.getUTCDate())) age -= 1;
-  return age;
-}
 
 /**
  * Que le pasa a este PIN, dicho como se lo dirias a la persona.
@@ -76,7 +62,7 @@ export default function Register() {
 
   const [documents, setDocuments] = useState<customerApi.ConsentDocument[] | null>(null);
   const [accepted, setAccepted] = useState<Record<string, boolean>>({});
-  const [form, setForm] = useState({ firstName: '', lastName: '', birthDate: '', phone: '', email: '', password: '' });
+  const [form, setForm] = useState({ phone: '', email: '', password: '' });
   /*
    * Bolivia por defecto: es donde opera el producto. Preseleccionar el pais mas probable ahorra
    * un toque a casi todo el mundo y no le quita la opcion a nadie.
@@ -109,27 +95,7 @@ export default function Register() {
 
   useEffect(loadConsents, []);
 
-  /*
-   * Los limites del calendario. El maximo es el dia en que se cumple la edad minima: asi la fecha
-   * que no vale directamente NO se puede elegir, en vez de elegirse y rechazarse despues.
-   */
-  const today = new Date();
-  const latestBirth = new Date(today.getFullYear() - MIN_AGE, today.getMonth(), today.getDate());
-  const earliestBirth = new Date(today.getFullYear() - 100, today.getMonth(), today.getDate());
-
-  const age = ageFrom(form.birthDate);
   const errors = {
-    firstName: form.firstName.trim().length === 0 ? 'Escribe tu nombre.' : null,
-    lastName: form.lastName.trim().length === 0 ? 'Escribe tu apellido.' : null,
-    /*
-     * El formato ya no puede fallar: lo pone el calendario. Lo unico que queda por comprobar es la
-     * edad, que es una regla de negocio y no de escritura.
-     */
-    birthDate: !isIsoDate(form.birthDate)
-      ? 'Elige tu fecha de nacimiento.'
-      : age !== null && age < MIN_AGE
-        ? `Debes tener al menos ${MIN_AGE} años.`
-        : null,
     phone: form.phone.length < 7 ? 'Escribe tu número, sin el código de país.' : null,
     email: !form.email.includes('@') ? 'Escribe un correo válido.' : null,
     password: pinProblem(form.password),
@@ -147,9 +113,6 @@ export default function Register() {
   */
   const blockedReason = firstBlocker([
     [documents !== null, 'Estamos cargando las autorizaciones. Un momento.'],
-    [errors.firstName === null, 'Falta tu nombre.'],
-    [errors.lastName === null, 'Falta tu apellido.'],
-    [errors.birthDate === null, errors.birthDate ?? 'Falta tu fecha de nacimiento.'],
     [errors.phone === null, 'Falta tu número de teléfono.'],
     [errors.email === null, 'Falta tu correo electrónico.'],
     [errors.password === null, errors.password ?? 'Falta tu PIN de 4 dígitos.'],
@@ -161,10 +124,7 @@ export default function Register() {
     setBusy(true);
     setError(null);
     try {
-      await session.register({
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        birthDate: form.birthDate,
+      await bitacora.medirEnvio(() => session.register({
         // El prefijo se une aqui: el campo guarda solo los digitos nacionales.
         phone: `${country.dial}${form.phone}`,
         email: form.email.trim().toLowerCase(),
@@ -174,7 +134,7 @@ export default function Register() {
           purposeCode: document.documentCode,
           granted: Boolean(accepted[document.id]),
         })),
-      });
+      }));
       router.replace('/(onboarding)/verificar-contacto');
     } catch (caught) {
       setError(caught);
@@ -193,8 +153,8 @@ export default function Register() {
   const describedLoad = loadError ? describeError(loadError) : null;
 
   return (
-    <Screen scrollRef={scroll} footer={<Button label="Crear mi cuenta" onPress={submit} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
-      <ScreenHeader title="Crear cuenta" subtitle="Necesitamos estos datos para abrir tu expediente." onBack="auto" />
+    <Screen scrollRef={scroll} footer={<Button label="Crear mi cuenta" bitacora="crear_cuenta" onPress={submit} loading={busy} disabled={!canSubmit} blockedReason={blockedReason} />}>
+      <ScreenHeader title="Crear cuenta" subtitle="Tu teléfono, tu correo y un PIN. Tu nombre lo leemos de tu carnet en el siguiente paso." onBack="auto" />
 
       {described ? (
         <ErrorState
@@ -219,53 +179,11 @@ export default function Register() {
       ) : null}
 
       {/*
-        Tres bloques y no una lista de siete campos.
-
-        Quien abre esto no ve «siete cosas que rellenar», ve «quien soy, como te contacto, como
-        entro». Agrupar por lo que significa cada dato acorta la pantalla percibida sin quitar un
-        solo campo, y es lo que hace que un formulario parezca una ficha y no un cuestionario.
+        Dos bloques: «como te contacto» y «como entro». Quien eres lo dice el carnet, en la fase 2.
       */}
-      <FormSection icon="perfil" title="Quién eres">
-        <IconField
-          label="Nombre"
-          icon="perfil"
-          value={form.firstName}
-          onChangeText={(v) => setForm({ ...form, firstName: v })}
-          autoComplete="given-name"
-          textContentType="givenName"
-          placeholder="Valeria"
-          ayuda="Tu nombre tal como figura en tu carnet de identidad, sin apodos. Tiene que coincidir con el documento que vas a fotografiar más adelante: si no coincide, la verificación se detiene y la revisa una persona."
-          required
-          error={form.firstName ? errors.firstName : null}
-        />
-        <IconField
-          label="Apellido"
-          icon="perfil"
-          value={form.lastName}
-          onChangeText={(v) => setForm({ ...form, lastName: v })}
-          autoComplete="family-name"
-          textContentType="familyName"
-          placeholder="Mendez"
-          ayuda="Tus dos apellidos como están en el carnet, incluido el de casada si aparece ahí. Es lo que se compara con el documento al verificar tu identidad."
-          required
-          error={form.lastName ? errors.lastName : null}
-        />
-        <DateField
-          label="Fecha de nacimiento"
-          value={form.birthDate}
-          onChange={(iso) => setForm({ ...form, birthDate: iso })}
-          minimumDate={earliestBirth}
-          maximumDate={latestBirth}
-          initialDate={latestBirth}
-          hint={`Debes tener al menos ${MIN_AGE} años.`}
-          ayuda={`El día que naciste, el mismo que figura en tu carnet. Con menos de ${MIN_AGE} años no se puede firmar un crédito en Bolivia, y la edad también entra en el cálculo de cuánto puedes pagar cómodamente.`}
-          required
-          error={form.birthDate ? errors.birthDate : null}
-        />
-      </FormSection>
-
       <FormSection icon="ubicacion" title="Cómo te contactamos">
         <PhoneField
+          bitacora="telefono"
           label="Teléfono"
           value={form.phone}
           onChangeText={(v) => setForm({ ...form, phone: v })}
@@ -277,6 +195,7 @@ export default function Register() {
           error={form.phone ? errors.phone : null}
         />
         <IconField
+          bitacora="correo"
           label="Correo electrónico"
           icon="sobre"
           value={form.email}
@@ -303,6 +222,7 @@ export default function Register() {
           intentos fallidos y la lista de PIN prohibidos que valida el servidor.
         */}
         <PinField
+          bitacora="pin"
           label="Tu PIN"
           value={form.password}
           onChangeText={(v) => setForm({ ...form, password: v })}

@@ -13,7 +13,11 @@ export type OnboardingSectionCode =
   | 'financial_profile'
   | 'address'
   | 'identity_documents'
-  | 'reference_contacts';
+  | 'reference_contacts'
+  // Las dos secciones nuevas de las cuatro fases (2026-09-18): los permisos del telefono se
+  // cierran con una decision —tambien «no»— y la encuesta de habitos con sus seis preguntas.
+  | 'device_permissions'
+  | 'consumer_survey';
 
 export type OnboardingSection = {
   code: OnboardingSectionCode;
@@ -237,14 +241,77 @@ export type UploadTicket = {
  * El cliente declara QUE va a subir; el servidor decide DONDE. `storageKey` no se envia: mientras
  * lo eligiera el cliente, la ruta del objeto era una decision suya y no del sistema que la custodia.
  */
+export type UploadDocumentType =
+  | 'identity_front'
+  | 'identity_back'
+  | 'selfie'
+  | 'proof_of_address'
+  | 'bank_statement'
+  | 'bank_qr_proof'
+  | 'occupation_audio'
+  | 'other';
+
 export const createUploadUrl = (
   customerId: string,
   body: {
-    documentType: 'identity_front' | 'identity_back' | 'selfie' | 'proof_of_address' | 'other';
+    documentType: UploadDocumentType;
     contentType: string;
     sizeBytes: number;
   },
 ) => request<UploadTicket>(`/customer-onboarding/${customerId}/documents/upload-url`, { method: 'POST', body });
+
+/**
+ * Las evidencias de apoyo de la fase 3, fuera de cualquier paquete: el QR de cobro sin monto (prueba
+ * de acceso bancario), la factura o preaviso de un servicio (prueba de domicilio) y el audio corto
+ * de ocupacion. Ninguna decide sola; las tres van a revision humana. Con el QR no se cobra nada.
+ */
+export type SupportingEvidenceType = 'bank_qr_proof' | 'proof_of_address' | 'occupation_audio';
+
+export const registerSupportingEvidence = (
+  customerId: string,
+  body: {
+    evidenceType: SupportingEvidenceType;
+    storageKey: string;
+    mimeType: string;
+    sha256Hash: string;
+    fileSizeBytes?: string;
+    note?: string;
+  },
+) =>
+  request<{ evidenceId: string; evidenceType: string; status: 'pending_review'; uploadedAt: string }>(
+    `/customer-onboarding/${customerId}/supporting-evidence`,
+    { method: 'POST', body },
+  );
+
+/* ------------------------------------------------------------- encuesta de habitos */
+
+export type PreguntaDeHabitos = {
+  code: string;
+  prompt: string;
+  type: 'opcion' | 'monto';
+  options?: { code: string; label: string }[];
+  min?: number;
+  max?: number;
+};
+
+export type CatalogoDeHabitos = { surveyVersion: string; questions: PreguntaDeHabitos[] };
+
+export type EstadoDeHabitos = {
+  surveyVersion: string;
+  answered: { questionCode: string; answerCode: string | null; answerValue: number | null; answeredInMs: number; answeredAt: string }[];
+  missing: string[];
+  complete: boolean;
+  answeredWithoutReading: string[];
+};
+
+export type RespuestaDeHabitos = { questionCode: string; answerCode?: string; answerValue?: number; answeredInMs: number };
+
+export const getConsumerSurveyCatalog = () => request<CatalogoDeHabitos>('/customer-onboarding/consumer-survey/catalog');
+
+export const getConsumerSurvey = (customerId: string) => request<EstadoDeHabitos>(`/customer-onboarding/${customerId}/consumer-survey`);
+
+export const saveConsumerSurvey = (customerId: string, body: { surveyVersion: string; answers: RespuestaDeHabitos[] }) =>
+  request<EstadoDeHabitos>(`/customer-onboarding/${customerId}/consumer-survey`, { method: 'PUT', body });
 
 export type IdentityEvidence = {
   evidenceType: 'identity_front' | 'identity_back' | 'selfie' | 'proof_of_address' | 'other';

@@ -19,6 +19,9 @@ import { StepHeader } from '../../src/ui/step-header';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 import { TRUST_ECONOMIA } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
+import { bitacora } from '../../src/features/bitacora';
+import { AdjuntoDeApoyo } from '../../src/ui/adjunto-de-apoyo';
+import { GrabadorDeOcupacion } from '../../src/ui/grabador-de-ocupacion';
 
 /*
  * Los dos catálogos los cierra el SERVIDOR (`customer-eligibility.constants.ts`), y hay que
@@ -90,7 +93,7 @@ export default function FinancialProfile() {
     setBusy(true);
     setError(null);
     try {
-      await onboardingApi.updateFinancialProfile(session.customerId, {
+      await bitacora.medirEnvio(() => onboardingApi.updateFinancialProfile(session.customerId!, {
         employmentStatus: employmentStatus ?? undefined,
         employerName: employerName.trim() || undefined,
         employmentSeniorityMonths:
@@ -100,7 +103,7 @@ export default function FinancialProfile() {
         monthlyExpensesDeclared: toNumber(expenses),
         economicActivityCode: activity.trim(),
         sourceOfFunds: sourceOfFunds ?? undefined,
-      });
+      }));
       await session.refresh();
       router.replace('/(onboarding)/progreso');
     } catch (caught) {
@@ -240,6 +243,31 @@ export default function FinancialProfile() {
         Declarar información falsa puede anular tu línea de crédito.
       </AtlasText>
       {/* Al final del formulario: ver `ui/trust-card.tsx`. */}
+      {/*
+        Lo que MEJORA el monto, sin ser obligatorio. Copiado de quien lo hacia bien: el extracto
+        encuadrado como «mejora tu monto aprobado», el QR de cobro sin monto como prueba de que hay
+        una cuenta bancaria activa, y un audio corto para explicar a que te dedicas con tu voz.
+      */}
+      <Gap size="sm" />
+      <AtlasText variant="title">Mejora tu monto (opcional)</AtlasText>
+      <AtlasText variant="caption" tone="secondary">
+        Nada de esto es obligatorio. Cada cosa que añadas la revisa una persona y cuenta a tu favor.
+      </AtlasText>
+      {session.customerId ? (
+        <>
+          <AdjuntoDeApoyo
+            customerId={session.customerId}
+            kind="bank_qr_proof"
+            titulo="QR de cobro de tu banca"
+            detalle="Un QR de cobro SIN monto, generado desde tu app bancaria. No se hará ningún cobro ni depósito: sólo prueba que tienes una cuenta activa."
+            bitacora="subir_qr"
+            origen="imagen"
+          />
+          <GrabadorDeOcupacion customerId={session.customerId} />
+          <Button label="Subir mi extracto bancario (3 meses)" bitacora="subir_extracto" variant="secondary" onPress={() => router.push('/(app)/extracto-bancario')} />
+        </>
+      ) : null}
+      <Gap size="sm" />
       <TrustCard items={TRUST_ECONOMIA} />
     </Screen>
   );

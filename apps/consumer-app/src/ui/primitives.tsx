@@ -30,6 +30,7 @@ import { color, palette, press, radius, shadow, space, spring, stroke, touch, ty
 import { Icon, type IconName } from './icons';
 import { AnimatedPressable, PressSurface } from './motion';
 import { webData } from '../web/estilo';
+import { medirToque, useDisposicion } from '../features/bitacora/ganchos';
 
 /* ------------------------------------------------------------------ texto */
 
@@ -147,10 +148,16 @@ export function Button({
   haptic = 'light',
   icon,
   blockedReason,
+  bitacora,
   style,
   ...rest
 }: Omit<PressableProps, 'style'> & {
   label: string;
+  /**
+   * Codigo del control en la bitacora del alta (`features/bitacora/tipos.ts`). Sin el, el boton no
+   * anota nada: solo los botones del alta llevan codigo, y lo llevan a proposito.
+   */
+  bitacora?: string;
   variant?: ButtonVariant;
   loading?: boolean;
   haptic?: 'none' | 'light' | 'success' | 'warning';
@@ -167,6 +174,7 @@ export function Button({
   style?: ViewStyle;
 }) {
   const isBlocked = disabled || loading;
+  const disposicion = useDisposicion();
 
   // Un doble toque en una accion financiera no puede producir dos operaciones. La clave de
   // idempotencia del cliente cubre el servidor; esto cubre la interfaz.
@@ -227,8 +235,14 @@ export function Button({
       accessibilityState={{ disabled: isBlocked, busy: loading }}
       disabled={isBlocked}
       onPress={handlePress}
+      onLayout={(event) => {
+        disposicion.onLayout(event);
+        rest.onLayout?.(event);
+      }}
       onPressIn={(event) => {
         setPressed(true);
+        // El toque se anota aunque el boton este bloqueado: tocar un boton apagado es informacion.
+        medirToque(bitacora, event, disposicion.actual);
         rest.onPressIn?.(event);
       }}
       onPressOut={(event) => {

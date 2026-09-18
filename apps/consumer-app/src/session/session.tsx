@@ -15,6 +15,7 @@ import { permisosDecididos, type PermissionReport } from '../device/permissions'
 import type { ContextoDeRastreo } from '../device/tracking-context';
 import { activarSeñalesDelDispositivo, desactivarSeñalesDelDispositivo } from './device-signals';
 import { profileStorage, secureTokenStore, type StoredProfile } from './token-storage';
+import { bitacora } from '../features/bitacora';
 import { useRastreoEnPrimerPlano } from './use-rastreo-primer-plano';
 
 export type SessionStatus = 'restoring' | 'anonymous' | 'authenticated';
@@ -30,12 +31,24 @@ export type SessionValue = {
   signIn(identifier: string, password: string): Promise<void>;
   register(input: RegisterInput): Promise<onboardingApi.StartOnboardingResponse>;
   signOut(): Promise<void>;
+  /**
+   * Vuelve a registrar los consentimientos y a encender las señales con la decision de permisos
+   * que la persona acaba de tomar. Lo llama la pantalla de permisos cuando se abre DENTRO del alta:
+   * sin esto, la decision solo llegaria al servidor en el siguiente inicio de sesion, y la seccion
+   * `device_permissions` seguiria pendiente.
+   */
+  reactivarSeñales(): Promise<void>;
 };
 
 export type RegisterInput = {
-  firstName: string;
-  lastName: string;
-  birthDate: string;
+  /*
+    Desde el 2026-09-18 el nombre y la fecha de nacimiento NO se piden al crear la cuenta: los lee
+    el carnet en la fase 2 y la persona los confirma. Siguen aceptandose por si una pantalla vieja
+    los manda.
+  */
+  firstName?: string;
+  lastName?: string;
+  birthDate?: string;
   phone: string;
   email: string;
   password: string;
@@ -123,6 +136,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     ]);
     if (statusResult.status === 'fulfilled') setOnboarding(statusResult.value);
     if (meResult.status === 'fulfilled') setMe(meResult.value);
+    return statusResult.status === 'fulfilled' ? statusResult.value : null;
   }, []);
 
   /*
@@ -168,6 +182,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       await enviarTelemetriaDePermisos(customerId, sessionId, deviceId, permisos);
 
       /*
+        La bitacora del alta ya puede vaciarse: ahora existen la sesion y el dispositivo a los que
+        el servidor exige atar cada lote. Lo anotado antes de este momento —desde «Crear mi cuenta»—
+        sale ahora con sus marcas de tiempo originales.
+      */
+      if (deviceId) bitacora.adjuntarSesion({ customerId, sessionId, deviceId });
+
+      /*
        * Y ahora las dos señales que la persona autorizo al arrancar: la agenda y la ubicacion.
        *
        * Va DESPUES de abrir la sesion de telemetria porque necesita su `deviceId` y su `sessionId`:
@@ -193,8 +214,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
     setProfile(stored);
     try {
-      await loadCustomerState(stored.customerId);
+      const estado = await loadCustomerState(stored.customerId);
       setStatus('authenticated');
+      /*
+        Quien vuelve con el alta a medias retoma su bitacora ANTES de que la sesion de telemetria la
+        vacie: lo guardado en disco sale con su linea de tiempo original, y lo que haga desde ahora
+        se anota a continuacion. Con la cuenta ya activa no hay nada que retomar.
+      */
+      if (estado && estado.lifecycleStatus !== 'active') await bitacora.arrancar('reanudado');
       /*
         Al RESTAURAR tambien se abre sesion de telemetria y se reactivan las señales.
         
@@ -274,6 +301,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     */
     setRastreo(null);
     await desactivarSeñalesDelDispositivo();
+    // Lo que quede de bitacora sale con el token todavia valido; despues se borra del disco.
+    await bitacora.cerrar().catch(() => undefined);
 
     const abierta = sesionTelemetria.current;
     const salienteId = profile?.customerId;
@@ -301,6 +330,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     await loadCustomerState(profile.customerId);
   }, [loadCustomerState, profile]);
 
+  const reactivarSeñales = useCallback(async () => {
+    const customerId = profile?.customerId;
+    const deviceId = dispositivoTelemetria.current;
+    const sessionId = sesionTelemetria.current;
+    if (!customerId || !deviceId) return;
+    try {
+      setRastreo({ customerId, deviceId, sessionId });
+      await activarSeñalesDelDispositivo({ customerId, deviceId, sessionId });
+    } catch {
+      // Igual que al abrir sesion: la evidencia se pierde, el alta no.
+    }
+  }, [profile?.customerId]);
+
   // El temporizador de primer plano vive aqui porque aqui esta el contexto y aqui se sabe si la
   // persona tiene sesion: montarlo en una pantalla lo apagaria al navegar a otra.
   useRastreoEnPrimerPlano(rastreo, status === 'authenticated' && rastreo !== null);
@@ -316,8 +358,9 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       signIn,
       register,
       signOut,
+      reactivarSeñales,
     }),
-    [me, onboarding, profile, refresh, register, signIn, signOut, status],
+    [me, onboarding, profile, reactivarSeñales, refresh, register, signIn, signOut, status],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

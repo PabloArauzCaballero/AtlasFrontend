@@ -21,6 +21,8 @@
  */
 import { useRef, useState } from 'react';
 import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { bitacora as bitacoraDelAlta, esCampo } from '../features/bitacora/bitacora';
+import { ganchosDeCampo } from '../features/bitacora/ganchos';
 import { color, inputChrome, radius, space } from '../theme/tokens';
 import { FieldFoot, FieldLabel } from './help-sheet';
 import { toqueWeb } from './hit-slop';
@@ -38,6 +40,7 @@ export function PinField({
   ayuda,
   autoFocus = false,
   onComplete,
+  bitacora,
 }: {
   label: string;
   value: string;
@@ -49,7 +52,10 @@ export function PinField({
   autoFocus?: boolean;
   /** Se dispara al completar los cuatro digitos: evita pedir un toque mas para nada. */
   onComplete?: (pin: string) => void;
+  /** Codigo en la bitacora del alta. De un PIN solo se anotan foco, desenfoque y «completo». */
+  bitacora?: string;
 }) {
+  const anotar = ganchosDeCampo(bitacora, () => value.length);
   const input = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -58,7 +64,10 @@ export function PinField({
     // Solo digitos: pegar «1 2-3 4» desde otra app tiene que funcionar igual que teclearlo.
     const digits = raw.replace(/\D/g, '').slice(0, PIN_LENGTH);
     onChangeText(digits);
-    if (digits.length === PIN_LENGTH) onComplete?.(digits);
+    if (digits.length === PIN_LENGTH) {
+      if (esCampo(bitacora)) bitacoraDelAlta.campoCompleto(bitacora);
+      onComplete?.(digits);
+    }
   };
 
   return (
@@ -145,8 +154,14 @@ export function PinField({
           caretHidden
           secureTextEntry={!visible && Platform.OS === 'ios'}
           textContentType="oneTimeCode"
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={() => {
+            setFocused(true);
+            anotar.onFocus();
+          }}
+          onBlur={() => {
+            setFocused(false);
+            anotar.onBlur();
+          }}
           style={styles.hiddenInput}
           accessibilityLabel={label}
         />

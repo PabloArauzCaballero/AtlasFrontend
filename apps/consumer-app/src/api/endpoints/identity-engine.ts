@@ -32,7 +32,16 @@ import { request } from '../client';
 
 export type IdentityVerificationState = 'PENDING' | 'VERIFIED' | 'REJECTED' | 'IN_REVIEW' | 'UNAVAILABLE';
 
+/** Un campo leido del carnet, con su procedencia. `MODEL` nunca llega: el servidor lo filtra. */
+export type CampoLeido = { value: string; confidence: number | null; source: string };
+
+export type LecturaDelDocumento = Partial<
+  Record<'documentNumber' | 'firstNames' | 'lastNames' | 'dateOfBirth' | 'expirationDate' | 'documentComplement', CampoLeido>
+>;
+
 export type IdentityVerificationView = {
+  /** Lo leido del documento para prellenar, o `null` si no hubo lectura utilizable. */
+  extracted?: LecturaDelDocumento | null;
   verificationId: string;
   status: IdentityVerificationState;
   reason: string | null;

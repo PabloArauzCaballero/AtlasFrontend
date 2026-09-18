@@ -31,6 +31,8 @@ import { Atmosfera } from '../src/web/Atmosfera';
 import { inyectarEstiloWeb } from '../src/web/estilo';
 import { BienvenidaHablada } from '../src/ui/welcome-voice';
 import { SessionProvider, useSession } from '../src/session/session';
+import '../src/features/bitacora';
+import { useBitacoraDeApp } from '../src/features/bitacora/ganchos';
 import { color } from '../src/theme/tokens';
 import { BrandCutProvider } from '../src/ui/brand-cut';
 import { TourProvider } from '../src/ui/tour';
@@ -84,6 +86,8 @@ function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
     sistema y cambiarla a Sora un instante despues, con el salto de todos los textos a la vista.
   */
   const listo = session.status !== 'restoring' && fontsReady;
+  // Segundo plano y vuelta, para la bitacora del alta: una sola suscripcion, aqui.
+  useBitacoraDeApp();
   // Tocar un aviso de campaña abre la pantalla que eligió operaciones; sólo con sesión, o el enlace rebota al ingreso.
   useAbrirAvisoTocado(session.status === 'authenticated');
 

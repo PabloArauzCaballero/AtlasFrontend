@@ -41,6 +41,7 @@ import * as identityEngine from '../../src/api/endpoints/identity-engine';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { ContentActionButton } from '../../src/ui/content';
+import { guardarLecturaDelCarnet } from '../../src/features/lectura-del-carnet';
 import { Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, ErrorState, Skeleton } from '../../src/ui/primitives';
 
@@ -180,9 +181,18 @@ export default function EstadoDeVerificacion() {
   const described = error ? describeError(error) : null;
   const motivo = vista?.reason ? MOTIVOS[vista.reason] : null;
 
+  /*
+    Lo leido del carnet se guarda al terminar el tramite, y el siguiente paso es CONFIRMARLO: por
+    eso se sale a «tus datos» y no al indice. Sin lectura se sale igual: la pantalla pide los datos
+    a mano.
+  */
+  useEffect(() => {
+    if (terminado) void guardarLecturaDelCarnet(vista?.extracted);
+  }, [terminado, vista?.extracted]);
+
   const seguir = () => {
     void session.refresh();
-    router.replace('/(onboarding)/progreso');
+    router.replace('/(onboarding)/perfil');
   };
 
   return (

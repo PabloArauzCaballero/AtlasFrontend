@@ -1,5 +1,10 @@
 /**
- * Verificacion del telefono.
+ * Verificacion del telefono, y despues del correo.
+ *
+ * Desde el 2026-09-18 son DOS rondas en la misma pantalla: primero el telefono (WhatsApp o SMS),
+ * que es obligatorio —es por donde se cobra y se avisa—, y despues el correo, que se verifica pero
+ * NO bloquea el avance: un correo mal tecleado no puede tumbar un alta, y «Verificar despues» esta
+ * a la vista. Si el servidor no tiene ningun canal de telefono encendido, se empieza por el correo.
  *
  * El codigo lo genera y entrega el servidor. Si el canal no esta disponible en el entorno, la
  * pantalla lo dice tal cual y ofrece el otro canal: un codigo que nunca se envio y una pantalla que
@@ -19,6 +24,7 @@ import { IconField, SelectField } from '../../src/ui/form-controls';
 import { Gap, Screen, useScrollToError } from '../../src/ui/layout';
 import { StepHeader } from '../../src/ui/step-header';
 import { AtlasText, Button, Card, CardHeader, ErrorState, IconChip } from '../../src/ui/primitives';
+import { bitacora } from '../../src/features/bitacora';
 
 type Channel = 'sms' | 'whatsapp' | 'email';
 
@@ -134,8 +140,18 @@ export default function VerifyContact() {
 
     `useCanales` pregunta y esta pantalla usa lo que venga.
   */
-  const { opciones, unico, cargando } = useCanales();
-  const [channel, setChannel] = useState<Channel>('email');
+  const { opciones: todasLasOpciones, cargando } = useCanales();
+  /*
+    La ronda: telefono primero, correo despues. Se decide con el catalogo: si no hay ningun canal
+    de telefono encendido, la unica ronda posible es la del correo.
+  */
+  const hayTelefono = todasLasOpciones.some((o) => o.valor !== 'email');
+  const hayCorreo = todasLasOpciones.some((o) => o.valor === 'email');
+  const [ronda, setRonda] = useState<'telefono' | 'correo'>('telefono');
+  const rondaEfectiva: 'telefono' | 'correo' = ronda === 'telefono' && !hayTelefono && hayCorreo ? 'correo' : ronda;
+  const opciones = todasLasOpciones.filter((o) => (rondaEfectiva === 'correo' ? o.valor === 'email' : o.valor !== 'email'));
+  const unico = opciones.length === 1 && opciones[0] ? opciones[0].etiqueta.toLowerCase() : null;
+  const [channel, setChannel] = useState<Channel>('whatsapp');
 
   /*
     Al llegar el catalogo, si el canal elegido no esta entre los que el servidor puede entregar, se
@@ -144,13 +160,29 @@ export default function VerifyContact() {
   */
   useEffect(() => {
     setChannel((actual) => canalElegido(actual, opciones));
-  }, [opciones]);
+    // `opciones` se recalcula en cada render; lo que cambia de verdad es el catalogo o la ronda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todasLasOpciones, rondaEfectiva]);
   const [sent, setSent] = useState<{ expiresAt: string; deliveryStatus: string } | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
   const contactType: 'phone' | 'email' = channel === 'email' ? 'email' : 'phone';
+
+  /** Al terminar la ronda del telefono se pasa a la del correo; al terminar la del correo, al indice. */
+  const terminarRonda = async () => {
+    await session.refresh();
+    if (rondaEfectiva === 'telefono' && hayCorreo) {
+      setRonda('correo');
+      setChannel('email');
+      setSent(null);
+      setCode('');
+      setError(null);
+      return;
+    }
+    router.replace('/(onboarding)/progreso');
+  };
 
   const sendCode = async () => {
     if (!customerId) return;
@@ -160,10 +192,12 @@ export default function VerifyContact() {
     // «Confirmar» gaste un intento con el codigo que acaba de quedar invalidado.
     setCode('');
     try {
-      const result = await onboardingApi.requestContactVerification(customerId, {
-        contactType,
-        verificationChannel: channel,
-      });
+      const result = await bitacora.medirEnvio(() =>
+        onboardingApi.requestContactVerification(customerId, {
+          contactType,
+          verificationChannel: channel,
+        }),
+      );
       setSent({ expiresAt: result.expiresAt, deliveryStatus: result.deliveryStatus });
     } catch (caught) {
       setError(caught);
@@ -177,13 +211,14 @@ export default function VerifyContact() {
     setBusy(true);
     setError(null);
     try {
-      await onboardingApi.submitContactVerification(customerId, {
-        contactType,
-        verificationChannel: channel,
-        verificationCode: code,
-      });
-      await session.refresh();
-      router.replace('/(onboarding)/progreso');
+      await bitacora.medirEnvio(() =>
+        onboardingApi.submitContactVerification(customerId, {
+          contactType,
+          verificationChannel: channel,
+          verificationCode: code,
+        }),
+      );
+      await terminarRonda();
     } catch (caught) {
       setError(caught);
     } finally {
@@ -228,7 +263,7 @@ export default function VerifyContact() {
           */
           vencido ? (
             <>
-              <Button label="Enviarme otro código" onPress={sendCode} loading={busy} disabled={busy} />
+              <Button label="Enviarme otro código" bitacora="enviar_codigo" onPress={sendCode} loading={busy} disabled={busy} />
               <Button
                 label="Confirmar código"
                 variant="ghost"
@@ -241,21 +276,48 @@ export default function VerifyContact() {
             <>
               <Button
                 label="Confirmar código"
+                bitacora="confirmar_codigo"
                 onPress={confirmCode}
                 loading={busy}
                 disabled={code.length < 4 || busy}
                 blockedReason={firstBlocker([[code.length >= 4, 'Escribe el código que recibiste.']])}
                 haptic="success"
               />
-              <Button label="Enviar otro código" variant="ghost" onPress={sendCode} disabled={busy} />
+              <Button label="Enviar otro código" bitacora="enviar_codigo" variant="ghost" onPress={sendCode} disabled={busy} />
             </>
           )
         ) : (
-          <Button label="Enviarme el código" onPress={sendCode} loading={busy || cargando} disabled={busy || cargando} />
+          <>
+            <Button label="Enviarme el código" bitacora="enviar_codigo" onPress={sendCode} loading={busy || cargando} disabled={busy || cargando} />
+            {/*
+              El correo no bloquea: quien no lo tiene a mano sigue con el alta y lo verifica despues
+              desde su perfil. El telefono si bloquea, y por eso este boton solo existe en su ronda.
+            */}
+            {rondaEfectiva === 'correo' ? (
+              <Button
+                label="Verificar mi correo después"
+                bitacora="verificar_despues"
+                variant="ghost"
+                onPress={() => {
+                  void session.refresh();
+                  router.replace('/(onboarding)/progreso');
+                }}
+                disabled={busy}
+              />
+            ) : null}
+          </>
         )
       }
     >
-      <StepHeader code="contact_verification" title="Verifica tu contacto" subtitle="Confirmamos que el número o correo es tuyo." />
+      <StepHeader
+        code="contact_verification"
+        title={rondaEfectiva === 'correo' ? 'Ahora tu correo' : 'Verifica tu teléfono'}
+        subtitle={
+          rondaEfectiva === 'correo'
+            ? 'Te enviamos un código a tu correo. Puedes hacerlo después: no detiene tu registro.'
+            : 'Te enviamos un código por WhatsApp o SMS para confirmar que el número es tuyo.'
+        }
+      />
 
       {described ? (
         <ErrorState
@@ -335,7 +397,7 @@ export default function VerifyContact() {
             </Card>
           )}
 
-          <IconField icon="escudo"
+          <IconField icon="escudo" bitacora="codigo_verificacion"
             label="Código recibido"
             value={code}
             onChangeText={(next) => setCode(next.replace(/\D/g, '').slice(0, 8))}

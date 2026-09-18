@@ -21,6 +21,8 @@ import { Screen, useScrollToError } from '../../src/ui/layout';
 import { StepHeader } from '../../src/ui/step-header';
 import { AtlasText, Badge, Button, Card, CardHeader, ErrorState } from '../../src/ui/primitives';
 import { MapaPunto } from '../../src/ui/mapa-punto';
+import { AdjuntoDeApoyo } from '../../src/ui/adjunto-de-apoyo';
+import { bitacora } from '../../src/features/bitacora';
 import { TRUST_DOMICILIO } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
 
@@ -101,7 +103,7 @@ export default function Address() {
     setBusy(true);
     setError(null);
     try {
-      await onboardingApi.saveAddressPackage(session.customerId, {
+      await bitacora.medirEnvio(() => onboardingApi.saveAddressPackage(session.customerId!, {
         address: {
           countryCode: 'BOL',
           // Al backend van los nombres, que es lo que su contrato acepta hoy; lo que se ha ganado es
@@ -112,7 +114,7 @@ export default function Address() {
           addressLine: addressLine.trim() || undefined,
         },
         gpsObservation: gps ?? undefined,
-      });
+      }));
       await session.refresh();
       router.replace('/(onboarding)/progreso');
     } catch (caught) {
@@ -273,6 +275,16 @@ export default function Address() {
       </Card>
       {/* Al final del formulario: ver `ui/trust-card.tsx`. */}
       <TrustCard items={TRUST_DOMICILIO} />
+      {session.customerId ? (
+        <AdjuntoDeApoyo
+          customerId={session.customerId}
+          kind="proof_of_address"
+          titulo="Factura o preaviso de un servicio (opcional)"
+          detalle="Luz, agua o gas a tu nombre o al de tu casa, de los últimos dos meses. Si no tienes, un comprobante de pago reciente. Sirve como prueba de domicilio."
+          bitacora="subir_factura"
+          origen="documento"
+        />
+      ) : null}
     </Screen>
   );
 }

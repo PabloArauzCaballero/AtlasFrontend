@@ -33,6 +33,8 @@ import * as contentApi from '../../src/api/endpoints/app-content';
 import { pedirPermisoDeContactos } from '../../src/device/permissions';
 import { pedirPermisoDeSegundoPlano, pedirPermisoDeUbicacion } from '../../src/device/location';
 import { guardarDecisionDeArranque } from '../../src/session/permisos-de-arranque';
+import { useSession } from '../../src/session/session';
+import { bitacora } from '../../src/features/bitacora';
 import { space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { type IconName } from '../../src/ui/icons';
@@ -124,6 +126,7 @@ function aplicar(pieza: PiezaDePermiso, entrada: contentApi.ContentEntry | undef
 
 export default function Permisos() {
   const router = useRouter();
+  const session = useSession();
   const [pidiendo, setPidiendo] = useState(false);
   /*
     El segundo paso: ofrecer el «siempre» APARTE, y solo a quien concedio la ubicacion.
@@ -211,8 +214,12 @@ export default function Permisos() {
     try {
       const ubicacion = await pedirPermisoDeUbicacion();
       const contactos = await pedirPermisoDeContactos();
+      bitacora.permiso('ubicacion', ubicacion ? 'concedido' : 'denegado');
+      bitacora.permiso('contactos', contactos ? 'concedido' : 'denegado');
       await guardarDecisionDeArranque({ ubicacion, ubicacionSiempre: false, contactos });
       setConcedido({ ubicacion, contactos });
+      // Dentro del alta hay sesion: la decision viaja al servidor AHORA, no en el proximo inicio.
+      if (session.status === 'authenticated') await session.reactivarSeñales();
       if (ubicacion) {
         setPaso('siempre');
         return;
@@ -234,7 +241,9 @@ export default function Permisos() {
     setPidiendo(true);
     try {
       const siempre = await pedirPermisoDeSegundoPlano();
+      bitacora.permiso('ubicacion_siempre', siempre ? 'concedido' : 'denegado');
       await guardarDecisionDeArranque({ ...concedido, ubicacionSiempre: siempre });
+      if (session.status === 'authenticated') await session.reactivarSeñales();
     } finally {
       setPidiendo(false);
       salir();
@@ -253,7 +262,11 @@ export default function Permisos() {
   }
 
   async function ahoraNo() {
+    bitacora.permiso('ubicacion', 'omitido');
+    bitacora.permiso('contactos', 'omitido');
     await guardarDecisionDeArranque({ ubicacion: false, ubicacionSiempre: false, contactos: false });
+    // La negativa tambien se registra como consentimiento `declined`: es lo que cierra la seccion.
+    if (session.status === 'authenticated') await session.reactivarSeñales();
     salir();
   }
 
@@ -309,8 +322,8 @@ export default function Permisos() {
     <Screen
       footer={
         <View style={{ gap: space.sm }}>
-          <Button label="Permitir" onPress={() => void aceptar()} loading={pidiendo} />
-          <Button label="Ahora no" variant="ghost" onPress={() => void ahoraNo()} disabled={pidiendo} />
+          <Button label="Permitir" bitacora="permitir" onPress={() => void aceptar()} loading={pidiendo} />
+          <Button label="Ahora no" bitacora="ahora_no" variant="ghost" onPress={() => void ahoraNo()} disabled={pidiendo} />
         </View>
       }
     >

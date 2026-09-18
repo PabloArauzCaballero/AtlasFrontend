@@ -17,7 +17,7 @@ import * as identityEngine from '../../src/api/endpoints/identity-engine';
 import { describeError } from '../../src/api/errors';
 import { CARNET_DE_PRUEBA, capturaSimulada, estaDisponible as hayCamaraDePrueba } from '../../src/device/camara-de-prueba';
 import { hashSensitiveText } from '../../src/device/device';
-import { leerBase64, uploadEvidence, type EvidenceKind, type PreparedEvidence } from '../../src/features/evidence-upload';
+import { leerBase64, uploadEvidence, type IdentityEvidenceKind as EvidenceKind, type PreparedEvidence } from '../../src/features/evidence-upload';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { DateField, IconField, SelectField } from '../../src/ui/form-controls';
@@ -29,6 +29,8 @@ import { ImageSlides, type ImageSlide } from '../../src/ui/image-slides';
 import { StepHeader } from '../../src/ui/step-header';
 import { TRUST_IDENTIDAD } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
+import { bitacora } from '../../src/features/bitacora';
+import type { Captura } from '../../src/features/bitacora/tipos';
 
 const STEPS: { kind: EvidenceKind; title: string; hint: string; facing: 'back' | 'front' }[] = [
   { kind: 'identity_front', title: 'Anverso del carnet', hint: 'Que se lea el número y tu nombre.', facing: 'back' },
@@ -37,6 +39,9 @@ const STEPS: { kind: EvidenceKind; title: string; hint: string; facing: 'back' |
 ];
 
 const isIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+/** Que captura es cada evidencia, para la bitacora del alta. */
+const CAPTURA_DE: Record<EvidenceKind, Captura> = { identity_front: 'carnet_frente', identity_back: 'carnet_reverso', selfie: 'selfie' };
 
 /** Un carnet vigente vence, como mínimo, mañana. El calendario lo impide por construcción. */
 const manana = (() => {
@@ -92,6 +97,7 @@ export default function Identity() {
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
       if (!photo?.uri) throw new Error('CAPTURE_FAILED');
+      bitacora.captura(CAPTURA_DE[activeStep.kind], evidence[activeStep.kind] ? 'repite' : 'toma');
       const prepared = await uploadEvidence({ customerId: session.customerId, kind: activeStep.kind, localUri: photo.uri });
       setEvidence((current) => ({ ...current, [activeStep.kind]: prepared }));
       setCapturing(null);
@@ -189,10 +195,11 @@ export default function Identity() {
     setError(null);
     try {
       const number = documentNumber.trim();
-      await onboardingApi.submitIdentityPackage(session.customerId, {
+      const documentNumberHash = await hashSensitiveText(number);
+      await bitacora.medirEnvio(() => onboardingApi.submitIdentityPackage(session.customerId!, {
         identity: {
           documentType: 'ci',
-          documentNumberHash: await hashSensitiveText(number),
+          documentNumberHash,
           documentNumber: number,
           documentLast4: number.slice(-4),
           countryCode: 'BOL',
@@ -204,12 +211,13 @@ export default function Identity() {
           return {
             evidenceType: step.kind,
             storageKey: prepared.storageKey,
-            mimeType: prepared.mimeType,
+            // Las capturas del carnet son siempre fotos; el tipo ancho es de las evidencias de apoyo.
+            mimeType: prepared.mimeType as onboardingApi.IdentityEvidence['mimeType'],
             sha256Hash: prepared.sha256Hash,
             fileSizeBytes: String(prepared.sizeBytes),
           };
         }),
-      });
+      }));
 
       // El expediente ya esta guardado: ahora la pregunta. En este orden porque el registro no
       // puede depender de que el motor conteste.
@@ -247,7 +255,7 @@ export default function Identity() {
   if (activeStep) {
     if (!permission?.granted) {
       return (
-        <Screen scrollRef={scroll} footer={<Button label="Permitir cámara" onPress={() => void requestPermission()} />}>
+        <Screen scrollRef={scroll} footer={<Button label="Permitir cámara" bitacora="permitir" onPress={() => void requestPermission()} />}>
           <ScreenHeader title="Necesitamos tu cámara" subtitle="Solo se usa para fotografiar tu documento." onBack={() => setCapturing(null)} />
           <Card>
             <AtlasText variant="body" tone="secondary">
@@ -273,12 +281,20 @@ export default function Identity() {
         animate={false}
         footer={
           <>
-            <Button label="Tomar foto" onPress={capture} loading={busy} disabled={busy} />
+            <Button label="Tomar foto" bitacora="tomar_foto" onPress={capture} loading={busy} disabled={busy} />
             {/* El simulador no tiene camara: sin esto, el paso de identidad no se puede recorrer. */}
             {hayCamaraDePrueba() ? (
-              <Button label="Usar el carnet de prueba" variant="secondary" onPress={usarCarnetDePrueba} disabled={busy} />
+              <Button label="Usar el carnet de prueba" bitacora="usar_carnet_de_prueba" variant="secondary" onPress={usarCarnetDePrueba} disabled={busy} />
             ) : null}
-            <Button label="Cancelar" variant="ghost" onPress={() => setCapturing(null)} />
+            <Button
+              label="Cancelar"
+              bitacora="cancelar"
+              variant="ghost"
+              onPress={() => {
+                bitacora.captura(CAPTURA_DE[activeStep.kind], 'cancela');
+                setCapturing(null);
+              }}
+            />
           </>
         }
       >
@@ -315,7 +331,10 @@ export default function Identity() {
         ? `${(captured.sizeBytes / 1024).toFixed(0)} KB · SHA-256 ${captured.sha256Hash.slice(0, 12)}…`
         : null,
       done: Boolean(captured),
-      onPress: () => setCapturing(step.kind),
+      onPress: () => {
+        bitacora.captura(CAPTURA_DE[step.kind], 'abre');
+        setCapturing(step.kind);
+      },
       actionLabel: captured ? 'Repetir' : 'Tomar foto',
     };
   });
@@ -325,6 +344,7 @@ export default function Identity() {
     <Screen
       footer={
         <Button
+          bitacora="continuar"
           label="Enviar documento"
           onPress={submit}
           loading={busy}
@@ -357,7 +377,7 @@ export default function Identity() {
             trailing={<Badge label="prueba" tone="warning" />}
             divider={false}
           />
-          <Button label="Rellenar con el carnet de prueba" variant="secondary" onPress={usarCarnetDePrueba} disabled={busy} />
+          <Button label="Rellenar con el carnet de prueba" bitacora="usar_carnet_de_prueba" variant="secondary" onPress={usarCarnetDePrueba} disabled={busy} />
         </Card>
       ) : null}
 
@@ -379,7 +399,7 @@ export default function Identity() {
         <ImageSlides slides={slides} />
       </Card>
 
-      <IconField icon="documento"
+      <IconField icon="documento" bitacora="documento_numero"
         label="Número de carnet"
         value={documentNumber}
         onChangeText={setDocumentNumber}

@@ -15,6 +15,8 @@ export type OnboardingRoute =
   | '/(onboarding)/domicilio'
   | '/(onboarding)/identidad'
   | '/(onboarding)/referencias'
+  | '/(onboarding)/permisos'
+  | '/(onboarding)/habitos'
   | '/(onboarding)/revision';
 
 export const SECTION_ROUTE: Record<OnboardingSectionCode, OnboardingRoute> = {
@@ -24,6 +26,8 @@ export const SECTION_ROUTE: Record<OnboardingSectionCode, OnboardingRoute> = {
   address: '/(onboarding)/domicilio',
   identity_documents: '/(onboarding)/identidad',
   reference_contacts: '/(onboarding)/referencias',
+  device_permissions: '/(onboarding)/permisos',
+  consumer_survey: '/(onboarding)/habitos',
 };
 
 /**
@@ -38,14 +42,36 @@ export const SECTION_ROUTE: Record<OnboardingSectionCode, OnboardingRoute> = {
  * de paso no da forma de estimar cuanto falta, y lo que la gente hace cuando no sabe cuanto falta
  * es abandonarlo.
  */
+/*
+ * Las CUATRO FASES del alta (2026-09-18), en el mismo orden que `ONBOARDING_SECTION_CODES` del
+ * servidor: contacto → identidad (el carnet ANTES que los datos personales) → situacion (domicilio,
+ * economia, referencias y los permisos del telefono) → habitos. `onboarding-map.test.ts` comprueba
+ * que este orden y el del backend son el mismo.
+ */
 export const SECTION_ORDER: OnboardingSectionCode[] = [
   'contact_verification',
-  'personal_data',
   'identity_documents',
+  'personal_data',
   'address',
   'financial_profile',
   'reference_contacts',
+  'device_permissions',
+  'consumer_survey',
 ];
+
+/** A que fase pertenece cada seccion. Es lo que numera «Fase 2 de 4» en la cabecera de cada paso. */
+export type FaseDelAlta = 1 | 2 | 3 | 4;
+export const FASE_DE_SECCION: Record<OnboardingSectionCode, FaseDelAlta> = {
+  contact_verification: 1,
+  identity_documents: 2,
+  personal_data: 2,
+  address: 3,
+  financial_profile: 3,
+  reference_contacts: 3,
+  device_permissions: 3,
+  consumer_survey: 4,
+};
+export const NOMBRE_DE_FASE: Record<FaseDelAlta, string> = { 1: 'Contacto', 2: 'Identidad', 3: 'Tu situación', 4: 'Tus hábitos' };
 
 /** En que posicion (1-based) va una seccion, y cuantas hay. */
 export function stepPosition(code: OnboardingSectionCode): { step: number; total: number } {
@@ -68,6 +94,8 @@ export const SECTION_LABEL: Record<OnboardingSectionCode, { title: string; detai
   address: { title: 'Tu domicilio', detail: 'Dónde vives actualmente.', icon: 'hogar' },
   identity_documents: { title: 'Tu documento de identidad', detail: 'Foto del carnet por ambos lados y una selfie.', icon: 'documento' },
   reference_contacts: { title: 'Tus referencias', detail: 'Dos personas que puedan dar referencia de ti.', icon: 'telefono' },
+  device_permissions: { title: 'Permisos del teléfono', detail: 'Ubicación y contactos: decides tú, y puedes decir que no.', icon: 'ubicacion' },
+  consumer_survey: { title: 'Tus hábitos', detail: 'Seis preguntas cortas sobre cómo manejas tu dinero.', icon: 'billetera' },
 };
 
 /** `nextStep` del servidor -> ruta. `awaiting_review` no es una seccion: es el estado de espera. */
@@ -92,6 +120,8 @@ const BLOCKER_COPY: Record<string, { title: string; detail: string; actionable: 
   REFERENCES_INSUFFICIENT: { title: 'Faltan referencias', detail: 'Necesitamos dos contactos de referencia.', actionable: true },
   IDENTITY_DOCUMENT_MISSING: { title: 'Falta tu documento', detail: 'Sube tu carnet de identidad.', actionable: true },
   IDENTITY_NOT_VERIFIED: { title: 'Documento en verificación', detail: 'Estamos validando tu identidad.', actionable: false },
+  CONSUMER_SURVEY_INCOMPLETE: { title: 'Faltan tus hábitos', detail: 'Contesta las seis preguntas.', actionable: true },
+  DEVICE_PERMISSIONS_UNDECIDED: { title: 'Falta decidir los permisos', detail: 'Ubicación y contactos: puedes decir que no.', actionable: true },
   EVIDENCE_PENDING_REVIEW: { title: 'Documentos en revisión', detail: 'Un analista está revisando lo que enviaste.', actionable: false },
   RISK_NOT_APPROVED: { title: 'Evaluación en curso', detail: 'Estamos evaluando tu solicitud.', actionable: false },
 };

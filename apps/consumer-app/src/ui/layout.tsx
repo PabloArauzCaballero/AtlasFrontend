@@ -23,6 +23,7 @@ import { Icon, type IconName } from './icons';
 import { Appear, PressSurface } from './motion';
 import { AtlasText, Overline } from './primitives';
 import { webData } from '../web/estilo';
+import { useBitacoraDePantalla } from '../features/bitacora/ganchos';
 
 /**
  * Que composicion de escritorio le toca a una ruta (ver `estilo.ts`, «rejilla»).
@@ -83,6 +84,8 @@ export function Screen({
 }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
+  // Entra/sale de la pantalla en la bitacora del alta. Solo anota si la ruta esta en su lista blanca.
+  useBitacoraDePantalla(pathname);
   /*
     El area segura de ARRIBA, que faltaba.
 

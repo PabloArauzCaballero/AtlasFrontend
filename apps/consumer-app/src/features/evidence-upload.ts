@@ -16,10 +16,13 @@ import * as onboardingApi from '../api/endpoints/onboarding';
 import { AtlasApiError } from '../api/errors';
 import { fetchRepetible } from '../api/reintentos';
 
-export type EvidenceKind = 'identity_front' | 'identity_back' | 'selfie';
+/** Las tres capturas del paquete de identidad. */
+export type IdentityEvidenceKind = 'identity_front' | 'identity_back' | 'selfie';
 
-/** Los unicos formatos que el backend verifica por firma para una evidencia fotografica. */
-export type EvidenceMimeType = 'image/jpeg' | 'image/png';
+export type EvidenceKind = IdentityEvidenceKind | 'bank_qr_proof' | 'proof_of_address' | 'occupation_audio';
+
+/** Los formatos que el backend verifica por firma: fotos, PDF (factura) y m4a (audio de ocupacion). */
+export type EvidenceMimeType = 'image/jpeg' | 'image/png' | 'application/pdf' | 'audio/mp4';
 
 export type PreparedEvidence = {
   kind: EvidenceKind;
@@ -36,9 +39,12 @@ function toHex(bytes: Uint8Array): string {
   return out;
 }
 
-const MAGIC_BYTES: readonly { mimeType: EvidenceMimeType; signature: readonly number[] }[] = [
+const MAGIC_BYTES: readonly { mimeType: EvidenceMimeType; signature: readonly number[]; offset?: number }[] = [
   { mimeType: 'image/jpeg', signature: [0xff, 0xd8, 0xff] },
   { mimeType: 'image/png', signature: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
+  { mimeType: 'application/pdf', signature: [0x25, 0x50, 0x44, 0x46] },
+  // M4A/MP4: los 4 primeros bytes son el tamaño de la caja; «ftyp» va en 4..7. Misma regla que el servidor.
+  { mimeType: 'audio/mp4', signature: [0x66, 0x74, 0x79, 0x70], offset: 4 },
 ];
 
 /**
@@ -53,9 +59,10 @@ const MAGIC_BYTES: readonly { mimeType: EvidenceMimeType; signature: readonly nu
  * Se lee la firma en vez de fiarse de la extension del URI porque la extension es un nombre y la
  * firma es el archivo.
  */
-function detectMimeType(bytes: Uint8Array): EvidenceMimeType | null {
+export function detectMimeType(bytes: Uint8Array): EvidenceMimeType | null {
   for (const candidate of MAGIC_BYTES) {
-    if (candidate.signature.every((byte, index) => bytes[index] === byte)) return candidate.mimeType;
+    const desde = candidate.offset ?? 0;
+    if (candidate.signature.every((byte, index) => bytes[desde + index] === byte)) return candidate.mimeType;
   }
   return null;
 }

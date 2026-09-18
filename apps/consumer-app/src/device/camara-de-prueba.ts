@@ -45,7 +45,7 @@
  */
 import { Asset } from 'expo-asset';
 import { Directory, File, Paths } from 'expo-file-system';
-import type { EvidenceKind } from '../features/evidence-upload';
+import type { IdentityEvidenceKind as EvidenceKind } from '../features/evidence-upload';
 
 /**
  * Los datos IMPRESOS en el carnet sintetico.

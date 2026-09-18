@@ -53,6 +53,7 @@ import { color, radius, space } from '../../src/theme/tokens';
 import * as contentApi from '../../src/api/endpoints/app-content';
 import { Icon, ICON_NAMES, type IconName } from '../../src/ui/icons';
 import { AtlasText, Button } from '../../src/ui/primitives';
+import { bitacora } from '../../src/features/bitacora';
 
 /**
  * El eslogan y los pasos, POR DEFECTO.
@@ -299,7 +300,15 @@ export default function Welcome() {
           en cada toque lo convertiria en un peaje de medio segundo repetido cuatro veces.
         */}
         {ultima ? (
-          <Button label="Crear mi cuenta" onPress={() => cortar(() => router.push('/(onboarding)/registro'))} />
+          <Button
+            label="Crear mi cuenta"
+            bitacora="crear_cuenta"
+            onPress={() => {
+              // AQUI arranca el cronometro del alta: en el primer toque, antes de que exista cuenta.
+              void bitacora.arrancar('crear_cuenta');
+              cortar(() => router.push('/(onboarding)/registro'));
+            }}
+          />
         ) : (
           <Button label="Siguiente" onPress={() => irA(pagina + 1)} />
         )}

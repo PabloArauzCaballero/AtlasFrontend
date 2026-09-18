@@ -20,6 +20,7 @@ import { forwardRef, useMemo, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
 import { color, inputChrome, press, radius, space, stroke, touch, type } from '../theme/tokens';
 import { webData } from '../web/estilo';
+import { ganchosDeCampo } from '../features/bitacora/ganchos';
 import { BottomSheet, FieldFoot, FieldLabel } from './help-sheet';
 import { Icon, type IconName } from './icons';
 import { PressSurface } from './motion';
@@ -43,13 +44,16 @@ export type IconFieldProps = TextInputProps & {
   required?: boolean;
   /** Accion a la derecha del campo: mostrar la contrasena, limpiar, lo que el campo necesite. */
   trailing?: React.ReactNode;
+  /** Codigo del campo en la bitacora del alta. Solo se anotan foco, duracion, correcciones y pegado; nunca el texto. */
+  bitacora?: string;
 };
 
 export const IconField = forwardRef<TextInput, IconFieldProps>(function IconField(
-  { label, icon, hint, ayuda, error, required, trailing, style, ...rest },
+  { label, icon, hint, ayuda, error, required, trailing, bitacora, style, ...rest },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
+  const anotar = ganchosDeCampo(bitacora, () => (typeof rest.value === 'string' ? rest.value.length : 0));
 
   return (
     <View style={styles.block}>
@@ -70,11 +74,17 @@ export const IconField = forwardRef<TextInput, IconFieldProps>(function IconFiel
           placeholderTextColor={color.text.placeholder}
           onFocus={(event) => {
             setFocused(true);
+            anotar.onFocus(event);
             rest.onFocus?.(event);
           }}
           onBlur={(event) => {
             setFocused(false);
+            anotar.onBlur(event);
             rest.onBlur?.(event);
+          }}
+          onChangeText={(next) => {
+            anotar.onChangeLength(next.length);
+            rest.onChangeText?.(next);
           }}
           style={[styles.input, style]}
         />
@@ -327,6 +337,8 @@ export type PhoneFieldProps = {
   ayuda?: string;
   error?: string | null;
   required?: boolean;
+  /** Codigo del campo en la bitacora del alta; solo tiempos y cuentas, nunca el numero. */
+  bitacora?: string;
 };
 
 /**
@@ -557,9 +569,10 @@ export function SelectField<T extends string = string>({
 
 /* ------------------------------------------------------------- telefono */
 
-export function PhoneField({ label, value, onChangeText, country, onChangeCountry, hint, ayuda, error, required }: PhoneFieldProps) {
+export function PhoneField({ label, value, onChangeText, country, onChangeCountry, hint, ayuda, error, required, bitacora }: PhoneFieldProps) {
   const [focused, setFocused] = useState(false);
   const [picking, setPicking] = useState(false);
+  const anotar = ganchosDeCampo(bitacora, () => value.length);
 
   return (
     <View style={styles.block}>
@@ -585,7 +598,11 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
           {...inputChrome}
           value={value}
           // Solo digitos: pegar un numero con espacios o guiones no puede romper el formato.
-          onChangeText={(next) => onChangeText(next.replace(/[^0-9]/g, ''))}
+          onChangeText={(next) => {
+            const digitos = next.replace(/[^0-9]/g, '');
+            anotar.onChangeLength(digitos.length);
+            onChangeText(digitos);
+          }}
           keyboardType="phone-pad"
           textContentType="telephoneNumber"
           autoComplete="tel"
@@ -593,8 +610,14 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
           maxLength={15}
           accessibilityLabel={label}
           placeholderTextColor={color.text.placeholder}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={() => {
+            setFocused(true);
+            anotar.onFocus();
+          }}
+          onBlur={() => {
+            setFocused(false);
+            anotar.onBlur();
+          }}
           style={styles.input}
         />
       </View>
