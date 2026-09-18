@@ -10,7 +10,7 @@
  * representacion en texto, el valor no coincide con el que calcula cualquier otra herramienta y
  * deja de servir como control de integridad.
  */
-import * as Crypto from 'expo-crypto';
+import { sha256Hex } from '../lib/criptografia';
 import { leerArchivoEnBase64, leerBytes } from '../device/archivos';
 import * as onboardingApi from '../api/endpoints/onboarding';
 import { AtlasApiError } from '../api/errors';
@@ -32,12 +32,6 @@ export type PreparedEvidence = {
   sizeBytes: number;
   mimeType: EvidenceMimeType;
 };
-
-function toHex(bytes: Uint8Array): string {
-  let out = '';
-  for (const byte of bytes) out += byte.toString(16).padStart(2, '0');
-  return out;
-}
 
 const MAGIC_BYTES: readonly { mimeType: EvidenceMimeType; signature: readonly number[]; offset?: number }[] = [
   { mimeType: 'image/jpeg', signature: [0xff, 0xd8, 0xff] },
@@ -74,8 +68,7 @@ export async function uploadEvidence(input: {
   localUri: string;
 }): Promise<PreparedEvidence> {
   const bytes = await leerBytes(input.localUri);
-  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes as unknown as BufferSource);
-  const sha256Hash = toHex(new Uint8Array(digest));
+  const sha256Hash = await sha256Hex(bytes);
 
   const mimeType = detectMimeType(bytes);
   if (!mimeType) {

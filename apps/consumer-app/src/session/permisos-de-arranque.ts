@@ -72,3 +72,29 @@ export async function guardarDecisionDeArranque(decision: Omit<DecisionDeArranqu
   const completa: DecisionDeArranque = { ...decision, decidedAt: new Date().toISOString() };
   await AsyncStorage.setItem(KEY, JSON.stringify(completa)).catch(() => undefined);
 }
+
+const KEY_REGISTRO = 'atlas.permisos.registrado';
+
+/**
+ * Si ESTA decision ya se mando como consentimiento para ESTE cliente.
+ *
+ * Las señales se activan al abrir sesion, al restaurarla y al volver de la pantalla de permisos,
+ * y cada activacion registraba las dos decisiones otra vez: tres filas iguales por cliente con la
+ * misma `decidedAt` (medido en DEV el 2026-09-18). Una decision es un hecho fechado; se manda una
+ * vez. Cambiarla produce otra `decidedAt` y por tanto otro registro.
+ */
+export async function decisionYaRegistrada(customerId: string, decidedAt: string): Promise<boolean> {
+  try {
+    return (await AsyncStorage.getItem(KEY_REGISTRO)) === `${customerId}:${decidedAt}`;
+  } catch {
+    return false;
+  }
+}
+
+export async function marcarDecisionRegistrada(customerId: string, decidedAt: string): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEY_REGISTRO, `${customerId}:${decidedAt}`);
+  } catch {
+    // Sin memoria se registra otra vez en la proxima activacion: filas de mas, nunca de menos.
+  }
+}

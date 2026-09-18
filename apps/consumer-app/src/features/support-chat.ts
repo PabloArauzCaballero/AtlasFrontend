@@ -14,7 +14,7 @@
  * `afterSequence` hace que preguntar sea barato: devuelve solo lo posterior al ultimo mensaje que ya
  * se tiene, no la conversacion entera.
  */
-import * as Crypto from 'expo-crypto';
+import { sha256Hex } from '../lib/criptografia';
 import { leerBytes } from '../device/archivos';
 import * as supportApi from '../api/endpoints/support';
 import { AtlasApiError } from '../api/errors';
@@ -30,12 +30,6 @@ const MAGIC_BYTES: readonly { mimeType: ChatMimeType; signature: readonly number
   { mimeType: 'image/jpeg', signature: [0xff, 0xd8, 0xff] },
   { mimeType: 'image/png', signature: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
 ];
-
-function toHex(bytes: Uint8Array): string {
-  let out = '';
-  for (const byte of bytes) out += byte.toString(16).padStart(2, '0');
-  return out;
-}
 
 function detectMimeType(bytes: Uint8Array): ChatMimeType | null {
   for (const candidate of MAGIC_BYTES) {
@@ -65,8 +59,7 @@ export async function subirFotoAlChat(input: { channelId: string; localUri: stri
     });
   }
 
-  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes as unknown as BufferSource);
-  const sha256 = toHex(new Uint8Array(digest));
+  const sha256 = await sha256Hex(bytes);
 
   const ticket = await supportApi.attachmentTicket(input.channelId, { contentType: mimeType, sizeBytes: bytes.length });
   const response = await fetchRepetible(ticket.uploadUrl, {

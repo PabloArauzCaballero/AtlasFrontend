@@ -37,7 +37,7 @@ import {
 } from '../device/location';
 import { borrarContextoDeRastreo, guardarContextoDeRastreo, type ContextoDeRastreo } from '../device/tracking-context';
 import { TAMANO_LOTE_AGENDA, trocear, VERSION_AGENDA_COMPLETA } from '../features/rastreo';
-import { leerDecisionDeArranque } from './permisos-de-arranque';
+import { decisionYaRegistrada, leerDecisionDeArranque, marcarDecisionRegistrada } from './permisos-de-arranque';
 
 /** Los codigos de documento que sembro la migracion. Son el contrato con el backend. */
 export const FINALIDAD_AGENDA = 'device_address_book';
@@ -58,6 +58,7 @@ async function registrarConsentimientos(
   customerId: string,
   decision: { ubicacion: boolean; contactos: boolean; decidedAt: string },
 ): Promise<void> {
+  if (await decisionYaRegistrada(customerId, decision.decidedAt)) return;
   // Se registra en segundo plano al activar las señales, no desde una pantalla.
   const documentos = await customerApi.listActiveConsents({ sinPantalla: true });
   const porCodigo = new Map(documentos.map((documento) => [documento.documentCode, documento.id]));
@@ -80,6 +81,7 @@ async function registrarConsentimientos(
 
   // Igual que la lista de consentimientos de arriba: lo registra la sesion en segundo plano.
   await privacyApi.registrarDecisiones(customerId, decisiones, { sinPantalla: true });
+  await marcarDecisionRegistrada(customerId, decision.decidedAt);
 }
 
 /**

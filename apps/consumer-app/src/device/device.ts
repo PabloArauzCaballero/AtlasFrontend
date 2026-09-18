@@ -9,7 +9,7 @@
  * NO se envia ningun identificador de hardware en claro: solo el hash.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Crypto from 'expo-crypto';
+import { nuevoUuid, sha256HexDeTexto } from '../lib/criptografia';
 import * as Device from 'expo-device';
 import * as Localization from 'expo-localization';
 import { Platform } from 'react-native';
@@ -56,7 +56,7 @@ export type DeviceIdentity = {
 async function installationId(): Promise<string> {
   const existing = await AsyncStorage.getItem(INSTALLATION_KEY);
   if (existing) return existing;
-  const created = Crypto.randomUUID();
+  const created = nuevoUuid();
   await AsyncStorage.setItem(INSTALLATION_KEY, created);
   return created;
 }
@@ -95,7 +95,7 @@ export async function deviceIdentity(): Promise<DeviceIdentity> {
   const isRooted = await Device.isRootedExperimentalAsync().catch(() => undefined);
   const completo: DeviceSnapshot = { ...snapshot, ...(isRooted === undefined ? {} : { isRooted }) };
   const seed = [await installationId(), snapshot.brand, snapshot.model, snapshot.osFamily, snapshot.osVersion].join('|');
-  const deviceFingerprintHash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, seed);
+  const deviceFingerprintHash = await sha256HexDeTexto(seed);
   return {
     deviceFingerprintHash,
     fingerprintVersion: 'v1',
@@ -113,5 +113,5 @@ export async function deviceIdentity(): Promise<DeviceIdentity> {
  * salir del dispositivo si la politica del despliegue asi lo decide.
  */
 export async function hashSensitiveText(value: string): Promise<string> {
-  return Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, value.trim().toLowerCase());
+  return sha256HexDeTexto(value.trim().toLowerCase());
 }
