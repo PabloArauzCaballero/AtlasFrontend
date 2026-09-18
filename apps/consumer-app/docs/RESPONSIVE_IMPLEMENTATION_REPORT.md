@@ -11,7 +11,8 @@ táctiles reales en el navegador, campos que enfocan en toda su caja, hojas que 
 ventana, foco por teclado que no deforma, movimiento reducido completo y una **auditoría
 reproducible** (`e2e-web/responsive.mjs`) que mide desbordes, áreas táctiles, texto pequeño,
 errores y estados abiertos en 13 anchos. Las 42 pantallas del teléfono no cambian: las capturas a
-390 px son idénticas antes y después en todas las rutas (§14).
+390 px son idénticas antes y después en 32 de las 36 rutas, y las cuatro restantes se explican
+una a una en §14.
 
 ## 2. Problemas detectados (antes)
 
@@ -114,6 +115,8 @@ cambios en nombres de campos, payloads ni validaciones.
 | `npx eslint .` | 0 errores, 0 avisos (antes: 1 error) |
 | `node scripts/check-field-help.mjs` | 53 campos y 60 opciones, todos con ayuda |
 | `npx jest` | 19 suites, 149 pruebas (antes 140) |
+| `npm run verify` en la raíz del monorepo (turbo: typecheck + test) | 2 tareas, ambas en verde |
+| CI de GitHub Actions sobre `a2068ac` | `success` |
 | `npx expo export --platform web` | exportado; `index.html` con «Atlas» y `entry-*.js` presentes |
 | `e2e-web/responsive.mjs` (13 anchos + estados) | ver §14 |
 | `e2e-web/responsive.mjs --apaisado` (844 × 388) | ver §14 |
@@ -130,6 +133,9 @@ Carpeta: `atlas/_evidencia-web-responsive-2026-09-17/` (`antes/`, `despues/`, `l
 
 ### Matriz final (`e2e-web/responsive.mjs --estados`, 13 anchos)
 
+Medida contra el código tal como quedó desplegado (`a2068ac`), no contra un estado intermedio:
+320, 360, 390, 430, 600, 640, 768, 940, 1024, 1280, 1440, 1920 y 2560 px.
+
 | Medida | Antes (10 anchos, 362 aperturas) | Después (13 anchos, 468 aperturas) |
 |---|---|---|
 | Rutas con desborde horizontal | 5 (`/bienvenida` a 320/360/390/430/768; también a 600/640/940 en la pasada extra) | **0** |
@@ -137,16 +143,22 @@ Carpeta: `atlas/_evidencia-web-responsive-2026-09-17/` (`antes/`, `despues/`, `l
 | Rutas con controles < 24 px (sin contar el interruptor) | 10 rutas distintas (puntos 8×8, ojo 20×20, `<input>` de 23 px, fecha 23 px) | **0** |
 | Rutas con texto de contenido < 11 px | 12 rutas (rótulo de la tarjeta 3D a 10,6 px) | **0** (rótulo a 11,2 px) |
 | Errores de página | 0 (1 espera de red agotada, transitoria) | **0** |
-| Estados abiertos (ayuda, Escape + foco, selector, pagos ×3) × 13 anchos | selector fuera de la ventana en apaisado | **78/78 en verde** |
+| Estados abiertos (ayuda, Escape + foco, selector, pagos ×3) × 13 anchos | selector fuera de la ventana en apaisado | **78/78 en verde**; Escape cierra y devuelve el foco al ⓘ en los 13 anchos |
 | Apaisado 844 × 388 (36 rutas + 6 estados) | `/registro` e `/identidad` con la fecha de 23 px | **0 fallos** |
 | Enlaces del menú visibles a 768 px | 0 | 5 (60 px de alto) |
 
 ### El teléfono no cambia (390 px, antes vs después, píxeles distintos)
 
-32 de 36 rutas: **0,00 %**. Las cuatro restantes: `/` 3,17 % (la tarjeta del recorrido guiado en
-un fotograma distinto de su muelle; misma composición), `/domicilio` 0,43 % (una línea de estado
-de la ubicación), `/registro` 0,07 %, y `/bienvenida`, cuya captura «antes» medía 590 × 1060
-porque la página crecía 200 px con los halos: ahora mide 390 × 780, que es la corrección.
+32 de 36 rutas: **0,00 %**. Las cuatro restantes:
+
+- `/` 8,46 %: es el recorrido guiado, que se dibuja donde cae la medida de su objetivo y viaja con
+  un muelle. **No es una regresión y está probado**: dos capturas de la MISMA versión del código,
+  tomadas igual, difieren 5,84 % en la misma región (`bbox` 12,123–378,640 frente a 12,119–378,641
+  de la comparación antes/después). La pantalla es la misma; el fotograma, no.
+- `/domicilio` 0,43 %: una línea de estado de la ubicación (20 px de alto).
+- `/registro` 0,07 %: el indicador del selector de fecha del navegador.
+- `/bienvenida`: la captura «antes» medía 590 × 1060 porque la página crecía 200 px con los halos;
+  ahora mide 390 × 780, que es exactamente la corrección del problema 2.
 
 ### Comprobación interactiva (Playwright, `logs/interaccion.txt`)
 
@@ -164,9 +176,10 @@ registro a 768; ingreso a 1024) frente a `antes/m-*.png` (montajes de la primera
 
 - El interruptor nativo mide 40 × 20 en la web (la fila, 48). Se deja por ser el control que mejor
   anuncia el lector de pantalla; una versión propia sería un cambio de componente compartido.
-- La rejilla de escritorio usa `grid-auto-flow: row dense`: el orden visual puede diferir del orden
-  del DOM en pantallas con títulos de sección intercalados; el orden de lectura del teclado es el
-  del DOM. Ya existía; se documenta.
+- La rejilla de escritorio reparte los bloques por posición (`:nth-child(2n of …)`), no por su
+  contenido: una pantalla nueva con muchos bloques cortos puede quedar desequilibrada de alto.
+  El orden visual sí coincide con el del DOM desde que se quitó `grid-auto-flow: dense`, así que
+  el recorrido con teclado y el visual son el mismo.
 - El zoom del navegador se evaluó por viewport equivalente (640 px), no con el zoom real.
 - En Contabo (HTTP plano) la cámara no abre: no es responsivo, es `getUserMedia`.
 - El servidor de desarrollo de Metro no recogió cambios de archivos en esta máquina (watcher);

@@ -43,6 +43,12 @@ además de la composición se prueba el estado de error y el vacío.
 | Errores de página | 0 | lo que `tsc` y el export no ven |
 | Captura | — | comparación visual antes/después; a 390 px debe ser idéntica al teléfono |
 
+**Al comparar capturas a 390 px**: el inicio (`/`) NO es determinista mientras el recorrido guiado
+está activo. Su tarjeta y su anillo se colocan donde cae la medida del objetivo y llegan con un
+muelle, así que dos capturas de la misma versión difieren ~6 % en esa región. Antes de atribuir una
+diferencia a un cambio, capturar dos veces la misma versión; o saltar el recorrido antes de
+capturar (`getByRole('button', { name: 'Saltar' })`).
+
 ## Estados abiertos (`--estados`)
 
 | Estado | Ruta | Qué se comprueba |
