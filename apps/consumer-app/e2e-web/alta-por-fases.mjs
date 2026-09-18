@@ -14,6 +14,14 @@
  *
  * `--ssh` es el host donde vive `atlas-postgres` (para leer el código de verificación y comprobar
  * las tablas); sin él se salta la verificación en base y el código hay que pasarlo con `--codigo`.
+ * `--hasta N` para en el paso N (depuración). `PLAYWRIGHT_DIR` apunta a un `node_modules/playwright`
+ * (la app no lo instala; el del ERP frontend sirve).
+ *
+ * La cámara falsa: un y4m cuyos cuadros DIFIEREN entre sí. Con una imagen fija las tres capturas
+ * tienen el mismo SHA-256 y el paquete choca con `ux_evidence_documents_customer_hash` (409). Se
+ * genera a partir del carnet sintético con un marcador que se mueve:
+ *   ffmpeg -loop 1 -i carnet.png -f lavfi -i "color=red:s=12x12:r=30" \
+ *     -filter_complex "[0][1]overlay=x='mod(t*90,600)':y=main_h-16:shortest=1,format=yuv420p" -t 20 -r 30 carnet-movil.y4m
  */
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -73,7 +81,13 @@ async function codigoDeVerificacion(customerId) {
 /* ------------------------------------------------------------------ navegador */
 const flags = ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'];
 if (CARNET) flags.push(`--use-file-for-fake-video-capture=${CARNET}`);
-const browser = await chromium.launch({ args: flags });
+// `getUserMedia` sólo existe en contexto seguro: en TEST la web va por HTTP plano y sin esto la
+// cámara no abre (la captura moría con «No pudimos completar la operación»). Es un ajuste del
+// navegador de la prueba; a una persona en HTTP la cámara no le funcionará hasta tener HTTPS.
+// La marca sólo la respeta el Chromium completo (`channel: 'chromium'`), no el headless shell.
+const inseguro = BASE.startsWith('http://');
+if (inseguro) flags.push(`--unsafely-treat-insecure-origin-as-secure=${new URL(BASE).origin}`);
+const browser = await chromium.launch({ args: flags, ...(inseguro ? { channel: 'chromium' } : {}) });
 const contexto = await browser.newContext({ locale: 'es-BO', viewport: { width: 390, height: 844 }, permissions: ['camera'] });
 const page = await contexto.newPage();
 const llamadas = [];
@@ -278,7 +292,8 @@ await paso('verificación: esperar el veredicto del Motor y seguir', async () =>
   const seguir = boton('Seguir con el registro').first();
   if (await seguir.count()) await seguir.click();
   else await page.goto(`${BASE}/perfil`, { waitUntil: 'load' });
-  await page.getByText(/Confirma tus datos|Tus datos/).first().waitFor({ timeout: 20000 });
+  // La pantalla de datos: el campo «Nombre» es inequívoco (el título cambia según haya OCR o no).
+  await caja('Nombre').waitFor({ timeout: 40000 });
   const estado = SSH ? sql(`select coalesce(final_result,'PENDING')||' '||coalesce(reason_codes_json->>'reason','') from customer.identity_verification_attempts where customer_id=${customerId} order by _id desc limit 1`) : '';
   if (SSH && !estado) throw new Error('el Motor no recibió ningún intento de identidad de este cliente');
   return estado;
