@@ -105,6 +105,12 @@ lockfile). Coolify pone el dominio; `ATLAS_API_ORIGIN` apunta al backend de la m
 `<title>Atlas</title>`, `GET /api/v1/health` por el proxy con `"service":"atlas-backend"`, y un
 ingreso real hasta el inicio. La cámara y la ubicación sólo funcionan con HTTPS.
 
+**TEST se abre también por la IP en bruto: `http://161.97.85.216`.** Los filtros web corporativos
+(FortiGuard, categoría «Dynamic DNS») bloquean todo `*.sslip.io`, así que `app.161.97.85.216.sslip.io`
+devuelve un 403 de FortiGuard desde esas redes aunque el VPS responda 200 (medido el 2026-09-18).
+La IP es un segundo dominio de la app en Coolify; la web reenvía `/api/v1` ella misma, así que no
+hay que exponer el API. DEV va por Tailscale (`pablo-h310.taila8f993.ts.net/app`), que sí pasa.
+
 **El proxy sigue al backend, no lo memoriza.** `nginx.web.conf` resuelve el destino con el DNS de
 Docker (`resolver 127.0.0.11`) y lo pasa por una variable. Con el nombre escrito directamente en
 `proxy_pass`, nginx lo resuelve UNA vez al arrancar: cada redespliegue del backend le daba una IP
