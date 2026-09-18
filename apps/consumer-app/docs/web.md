@@ -75,6 +75,7 @@ desde 600 px es siempre la barra superior.
 | Mapa del domicilio | `expo-maps` | dirección en texto |
 | Rastreo en segundo plano | `expo-task-manager` | no existe |
 | Fecha de nacimiento | selector nativo | `<input type="date">` |
+| Hash y UUID | `expo-crypto` | Sólo hay `crypto.subtle` y `crypto.randomUUID` en **contexto seguro** (HTTPS o localhost). En TEST, que va por HTTP plano, `expo-crypto` lanzaba y el alta moría antes del POST: `src/lib/criptografia.ts` da SHA-256 y UUID v4 con respaldo en JS |
 | Secuencia de marca | en cada arranque | una vez por pestaña (`sessionStorage`) |
 
 ## La identidad web (la de la landing)
@@ -103,3 +104,10 @@ lockfile). Coolify pone el dominio; `ATLAS_API_ORIGIN` apunta al backend de la m
 (`http://atlas-backend:3005` por defecto). «Desplegado» se comprueba por contenido: `GET /` con
 `<title>Atlas</title>`, `GET /api/v1/health` por el proxy con `"service":"atlas-backend"`, y un
 ingreso real hasta el inicio. La cámara y la ubicación sólo funcionan con HTTPS.
+
+**El proxy sigue al backend, no lo memoriza.** `nginx.web.conf` resuelve el destino con el DNS de
+Docker (`resolver 127.0.0.11`) y lo pasa por una variable. Con el nombre escrito directamente en
+`proxy_pass`, nginx lo resuelve UNA vez al arrancar: cada redespliegue del backend le daba una IP
+nueva y la web contestaba **502 en `/api/v1` hasta reiniciarla** (medido en DEV el 2026-09-18).
+Importa para verificar: un 502 del proxy no dice que la web esté mal desplegada, y en una prueba
+automatizada se ve como un fallo de ingreso, no como un fallo de red.
