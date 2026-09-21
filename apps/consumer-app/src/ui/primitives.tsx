@@ -297,9 +297,22 @@ export function Button({
         boton diera un salto cada vez que se completa un campo. Debajo, el boton se queda quieto y el
         aviso aparece y desaparece sin mover nada de lo que hay encima.
       */}
+      {/*
+        GUIA, no alarma.
+
+        Iba en ambar y con el triangulo de aviso, y como aparece en cuanto la pantalla se abre —un
+        formulario vacio siempre tiene algo que falta— lo primero que veia cualquiera al entrar a
+        «Ingresar» era una linea de alerta debajo del boton, sin haber tocado nada. Una advertencia
+        que sale antes de que la persona pueda equivocarse deja de significar «revisa esto» y pasa a
+        significar «esta app viene rota de fabrica», que es lo que se sentia.
+
+        Lo que falta no es un error: es la instruccion siguiente. Va en el tono del texto secundario
+        y con el simbolo de informacion. Cuando hay un error DE VERDAD se pinta donde corresponde
+        —el campo en rojo y `ErrorState` arriba—, y entonces el ambar vuelve a querer decir algo.
+      */}
       <View style={styles.buttonReason}>
-        <Icon name="alerta" size={15} tint={color.feedback.warning} />
-        <AtlasText variant="caption" tone="warning" style={styles.buttonReasonText}>
+        <Icon name="info" size={15} tint={color.text.secondary} />
+        <AtlasText variant="caption" tone="secondary" style={styles.buttonReasonText}>
           {blockedReason}
         </AtlasText>
       </View>
@@ -1082,7 +1095,14 @@ const styles = StyleSheet.create({
   // `overflow: hidden` recorta el degradado al radio de la pildora; sin el, asoma por las esquinas.
   buttonLit: { backgroundColor: color.action.primary, overflow: 'hidden', ...shadow.brandGlow },
   buttonDisabled: { backgroundColor: color.action.disabled },
-  buttonLabelDisabled: { color: color.text.tertiary },
+  /*
+    La etiqueta de un boton apagado es texto que HAY que poder leer: dice que accion espera ahi
+    cuando se desbloquee. En `tertiary` sobre el relleno del deshabilitado medía 3,0:1 —por debajo
+    de AA— y el boton se leia como una mancha gris sin palabra dentro, que es como se veia el
+    «Ingresar» del acceso antes de escribir nada. En `secondary` mide 5,8:1 y sigue estando
+    claramente apagado respecto del activo, que es lo unico que tiene que comunicar.
+  */
+  buttonLabelDisabled: { color: color.text.secondary },
 
   buttonBlock: { gap: space.sm },
   buttonReason: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingHorizontal: space.xs },

@@ -13,7 +13,7 @@ export default function AuthLayout() {
   return (
     <div className="auth">
       <div className="auth__main">
-        <CabeceraDeAcceso volverA="/bienvenida" etiqueta="Volver a la bienvenida" />
+        <CabeceraDeAcceso />
         <div className="auth__pantalla">
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' } }} />
         </div>

@@ -45,7 +45,19 @@ export const palette = {
 
   text1: '#EDF3F9',
   text2: '#94A8BF',
-  text3: '#5F7591',
+  /**
+   * El tercer nivel de texto, SUBIDO hasta pasar AA.
+   *
+   * Estaba en `#5F7591`: 3,9:1 sobre el fondo y 3,5:1 sobre una tarjeta, por debajo del 4,5:1 que
+   * pide WCAG para texto normal. Y no lo llevaba texto decorativo: lo llevan las leyendas —la
+   * explicacion que hay bajo cada campo, la nota legal del registro, la etiqueta de un boton
+   * apagado—, o sea justo el texto que alguien lee cuando algo no le encaja. «Gris claro que se ve
+   * elegante y no llega a contraste» es una de las marcas de fabrica de una interfaz sin terminar.
+   *
+   * `#7489A6` mide 5,2:1 sobre el fondo y 4,7:1 sobre la tarjeta, y sigue claramente por debajo de
+   * `text2` (7,6:1): la jerarquia de tres niveles se conserva entera.
+   */
+  text3: '#7489A6',
 
   danger: '#FF8A8A',
   dangerDeep: '#B23A3A',
@@ -115,6 +127,19 @@ export const color = {
      * grosor: eso es lo que se lee como «nitido» y no como «fino».
      */
     hairline: 'rgba(255,255,255,0.20)',
+    /**
+     * El contorno de un control donde se ESCRIBE o se elige: campos, casillas del PIN, opciones.
+     *
+     * Existe porque todos ellos usaban `subtle` —el mismo blanco al 9 % que separa dos filas de una
+     * lista— y ahi la medida no da: 1,3:1 contra la tarjeta que los contiene, cuando WCAG 2.2 pide
+     * 3:1 para lo que identifica un control (1.4.11). No es un tecnicismo: era la razon de que un
+     * formulario de esta app se leyera como texto flotando sobre un fondo oscuro, con las cuatro
+     * casillas del PIN practicamente invisibles dentro de su tarjeta.
+     *
+     * Al 34 % mide 3,2:1 sobre una tarjeta y 3,1:1 sobre el fondo, que son los dos sitios donde se
+     * pintan. Un separador NO debe usar esto: una lista con contornos al 34 % seria una reja.
+     */
+    field: 'rgba(255,255,255,0.34)',
   },
   action: {
     primary: palette.brand400,

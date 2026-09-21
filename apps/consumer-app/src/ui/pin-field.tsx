@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     height: BOX,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: color.border.subtle,
+    borderColor: color.border.field,
     backgroundColor: color.surface.sunken,
     alignItems: 'center',
     justifyContent: 'center',

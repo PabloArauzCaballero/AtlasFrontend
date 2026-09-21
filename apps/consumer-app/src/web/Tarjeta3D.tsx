@@ -1,10 +1,10 @@
 /**
  * La tarjeta de cuenta de la landing (`.acard`): el objeto más reconocible de la marca.
  *
- * Canto que se enciende del lado de la luz, punto especular, reflejo del ambiente, grano y sombra
- * doble, todo atado a dos variables (`--rx`, `--ry`) que aquí salen del puntero: la tarjeta se
- * inclina hacia donde está el ratón y un halo lo sigue. Sin puntero (o sin hover) se mece sola.
- * Sólo web, sólo DOM; el aspecto entero vive en `estilo.ts`.
+ * Canto que se enciende del lado de la luz, punto especular, reflejo del ambiente y sombra doble,
+ * todo atado a dos variables (`--rx`, `--ry`) que salen del puntero: la tarjeta se inclina hacia
+ * donde está el ratón y un halo lo sigue. Quieta mientras nadie la toca — el vaivén automático se
+ * retiró el 2026-09-21; ver la nota en `estilo.ts`. Sólo web, sólo DOM; el aspecto vive allí.
  */
 import { useRef } from 'react';
 import { Platform } from 'react-native';
@@ -36,7 +36,6 @@ export function Tarjeta3D({
     el.style.setProperty('--gx', `${(x * 100).toFixed(1)}%`);
     el.style.setProperty('--gy', `${(y * 100).toFixed(1)}%`);
     el.classList.add('lit');
-    el.classList.remove('acard--sway');
   };
   const soltar = () => {
     const el = ref.current;
@@ -44,13 +43,12 @@ export function Tarjeta3D({
     el.style.setProperty('--rx', '0');
     el.style.setProperty('--ry', '0');
     el.classList.remove('lit');
-    el.classList.add('acard--sway');
   };
 
   return (
     <div
       ref={ref}
-      className={`acard acard--sway ${className ?? ''}`}
+      className={`acard ${className ?? ''}`}
       onPointerMove={mover}
       onPointerLeave={soltar}
       aria-label={`Tarjeta Atlas de ${nombre ?? 'tu cuenta'}`}

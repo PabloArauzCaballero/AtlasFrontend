@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.base,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: color.border.subtle,
+    borderColor: color.border.field,
     // Hundido, no elevado: un campo es un hueco donde se escribe, no una tarjeta que se pulsa.
     backgroundColor: color.surface.sunken,
   },
