@@ -163,7 +163,14 @@ export default function VerifyContact() {
     // `opciones` se recalcula en cada render; lo que cambia de verdad es el catalogo o la ronda.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todasLasOpciones, rondaEfectiva]);
-  const [sent, setSent] = useState<{ expiresAt: string; deliveryStatus: string } | null>(null);
+  /*
+    `expiresAt` puede ser NULO, y eso significa algo concreto: sabemos que hay un codigo en camino
+    pero no cuando vence. Pasa cuando el servidor contesta VERIFICATION_RATE_LIMITED —ya mando uno
+    hace menos de 30 s— y en esa respuesta no viaja el vencimiento del anterior. Sin este caso la
+    pantalla solo sabia «enviado con reloj» o «error», y el reencuentro con un codigo que YA existe
+    caia en «error».
+  */
+  const [sent, setSent] = useState<{ expiresAt: string | null; deliveryStatus: string } | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -184,27 +191,87 @@ export default function VerifyContact() {
     router.replace('/(onboarding)/progreso');
   };
 
-  const sendCode = async () => {
-    if (!customerId) return;
-    setBusy(true);
-    setError(null);
-    // El codigo viejo se borra al pedir otro: dejarlo escrito hace que el primer toque de
-    // «Confirmar» gaste un intento con el codigo que acaba de quedar invalidado.
-    setCode('');
-    try {
-      const result = await bitacora.medirEnvio(() =>
-        onboardingApi.requestContactVerification(customerId, {
-          contactType,
-          verificationChannel: channel,
-        }),
-      );
-      setSent({ expiresAt: result.expiresAt, deliveryStatus: result.deliveryStatus });
-    } catch (caught) {
-      setError(caught);
-    } finally {
-      setBusy(false);
-    }
+  /**
+   * Pide el codigo por un canal CONCRETO.
+   *
+   * El canal viaja como argumento y no se lee del estado a proposito: el envio de llegada ocurre en
+   * el mismo commit en el que el catalogo corrige `channel`, y leer el estado ahi devuelve el valor
+   * anterior —`whatsapp`, que es el inicial y en TEST esta apagado—. Quien llama ya tiene delante
+   * el catalogo; que decida con el.
+   */
+  const pedirCodigo = useCallback(
+    async (canal: Channel) => {
+      if (!customerId) return;
+      setBusy(true);
+      setError(null);
+      // El codigo viejo se borra al pedir otro: dejarlo escrito hace que el primer toque de
+      // «Confirmar» gaste un intento con el codigo que acaba de quedar invalidado.
+      setCode('');
+      try {
+        const result = await bitacora.medirEnvio(() =>
+          onboardingApi.requestContactVerification(customerId, {
+            contactType: canal === 'email' ? 'email' : 'phone',
+            verificationChannel: canal,
+          }),
+        );
+        setSent({ expiresAt: result.expiresAt, deliveryStatus: result.deliveryStatus });
+      } catch (caught) {
+        /*
+          «Ya te mandamos uno hace un momento» NO es un fallo, y pintarlo como tal es peor que el
+          problema que arregla.
+
+          El servidor guarda 30 s entre envios al mismo contacto (`RESEND_COOLDOWN_MS`) y responde
+          409 VERIFICATION_RATE_LIMITED. Como el codigo ahora se pide al llegar, basta con volver
+          atras y entrar otra vez —o recargar— para caer dentro de esa ventana: sin este caso, la
+          pantalla recibia a alguien que TIENE un codigo valido en el telefono con un cartel rojo de
+          «algo no salio bien». Medido contra TEST el 2026-09-21; el codigo anterior sigue vivo diez
+          minutos.
+
+          Asi que se trata como lo que es: hay codigo, escribelo. Sin cuenta atras, porque el
+          vencimiento del anterior no viene en esta respuesta y un reloj inventado seria mentira.
+        */
+        if (caught instanceof AtlasApiError && caught.code === 'VERIFICATION_RATE_LIMITED') {
+          setSent({ expiresAt: null, deliveryStatus: 'sent' });
+        } else {
+          setError(caught);
+        }
+      } finally {
+        setBusy(false);
+      }
+    },
+    [customerId],
+  );
+
+  /** Reenviar por el canal que hay elegido ahora mismo. Es lo que hace el boton. */
+  const sendCode = () => {
+    void pedirCodigo(channel);
   };
+
+  /*
+    El codigo SALE AL LLEGAR a la pantalla, no cuando alguien encuentra el boton.
+
+    Hasta el 2026-09-21 habia que pulsar «Enviarme el codigo» mientras la pantalla ya decia, en
+    pasado, «Te enviamos un codigo»: la frase era falsa hasta ese toque, y quien se la creia esperaba
+    en su bandeja un mensaje que nadie habia pedido. El resultado medido era el peor posible: un alta
+    parada en una pantalla que afirmaba estar esperando algo que no existia. El servidor no tenia
+    nada que ver —comprobado contra TEST ese mismo dia: responde `deliveryStatus: "sent"` en cuanto
+    se le pide, por SMS y por correo—; lo que faltaba era pedirlo.
+
+    Una vez por RONDA: al llegar (telefono) y al pasar al correo. Cambiar de canal a mano NO vuelve a
+    disparar: eso sigue siendo un acto deliberado y tiene su boton. Un desplegable que manda un
+    mensaje en cada cambio gasta los intentos de quien solo estaba mirando las opciones.
+  */
+  const rondaPedida = useRef<'telefono' | 'correo' | null>(null);
+  useEffect(() => {
+    if (cargando || !customerId || opciones.length === 0) return;
+    if (rondaPedida.current === rondaEfectiva) return;
+    rondaPedida.current = rondaEfectiva;
+    const canal = canalElegido(channel, opciones);
+    setChannel(canal);
+    void pedirCodigo(canal);
+    // `opciones` y `channel` se recalculan en cada render; lo que dispara es la ronda y el catalogo.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cargando, customerId, rondaEfectiva, pedirCodigo]);
 
   const confirmCode = async () => {
     if (!customerId || code.length < 4) return;
@@ -237,7 +304,7 @@ export default function VerifyContact() {
   // El servidor registra el intento aunque el proveedor falle: hay que decirlo, no fingir exito.
   const deliveryFailed = sent?.deliveryStatus === 'delivery_failed';
 
-  const restante = useRestante(sent && !deliveryFailed ? sent.expiresAt : null);
+  const restante = useRestante(sent?.expiresAt && !deliveryFailed ? sent.expiresAt : null);
   /*
     Vencido por dos caminos, y hacen falta los dos.
 
@@ -247,7 +314,8 @@ export default function VerifyContact() {
     contador seria confiar en el reloj del dispositivo para decidir algo que decide el servidor.
   */
   const vencidoPorServidor = error instanceof AtlasApiError && error.code === 'VERIFICATION_CODE_EXPIRED';
-  const vencido = Boolean(sent) && !deliveryFailed && (restante === 0 || vencidoPorServidor);
+  // Sin vencimiento conocido no se puede declarar vencido por el reloj: solo si lo dice el servidor.
+  const vencido = Boolean(sent) && !deliveryFailed && (Boolean(sent?.expiresAt) && restante === 0 ? true : vencidoPorServidor);
 
   return (
     <Screen scrollRef={scroll}
@@ -288,7 +356,18 @@ export default function VerifyContact() {
           )
         ) : (
           <>
-            <Button label="Enviarme el código" bitacora="enviar_codigo" onPress={sendCode} loading={busy || cargando} disabled={busy || cargando} />
+            {/*
+              Este boton ya no es la puerta de entrada: el codigo sale solo. Es la SALIDA cuando el
+              envio de llegada no salio —canal apagado, red caida—, y por eso se rotula como lo que
+              hace en ese momento.
+            */}
+            <Button
+              label={described ? 'Intentar de nuevo' : 'Enviarme el código'}
+              bitacora="enviar_codigo"
+              onPress={sendCode}
+              loading={busy || cargando}
+              disabled={busy || cargando}
+            />
             {/*
               El correo no bloquea: quien no lo tiene a mano sigue con el alta y lo verifica despues
               desde su perfil. El telefono si bloquea, y por eso este boton solo existe en su ronda.
@@ -312,10 +391,24 @@ export default function VerifyContact() {
       <StepHeader
         code="contact_verification"
         title={rondaEfectiva === 'correo' ? 'Ahora tu correo' : 'Verifica tu teléfono'}
+        /*
+          El subtitulo habla en PASADO —«te enviamos»— y ahora eso es verdad: el codigo sale al
+          abrir la pantalla. Mientras sale, lo dice en presente; si no salio, no promete nada y el
+          fallo se explica debajo. Un texto en pasado sobre algo que aun no ocurrio es exactamente
+          lo que tenia rota esta pantalla.
+        */
         subtitle={
           rondaEfectiva === 'correo'
-            ? 'Te enviamos un código a tu correo. Puedes hacerlo después: no detiene tu registro.'
-            : 'Te enviamos un código por WhatsApp o SMS para confirmar que el número es tuyo.'
+            ? sent
+              ? 'Te enviamos un código a tu correo. Puedes hacerlo después: no detiene tu registro.'
+              : described
+                ? 'No pudimos enviarlo. Puedes reintentar o hacerlo después: no detiene tu registro.'
+                : 'Estamos enviando un código a tu correo…'
+            : sent
+              ? `Te enviamos un código ${channel === 'whatsapp' ? 'por WhatsApp' : 'por SMS'} para confirmar que el número es tuyo.`
+              : described
+                ? 'No pudimos enviar el código. Prueba de nuevo o cambia de canal.'
+                : 'Estamos enviando un código a tu número para confirmar que es tuyo…'
         }
       />
 
@@ -380,9 +473,12 @@ export default function VerifyContact() {
                     El tiempo que queda, no la hora a la que vence. «Vence a las 11:30» obliga a
                     mirar el reloj y restar; «Vence en 4:07» ya es la respuesta a la unica pregunta
                     que se hace quien esta esperando un codigo: si le da tiempo a ir a buscarlo.
+
+                    Sin vencimiento conocido —el codigo ya estaba enviado— se dice eso y nada mas.
+                    Un reloj puesto a ojo sobre un codigo ajeno seria peor que no ponerlo.
                   */}
                   <AtlasText variant="caption" tone="secondary">
-                    Vence en la cuenta atrás
+                    {sent.expiresAt ? 'Vence en la cuenta atrás' : 'Te lo mandamos hace un momento: revisa tus mensajes.'}
                   </AtlasText>
                 </View>
                 {/*
@@ -390,9 +486,11 @@ export default function VerifyContact() {
                   cifras proporcionales el bloque se ensancha y se encoge en cada tic. Es el sitio
                   de la app donde mas se nota, y era el unico que no las llevaba.
                 */}
-                <AtlasText variant="amountSmall" tone={restante < 60 ? 'warning' : 'primary'}>
-                  {comoReloj(restante)}
-                </AtlasText>
+                {sent.expiresAt ? (
+                  <AtlasText variant="amountSmall" tone={restante < 60 ? 'warning' : 'primary'}>
+                    {comoReloj(restante)}
+                  </AtlasText>
+                ) : null}
               </View>
             </Card>
           )}

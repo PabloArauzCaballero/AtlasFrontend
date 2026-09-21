@@ -214,28 +214,34 @@ await paso('crear la cuenta → sesión y primer lote de bitácora', async () =>
   const lote = await esperarLlamada(`POST /customers/${customerId}/telemetry/batch`, 40_000);
   return `cliente ${customerId} · ${lote}`;
 });
-await paso('verificar el teléfono o el correo con el código real', async () => {
+await paso('el código sale SOLO al llegar, y se verifica con el real', async () => {
   await page.getByText(/Verifica tu teléfono|Ahora tu correo/).first().waitFor({ timeout: 20000 });
-  await boton('Enviarme el código').first().click();
+  /*
+    AQUÍ NO SE PULSA NADA, y es el punto del paso.
+
+    Hasta el 2026-09-21 esta prueba tocaba «Enviarme el código» y por eso pasaba en verde mientras
+    la app real dejaba a todo el mundo esperando un mensaje que nunca se había pedido: la prueba
+    hacía por su cuenta lo único que faltaba. Si alguien devuelve el envío a un botón, esta espera
+    se queda sin la llamada y el paso falla, que es lo que tenía que haber pasado entonces.
+  */
   const pedido = await esperarLlamada('POST /customer-onboarding/', 40_000);
-  if (!pedido.includes('contact-verification/request') || !/ 20\d$/.test(pedido)) throw new Error(`no se pidió el código: ${pedido}`);
+  if (!pedido.includes('contact-verification/request') || !/ 20\d$/.test(pedido)) throw new Error(`el código no se pidió solo: ${pedido}`);
   const codigo = await codigoDeVerificacion(customerId);
   await caja('Código recibido').fill(codigo);
   await boton('Confirmar código').first().click();
   const enviado = await esperarLlamada('POST /customer-onboarding/' + customerId + '/contact-verification/submit', 40_000);
   if (!/ 20\d$/.test(enviado)) throw new Error(`código rechazado: ${enviado}`);
   await page.waitForTimeout(1500);
-  // Segunda ronda (correo): se verifica también, con su propio código.
+  // Segunda ronda (correo): también se dispara sola al cambiar de ronda, con su propio código.
   if (await page.getByText('Ahora tu correo').count()) {
-    await boton('Enviarme el código').first().click();
-    await page.waitForTimeout(2000);
+    await page.getByText('Código enviado').first().waitFor({ timeout: 40000 });
     const codigo2 = await codigoDeVerificacion(customerId);
     await caja('Código recibido').fill(codigo2);
     await boton('Confirmar código').first().click();
     await page.waitForTimeout(2500);
-    return `código ${codigo} y correo ${codigo2}`;
+    return `código ${codigo} y correo ${codigo2}, los dos sin tocar ningún botón de envío`;
   }
-  return `código ${codigo}`;
+  return `código ${codigo}, sin tocar ningún botón de envío`;
 });
 
 /* ---- fase 2 · identidad ---- */

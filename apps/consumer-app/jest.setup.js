@@ -6,3 +6,13 @@
  * reanimated sin su preparación de pruebas muere al cargar los worklets nativos.
  */
 require('react-native-reanimated').setUpTests();
+
+/*
+ * AsyncStorage no existe fuera del dispositivo: su modulo nativo es `null` en jest y cualquier
+ * componente que arrastre la bitacora del alta —que guarda su cola en disco— muere al importarla,
+ * antes de renderizar nada. La propia libreria publica su doble para pruebas; es el camino que
+ * documenta. Va aqui y no en cada test: lo necesita cualquier pantalla que se monte.
+ */
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
