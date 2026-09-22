@@ -170,7 +170,7 @@ export default function VerifyContact() {
     pantalla solo sabia «enviado con reloj» o «error», y el reencuentro con un codigo que YA existe
     caia en «error».
   */
-  const [sent, setSent] = useState<{ expiresAt: string | null; deliveryStatus: string } | null>(null);
+  const [sent, setSent] = useState<{ expiresAt: string | null; deliveryStatus: string; deliveredChannel: string | null } | null>(null);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -214,7 +214,11 @@ export default function VerifyContact() {
             verificationChannel: canal,
           }),
         );
-        setSent({ expiresAt: result.expiresAt, deliveryStatus: result.deliveryStatus });
+        setSent({
+          expiresAt: result.expiresAt,
+          deliveryStatus: result.deliveryStatus,
+          deliveredChannel: result.deliveredChannel ?? null,
+        });
       } catch (caught) {
         /*
           «Ya te mandamos uno hace un momento» NO es un fallo, y pintarlo como tal es peor que el
@@ -231,7 +235,7 @@ export default function VerifyContact() {
           vencimiento del anterior no viene en esta respuesta y un reloj inventado seria mentira.
         */
         if (caught instanceof AtlasApiError && caught.code === 'VERIFICATION_RATE_LIMITED') {
-          setSent({ expiresAt: null, deliveryStatus: 'sent' });
+          setSent({ expiresAt: null, deliveryStatus: 'sent', deliveredChannel: null });
         } else {
           setError(caught);
         }
@@ -313,6 +317,14 @@ export default function VerifyContact() {
     durante el ultimo minuto, o un codigo que el backend invalido antes de tiempo. Fiarse solo del
     contador seria confiar en el reloj del dispositivo para decidir algo que decide el servidor.
   */
+  /*
+    El codigo salio por correo aunque se pidio por telefono.
+
+    Es la reserva del backend cuando el SMS no puede entregarse —el 2026-09-21 la cuenta de Brevo no
+    tenia credito y sus 25 envios del dia figuran como `rejected`—. Lo unico que no puede pasar es
+    que la pantalla siga diciendo «revisa tus mensajes».
+  */
+  const porCorreoEnVezDeSms = sent?.deliveredChannel === 'email' && channel !== 'email';
   const vencidoPorServidor = error instanceof AtlasApiError && error.code === 'VERIFICATION_CODE_EXPIRED';
   // Sin vencimiento conocido no se puede declarar vencido por el reloj: solo si lo dice el servidor.
   const vencido = Boolean(sent) && !deliveryFailed && (Boolean(sent?.expiresAt) && restante === 0 ? true : vencidoPorServidor);
@@ -477,6 +489,17 @@ export default function VerifyContact() {
                     Sin vencimiento conocido —el codigo ya estaba enviado— se dice eso y nada mas.
                     Un reloj puesto a ojo sobre un codigo ajeno seria peor que no ponerlo.
                   */}
+                  {/*
+                    Y a DONDE fue. El servidor puede entregarlo por el correo del mismo cliente
+                    cuando el SMS no sale (reserva de `OTP_SMS_FALLBACK_TO_EMAIL`): callarlo deja a
+                    la persona mirando un telefono en el que no va a aparecer nada. Se dice antes
+                    que el vencimiento porque primero se busca el mensaje y despues se corre.
+                  */}
+                  {porCorreoEnVezDeSms ? (
+                    <AtlasText variant="caption" tone="secondary">
+                      No pudimos enviarte el SMS, así que te lo mandamos a tu correo. Revisa tu bandeja.
+                    </AtlasText>
+                  ) : null}
                   <AtlasText variant="caption" tone="secondary">
                     {sent.expiresAt ? 'Vence en la cuenta atrás' : 'Te lo mandamos hace un momento: revisa tus mensajes.'}
                   </AtlasText>

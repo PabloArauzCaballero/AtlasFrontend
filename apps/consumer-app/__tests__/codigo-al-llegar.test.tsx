@@ -155,4 +155,44 @@ describe('la pantalla de verificacion del contacto', () => {
 
     expect(requestContactVerification).toHaveBeenCalledTimes(1);
   });
+  /*
+    El codigo salio por CORREO aunque se pidio por SMS.
+
+    Es la reserva del backend cuando el SMS no puede entregarse. El 2026-09-21 la cuenta de Brevo no
+    tenia credito: aceptaba cada envio con un `201` y lo descartaba despues —25 `rejected`, cero
+    entregados— mientras esta pantalla decia «revisa tus mensajes» apuntando a un telefono en el que
+    no iba a aparecer nada. Si el codigo cambia de canal, la pantalla lo dice.
+  */
+  it('dice que fue al correo cuando el SMS no pudo entregarse', async () => {
+    listVerificationChannels.mockResolvedValue({ channels: [{ channel: 'sms', available: true }] });
+    requestContactVerification.mockResolvedValue({
+      verificationAttemptId: '1',
+      contactType: 'phone',
+      deliveryStatus: 'sent',
+      deliveredChannel: 'email',
+      expiresAt: dentroDeDiezMinutos(),
+    });
+
+    await pintar();
+
+    await waitFor(() => expect(screen.getByText('Código enviado')).toBeTruthy());
+    expect(screen.getByText(/te lo mandamos a tu correo/i)).toBeTruthy();
+  });
+
+  /* Y cuando salio por donde se pidio, no se inventa ningun desvio. */
+  it('no habla del correo cuando el SMS si salio', async () => {
+    listVerificationChannels.mockResolvedValue({ channels: [{ channel: 'sms', available: true }] });
+    requestContactVerification.mockResolvedValue({
+      verificationAttemptId: '1',
+      contactType: 'phone',
+      deliveryStatus: 'sent',
+      deliveredChannel: 'sms',
+      expiresAt: dentroDeDiezMinutos(),
+    });
+
+    await pintar();
+
+    await waitFor(() => expect(screen.getByText('Código enviado')).toBeTruthy());
+    expect(screen.queryByText(/te lo mandamos a tu correo/i)).toBeNull();
+  });
 });

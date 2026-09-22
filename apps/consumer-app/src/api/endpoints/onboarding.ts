@@ -107,7 +107,14 @@ export const requestContactVerification = (
   customerId: string,
   body: { contactType: 'phone' | 'email'; verificationChannel: VerificationChannel },
 ) =>
-  request<{ verificationAttemptId: string; contactType: string; deliveryStatus: string; expiresAt: string }>(
+  request<{
+    verificationAttemptId: string;
+    contactType: string;
+    deliveryStatus: string;
+    /** Canal por el que SALIO de verdad: puede no ser el pedido (reserva por correo del backend). */
+    deliveredChannel?: string;
+    expiresAt: string;
+  }>(
     `/customer-onboarding/${customerId}/contact-verification/request`,
     { method: 'POST', idempotent: true, body },
   );
