@@ -14,12 +14,14 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { isSandboxPurchase } from '../../../src/api/config';
+import { getPaymentQrForPos } from '../../../src/api/endpoints/loans';
 import { formatMoney } from '../../../src/domain/money';
 import { dueLabel, formatTime, itemTitle, statusLabel, statusTone } from '../../../src/features/payment-copy';
 import { useSandbox } from '../../../src/sandbox/store';
+import { POS_QRS } from '../../../src/sandbox/fixtures';
 import { useSession } from '../../../src/session/session';
 import { requestProofTicket, submitPaymentClaim, uploadProof } from '../../../src/api/endpoints/payment-claims';
 import { color, palette, radius, space } from '../../../src/theme/tokens';
@@ -44,6 +46,8 @@ export default function PaymentScreen() {
   const [proofUri, setProofUri] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [reported, setReported] = useState(false);
+  const [qrError, setQrError] = useState<string | null>(null);
+  const [qrRetry, setQrRetry] = useState(0);
 
   useEffect(() => {
     if (itemId) sandbox.ensureInstruction(itemId);
@@ -54,6 +58,29 @@ export default function PaymentScreen() {
   const instruction = itemId ? sandbox.instructionFor(itemId) : null;
   const order = sandbox.state.orders.find((entry) => entry.id === schedule?.purchaseOrderId);
   const claim = sandbox.state.claims.find((entry) => entry.instructionId === instruction?.id);
+  const realPos = Boolean(order && !POS_QRS.some((entry) => entry.context.posId === order.context.posId));
+  const partnerId = order?.context.organizationId;
+  const posId = order?.context.posId;
+  const ensureUploadedQrInstruction = sandbox.ensureUploadedQrInstruction;
+
+  useEffect(() => {
+    if (!realPos || !partnerId || !posId || !itemId || instruction) return;
+    let cancelled = false;
+    void getPaymentQrForPos(partnerId, posId)
+      .then((qr) => {
+        if (cancelled) return;
+        if (!qr) {
+          setQrError('El comercio todavía no tiene un QR bancario aprobado para recibir este pago.');
+          return;
+        }
+        setQrError(null);
+        ensureUploadedQrInstruction(itemId, qr);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setQrError(error instanceof Error ? error.message : 'No se pudo obtener el QR bancario del comercio.');
+      });
+    return () => { cancelled = true; };
+  }, [itemId, instruction, partnerId, posId, realPos, qrRetry, ensureUploadedQrInstruction]);
 
   if (!item || !order) {
     return (
@@ -82,7 +109,7 @@ export default function PaymentScreen() {
   }
 
   const copyEndpoint = async () => {
-    if (!instruction) return;
+    if (!instruction?.qrPayloadSnapshot) return;
     await Clipboard.setStringAsync(instruction.qrPayloadSnapshot);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setCopied(true);
@@ -108,6 +135,11 @@ export default function PaymentScreen() {
    */
   const reportPayment = async () => {
     if (!instruction) return;
+
+    if (realPos && !isSandboxPurchase) {
+      setFallo('El pago inicial de esta compra aún no admite avisos reales. Conserva el comprobante y contacta al comercio.');
+      return;
+    }
 
     /*
      * En una compra de DEMOSTRACIÓN el aviso no sale del teléfono, y se dice: antes esto marcaba
@@ -192,7 +224,11 @@ export default function PaymentScreen() {
           />
 
           <View style={styles.qrBox}>
-            <QRCode value={instruction.qrPayloadSnapshot} size={196} backgroundColor={palette.white} color={palette.bg} />
+            {instruction.qrImageDataUrlSnapshot ? (
+              <Image source={{ uri: instruction.qrImageDataUrlSnapshot }} style={{ width: 196, height: 196 }} resizeMode="contain" accessibilityLabel={`QR bancario de ${instruction.beneficiaryNameSnapshot}`} />
+            ) : (
+              <QRCode value={instruction.qrPayloadSnapshot} size={196} backgroundColor={palette.white} color={palette.bg} />
+            )}
           </View>
 
           <Divider />
@@ -200,13 +236,21 @@ export default function PaymentScreen() {
           <KeyValue label="Cuenta" numeric value={instruction.paymentEndpointMaskedSnapshot} />
           <KeyValue label="Vigente hasta" numeric value={formatTime(instruction.expiresAt)} />
 
-          <Button label={copied ? 'Código copiado' : 'Copiar código de pago'} variant="secondary" onPress={copyEndpoint} />
+          {instruction.qrPayloadSnapshot ? <Button label={copied ? 'Código copiado' : 'Copiar código de pago'} variant="secondary" onPress={copyEndpoint} /> : null}
         </Card>
       ) : (
         <ErrorState
           title="Sin instruccion de pago"
-          detail="No pudimos preparar el destino de cobro de esta cuota. Intenta de nuevo en un momento."
-          onRetry={() => itemId && sandbox.ensureInstruction(itemId)}
+          detail={qrError ?? 'Estamos preparando el QR bancario aprobado del comercio.'}
+          onRetry={() => {
+            if (!itemId) return;
+            if (realPos) {
+              setQrError(null);
+              setQrRetry((current) => current + 1);
+            } else {
+              sandbox.ensureInstruction(itemId);
+            }
+          }}
         />
       )}
 

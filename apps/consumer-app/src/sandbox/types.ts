@@ -115,6 +115,8 @@ export type PaymentInstruction = {
   beneficiaryNameSnapshot: string;
   paymentEndpointMaskedSnapshot: string;
   qrPayloadSnapshot: string;
+  /** Imagen original aprobada del banco, cuando la caja pertenece a un partner real. */
+  qrImageDataUrlSnapshot?: string;
   amount: Minor;
   currency: Currency;
   status: 'ISSUED' | 'EXPIRED' | 'FULFILLED';

@@ -362,6 +362,29 @@ export function issueInstruction(input: {
   };
 }
 
+/** Conserva la imagen que subió el partner; no inventa un payload bancario a partir de ella. */
+export function issueUploadedQrInstruction(input: {
+  item: ScheduleItem;
+  qr: { qrId: string; imageDataUrl: string; bankInstitutionCode: string | null; accountNumberMasked: string | null };
+  beneficiaryName: string;
+  currency: PaymentInstruction['currency'];
+  now: number;
+}): PaymentInstruction {
+  return {
+    id: id('ins'),
+    scheduleItemId: input.item.id,
+    beneficiaryNameSnapshot: input.beneficiaryName,
+    paymentEndpointMaskedSnapshot: input.qr.accountNumberMasked ?? input.qr.bankInstitutionCode ?? '—',
+    qrPayloadSnapshot: '',
+    qrImageDataUrlSnapshot: input.qr.imageDataUrl,
+    amount: input.item.amount,
+    currency: input.currency,
+    status: 'ISSUED',
+    issuedAt: new Date(input.now).toISOString(),
+    expiresAt: new Date(input.now + 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
 /** Total pendiente del calendario: lo que la persona todavia debe. */
 export function outstandingAmount(schedules: PaymentSchedule[]): Minor {
   return schedules

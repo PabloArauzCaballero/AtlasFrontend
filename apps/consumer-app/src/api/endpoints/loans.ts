@@ -202,3 +202,17 @@ export type ResolvedMerchant = {
  */
 export const resolveMerchantQr = (token: string) =>
   request<ResolvedMerchant>('/merchant-qr/resolve', { method: 'POST', body: { token } });
+
+export type UploadedPaymentQr = {
+  qrId: string;
+  imageDataUrl: string;
+  bankInstitutionCode: string | null;
+  accountNumberMasked: string | null;
+};
+
+/** La imagen bancaria vigente de la empresa a la que pertenece esta caja activa. */
+export const getPaymentQrForPos = (partnerProfileId: string, posTerminalId: string) =>
+  request<UploadedPaymentQr | null>('/merchant-qr/payment', {
+    method: 'POST',
+    body: { partnerProfileId, posTerminalId },
+  });

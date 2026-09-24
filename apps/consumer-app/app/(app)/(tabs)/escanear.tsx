@@ -208,14 +208,14 @@ export default function ScanScreen() {
           onChangeText={setManual}
           autoCapitalize="none"
           autoCorrect={false}
-          ayuda="El código impreso debajo del QR de la caja, de al menos ocho caracteres. Pídeselo al comercio si la cámara no lee el QR; identifica la caja exacta donde estás comprando."
+          ayuda="El código impreso debajo del QR de la caja, de al menos tres caracteres. Pídeselo al comercio si la cámara no lee el QR; identifica la caja exacta donde estás comprando."
         />
         <Button
           label="Continuar"
           variant="secondary"
-          disabled={manual.trim().length < 8}
+          disabled={manual.trim().length < 3}
           blockedReason={firstBlocker([
-            [manual.trim().length >= 8, 'El código del comercio tiene al menos 8 caracteres.'],
+            [manual.trim().length >= 3, 'El código del comercio tiene al menos 3 caracteres.'],
           ])}
           onPress={() => {
             locked.current = false;
