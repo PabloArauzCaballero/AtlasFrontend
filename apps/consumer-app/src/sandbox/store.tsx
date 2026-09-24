@@ -23,6 +23,7 @@ import {
   evaluateOrder,
   isExpired,
   issueInstruction,
+  issueUploadedQrInstruction,
   nextDueItem,
   openResolvedScanSession,
   openScanSession,
@@ -33,6 +34,7 @@ import { isBackendDecision } from '../api/config';
 import { useSession } from '../session/session';
 import { requestLiveDecision } from '../features/credit-evaluation';
 import { listCreditApplications } from '../api/endpoints/credit';
+import type { UploadedPaymentQr } from '../api/endpoints/loans';
 
 /**
  * De donde salio la decision que se esta mostrando.
@@ -85,6 +87,7 @@ type SandboxContextValue = {
   instructionFor(itemId: string): PaymentInstruction | null;
   /** Emite la instruccion de una cuota la primera vez que se abre su pantalla de pago. */
   ensureInstruction(itemId: string): void;
+  ensureUploadedQrInstruction(itemId: string, qr: UploadedPaymentQr): void;
   claimPayment(input: { instructionId: string; reference: string | null; proofUri: string | null }): void;
   /** Confirmacion del comercio: unica fuente que resuelve un pago como pagado en el sandbox. */
   confirmMerchantReceipt(itemId: string): void;
@@ -367,6 +370,24 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const ensureUploadedQrInstruction = useCallback<SandboxContextValue['ensureUploadedQrInstruction']>((itemId, qr) => {
+    setState((current) => {
+      if (current.instructions.some((entry) => entry.scheduleItemId === itemId)) return current;
+      const schedule = current.schedules.find((entry) => entry.items.some((entryItem) => entryItem.id === itemId));
+      const item = schedule?.items.find((entry) => entry.id === itemId);
+      const order = current.orders.find((entry) => entry.id === schedule?.purchaseOrderId);
+      if (!schedule || !item || !order) return current;
+      const instruction = issueUploadedQrInstruction({
+        item,
+        qr,
+        beneficiaryName: order.context.tradeName,
+        currency: order.currency,
+        now: Date.now(),
+      });
+      return { ...current, instructions: [instruction, ...current.instructions] };
+    });
+  }, []);
+
   const claimPayment = useCallback<SandboxContextValue['claimPayment']>((input) => {
     setState((current) => {
       const instruction = current.instructions.find((item) => item.id === input.instructionId);
@@ -569,6 +590,7 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
       cancelOrder,
       instructionFor: (itemId) => state.instructions.find((item) => item.scheduleItemId === itemId) ?? null,
       ensureInstruction,
+      ensureUploadedQrInstruction,
       claimPayment,
       confirmMerchantReceipt,
       openDispute,
@@ -588,6 +610,7 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
       confirmMerchantReceipt,
       decisionOrigin,
       ensureInstruction,
+      ensureUploadedQrInstruction,
       evaluate,
       merchantAccept,
       merchantReject,
