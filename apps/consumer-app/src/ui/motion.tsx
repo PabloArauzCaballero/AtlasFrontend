@@ -164,39 +164,39 @@ function AppearWeb({
  * velocidad constante y se para en seco; con el muelle, frena solo. Es la misma distancia recorrida
  * y se lee como un material distinto.
  */
-export function PressSurface({
-  children,
-  style,
-  scaleTo = press.scale,
-  ...rest
-}: Omit<PressableProps, 'style'> & { style?: StyleProp<ViewStyle>; scaleTo?: number; children: React.ReactNode }) {
-  const reduced = useReducedMotion();
-  const scale = useSharedValue(1);
-  const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+export const PressSurface = React.forwardRef<View, Omit<PressableProps, 'style'> & { style?: StyleProp<ViewStyle>; scaleTo?: number; children: React.ReactNode }>(
+  // El ref se reenvía al pulsable de verdad: el botón flotante del asistente lo usa para DEVOLVER
+  // el foco al cerrar su hoja con Escape en web. Sin ref, el foco caía al body.
+  function PressSurface({ children, style, scaleTo = press.scale, ...rest }, ref) {
+    const reduced = useReducedMotion();
+    const scale = useSharedValue(1);
+    const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
-  const settle = (to: number) => {
-    if (reduced) return;
-    scale.value = withSpring(to, spring.press);
-  };
+    const settle = (to: number) => {
+      if (reduced) return;
+      scale.value = withSpring(to, spring.press);
+    };
 
-  return (
-    <AnimatedPressable
-      // En el navegador `hitSlop` no existe: `data-toque` le da el mismo área (ver `ui/hit-slop.ts`).
-      {...conToqueWeb(rest as PressableProps & { dataSet?: Record<string, string> }, rest.hitSlop)}
-      onPressIn={(event) => {
-        settle(scaleTo);
-        rest.onPressIn?.(event);
-      }}
-      onPressOut={(event) => {
-        settle(1);
-        rest.onPressOut?.(event);
-      }}
-      style={[style, animated]}
-    >
-      {children}
-    </AnimatedPressable>
-  );
-}
+    return (
+      <AnimatedPressable
+        ref={ref}
+        // En el navegador `hitSlop` no existe: `data-toque` le da el mismo área (ver `ui/hit-slop.ts`).
+        {...conToqueWeb(rest as PressableProps & { dataSet?: Record<string, string> }, rest.hitSlop)}
+        onPressIn={(event) => {
+          settle(scaleTo);
+          rest.onPressIn?.(event);
+        }}
+        onPressOut={(event) => {
+          settle(1);
+          rest.onPressOut?.(event);
+        }}
+        style={[style, animated]}
+      >
+        {children}
+      </AnimatedPressable>
+    );
+  },
+);
 
 /**
  * Numero que cuenta hasta su valor.

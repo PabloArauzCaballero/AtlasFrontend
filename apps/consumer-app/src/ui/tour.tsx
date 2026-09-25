@@ -48,6 +48,8 @@ type Rect = LayoutRectangle;
 type TourContextValue = {
   register: (id: string, rect: Rect | null) => void;
   start: (steps: TourStep[], persistKey?: string) => void;
+  /** Si hay un recorrido en pantalla. Lo consultan las capas flotantes que no deben taparlo. */
+  activo: boolean;
 };
 
 const TourContext = React.createContext<TourContextValue | null>(null);
@@ -142,7 +144,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     setPersistKey(null);
   }, [persistKey]);
 
-  const value = React.useMemo<TourContextValue>(() => ({ register, start }), [register, start]);
+  const value = React.useMemo<TourContextValue>(() => ({ register, start, activo: steps !== null }), [register, start, steps]);
 
   const step = steps?.[index] ?? null;
   const rect = step ? (targets.current.get(step.target) ?? null) : null;

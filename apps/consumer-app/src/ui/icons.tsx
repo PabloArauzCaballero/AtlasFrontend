@@ -56,6 +56,9 @@ export type IconName =
   | 'ubicacion'
   | 'billetera'
   | 'chispa'
+  // El asistente de la app: la burbuja de chat con la chispa dentro. `ayuda` es la interrogación
+  // del soporte estático y `chispa` la magia suelta; este es «escríbeme y te contesto al momento».
+  | 'asistente'
   | 'refrescar'
   // Rubros de comercio. Uno por categoria del expediente del partner, y `comercio` para lo que no
   // encaje: un rubro sin icono propio es mejor con la tienda generica que con el de otro rubro.
@@ -230,6 +233,24 @@ const PATHS: Record<IconName, (stroke: string, width: number) => React.ReactNode
       strokeWidth={w}
       strokeLinejoin="round"
     />
+  ),
+  // La burbuja de chat con la chispa dentro: el asistente que contesta al momento. La cola apunta
+  // abajo-izquierda, hacia quien escribe; la chispa va centrada y pequeña para leerse a 22 px.
+  asistente: (s, w) => (
+    <>
+      <Path
+        d="M4 7A2.5 2.5 0 0 1 6.5 4.5h11A2.5 2.5 0 0 1 20 7v6.5a2.5 2.5 0 0 1-2.5 2.5H11.8l-3.9 3.4a.5.5 0 0 1-.83-.38V16A2.5 2.5 0 0 1 4 13.5z"
+        stroke={s}
+        strokeWidth={w}
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M12 6.9c.35 2.5 1 3.15 3.5 3.5-2.5.35-3.15 1-3.5 3.5-.35-2.5-1-3.15-3.5-3.5 2.5-.35 3.15-1 3.5-3.5z"
+        stroke={s}
+        strokeWidth={w}
+        strokeLinejoin="round"
+      />
+    </>
   ),
   refrescar: (s, w) => (
     <>
