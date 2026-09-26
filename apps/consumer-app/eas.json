@@ -33,7 +33,7 @@
         "EXPO_PUBLIC_ATLAS_TIMEOUT_MS": "20000",
         "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",
         "EXPO_PUBLIC_ATLAS_DECISION_SOURCE": "backend",
-        "EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO": "false"
+        "EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO": "true"
       },
       "ios": {
         "autoIncrement": true
