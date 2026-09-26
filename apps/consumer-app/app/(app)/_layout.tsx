@@ -11,6 +11,7 @@ import { Redirect, Stack } from 'expo-router';
 import { Platform, StyleSheet, View } from 'react-native';
 import { areaFor, useSession } from '../../src/session/session';
 import { color } from '../../src/theme/tokens';
+import { AssistFab } from '../../src/ui/assist-fab';
 import { useTramo } from '../../src/ui/responsive';
 import { BarraSuperior } from '../../src/web/Cascara';
 import { webData } from '../../src/web/estilo';
@@ -71,11 +72,23 @@ export default function AppLayout() {
     </Stack>
   );
 
-  if (!conCascara) return pila;
+  /*
+    El boton del asistente va DESPUES de la pila y dentro del mismo contenedor: flota encima de
+    cualquier pantalla del area autenticada y se monta UNA vez, no una por pantalla. El se quita
+    solo donde estorba (soporte, tour, teclado, modales de pago) — ver `ui/assist-fab.tsx`.
+  */
+  if (!conCascara)
+    return (
+      <View style={styles.cascara}>
+        {pila}
+        <AssistFab />
+      </View>
+    );
   return (
     <View style={styles.cascara} {...webData('cascara', { area: 'app' })}>
       <BarraSuperior />
       {pila}
+      <AssistFab />
     </View>
   );
 }

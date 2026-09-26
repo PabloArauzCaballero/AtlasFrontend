@@ -509,6 +509,19 @@ body:has(.auth) .aurora,body:has(.auth) .mesh{opacity:.32}
 .paso p{font-family:var(--body);font-size:.9rem;line-height:1.55;color:var(--t2);margin:0}
 @media ${HASTA_TABLETA}{.hero__grid{grid-template-columns:1fr}.hero__visual{display:none}.pasos{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media ${HASTA_TELEFONO}{.pasos{grid-template-columns:1fr}}
+
+/*
+  El boton flotante del asistente. Fijo y no absoluto: en la web el area de cliente puede
+  desplazarse bajo la cascara, y un boton de ayuda que se va con el scroll no es un boton de ayuda.
+  Los !important ganan a los estilos en linea que calcula el componente para el telefono; desde
+  tableta la barra de pestanas no existe y la esquina 24/24 es la convencion que todo el mundo
+  conoce. El foco visible lo pone la regla global de :focus-visible.
+*/
+[data-atlas="asistente-fab"]{position:fixed !important;z-index:60;cursor:pointer;transition:transform var(--t-fast) var(--glide),box-shadow var(--t-fast) var(--glide)}
+@media (hover:hover){
+  [data-atlas="asistente-fab"]:hover{transform:translateY(-2px);box-shadow:0 22px 52px -18px rgba(var(--b2-rgb),.65)}
+}
+@media ${DESDE_TABLETA}{[data-atlas="asistente-fab"]{bottom:24px !important;right:24px !important}}
 `;
 
 let inyectada = false;

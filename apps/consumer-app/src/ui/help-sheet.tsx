@@ -24,7 +24,7 @@
  * declara el contenedor de la hoja, no el `Modal`, porque es la vista que debe atrapar el foco.
  */
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ANCHO_COLUMNA, useTramo } from './responsive';
 import { color, radius, shadow, space, stroke, touch } from '../theme/tokens';
 import { toqueWeb } from './hit-slop';
@@ -38,6 +38,7 @@ export function BottomSheet({
   titulo,
   onClose,
   cierre = 'Listo',
+  evitarTeclado = false,
   children,
 }: {
   visible: boolean;
@@ -45,6 +46,12 @@ export function BottomSheet({
   onClose: () => void;
   /** El texto del boton de la derecha. «Listo» cuando se elige algo; «Cerrar» cuando solo se lee. */
   cierre?: string;
+  /**
+   * Para las hojas con un campo de texto (el chat del asistente): en iOS el teclado sube DELANTE
+   * del Modal y sin esto tapa el campo que se acaba de tocar. Es opt-in porque las hojas de solo
+   * lectura no lo necesitan y el envoltorio cambia como se reparte el alto.
+   */
+  evitarTeclado?: boolean;
   children: React.ReactNode;
 }) {
   /*
@@ -55,26 +62,32 @@ export function BottomSheet({
   const estrecha = useTramo() !== 'telefono';
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      {/*
-        El velo es un pulsable a pantalla completa y ADEMAS esta marcado como decorativo: tocar
-        fuera cierra —es el gesto que la gente ya tiene aprendido— pero un lector de pantalla no
-        tiene por que anunciar un rectangulo llamado «velo» antes del contenido de la hoja.
-      */}
-      <Pressable style={styles.backdrop} onPress={onClose} accessibilityElementsHidden importantForAccessibility="no" />
-      <View style={[styles.sheet, estrecha && styles.sheetEstrecha]} accessibilityViewIsModal>
-        <View style={styles.grabber} />
-        <View style={styles.sheetHead}>
-          <AtlasText variant="h3" style={styles.sheetTitle}>
-            {titulo}
-          </AtlasText>
-          <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={cierre} hitSlop={12} {...toqueWeb(12)}>
-            <AtlasText variant="bodyStrong" tone="brand">
-              {cierre}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        enabled={evitarTeclado}
+        style={styles.lienzo}
+      >
+        {/*
+          El velo es un pulsable a pantalla completa y ADEMAS esta marcado como decorativo: tocar
+          fuera cierra —es el gesto que la gente ya tiene aprendido— pero un lector de pantalla no
+          tiene por que anunciar un rectangulo llamado «velo» antes del contenido de la hoja.
+        */}
+        <Pressable style={styles.backdrop} onPress={onClose} accessibilityElementsHidden importantForAccessibility="no" />
+        <View style={[styles.sheet, estrecha && styles.sheetEstrecha]} accessibilityViewIsModal>
+          <View style={styles.grabber} />
+          <View style={styles.sheetHead}>
+            <AtlasText variant="h3" style={styles.sheetTitle}>
+              {titulo}
             </AtlasText>
-          </Pressable>
+            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={cierre} hitSlop={12} {...toqueWeb(12)}>
+              <AtlasText variant="bodyStrong" tone="brand">
+                {cierre}
+              </AtlasText>
+            </Pressable>
+          </View>
+          {children}
         </View>
-        {children}
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -242,6 +255,9 @@ const styles = StyleSheet.create({
   labelSpacer: { flex: 1 },
   helpTarget: { padding: 4, alignItems: 'center', justifyContent: 'center' },
 
+  // El envoltorio que reparte el alto entre velo y hoja. Es lo que `KeyboardAvoidingView`
+  // encoge cuando sube el teclado; sin `flex: 1` la hoja no tendria contra que empujar.
+  lienzo: { flex: 1, justifyContent: 'flex-end' },
   // El mismo velo que el recorrido guiado (`color.overlay.scrim`): negro puro al 55 % era un
   // segundo oscurecedor, mas claro y sin el tinte navy, en una app que ya tenia el suyo.
   backdrop: { flex: 1, backgroundColor: color.overlay.scrim },
