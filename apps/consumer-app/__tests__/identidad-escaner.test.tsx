@@ -74,6 +74,12 @@ const preparada = (input: { kind: PreparedEvidence['kind']; localUri: string; ca
   ...(input.captureSource ? { captureSource: input.captureSource } : {}),
 });
 
+/** La primera vez que se abre el escaner en la pantalla, antes pasa por la hoja de consejo. */
+async function abrirEscanerConConsejo() {
+  await fireEvent.press(screen.getByText('Tomar foto'));
+  await fireEvent.press(screen.getByText('Abrir el escáner'));
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   subir.mockImplementation(async (input) => preparada(input));
@@ -88,7 +94,7 @@ describe('identidad con la bandera del escaner encendida', () => {
     await medirCarrusel();
     expect(screen.getByText('1 de 3')).toBeTruthy();
 
-    await fireEvent.press(screen.getByText('Tomar foto'));
+    await abrirEscanerConConsejo();
 
     await waitFor(() => expect(subir).toHaveBeenCalledTimes(1));
     expect(escanear).toHaveBeenCalledTimes(1);
@@ -108,7 +114,7 @@ describe('identidad con la bandera del escaner encendida', () => {
     mockTomarFoto.mockResolvedValue({ uri: 'file:///foto.jpg' });
     await pintar();
 
-    await fireEvent.press(screen.getByText('Tomar foto'));
+    await abrirEscanerConConsejo();
 
     await waitFor(() => expect(screen.getByTestId('visor-de-la-camara')).toBeTruthy());
     // La mira del carnet, con su forma apaisada.
@@ -125,7 +131,7 @@ describe('identidad con la bandera del escaner encendida', () => {
     escanear.mockResolvedValue({ tipo: 'cancelado' });
     await pintar();
 
-    await fireEvent.press(screen.getByText('Tomar foto'));
+    await abrirEscanerConConsejo();
 
     await waitFor(() => expect(escanear).toHaveBeenCalledTimes(1));
     expect(subir).not.toHaveBeenCalled();
@@ -136,7 +142,7 @@ describe('identidad con la bandera del escaner encendida', () => {
   it('un recorte pequeño o que no es el carnet entero no se sube: se pide repetirlo', async () => {
     escanear.mockResolvedValueOnce({ tipo: 'imagen', uri: 'file:///chico.jpg', ancho: 1000, alto: 630, origen: 'escaner_sistema' });
     await pintar();
-    await fireEvent.press(screen.getByText('Tomar foto'));
+    await abrirEscanerConConsejo();
     await waitFor(() => expect(screen.getByText('La imagen salió muy pequeña. Acerca un poco el teléfono.')).toBeTruthy());
     expect(subir).not.toHaveBeenCalled();
 
@@ -144,6 +150,27 @@ describe('identidad con la bandera del escaner encendida', () => {
     await fireEvent.press(screen.getByText('Repetir la foto'));
     await waitFor(() => expect(screen.getByText('No parece el carnet entero. Repite con los cuatro bordes a la vista.')).toBeTruthy());
     expect(subir).not.toHaveBeenCalled();
+  });
+
+  it('antes del primer escaneo explica como ponerlo; cerrar la hoja no abre nada y no vuelve a salir', async () => {
+    escanear.mockResolvedValue({ tipo: 'cancelado' });
+    await pintar();
+
+    await fireEvent.press(screen.getByText('Tomar foto'));
+    expect(screen.getByText('Antes de escanear')).toBeTruthy();
+    expect(escanear).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByText('Cerrar'));
+    await waitFor(() => expect(screen.queryByText('Antes de escanear')).toBeNull());
+    expect(escanear).not.toHaveBeenCalled();
+
+    await abrirEscanerConConsejo();
+    await waitFor(() => expect(escanear).toHaveBeenCalledTimes(1));
+
+    // La segunda vez va directo al escaner.
+    await fireEvent.press(screen.getByText('Tomar foto'));
+    await waitFor(() => expect(escanear).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText('Antes de escanear')).toBeNull();
   });
 
   it('la selfie NO usa el escaner: abre la camara frontal de siempre, sin la mira del carnet', async () => {
@@ -174,7 +201,7 @@ describe('identidad con la bandera del escaner encendida', () => {
         }),
     );
     await pintar();
-    await fireEvent.press(screen.getByText('Tomar foto'));
+    await abrirEscanerConConsejo();
 
     await waitFor(() => expect(screen.getByText('Subiendo el anverso…')).toBeTruthy());
     await fireEvent.press(screen.getByText('Cancelar la subida'));
