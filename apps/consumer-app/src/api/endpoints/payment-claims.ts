@@ -9,7 +9,7 @@
  * Nada de esto salda la cuota: la salda el comercio cuando ve el dinero en su cuenta.
  */
 import { request } from '../client';
-import { fetchRepetible } from '../reintentos';
+import { fetchAlAlmacen } from '../almacen';
 
 /**
  * Lo que devuelve `proof-tickets`: la MISMA forma que `UploadTicket` del backend
@@ -101,7 +101,7 @@ export async function uploadProof(ticket: ProofTicket, fileUri: string, contentT
   const blob = await (await fetch(fileUri)).blob();
   // Las cabeceras van EXACTAMENTE como las firmó el backend; `content-type` sólo se añade si el
   // ticket no lo trae (nunca debería pasar, pero un PUT sin tipo lo rechaza el almacén).
-  const respuesta = await fetchRepetible(ticket.uploadUrl, {
+  const respuesta = await fetchAlAlmacen(ticket.uploadUrl, {
     method: ticket.method ?? 'PUT',
     headers: { 'content-type': contentType, ...ticket.requiredHeaders },
     body: blob,

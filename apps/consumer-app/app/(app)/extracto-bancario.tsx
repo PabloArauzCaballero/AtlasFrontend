@@ -24,7 +24,7 @@ import { useEffect, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import * as creditLineApi from "../../src/api/endpoints/credit-line";
 import { describeError } from "../../src/api/errors";
-import { fetchRepetible } from "../../src/api/reintentos";
+import { fetchAlAlmacen } from "../../src/api/almacen";
 import { useSession } from "../../src/session/session";
 import { space } from "../../src/theme/tokens";
 import type { IconName } from "../../src/ui/icons";
@@ -199,7 +199,7 @@ export default function ExtractoBancario() {
       if (bytes.length !== size) {
         throw new Error('El archivo cambió de tamaño mientras se leía. Vuelve a elegirlo.');
       }
-      const response = await fetchRepetible(permit.uploadUrl, {
+      const response = await fetchAlAlmacen(permit.uploadUrl, {
         method: permit.method,
         headers: permit.requiredHeaders,
         body: bytes as unknown as BodyInit,

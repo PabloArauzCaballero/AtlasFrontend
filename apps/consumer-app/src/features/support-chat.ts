@@ -18,7 +18,7 @@ import { sha256Hex } from '../lib/criptografia';
 import { leerBytes } from '../device/archivos';
 import * as supportApi from '../api/endpoints/support';
 import { AtlasApiError } from '../api/errors';
-import { fetchRepetible } from '../api/reintentos';
+import { fetchAlAlmacen } from '../api/almacen';
 
 /** Cada cuanto se pregunta por lo nuevo con la pantalla abierta. */
 export const CHAT_POLL_MS = 4000;
@@ -62,7 +62,7 @@ export async function subirFotoAlChat(input: { channelId: string; localUri: stri
   const sha256 = await sha256Hex(bytes);
 
   const ticket = await supportApi.attachmentTicket(input.channelId, { contentType: mimeType, sizeBytes: bytes.length });
-  const response = await fetchRepetible(ticket.uploadUrl, {
+  const response = await fetchAlAlmacen(ticket.uploadUrl, {
     method: ticket.method,
     headers: ticket.requiredHeaders,
     body: bytes as unknown as BodyInit,

@@ -14,7 +14,8 @@ import { sha256Hex } from '../lib/criptografia';
 import { leerArchivoEnBase64, leerBytes } from '../device/archivos';
 import * as onboardingApi from '../api/endpoints/onboarding';
 import { AtlasApiError } from '../api/errors';
-import { fetchRepetible, PRESUPUESTO_REINTENTOS_MS } from '../api/reintentos';
+import { fetchAlAlmacen } from '../api/almacen';
+import { PRESUPUESTO_REINTENTOS_MS } from '../api/reintentos';
 import { campoCaptureSource, type OrigenCaptura } from './origen-de-captura';
 
 /** Las tres capturas del paquete de identidad. */
@@ -150,7 +151,7 @@ export async function uploadEvidence(input: {
     );
 
     // Repetible: el almacén se despliega con el backend y puede no estar unos segundos.
-    const response = await fetchRepetible(
+    const response = await fetchAlAlmacen(
       ticket.uploadUrl,
       {
         method: ticket.method,
