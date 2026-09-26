@@ -127,6 +127,24 @@ export const CAMPOS_DE_IDENTIDAD: ReadonlySet<Campo> = new Set<Campo>([
 
 export type Captura = 'carnet_frente' | 'carnet_reverso' | 'selfie' | 'liveness';
 
+/**
+ * Lo que la persona hace con una captura.
+ *
+ * - `abre`: abre la captura (la camara de la app, o el camino hacia el escaner).
+ * - `escanea`: se abre el escaner DEL SISTEMA (VisionKit / ML Kit). Es otra pantalla, que no es de la
+ *   app: en Android es otra actividad, y la app pasa a segundo plano sin que la persona se haya ido.
+ * - `respaldo_camara`: el escaner no estaba disponible y se abrio la camara de la app en su lugar.
+ * - `toma` / `repite`: sale una imagen —la camara dispara o el escaner devuelve el recorte—, por
+ *   primera vez o encima de una captura anterior. Como hasta ahora, se anota ANTES de subirla: si la
+ *   subida falla o la app la rechaza por pequeña o por no ser el carnet entero (evento `validacion`
+ *   `captura_pequena` / `captura_proporcion`), la toma ya consta.
+ * - `cancela`: se sale sin guardar.
+ *
+ * Viaja como `metadata.eventType` de `captura_<que>`; el backend lo guarda como texto sin lista
+ * cerrada (`onboarding_step_events.event_type`, varchar(60)).
+ */
+export type AccionDeCaptura = 'abre' | 'escanea' | 'respaldo_camara' | 'toma' | 'repite' | 'cancela';
+
 export type Permiso = 'camara' | 'ubicacion' | 'ubicacion_siempre' | 'contactos' | 'microfono' | 'notificaciones';
 
 /**
@@ -161,7 +179,7 @@ export type EventoBitacora =
   | { tipo: 'validacion'; pantalla: Pantalla; campo?: Campo; codigo: string; t: number }
   | { tipo: 'envio'; pantalla: Pantalla; resultado: 'ok' | 'error'; codigo?: string; latenciaMs: number; t: number }
   | { tipo: 'permiso'; permiso: Permiso; decision: 'concedido' | 'denegado' | 'omitido'; t: number }
-  | { tipo: 'captura'; que: Captura; accion: 'abre' | 'toma' | 'repite' | 'cancela' | 'segundo_plano'; t: number };
+  | { tipo: 'captura'; que: Captura; accion: AccionDeCaptura | 'segundo_plano'; t: number };
 
 /** Un evento ya en la cola: con identificador propio para poder confirmarlo o reponerlo. */
 export type EventoEnCola = { id: number; evento: EventoBitacora };

@@ -359,7 +359,8 @@ describe('la version web', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const web = require('../src/device/escaner-documento.web') as typeof import('../src/device/escaner-documento.web');
     await expect(web.escanearDocumento()).resolves.toEqual({ tipo: 'no_disponible', motivo: 'web' });
-    expect(typeof web.escanerHabilitado()).toBe('boolean');
+    // En el navegador no hay escaner: la pantalla va directa a la camara, este como este la bandera.
+    expect(web.escanerHabilitado()).toBe(false);
     expect(cargada).not.toHaveBeenCalled();
   });
 });

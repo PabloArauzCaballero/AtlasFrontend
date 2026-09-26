@@ -25,7 +25,7 @@
  * Cada slide se anuncia con su titulo y su estado, y el indicador es texto ademas de puntos: un
  * punto relleno no lo lee un lector de pantalla, y «2 de 3» si.
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Image,
   ScrollView,
@@ -64,10 +64,47 @@ export type ImageSlide = {
  */
 const ALTO_VENTANA = 220;
 
-export function ImageSlides({ slides }: Readonly<{ slides: readonly ImageSlide[] }>) {
+/**
+ * Una peticion de ir a una lamina. Lleva un numero de pedido para que pedir DOS veces la misma
+ * lamina —repetir el anverso con el reverso ya hecho— vuelva a moverse aunque la clave no cambie.
+ */
+export type PeticionDeLamina = { clave: string; pedido: number };
+
+export function ImageSlides({
+  slides,
+  enfocar,
+  ocupado = false,
+}: Readonly<{
+  slides: readonly ImageSlide[];
+  /**
+   * La lamina que hay que enseñar. Tras guardar una captura, la pantalla pide la SIGUIENTE pendiente:
+   * sin esto el carrusel volvia a la primera, y quien acababa de hacer el anverso tenia que pasar de
+   * lado para encontrar el reverso.
+   */
+  enfocar?: PeticionDeLamina | null;
+  /** Mientras se sube una captura, el boton de la lamina no abre otra. */
+  ocupado?: boolean;
+}>) {
   const scroll = useRef<ScrollView>(null);
   const [ancho, setAncho] = useState(0);
   const [indice, setIndice] = useState(0);
+  const atendida = useRef<number | null>(null);
+  const pedidoAlMontar = useRef(enfocar?.pedido ?? null);
+
+  /*
+    Se atiende cuando ya hay ANCHO: antes de medir, `scrollTo` no sabe a que x ir. Sin animacion si
+    la peticion ya estaba al montar (al volver de la camara la pantalla se monta de nuevo y la lamina
+    tiene que estar ya en su sitio, no deslizarse delante de la persona); con animacion si llega con
+    el carrusel a la vista, que es el caso del escaner del sistema.
+  */
+  const destino = enfocar ? slides.findIndex((slide) => slide.key === enfocar.clave) : -1;
+  const pedido = enfocar?.pedido ?? null;
+  useEffect(() => {
+    if (ancho <= 0 || destino < 0 || pedido === null || atendida.current === pedido) return;
+    atendida.current = pedido;
+    scroll.current?.scrollTo({ x: destino * ancho, animated: pedido !== pedidoAlMontar.current });
+    setIndice(destino);
+  }, [ancho, destino, pedido]);
 
   const medir = (event: LayoutChangeEvent) => setAncho(event.nativeEvent.layout.width);
 
@@ -93,7 +130,7 @@ export function ImageSlides({ slides }: Readonly<{ slides: readonly ImageSlide[]
   const activa = slides[indice];
 
   return (
-    <View style={styles.contenedor} onLayout={medir}>
+    <View style={styles.contenedor} onLayout={medir} testID="carrusel-de-capturas">
       <ScrollView
         ref={scroll}
         horizontal
@@ -156,7 +193,7 @@ export function ImageSlides({ slides }: Readonly<{ slides: readonly ImageSlide[]
               </AtlasText>
             ) : null}
           </View>
-          <Button label={activa.actionLabel} variant="secondary" onPress={activa.onPress} />
+          <Button label={activa.actionLabel} variant="secondary" onPress={activa.onPress} disabled={ocupado} />
         </View>
       ) : null}
 

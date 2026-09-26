@@ -27,7 +27,7 @@ import { Cola, type Almacen } from './cola';
 import { abrirSesionDeCampo, anotarCambio, posicionRelativa, type SesionDeCampo } from './deteccion';
 import { Reloj, type FuentesDeReloj } from './reloj';
 import { traducir, ventanaDe } from './traduccion';
-import { CAMPOS, CONTROLES, PANTALLAS, type Campo, type Captura, type Control, type EventoBitacora, type Pantalla, type Permiso } from './tipos';
+import { CAMPOS, CONTROLES, PANTALLAS, type AccionDeCaptura, type Campo, type Captura, type Control, type EventoBitacora, type Pantalla, type Permiso } from './tipos';
 
 export type SesionDeBitacora = { customerId: string; sessionId: string; deviceId: string };
 
@@ -69,6 +69,9 @@ export function pantallaDeRuta(pathname: string | null | undefined): Pantalla | 
   return esPantalla(ultimo) ? ultimo : null;
 }
 
+/** El `detalle` de los `flujo` de segundo/primer plano mientras el escaner del sistema tiene la pantalla. */
+export const DETALLE_ESCANER = 'escaner_sistema';
+
 class Bitacora {
   private config: Configuracion | null = null;
   private reloj = new Reloj();
@@ -82,6 +85,8 @@ class Bitacora {
   private temporizadorId: unknown = null;
   private desdeUltimoVaciado = 0;
   private capturaAbierta: Captura | null = null;
+  /** El escaner del sistema tiene la pantalla (entre `escanea` y lo que venga despues). */
+  private escanerAbierto = false;
 
   configurar(config: Configuracion): void {
     this.config = config;
@@ -93,6 +98,7 @@ class Bitacora {
     this.campos.clear();
     this.desdeUltimoVaciado = 0;
     this.capturaAbierta = null;
+    this.escanerAbierto = false;
     this.pararTemporizador();
   }
 
@@ -273,24 +279,38 @@ class Bitacora {
     this.registrar({ tipo: 'permiso', permiso, decision, t: this.reloj.ahora() });
   }
 
-  captura(que: Captura, accion: 'abre' | 'toma' | 'repite' | 'cancela'): void {
+  captura(que: Captura, accion: AccionDeCaptura): void {
     if (!this.activa) return;
-    this.capturaAbierta = accion === 'abre' ? que : null;
+    /*
+      Con la camara DE LA APP abierta, irse al fondo es una señal (`captura_<que>:segundo_plano`):
+      alguien que sale a por otra imagen a mitad de la foto. Con el escaner DEL SISTEMA abierto no lo
+      es: en Android el escaner es otra actividad y la app pasa a segundo plano sola, sin que nadie
+      se haya ido. Por eso `escanea` no deja la captura «abierta» y marca en su lugar que el sistema
+      tiene la pantalla; `respaldo_camara` si la abre, porque ahi vuelve a estar la camara de la app.
+    */
+    this.capturaAbierta = accion === 'abre' || accion === 'respaldo_camara' ? que : null;
+    this.escanerAbierto = accion === 'escanea';
     this.registrar({ tipo: 'captura', que, accion, t: this.reloj.ahora() });
   }
 
-  /** La app se fue al fondo. Si habia una captura abierta, eso es lo primero que se anota. */
+  /**
+   * La app se fue al fondo. Si habia una captura abierta, eso es lo primero que se anota.
+   *
+   * Con el escaner del sistema delante, el `flujo:segundo_plano` se anota igual —es verdad que la app
+   * no estaba en pantalla— pero con `detalle: 'escaner_sistema'`, para que el tiempo en segundo plano
+   * se pueda descontar sin adivinar.
+   */
   segundoPlano(): void {
     if (!this.activa) return;
     const t = this.reloj.ahora();
     if (this.capturaAbierta) this.registrar({ tipo: 'captura', que: this.capturaAbierta, accion: 'segundo_plano', t });
-    this.registrar({ tipo: 'flujo', accion: 'segundo_plano', t });
+    this.registrar({ tipo: 'flujo', accion: 'segundo_plano', t, ...(this.escanerAbierto ? { detalle: DETALLE_ESCANER } : {}) });
     if (this.sesion) void this.vaciar();
   }
 
   primerPlano(): void {
     if (!this.activa) return;
-    this.registrar({ tipo: 'flujo', accion: 'primer_plano', t: this.reloj.ahora() });
+    this.registrar({ tipo: 'flujo', accion: 'primer_plano', t: this.reloj.ahora(), ...(this.escanerAbierto ? { detalle: DETALLE_ESCANER } : {}) });
   }
 
   /* ------------------------------------------------------------------- vaciado */

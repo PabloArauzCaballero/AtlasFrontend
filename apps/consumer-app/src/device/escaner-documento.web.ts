@@ -8,14 +8,18 @@
  * lo que un `require` literal alcanza, aunque nunca se ejecute, y la libreria no tiene nada que
  * hacer en el bundle web. `__tests__/escaner-documento.test.ts` lo comprueba sobre el texto.
  */
-import { escanerDocumentoActivado } from '../api/config';
 import type { ResultadoEscaneo } from './escaner-documento-tipos';
 
 export type { MotivoSinEscaner, ResultadoEscaneo } from './escaner-documento-tipos';
 
-/** La misma bandera que en el movil; ver `escaner-documento.ts`. */
+/**
+ * Siempre `false`, con la bandera como este: en el navegador la pantalla va directa a la camara de
+ * siempre. Si dijera la bandera, la pantalla «abriria» un escaner que no existe y la bitacora
+ * anotaria `escanea` + `respaldo_camara` en cada captura de la web, que no es lo que paso. El origen
+ * que viaja al backend no depende de esto (`features/origen-de-captura.ts` mira la bandera).
+ */
 export function escanerHabilitado(): boolean {
-  return escanerDocumentoActivado;
+  return false;
 }
 
 export async function escanearDocumento(): Promise<ResultadoEscaneo> {

@@ -28,6 +28,7 @@
  * responde `202` con un identificador y el estado se consulta despues; ver el porque en
  * `mobile-identity.service.ts` del backend.
  */
+import type { OrigenCaptura } from '../../features/origen-de-captura';
 import { request } from '../client';
 
 export type IdentityVerificationState = 'PENDING' | 'VERIFIED' | 'REJECTED' | 'IN_REVIEW' | 'UNAVAILABLE';
@@ -55,6 +56,12 @@ export type StartIdentityVerificationInput = {
   documentBack?: string;
   selfie: string;
   customerId?: string;
+  /**
+   * Origen del anverso y reverso (`camera` | `system_scanner`). Opcional y SOLO con la bandera del
+   * escaner encendida: el esquema del backend es `.strict()`. El backend lo pasa al Motor en el
+   * `context` de la ejecucion. Ver `features/origen-de-captura.ts`.
+   */
+  documentCaptureSource?: OrigenCaptura;
 };
 
 export const startIdentityVerification = (body: StartIdentityVerificationInput) =>
