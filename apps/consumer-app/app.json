@@ -20,7 +20,7 @@
       "supportsTablet": false,
       "bundleIdentifier": "bo.atlas.consumer",
       "infoPlist": {
-        "NSCameraUsageDescription": "Atlas usa la cámara para escanear el QR del comercio e iniciar tu compra.",
+        "NSCameraUsageDescription": "Atlas usa la cámara para escanear el QR del comercio, fotografiar tu carnet y tomar tu selfie.",
         "NSPhotoLibraryUsageDescription": "Atlas usa tus fotos para adjuntar el comprobante de un pago.",
         "NSLocationWhenInUseUsageDescription": "Atlas registra tu ubicación mientras usas la app para verificar tu domicilio y detectar usos indebidos de tu cuenta.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "Con «Siempre», Atlas también registra tu ubicación con la app cerrada. Sirve para verificar tu domicilio y detectar fraude; nunca se comparte con los comercios ni se usa para publicidad.",
@@ -80,7 +80,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Atlas usa la cámara para escanear el QR del comercio."
+          "cameraPermission": "Atlas usa la cámara para escanear el QR del comercio, fotografiar tu carnet y tomar tu selfie."
         }
       ],
       [

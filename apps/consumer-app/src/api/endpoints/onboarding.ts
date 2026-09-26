@@ -5,6 +5,7 @@
  * controlador: dos versiones de la app mostrarian avances distintos con los mismos datos. La app
  * los pinta; no los deduce.
  */
+import type { OrigenCaptura } from '../../features/origen-de-captura';
 import { request, type RequestOptions } from '../client';
 
 export type OnboardingSectionCode =
@@ -264,8 +265,19 @@ export const createUploadUrl = (
     documentType: UploadDocumentType;
     contentType: string;
     sizeBytes: number;
+    /**
+     * De donde salio la captura. Opcional y SOLO con la bandera del escaner encendida: el esquema
+     * del backend es `.strict()`. Ver `features/origen-de-captura.ts`.
+     */
+    captureSource?: OrigenCaptura;
   },
-) => request<UploadTicket>(`/customer-onboarding/${customerId}/documents/upload-url`, { method: 'POST', body });
+  opciones: { signal?: AbortSignal } = {},
+) =>
+  request<UploadTicket>(`/customer-onboarding/${customerId}/documents/upload-url`, {
+    method: 'POST',
+    body,
+    ...(opciones.signal ? { signal: opciones.signal } : {}),
+  });
 
 /**
  * Las evidencias de apoyo de la fase 3, fuera de cualquier paquete: el QR de cobro sin monto (prueba
@@ -326,6 +338,8 @@ export type IdentityEvidence = {
   mimeType: 'image/jpeg' | 'image/png' | 'application/pdf';
   sha256Hash: string;
   fileSizeBytes?: string;
+  /** Opcional y SOLO con la bandera del escaner encendida. Ver `features/origen-de-captura.ts`. */
+  captureSource?: OrigenCaptura;
 };
 
 export const submitIdentityPackage = (

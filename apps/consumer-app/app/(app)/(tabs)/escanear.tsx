@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { isSandboxPurchase } from '../../../src/api/config';
 import { resolveMerchantQr } from '../../../src/api/endpoints/loans';
+import { rechazoVigente, type RechazoDeQr } from '../../../src/features/qr-rechazado';
 import { DEMO_TOKEN, REVOKED_DEMO_TOKEN } from '../../../src/sandbox/fixtures';
 import { useSandbox } from '../../../src/sandbox/store';
 import { DataSourceBadge } from '../../../src/ui/brand';
@@ -43,6 +44,8 @@ export default function ScanScreen() {
   const [rejection, setRejection] = useState<string | null>(null);
   // Un QR permanece en cuadro varios fotogramas: sin este cerrojo se abririan varias sesiones.
   const locked = useRef(false);
+  // Y sin este, un QR rechazado se reenviaria cada 1,5 s mientras siga delante. Ver `qr-rechazado.ts`.
+  const ultimoRechazo = useRef<RechazoDeQr | null>(null);
 
   /*
    * La camara SOLO existe mientras esta pestana esta en pantalla.
@@ -65,6 +68,7 @@ export default function ScanScreen() {
   useEffect(() => {
     if (isFocused) {
       locked.current = false;
+      ultimoRechazo.current = null;
       setRejection(null);
     }
   }, [isFocused]);
@@ -95,6 +99,7 @@ export default function ScanScreen() {
         }, delayMs);
 
       const reject = (code: string) => {
+        ultimoRechazo.current = { token: token.trim(), en: Date.now() };
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         setRejection(code);
         release(1500);
@@ -175,7 +180,10 @@ export default function ScanScreen() {
               style={styles.camera}
               facing="back"
               barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
-              onBarcodeScanned={({ data }) => void handleToken(data)}
+              onBarcodeScanned={({ data }) => {
+                if (rechazoVigente(ultimoRechazo.current, data, Date.now())) return;
+                void handleToken(data);
+              }}
             />
           ) : null}
         </CameraFrame>

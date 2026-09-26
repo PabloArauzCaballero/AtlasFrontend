@@ -4,20 +4,37 @@
  * Tres capturas —anverso, reverso y selfie— con la camara del dispositivo, subida directa al
  * almacenamiento con URL firmada y, recien al final, el paquete de identidad.
  *
+ * Con la bandera `EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO` encendida, el anverso y el reverso se toman
+ * con el escaner de documentos DEL SISTEMA (VisionKit / ML Kit, `device/escaner-documento.ts`), que
+ * sigue el carnet con su recuadro y devuelve el recorte; si no esta disponible, se abre la camara de
+ * siempre. La selfie no cambia. Con la bandera apagada, la captura es la de siempre.
+ *
  * El numero de documento se envia en claro SOLO para que el registro estatal pueda responder, y el
  * backend no lo persiste. Ademas se envia su hash con la misma convencion del servidor, que es lo
  * que permite comprobar despues que la verificacion corresponde al documento declarado.
  */
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
-import { StyleSheet, type ScrollView } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, type ScrollView } from 'react-native';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import * as identityEngine from '../../src/api/endpoints/identity-engine';
-import { describeError } from '../../src/api/errors';
+import { AtlasApiError, describeError } from '../../src/api/errors';
 import { CARNET_DE_PRUEBA, capturaSimulada, estaDisponible as hayCamaraDePrueba } from '../../src/device/camara-de-prueba';
 import { hashSensitiveText } from '../../src/device/device';
-import { leerBase64, uploadEvidence, type IdentityEvidenceKind as EvidenceKind, type PreparedEvidence } from '../../src/features/evidence-upload';
+import { escanearDocumento, escanerHabilitado } from '../../src/device/escaner-documento';
+import { comprobarCaptura, PROPORCION_CARNET, siguientePendiente } from '../../src/features/captura-del-carnet';
+import {
+  esSubidaCancelada,
+  leerBase64,
+  plazoDeSubidaMs,
+  SUBIDA_VENCIDA,
+  uploadEvidence,
+  type IdentityEvidenceKind as EvidenceKind,
+  type PreparedEvidence,
+} from '../../src/features/evidence-upload';
+import type { OrigenCaptura } from '../../src/features/origen-de-captura';
+import { cuerpoDeVerificacion, evidenciasDelPaquete } from '../../src/features/paquete-de-identidad';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { DateField, IconField, SelectField } from '../../src/ui/form-controls';
@@ -25,18 +42,49 @@ import { DEPARTAMENTOS } from '../../src/features/geografia';
 import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, ErrorState } from '../../src/ui/primitives';
 import { CameraFrame } from '../../src/ui/camera-frame';
-import { ImageSlides, type ImageSlide } from '../../src/ui/image-slides';
+import { EstadoDeSubidaVista, type EstadoDeSubida } from '../../src/ui/estado-de-subida';
+import { ImageSlides, type ImageSlide, type PeticionDeLamina } from '../../src/ui/image-slides';
 import { StepHeader } from '../../src/ui/step-header';
 import { TRUST_IDENTIDAD } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
 import { bitacora } from '../../src/features/bitacora';
 import type { Captura } from '../../src/features/bitacora/tipos';
 
-const STEPS: { kind: EvidenceKind; title: string; hint: string; facing: 'back' | 'front' }[] = [
-  { kind: 'identity_front', title: 'Anverso del carnet', hint: 'Que se lea el número y tu nombre.', facing: 'back' },
-  { kind: 'identity_back', title: 'Reverso del carnet', hint: 'Sin reflejos ni sombras.', facing: 'back' },
-  { kind: 'selfie', title: 'Selfie', hint: 'Mira de frente, sin lentes oscuros ni gorra.', facing: 'front' },
+/** `que` es como se nombra la captura en una frase: «Subiendo el anverso…». */
+const STEPS: { kind: EvidenceKind; title: string; hint: string; facing: 'back' | 'front'; que: string }[] = [
+  { kind: 'identity_front', title: 'Anverso del carnet', hint: 'Que se lea el número y tu nombre.', facing: 'back', que: 'el anverso' },
+  { kind: 'identity_back', title: 'Reverso del carnet', hint: 'Sin reflejos ni sombras.', facing: 'back', que: 'el reverso' },
+  { kind: 'selfie', title: 'Selfie', hint: 'Mira de frente, sin lentes oscuros ni gorra.', facing: 'front', que: 'la selfie' },
 ];
+
+const ORDEN: readonly EvidenceKind[] = STEPS.map((step) => step.kind);
+
+/** A partir de cuando una subida «tarda mas de lo normal»: una foto de 1-3 MB sube en 2-5 s. */
+const AVISO_DE_SUBIDA_LENTA_MS = 10_000;
+
+/** Una subida en curso o que no salio, con lo necesario para reintentarla sin repetir la foto. */
+type Subida = { kind: EvidenceKind; vista: EstadoDeSubida; reintento?: { uri: string; origen: OrigenCaptura } };
+
+/** El texto de una subida que no salio. «Reintentar» solo cuando repetir puede arreglarlo. */
+function vistaDeFallo(error: unknown): EstadoDeSubida {
+  if (error instanceof AtlasApiError && error.code === SUBIDA_VENCIDA) {
+    return {
+      fase: 'fallo',
+      titulo: 'La foto no terminó de subirse',
+      detalle: 'Puede ser la señal. La foto sigue en tu teléfono: vuelve a intentarlo sin repetirla.',
+      puedeReintentar: true,
+    };
+  }
+  const descrito = describeError(error);
+  const firmaVencida = error instanceof AtlasApiError && error.code === 'UPLOAD_URL_EXPIRED';
+  return {
+    fase: 'fallo',
+    titulo: descrito.title,
+    detalle: descrito.detail,
+    referencia: descrito.reference,
+    puedeReintentar: descrito.canRetry || firmaVencida,
+  };
+}
 
 const isIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
@@ -70,42 +118,169 @@ export default function Identity() {
   const [issuedIn, setIssuedIn] = useState('Santa Cruz');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+  const [subida, setSubida] = useState<Subida | null>(null);
+  const [enfocar, setEnfocar] = useState<PeticionDeLamina | null>(null);
+  const cancelarSubida = useRef<AbortController | null>(null);
+  const escaneando = useRef(false);
+  /** Al volver de la camara, la pantalla se monta de nuevo: hay que llevarla hasta las capturas. */
+  const llevarALasCapturas = useRef(false);
+
+  const subiendo = subida?.vista.fase === 'subiendo';
 
   const activeStep = STEPS.find((step) => step.kind === capturing) ?? null;
   const allCaptured = STEPS.every((step) => evidence[step.kind]);
   const documentOk = documentNumber.trim().length >= 5;
   const expiryOk = isIsoDate(expiresAt) && new Date(`${expiresAt}T23:59:59.999Z`).getTime() > Date.now();
-  const canSubmit = allCaptured && documentOk && expiryOk && !busy;
+  const canSubmit = allCaptured && documentOk && expiryOk && !busy && !subiendo;
 
   /*
     Las tres capturas se nombran una a una. Decir "faltan fotos" obliga a repasar las tres tarjetas
     para descubrir cual, cuando la pantalla ya sabe exactamente cual es.
   */
   const blockedReason = firstBlocker([
+    [!subiendo, 'Espera a que termine de subirse la foto.'],
     [Boolean(evidence.identity_front), 'Falta la foto del anverso del carnet.'],
     [Boolean(evidence.identity_back), 'Falta la foto del reverso del carnet.'],
     [Boolean(evidence.selfie), 'Falta la selfie.'],
     [documentOk, 'Falta el número de tu carnet.'],
-    [isIsoDate(expiresAt), 'Falta la fecha de vencimiento del carnet, en formato AAAA-MM-DD.'],
+    [isIsoDate(expiresAt), 'Falta la fecha de vencimiento del carnet: elígela en el calendario.'],
     [expiryOk, 'El carnet está vencido: solo aceptamos documentos vigentes.'],
   ]);
 
+  // Una subida no sobrevive a la pantalla: si la persona se va, se corta.
+  useEffect(() => () => cancelarSubida.current?.abort(), []);
+
+  // «Tarda mas de lo normal» a los diez segundos, sin esperar a que venza el plazo.
+  const subidaEnCurso = subiendo ? subida?.kind : null;
+  useEffect(() => {
+    if (!subidaEnCurso) return;
+    const temporizador = setTimeout(() => {
+      setSubida((actual) =>
+        actual && actual.kind === subidaEnCurso && actual.vista.fase === 'subiendo'
+          ? { ...actual, vista: { ...actual.vista, lenta: true } }
+          : actual,
+      );
+    }, AVISO_DE_SUBIDA_LENTA_MS);
+    return () => clearTimeout(temporizador);
+  }, [subidaEnCurso]);
+
+  /*
+    Sube una captura y, si sale bien, la guarda y pasa a la SIGUIENTE pendiente.
+
+    Es el unico camino de subida de la camara y del escaner, asi que los dos tienen el mismo estado
+    (subiendo, tarda, fallo), la misma salida (cancelar, reintentar con la misma foto) y el mismo
+    plazo (`plazoDeSubidaMs`). Antes el boton giraba ~60 s y acababa en «Sin conexion», sin salida.
+  */
+  const subir = async (kind: EvidenceKind, localUri: string, origen: OrigenCaptura) => {
+    if (!session.customerId) return;
+    const step = STEPS.find((candidato) => candidato.kind === kind)!;
+    const controlador = new AbortController();
+    cancelarSubida.current = controlador;
+    setError(null);
+    setSubida({ kind, vista: { fase: 'subiendo', que: step.que, lenta: false } });
+    try {
+      const prepared = await uploadEvidence({
+        customerId: session.customerId,
+        kind,
+        localUri,
+        captureSource: origen,
+        signal: controlador.signal,
+        plazo: plazoDeSubidaMs,
+      });
+      setEvidence((current) => ({ ...current, [kind]: prepared }));
+      setEnfocar((anterior) => ({
+        clave: siguientePendiente(ORDEN, { ...evidence, [kind]: prepared }, kind),
+        pedido: (anterior?.pedido ?? 0) + 1,
+      }));
+      setSubida(null);
+      if (capturing) llevarALasCapturas.current = true;
+      setCapturing(null);
+    } catch (caught) {
+      if (esSubidaCancelada(caught)) setSubida(null);
+      else setSubida({ kind, vista: vistaDeFallo(caught), reintento: { uri: localUri, origen } });
+    } finally {
+      if (cancelarSubida.current === controlador) cancelarSubida.current = null;
+    }
+  };
+
+  const reintentarSubida = () => {
+    if (!subida?.reintento || subiendo) return;
+    void subir(subida.kind, subida.reintento.uri, subida.reintento.origen);
+  };
+
+  /** La camara de la app: la de siempre, y el respaldo cuando el escaner del sistema no esta. */
   const capture = async () => {
-    if (!cameraRef.current || !session.customerId || !activeStep) return;
+    if (!cameraRef.current || !session.customerId || !activeStep || subiendo) return;
+    const kind = activeStep.kind;
     setBusy(true);
     setError(null);
+    setSubida(null);
+    let uri: string;
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
       if (!photo?.uri) throw new Error('CAPTURE_FAILED');
-      bitacora.captura(CAPTURA_DE[activeStep.kind], evidence[activeStep.kind] ? 'repite' : 'toma');
-      const prepared = await uploadEvidence({ customerId: session.customerId, kind: activeStep.kind, localUri: photo.uri });
-      setEvidence((current) => ({ ...current, [activeStep.kind]: prepared }));
-      setCapturing(null);
+      uri = photo.uri;
     } catch (caught) {
       setError(caught);
+      return;
     } finally {
       setBusy(false);
     }
+    bitacora.captura(CAPTURA_DE[kind], evidence[kind] ? 'repite' : 'toma');
+    await subir(kind, uri, 'camera');
+  };
+
+  /*
+    «Tomar foto» / «Repetir» en una lamina.
+
+    Con el escaner encendido, el anverso y el reverso van al escaner del sistema, que trae su propio
+    recuadro, su disparador y su propia revision; lo que devuelve se enseña grande en la lamina con
+    «Repetir», asi que aqui no se añade otra confirmacion. Si el escaner no esta (Expo Go, simulador,
+    Android sin Play Services, fallo), se abre la camara de la app como siempre: para la persona no
+    es un error. Si cancela, no pasa nada.
+  */
+  const abrirCaptura = async (step: (typeof STEPS)[number]) => {
+    const que = CAPTURA_DE[step.kind];
+    const conEscaner = step.facing === 'back' && escanerHabilitado();
+    if (conEscaner && (escaneando.current || subiendo)) return;
+    bitacora.captura(que, 'abre');
+    if (!conEscaner) {
+      setCapturing(step.kind);
+      return;
+    }
+    escaneando.current = true;
+    setError(null);
+    setSubida(null);
+    try {
+      bitacora.captura(que, 'escanea');
+      const resultado = await escanearDocumento();
+      if (resultado.tipo === 'cancelado') {
+        bitacora.captura(que, 'cancela');
+        return;
+      }
+      if (resultado.tipo === 'no_disponible') {
+        bitacora.captura(que, 'respaldo_camara');
+        setCapturing(step.kind);
+        return;
+      }
+      bitacora.captura(que, evidence[step.kind] ? 'repite' : 'toma');
+      const comprobacion = comprobarCaptura(resultado);
+      if (!comprobacion.ok) {
+        bitacora.validacion(`captura_${comprobacion.motivo}`);
+        setSubida({ kind: step.kind, vista: { fase: 'rechazada', mensaje: comprobacion.mensaje } });
+        return;
+      }
+      await subir(step.kind, resultado.uri, 'system_scanner');
+    } finally {
+      escaneando.current = false;
+    }
+  };
+
+  /** Deja la camara de la app. Si habia una subida en curso, se corta. */
+  const salirDeLaCamara = () => {
+    cancelarSubida.current?.abort();
+    setSubida(null);
+    setCapturing(null);
   };
 
   /*
@@ -128,7 +303,8 @@ export default function Identity() {
       // En serie y no en paralelo: son tres subidas firmadas y el backend cuenta los intentos.
       for (const step of STEPS) {
         const localUri = await capturaSimulada(step.kind);
-        subidas[step.kind] = await uploadEvidence({ customerId: session.customerId, kind: step.kind, localUri });
+        // Las imagenes de prueba hacen de foto de camara: asi el origen tambien se declara y se prueba.
+        subidas[step.kind] = await uploadEvidence({ customerId: session.customerId, kind: step.kind, localUri, captureSource: 'camera' });
       }
       setEvidence((current) => ({ ...current, ...subidas }));
       setDocumentNumber(CARNET_DE_PRUEBA.numero);
@@ -175,12 +351,9 @@ export default function Identity() {
         leerBase64(evidence.identity_back!.localUri),
         leerBase64(evidence.selfie!.localUri),
       ]);
-      const vista = await identityEngine.startIdentityVerification({
-        documentFront: frente,
-        documentBack: reverso,
-        selfie,
-        customerId,
-      });
+      const vista = await identityEngine.startIdentityVerification(
+        cuerpoDeVerificacion({ documentFront: frente, documentBack: reverso, selfie }, customerId, evidence),
+      );
       return vista.verificationId;
     } catch {
       // Silencio deliberado: el veredicto es informacion adicional, no el resultado del paso. Sin
@@ -206,17 +379,8 @@ export default function Identity() {
           issuedIn: issuedIn.trim() || undefined,
           expiresAt,
         },
-        evidence: STEPS.map((step) => {
-          const prepared = evidence[step.kind]!;
-          return {
-            evidenceType: step.kind,
-            storageKey: prepared.storageKey,
-            // Las capturas del carnet son siempre fotos; el tipo ancho es de las evidencias de apoyo.
-            mimeType: prepared.mimeType as onboardingApi.IdentityEvidence['mimeType'],
-            sha256Hash: prepared.sha256Hash,
-            fileSizeBytes: String(prepared.sizeBytes),
-          };
-        }),
+        // El origen de cada captura viaja solo con la bandera del escaner: `paquete-de-identidad.ts`.
+        evidence: evidenciasDelPaquete(ORDEN, evidence),
       }));
 
       // El expediente ya esta guardado: ahora la pregunta. En este orden porque el registro no
@@ -250,6 +414,29 @@ export default function Identity() {
 
   useScrollToError(error, scroll);
 
+  /*
+    El formulario tiene su propio desplazamiento, aparte del de la pantalla de permiso. Solo sirve
+    para una cosa: al volver de la camara la pantalla se monta de nuevo y empezaba arriba del todo,
+    lejos de la lamina que toca. Se mide la tarjeta de capturas y se lleva la vista hasta ella.
+  */
+  const scrollDelFormulario = useRef<ScrollView>(null);
+  const tarjetaDeCapturas = useRef<View>(null);
+  const alMedirCapturas = () => {
+    if (!llevarALasCapturas.current) return;
+    llevarALasCapturas.current = false;
+    const contenedor = scrollDelFormulario.current?.getNativeScrollRef?.();
+    if (!contenedor || !tarjetaDeCapturas.current) return;
+    try {
+      tarjetaDeCapturas.current.measureLayout(
+        contenedor,
+        (_x, y) => scrollDelFormulario.current?.scrollTo({ y: Math.max(0, y - 16), animated: false }),
+        () => {},
+      );
+    } catch {
+      // Sin medida no se mueve nada: la pantalla queda arriba, como antes.
+    }
+  };
+
   /* ---------------------------------------------------------------- camara */
 
   if (activeStep) {
@@ -281,16 +468,21 @@ export default function Identity() {
         animate={false}
         footer={
           <>
-            <Button label="Tomar foto" bitacora="tomar_foto" onPress={capture} loading={busy} disabled={busy} />
+            <Button label="Tomar foto" bitacora="tomar_foto" onPress={capture} loading={busy || subiendo} disabled={busy || subiendo} />
             {/* El simulador no tiene camara: sin esto, el paso de identidad no se puede recorrer. */}
             {hayCamaraDePrueba() ? (
-              <Button label="Usar el carnet de prueba" bitacora="usar_carnet_de_prueba" variant="secondary" onPress={usarCarnetDePrueba} disabled={busy} />
+              <Button label="Usar el carnet de prueba" bitacora="usar_carnet_de_prueba" variant="secondary" onPress={usarCarnetDePrueba} disabled={busy || subiendo} />
             ) : null}
+            {/* Con una subida en curso, «Cancelar» corta la subida y deja la camara abierta. */}
             <Button
-              label="Cancelar"
+              label={subiendo ? 'Cancelar la subida' : 'Cancelar'}
               bitacora="cancelar"
               variant="ghost"
               onPress={() => {
+                if (subiendo) {
+                  cancelarSubida.current?.abort();
+                  return;
+                }
                 bitacora.captura(CAPTURA_DE[activeStep.kind], 'cancela');
                 setCapturing(null);
               }}
@@ -298,13 +490,17 @@ export default function Identity() {
           </>
         }
       >
-        <ScreenHeader title={activeStep.title} subtitle={activeStep.hint} onBack={() => setCapturing(null)} />
+        <ScreenHeader title={activeStep.title} subtitle={activeStep.hint} onBack={salirDeLaCamara} />
         {/* La misma mira de cuatro esquinas que el escaner de QR: dos superficies de captura que no
-            se parecen se leen como dos apps distintas. Ver `ui/camera-frame.tsx`. */}
-        <CameraFrame>
+            se parecen se leen como dos apps distintas. Para el carnet, las esquinas tienen su forma
+            —apaisada, 1,586— y el visor sigue llenando el hueco. Ver `ui/camera-frame.tsx`. */}
+        <CameraFrame mira={activeStep.facing === 'back' ? PROPORCION_CARNET : undefined}>
           <CameraView ref={cameraRef} style={styles.camera} facing={activeStep.facing} />
         </CameraFrame>
         {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
+        {subida && subida.kind === activeStep.kind ? (
+          <EstadoDeSubidaVista estado={subida.vista} onReintentar={reintentarSubida} onRepetir={() => setSubida(null)} />
+        ) : null}
 
       </Screen>
     );
@@ -331,10 +527,7 @@ export default function Identity() {
         ? `${(captured.sizeBytes / 1024).toFixed(0)} KB · SHA-256 ${captured.sha256Hash.slice(0, 12)}…`
         : null,
       done: Boolean(captured),
-      onPress: () => {
-        bitacora.captura(CAPTURA_DE[step.kind], 'abre');
-        setCapturing(step.kind);
-      },
+      onPress: () => void abrirCaptura(step),
       actionLabel: captured ? 'Repetir' : 'Tomar foto',
     };
   });
@@ -342,6 +535,7 @@ export default function Identity() {
 
   return (
     <Screen
+      scrollRef={scrollDelFormulario}
       footer={
         <Button
           bitacora="continuar"
@@ -377,7 +571,7 @@ export default function Identity() {
             trailing={<Badge label="prueba" tone="warning" />}
             divider={false}
           />
-          <Button label="Rellenar con el carnet de prueba" bitacora="usar_carnet_de_prueba" variant="secondary" onPress={usarCarnetDePrueba} disabled={busy} />
+          <Button label="Rellenar con el carnet de prueba" bitacora="usar_carnet_de_prueba" variant="secondary" onPress={usarCarnetDePrueba} disabled={busy || subiendo} />
         </Card>
       ) : null}
 
@@ -389,15 +583,32 @@ export default function Identity() {
         un reflejo sobre la fecha, si la cara sale entera. Se enviaba a ciegas y el rechazo llegaba
         despues, cuando las fotos ya no estaban delante. Ver `ui/image-slides.tsx`.
       */}
-      <Card>
-        <CardHeader
-          icon="camara"
-          title={`Tus capturas (${capturadas} de ${STEPS.length})`}
-          detail="Deslizá de lado para revisar cada foto antes de enviarla."
-          trailing={<Badge dot label={allCaptured ? 'listo' : 'pendiente'} tone={allCaptured ? 'success' : 'warning'} />}
-        />
-        <ImageSlides slides={slides} />
-      </Card>
+      <View ref={tarjetaDeCapturas} onLayout={alMedirCapturas} collapsable={false}>
+        <Card>
+          <CardHeader
+            icon="camara"
+            title={`Tus capturas (${capturadas} de ${STEPS.length})`}
+            detail="Deslizá de lado para revisar cada foto antes de enviarla."
+            trailing={<Badge dot label={allCaptured ? 'listo' : 'pendiente'} tone={allCaptured ? 'success' : 'warning'} />}
+          />
+          <ImageSlides slides={slides} enfocar={enfocar} ocupado={subiendo} />
+          {/*
+            Lo que pasa con la captura del escaner, junto a la lamina y no arriba del todo: la persona
+            esta mirando aqui, y un aviso fuera de la vista es un aviso que no existe.
+          */}
+          {subida ? (
+            <EstadoDeSubidaVista
+              estado={subida.vista}
+              onCancelar={() => cancelarSubida.current?.abort()}
+              onReintentar={reintentarSubida}
+              onRepetir={() => {
+                const step = STEPS.find((candidato) => candidato.kind === subida.kind);
+                if (step) void abrirCaptura(step);
+              }}
+            />
+          ) : null}
+        </Card>
+      </View>
 
       <IconField icon="documento" bitacora="documento_numero"
         label="Número de carnet"

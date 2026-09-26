@@ -40,6 +40,7 @@ const PUBLIC_KEYS = [
   'EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE',
   'EXPO_PUBLIC_ATLAS_DECISION_SOURCE',
   'EXPO_PUBLIC_WEB_BASE_URL',
+  'EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO',
 ];
 
 function parseEnvFile(file) {
@@ -148,6 +149,11 @@ module.exports = ({ config }) => {
         timeoutMs: env.EXPO_PUBLIC_ATLAS_TIMEOUT_MS,
         purchaseSource: env.EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE,
         decisionSource: env.EXPO_PUBLIC_ATLAS_DECISION_SOURCE,
+        /*
+          El escaner de documentos del sistema para el carnet (VisionKit / ML Kit). Apagado salvo
+          que valga exactamente «true»: ver `escanerDocumentoActivado` en `src/api/config.ts`.
+        */
+        escanerDocumento: env.EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO,
       },
     },
   };

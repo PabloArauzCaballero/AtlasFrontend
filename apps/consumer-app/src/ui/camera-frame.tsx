@@ -24,6 +24,7 @@ const CORNER_WIDTH = 3;
 export function CameraFrame({
   children,
   ratio,
+  mira,
   style,
 }: {
   children: React.ReactNode;
@@ -33,18 +34,44 @@ export function CameraFrame({
    * completa.
    */
   ratio?: number;
+  /**
+   * La proporcion de la MIRA (ancho / alto), cuando no es la del visor.
+   *
+   * El carnet es apaisado (ID-1, 1,586) y el visor a pantalla completa es vertical: con la mira
+   * pegada al visor, las esquinas pedian un rectangulo de pie y el carnet acababa ocupando una
+   * franja pequeña de la foto. Con `mira`, el VISOR sigue llenando el hueco —la camara no cambia de
+   * tamaño— y solo las esquinas adoptan la forma del documento, centradas y tan anchas como caben.
+   * Sin `mira`, lo de siempre: las esquinas a un 12 % del borde del visor (el QR, la selfie).
+   */
+  mira?: number;
   style?: ViewStyle;
 }) {
   return (
     <View style={[styles.frame, ratio ? { aspectRatio: ratio } : styles.fill, style]}>
       {children}
-      <View style={styles.reticle} pointerEvents="none">
-        <View style={[styles.corner, styles.topLeft]} />
-        <View style={[styles.corner, styles.topRight]} />
-        <View style={[styles.corner, styles.bottomLeft]} />
-        <View style={[styles.corner, styles.bottomRight]} />
-      </View>
+      {mira ? (
+        <View style={styles.centrado} pointerEvents="none">
+          <View style={[styles.miraConForma, { aspectRatio: mira }]} testID="mira-con-forma">
+            <Esquinas />
+          </View>
+        </View>
+      ) : (
+        <View style={styles.reticle} pointerEvents="none">
+          <Esquinas />
+        </View>
+      )}
     </View>
+  );
+}
+
+function Esquinas() {
+  return (
+    <>
+      <View style={[styles.corner, styles.topLeft]} />
+      <View style={[styles.corner, styles.topRight]} />
+      <View style={[styles.corner, styles.bottomLeft]} />
+      <View style={[styles.corner, styles.bottomRight]} />
+    </>
   );
 }
 
@@ -61,6 +88,10 @@ const styles = StyleSheet.create({
   // El margen en porcentaje y no en pixeles: la mira tiene que guardar la misma proporcion con el
   // visor tanto en un telefono estrecho como en una tableta.
   reticle: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, margin: '12%' },
+  // La mira con forma propia: centrada, al 88 % del ancho del visor (cuanto mas ancha, mas grande sale
+  // el carnet en la foto) y sin pasar del 76 % del alto, por si el visor es bajo y ancho.
+  centrado: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
+  miraConForma: { width: '88%', maxHeight: '76%' },
   corner: { position: 'absolute', width: CORNER, height: CORNER, borderColor: color.action.primary },
   topLeft: { top: 0, left: 0, borderTopWidth: CORNER_WIDTH, borderLeftWidth: CORNER_WIDTH, borderTopLeftRadius: radius.lg },
   topRight: { top: 0, right: 0, borderTopWidth: CORNER_WIDTH, borderRightWidth: CORNER_WIDTH, borderTopRightRadius: radius.lg },
