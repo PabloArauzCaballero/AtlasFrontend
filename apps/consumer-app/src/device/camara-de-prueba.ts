@@ -97,7 +97,19 @@ export async function capturaSimulada(kind: EvidenceKind): Promise<string> {
 
   const destino = new File(carpeta, `${kind}.png`);
   if (destino.exists) destino.delete();
-  new File(asset.localUri).copy(destino);
+  const origen = new File(asset.localUri);
+  origen.copy(destino);
+
+  /*
+    En Android la copia puede no haber terminado cuando `copy` vuelve: leer el destino enseguida
+    devolvia CERO bytes, `subir` decia «No pudimos leer la foto» y el atajo no servia en el emulador
+    (medido el 2026-09-26: 548.957 bytes en disco, 0 leidos). Se espera, con tope, a que el destino
+    pese lo mismo que el origen.
+  */
+  for (let intento = 0; intento < 50 && destino.size !== origen.size; intento += 1) {
+    await new Promise((resolver) => setTimeout(resolver, 100));
+  }
+  if (destino.size !== origen.size) throw new Error('COPIA_DE_PRUEBA_INCOMPLETA');
 
   return destino.uri;
 }

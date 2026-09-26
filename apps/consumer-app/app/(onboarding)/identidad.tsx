@@ -303,7 +303,8 @@ export default function Identity() {
       // En serie y no en paralelo: son tres subidas firmadas y el backend cuenta los intentos.
       for (const step of STEPS) {
         const localUri = await capturaSimulada(step.kind);
-        subidas[step.kind] = await uploadEvidence({ customerId: session.customerId, kind: step.kind, localUri });
+        // Las imagenes de prueba hacen de foto de camara: asi el origen tambien se declara y se prueba.
+        subidas[step.kind] = await uploadEvidence({ customerId: session.customerId, kind: step.kind, localUri, captureSource: 'camera' });
       }
       setEvidence((current) => ({ ...current, ...subidas }));
       setDocumentNumber(CARNET_DE_PRUEBA.numero);
