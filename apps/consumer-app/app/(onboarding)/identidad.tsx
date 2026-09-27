@@ -16,7 +16,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, type ScrollView } from 'react-native';
+import { Platform, StyleSheet, View, type ScrollView } from 'react-native';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import * as identityEngine from '../../src/api/endpoints/identity-engine';
 import { AtlasApiError, describeError } from '../../src/api/errors';
@@ -42,6 +42,8 @@ import { DEPARTAMENTOS } from '../../src/features/geografia';
 import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, ErrorState } from '../../src/ui/primitives';
 import { CameraFrame } from '../../src/ui/camera-frame';
+import { space } from '../../src/theme/tokens';
+import { BottomSheet } from '../../src/ui/help-sheet';
 import { EstadoDeSubidaVista, type EstadoDeSubida } from '../../src/ui/estado-de-subida';
 import { ImageSlides, type ImageSlide, type PeticionDeLamina } from '../../src/ui/image-slides';
 import { StepHeader } from '../../src/ui/step-header';
@@ -122,6 +124,12 @@ export default function Identity() {
   const [enfocar, setEnfocar] = useState<PeticionDeLamina | null>(null);
   const cancelarSubida = useRef<AbortController | null>(null);
   const escaneando = useRef(false);
+  /*
+    La hoja de consejo antes del escaner, UNA vez por visita a la pantalla: la segunda cara ya se
+    hace sabiendo lo que se hizo con la primera. `consejoPara` es la cara que espera el consejo.
+  */
+  const consejoVisto = useRef(false);
+  const [consejoPara, setConsejoPara] = useState<(typeof STEPS)[number] | null>(null);
   /** Al volver de la camara, la pantalla se monta de nuevo: hay que llevarla hasta las capturas. */
   const llevarALasCapturas = useRef(false);
 
@@ -243,6 +251,10 @@ export default function Identity() {
     const que = CAPTURA_DE[step.kind];
     const conEscaner = step.facing === 'back' && escanerHabilitado();
     if (conEscaner && (escaneando.current || subiendo)) return;
+    if (conEscaner && !consejoVisto.current) {
+      setConsejoPara(step);
+      return;
+    }
     bitacora.captura(que, 'abre');
     if (!conEscaner) {
       setCapturing(step.kind);
@@ -274,6 +286,14 @@ export default function Identity() {
     } finally {
       escaneando.current = false;
     }
+  };
+
+  /** «Abrir el escaner» en la hoja de consejo: ya no se vuelve a enseñar en esta visita. */
+  const escanearTrasElConsejo = () => {
+    const step = consejoPara;
+    consejoVisto.current = true;
+    setConsejoPara(null);
+    if (step) void abrirCaptura(step);
   };
 
   /** Deja la camara de la app. Si habia una subida en curso, se corta. */
@@ -653,10 +673,33 @@ export default function Identity() {
         required
         error={expiresAt && !expiryOk ? 'El documento debe estar vigente.' : null}
       />
+
+      {/*
+        El consejo antes del escaner del sistema.
+
+        El escaner lo pinta el sistema, no la app: una vez abierto no podemos decir nada. Y en iPhone
+        VisionKit deja elegir un filtro —color, escala de grises, blanco y negro, foto— sin API para
+        fijarlo; en blanco y negro se pierden justo los detalles que el Motor mira para saber si el
+        carnet es autentico. Esta hoja es el unico control que tenemos sobre eso (plan del escaner,
+        §4). Cerrarla sin mas no abre nada: es un «ahora no».
+      */}
+      <BottomSheet visible={consejoPara !== null} titulo="Antes de escanear" cierre="Cerrar" onClose={() => setConsejoPara(null)}>
+        <View style={styles.consejo}>
+          <AtlasText variant="body" tone="secondary">Pon el carnet sobre una mesa lisa y de color oscuro, con buena luz y sin reflejos. El recuadro lo encuentra solo y dispara cuando lo tiene entero.</AtlasText>
+        {Platform.OS === 'ios' ? (
+          <AtlasText variant="body" tone="secondary">
+            Si arriba ves «Filtros» (o «Filters»), deja «Color» o «Foto». En gris o en blanco y negro se pierden detalles que
+            necesitamos para verificar tu carnet.
+          </AtlasText>
+        ) : null}
+          <Button label="Abrir el escáner" bitacora="abrir_camara" onPress={escanearTrasElConsejo} />
+        </View>
+      </BottomSheet>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   camera: { flex: 1 },
+  consejo: { gap: space.md, padding: space.lg, paddingBottom: space.xl },
 });
