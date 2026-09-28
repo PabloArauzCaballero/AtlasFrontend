@@ -6,7 +6,7 @@
  * con la bandera apagada— y lo que ve la persona durante la subida. El escaner, la camara y la
  * subida se simulan: aqui no hay VisionKit, ni sensor, ni almacen.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
@@ -74,10 +74,43 @@ const preparada = (input: { kind: PreparedEvidence['kind']; localUri: string; ca
   ...(input.captureSource ? { captureSource: input.captureSource } : {}),
 });
 
+/**
+ * iOS avisa con `onDismiss` cuando el Modal TERMINÓ de irse; el renderizador de pruebas no anima
+ * nada y no lo dispara solo. Esto hace de iOS: la hoja de consejo acabó de cerrarse.
+ */
+async function terminaDeCerrarseLaHoja() {
+  const avisos = [...alTerminarDeCerrarse];
+  await act(async () => {
+    for (const aviso of avisos) aviso();
+  });
+}
+
 /** La primera vez que se abre el escaner en la pantalla, antes pasa por la hoja de consejo. */
 async function abrirEscanerConConsejo() {
   await fireEvent.press(screen.getByText('Tomar foto'));
   await fireEvent.press(screen.getByText('Abrir el escáner'));
+  await terminaDeCerrarseLaHoja();
+}
+
+/*
+  El `onDismiss` que cada Modal recibe en el ÚLTIMO render. Se envuelve el Modal de verdad (sigue
+  pintando lo mismo) sólo para poder hacer de iOS y avisar de que terminó de cerrarse.
+*/
+const alTerminarDeCerrarse = new Set<() => void>();
+{
+  const ReactNative = require('react-native') as typeof import('react-native');
+  const ModalReal = ReactNative.Modal;
+  const ModalQueAvisa = (props: import('react-native').ModalProps) => {
+    const React = require('react') as typeof import('react');
+    React.useEffect(() => {
+      const aviso = props.onDismiss;
+      if (!aviso) return undefined;
+      alTerminarDeCerrarse.add(aviso);
+      return () => void alTerminarDeCerrarse.delete(aviso);
+    }, [props.onDismiss]);
+    return React.createElement(ModalReal, props);
+  };
+  jest.spyOn(ReactNative, 'Modal', 'get').mockReturnValue(ModalQueAvisa as unknown as typeof ModalReal);
 }
 
 beforeEach(() => {
@@ -171,6 +204,25 @@ describe('identidad con la bandera del escaner encendida', () => {
     await fireEvent.press(screen.getByText('Tomar foto'));
     await waitFor(() => expect(escanear).toHaveBeenCalledTimes(2));
     expect(screen.queryByText('Antes de escanear')).toBeNull();
+  });
+
+  it('el escaner se abre cuando la hoja de consejo TERMINÓ de cerrarse, no al pulsar (iOS lo descartaba con ella)', async () => {
+    escanear.mockResolvedValue({ tipo: 'imagen', uri: 'file:///escaneo.jpg', ancho: 2400, alto: 1513, origen: 'escaner_sistema' });
+    await pintar();
+
+    await fireEvent.press(screen.getByText('Tomar foto'));
+    await fireEvent.press(screen.getByText('Abrir el escáner'));
+    // Pulsado, la hoja se está yendo: abrir ahora el escáner lo presentaría encima de ella.
+    expect(escanear).not.toHaveBeenCalled();
+
+    await terminaDeCerrarseLaHoja();
+    await waitFor(() => expect(escanear).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(subir).toHaveBeenCalledTimes(1));
+
+    // Cerrar la hoja con «Cerrar» (sin pedir el escáner) no lo abre al terminar de irse.
+    escanear.mockClear();
+    await terminaDeCerrarseLaHoja();
+    expect(escanear).not.toHaveBeenCalled();
   });
 
   it('la selfie NO usa el escaner: abre la camara frontal de siempre, sin la mira del carnet', async () => {

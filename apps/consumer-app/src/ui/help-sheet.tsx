@@ -23,7 +23,7 @@
  * ayuda de un campo se encuentra leyendo los otros campos sin saber que hay una hoja abierta. Lo
  * declara el contenedor de la hoja, no el `Modal`, porque es la vista que debe atrapar el foco.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { ANCHO_COLUMNA, useTramo } from './responsive';
 import { color, radius, shadow, space, stroke, touch } from '../theme/tokens';
@@ -39,6 +39,7 @@ export function BottomSheet({
   onClose,
   cierre = 'Listo',
   evitarTeclado = false,
+  alCerrarse,
   children,
 }: {
   visible: boolean;
@@ -52,8 +53,25 @@ export function BottomSheet({
    * lectura no lo necesitan y el envoltorio cambia como se reparte el alto.
    */
   evitarTeclado?: boolean;
+  /**
+   * Cuando la hoja TERMINÓ de irse, no cuando se pidió cerrarla. Hace falta para abrir algo nativo
+   * a pantalla completa justo después (el escáner del carnet): en iOS se presenta encima de la
+   * ventana de arriba, que mientras se cierra sigue siendo esta hoja, y al terminar de cerrarse iOS
+   * descarta con ella lo que tenga encima. El escáner parpadeaba y devolvía a la pantalla.
+   */
+  alCerrarse?: () => void;
   children: React.ReactNode;
 }) {
+  /*
+    `onDismiss` del Modal sólo existe en iOS, que es justo donde hace falta esperar. En Android y en
+    la web se avisa al pasar a oculta: allí lo nativo se abre en su propia actividad o no existe.
+  */
+  const visibleAntes = useRef(visible);
+  useEffect(() => {
+    const seCerro = visibleAntes.current && !visible;
+    visibleAntes.current = visible;
+    if (seCerro && Platform.OS !== 'ios') alCerrarse?.();
+  }, [visible, alCerrarse]);
   /*
     Con aire a los lados, la hoja no ocupa la ventana entera: se estrecha a la columna de lectura y
     se redondea por los cuatro lados. Una hoja de 1.400 px que sube desde abajo se lee como una
@@ -61,7 +79,13 @@ export function BottomSheet({
   */
   const estrecha = useTramo() !== 'telefono';
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      onDismiss={Platform.OS === 'ios' ? alCerrarse : undefined}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         enabled={evitarTeclado}

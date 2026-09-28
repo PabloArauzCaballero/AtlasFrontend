@@ -288,11 +288,24 @@ export default function Identity() {
     }
   };
 
-  /** «Abrir el escaner» en la hoja de consejo: ya no se vuelve a enseñar en esta visita. */
+  /*
+    «Abrir el escaner» en la hoja de consejo: ya no se vuelve a enseñar en esta visita.
+
+    El escaner se abre cuando la hoja TERMINO de irse (`alCerrarse`), no al pulsar. Abrirlo en el
+    mismo toque lo presentaba encima de la hoja que se estaba cerrando, y al acabar de cerrarse iOS se
+    lo llevaba con ella: parpadeaba, devolvia a la pantalla y la promesa del escaner no volvia nunca,
+    asi que `escaneando` quedaba en verdadero y los toques siguientes no hacian nada (TestFlight,
+    2026-09-28).
+  */
+  const escaneoTrasElConsejo = useRef<(typeof STEPS)[number] | null>(null);
   const escanearTrasElConsejo = () => {
-    const step = consejoPara;
+    escaneoTrasElConsejo.current = consejoPara;
     consejoVisto.current = true;
     setConsejoPara(null);
+  };
+  const alCerrarseElConsejo = () => {
+    const step = escaneoTrasElConsejo.current;
+    escaneoTrasElConsejo.current = null;
     if (step) void abrirCaptura(step);
   };
 
@@ -683,7 +696,7 @@ export default function Identity() {
         carnet es autentico. Esta hoja es el unico control que tenemos sobre eso (plan del escaner,
         §4). Cerrarla sin mas no abre nada: es un «ahora no».
       */}
-      <BottomSheet visible={consejoPara !== null} titulo="Antes de escanear" cierre="Cerrar" onClose={() => setConsejoPara(null)}>
+      <BottomSheet visible={consejoPara !== null} titulo="Antes de escanear" cierre="Cerrar" onClose={() => setConsejoPara(null)} alCerrarse={alCerrarseElConsejo}>
         <View style={styles.consejo}>
           <AtlasText variant="body" tone="secondary">Pon el carnet sobre una mesa lisa y de color oscuro, con buena luz y sin reflejos. El recuadro lo encuentra solo y dispara cuando lo tiene entero.</AtlasText>
         {Platform.OS === 'ios' ? (
