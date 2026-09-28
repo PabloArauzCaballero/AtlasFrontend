@@ -105,7 +105,8 @@ export default function OnboardingProgress() {
       refreshing={refreshing}
       footer={
         status.canSubmit ? (
-          <Button label="Enviar mi solicitud" onPress={() => router.push('/(onboarding)/revision')} haptic="success" />
+          // Completo, el último paso es el extracto bancario (se puede dejar para después); de ahí, el envío.
+          <Button label="Continuar: tu extracto bancario" onPress={() => router.push('/(onboarding)/extracto')} />
         ) : pending[0] ? (
           <Button label={`Continuar: ${SECTION_LABEL[pending[0].code].title}`} onPress={() => router.push(SECTION_ROUTE[pending[0]!.code])} />
         ) : (

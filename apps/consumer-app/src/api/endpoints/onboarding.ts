@@ -160,6 +160,10 @@ export type FinancialProfileInput = Partial<{
   monthlyExpensesDeclared: number;
   economicActivityCode: string;
   sourceOfFunds: string;
+  /** Banda del ingreso (`MONTHLY_INCOME_BAND_VALUES` del servidor): el alta no pide el monto exacto. */
+  monthlyIncomeBand: string;
+  /** `monthly` | `biweekly` | `weekly` | `irregular`: para alinear las cuotas con el día de cobro. */
+  incomeFrequency: string;
 }>;
 
 export const updateFinancialProfile = (customerId: string, body: FinancialProfileInput) =>

@@ -35,6 +35,26 @@ import { GrabadorDeOcupacion } from '../../src/ui/grabador-de-ocupacion';
  */
 type Employment = 'employee' | 'self_employed' | 'business_owner' | 'unemployed' | 'retired' | 'student';
 type SourceOfFunds = 'salary' | 'business_income' | 'rental_income' | 'pension' | 'remittances' | 'savings' | 'other';
+type IncomeFrequency = 'monthly' | 'biweekly' | 'weekly' | 'irregular';
+
+/*
+ * El ingreso se pide por BANDA, no por monto: es autodeclarado y se trata como dato blando. Lo que
+ * decide la capacidad de pago de verdad es el extracto bancario, al final del alta.
+ *
+ * `declarado` es el valor que viaja como `monthlyIncomeDeclared`, porque la capacidad sin extracto
+ * (`CAP_SIN_EXTRACTO`) necesita un número: el PISO de la banda —conservador a propósito—, salvo la
+ * primera, cuyo piso es cero y dejaría a todos sin cupo. Los códigos los cierra el servidor
+ * (`MONTHLY_INCOME_BAND_VALUES`).
+ */
+type IncomeBand = 'bs_0_3000' | 'bs_3000_5000' | 'bs_5000_8000' | 'bs_8000_12000' | 'bs_12000_20000' | 'bs_20000_plus';
+const BANDAS: readonly { valor: IncomeBand; etiqueta: string; detalle: string; declarado: number }[] = [
+  { valor: 'bs_0_3000', etiqueta: 'Menos de Bs 3.000', detalle: 'Te queda menos de 3.000 bolivianos al mes.', declarado: 1500 },
+  { valor: 'bs_3000_5000', etiqueta: 'Bs 3.000 a 5.000', detalle: 'Te queda entre 3.000 y 5.000 bolivianos al mes.', declarado: 3000 },
+  { valor: 'bs_5000_8000', etiqueta: 'Bs 5.000 a 8.000', detalle: 'Te queda entre 5.000 y 8.000 bolivianos al mes.', declarado: 5000 },
+  { valor: 'bs_8000_12000', etiqueta: 'Bs 8.000 a 12.000', detalle: 'Te queda entre 8.000 y 12.000 bolivianos al mes.', declarado: 8000 },
+  { valor: 'bs_12000_20000', etiqueta: 'Bs 12.000 a 20.000', detalle: 'Te queda entre 12.000 y 20.000 bolivianos al mes.', declarado: 12000 },
+  { valor: 'bs_20000_plus', etiqueta: 'Más de Bs 20.000', detalle: 'Te quedan más de 20.000 bolivianos al mes.', declarado: 20000 },
+];
 
 const toNumber = (raw: string): number | undefined => {
   const cleaned = raw.replace(/[^\d.,]/g, '').replace(',', '.');
@@ -50,7 +70,8 @@ export default function FinancialProfile() {
   const [employmentStatus, setEmploymentStatus] = useState<Employment | null>(null);
   const [employerName, setEmployerName] = useState('');
   const [seniority, setSeniority] = useState('');
-  const [income, setIncome] = useState('');
+  const [incomeBand, setIncomeBand] = useState<IncomeBand | null>(null);
+  const [incomeFrequency, setIncomeFrequency] = useState<IncomeFrequency | null>(null);
   const [otherIncome, setOtherIncome] = useState('');
   const [expenses, setExpenses] = useState('');
   const [activity, setActivity] = useState('');
@@ -69,11 +90,14 @@ export default function FinancialProfile() {
     es una pregunta sin respuesta posible, y la que teclee para poder seguir es un dato inventado que
     entra al motor de decisión igual que uno real.
   */
-  const pideAntiguedad = employmentStatus === 'employee' || employmentStatus === 'business_owner';
+  const pideAntiguedad = employmentStatus === 'employee' || employmentStatus === 'self_employed' || employmentStatus === 'business_owner';
+  const faltanAnios = pideAntiguedad && seniority.trim().length === 0;
   const canSubmit =
     employmentStatus !== null &&
     sourceOfFunds !== null &&
-    toNumber(income) !== undefined &&
+    incomeBand !== null &&
+    incomeFrequency !== null &&
+    !faltanAnios &&
     toNumber(expenses) !== undefined &&
     activity.trim().length > 0 &&
     !employerRequired &&
@@ -82,7 +106,9 @@ export default function FinancialProfile() {
   const blockedReason = firstBlocker([
     [employmentStatus !== null, 'Falta elegir tu situación laboral.'],
     [!employerRequired, 'Falta el nombre de tu empleador.'],
-    [toNumber(income) !== undefined, 'Falta tu ingreso mensual.'],
+    [!faltanAnios, 'Faltan tus años en el trabajo actual.'],
+    [incomeBand !== null, 'Falta tu rango de ingreso mensual.'],
+    [incomeFrequency !== null, 'Falta cada cuánto cobras.'],
     [toNumber(expenses) !== undefined, 'Faltan tus gastos mensuales.'],
     [activity.trim().length > 0, 'Falta a que te dedicas.'],
     [sourceOfFunds !== null, 'Falta el origen de tus ingresos.'],
@@ -96,9 +122,12 @@ export default function FinancialProfile() {
       await bitacora.medirEnvio(() => onboardingApi.updateFinancialProfile(session.customerId!, {
         employmentStatus: employmentStatus ?? undefined,
         employerName: employerName.trim() || undefined,
+        // Se pregunta en AÑOS, que es como la gente lo sabe; el servidor lo guarda en meses.
         employmentSeniorityMonths:
-          pideAntiguedad && toNumber(seniority) !== undefined ? Math.round(toNumber(seniority)!) : undefined,
-        monthlyIncomeDeclared: toNumber(income),
+          pideAntiguedad && toNumber(seniority) !== undefined ? Math.round(toNumber(seniority)! * 12) : undefined,
+        monthlyIncomeBand: incomeBand ?? undefined,
+        monthlyIncomeDeclared: BANDAS.find((banda) => banda.valor === incomeBand)?.declarado,
+        incomeFrequency: incomeFrequency ?? undefined,
         otherMonthlyIncome: toNumber(otherIncome) ?? 0,
         monthlyExpensesDeclared: toNumber(expenses),
         economicActivityCode: activity.trim(),
@@ -139,7 +168,7 @@ export default function FinancialProfile() {
             desaparece de la pantalla pero su valor seguiría viajando en el envío: el expediente
             diría que no trabaja y que lleva tres años en ese trabajo. Lo mismo con el empleador.
           */
-          if (next !== 'employee' && next !== 'business_owner') setSeniority('');
+          if (next !== 'employee' && next !== 'self_employed' && next !== 'business_owner') setSeniority('');
           if (next !== 'employee') setEmployerName('');
         }}
         ayuda="De dónde sale el dinero con el que vas a pagar tus cuotas. Lo que elijas cambia lo que se te pregunta después —empleador, antigüedad— y cuánta estabilidad se le supone a tu ingreso."
@@ -168,27 +197,42 @@ export default function FinancialProfile() {
 
       {pideAntiguedad ? (
         <IconField icon="reloj"
-          label="Antigüedad en meses"
+          label="Años en tu trabajo actual"
           value={seniority}
-          onChangeText={(v) => setSeniority(v.replace(/\D/g, ''))}
+          onChangeText={(v) => setSeniority(v.replace(/\D/g, '').slice(0, 2))}
           keyboardType="number-pad"
-          hint={employmentStatus === 'business_owner' ? 'Cuánto tiempo llevas con tu negocio.' : 'Cuánto tiempo llevas con tu empleador actual.'}
-          ayuda={
+          required
+          hint={
             employmentStatus === 'business_owner'
-              ? 'Cuántos meses llevas con este negocio, en números. Dos años son 24. Un negocio que ya pasó su primer año sostiene mejor una cuota que uno recién abierto.'
-              : 'Cuántos meses llevas con tu empleador actual, en números. Dos años son 24. Cuanto más tiempo, más estable se considera el ingreso que declaras.'
+              ? 'Cuántos años llevas con tu negocio. Menos de uno: 0.'
+              : employmentStatus === 'self_employed'
+                ? 'Cuántos años llevas en esta actividad. Menos de uno: 0.'
+                : 'Cuántos años llevas con tu empleador actual. Menos de uno: 0.'
           }
+          ayuda="En años completos, en números. Si todavía no cumpliste un año, escribe 0. Cuanto más tiempo, más estable se considera el ingreso que declaras."
         />
       ) : null}
 
-      <IconField icon="billetera"
-        label="Ingreso mensual (Bs)"
-        value={income}
-        onChangeText={setIncome}
-        keyboardType="decimal-pad"
-        inputMode="decimal"
-        ayuda="Lo que te queda cada mes de tu trabajo principal, ya descontados aportes e impuestos. Ej.: 4500. Es la base del cálculo de cuánto puedes pagar cómodamente: inflarlo solo consigue una cuota que no vas a poder pagar."
+      <SelectField<IncomeBand>
+        label="Rango de ingreso mensual"
+        value={incomeBand}
+        onChange={setIncomeBand}
         required
+        ayuda="Lo que te queda cada mes de tu trabajo principal, ya descontados aportes e impuestos. Basta con el rango: el monto exacto lo confirmamos con tu extracto bancario al final del registro."
+        opciones={BANDAS.map((banda) => ({ valor: banda.valor, etiqueta: banda.etiqueta, detalle: banda.detalle }))}
+      />
+      <SelectField<IncomeFrequency>
+        label="¿Cada cuánto cobras?"
+        value={incomeFrequency}
+        onChange={setIncomeFrequency}
+        required
+        ayuda="Con esto ponemos las fechas de tus cuotas cerca del día en que cobras, para que el pago no te agarre sin dinero."
+        opciones={[
+          { valor: 'monthly', etiqueta: 'Mensual', detalle: 'Te pagan una vez al mes.' },
+          { valor: 'biweekly', etiqueta: 'Quincenal', detalle: 'Te pagan dos veces al mes.' },
+          { valor: 'weekly', etiqueta: 'Semanal', detalle: 'Te pagan cada semana.' },
+          { valor: 'irregular', etiqueta: 'Irregular', detalle: 'Depende de las ventas o de los trabajos.' },
+        ]}
       />
       <IconField
         icon="billetera"
@@ -251,7 +295,7 @@ export default function FinancialProfile() {
       <Gap size="sm" />
       <AtlasText variant="title">Mejora tu monto (opcional)</AtlasText>
       <AtlasText variant="caption" tone="secondary">
-        Nada de esto es obligatorio. Cada cosa que añadas la revisa una persona y cuenta a tu favor.
+        Nada de esto es obligatorio. Cada cosa que añadas la revisa una persona y cuenta a tu favor. El extracto bancario te lo pedimos al final.
       </AtlasText>
       {session.customerId ? (
         <>
@@ -264,7 +308,6 @@ export default function FinancialProfile() {
             origen="imagen"
           />
           <GrabadorDeOcupacion customerId={session.customerId} />
-          <Button label="Subir mi extracto bancario (3 meses)" bitacora="subir_extracto" variant="secondary" onPress={() => router.push('/(app)/extracto-bancario')} />
         </>
       ) : null}
       <Gap size="sm" />

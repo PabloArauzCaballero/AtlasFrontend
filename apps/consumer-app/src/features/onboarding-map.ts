@@ -119,7 +119,7 @@ const BLOCKER_COPY: Record<string, { title: string; detail: string; actionable: 
   ADDRESS_MISSING: { title: 'Falta tu domicilio', detail: 'Indica dónde vives.', actionable: true },
   REFERENCES_INSUFFICIENT: { title: 'Faltan referencias', detail: 'Necesitamos dos contactos de referencia.', actionable: true },
   IDENTITY_DOCUMENT_MISSING: { title: 'Falta tu documento', detail: 'Sube tu carnet de identidad.', actionable: true },
-  IDENTITY_NOT_VERIFIED: { title: 'Documento en verificación', detail: 'Estamos validando tu identidad.', actionable: false },
+  IDENTITY_NOT_VERIFIED: { title: 'Identidad en revisión', detail: 'Una persona está revisando tu carnet y tu selfie.', actionable: false },
   CONSUMER_SURVEY_INCOMPLETE: { title: 'Faltan tus hábitos', detail: 'Contesta las seis preguntas.', actionable: true },
   DEVICE_PERMISSIONS_UNDECIDED: { title: 'Falta decidir los permisos', detail: 'Ubicación y contactos: puedes decir que no.', actionable: true },
   EVIDENCE_PENDING_REVIEW: { title: 'Documentos en revisión', detail: 'Un analista está revisando lo que enviaste.', actionable: false },
@@ -138,7 +138,10 @@ export function actionableBlockers(blockers: Blocker[]): Blocker[] {
 const LIFECYCLE_COPY: Record<string, { title: string; detail: string }> = {
   registered: { title: 'Cuenta creada', detail: 'Termina de completar tus datos para pedir tu línea.' },
   onboarding_in_progress: { title: 'Registro en curso', detail: 'Te falta poco para terminar.' },
-  under_review: { title: 'Solicitud en revisión', detail: 'Estamos validando tu información. Te avisamos apenas tengamos respuesta.' },
+  under_review: {
+    title: 'Cuenta en revisión',
+    detail: 'Una persona está revisando tu identidad y tus datos. Te avisamos apenas tu cuenta esté verificada.',
+  },
   observed: { title: 'Necesitamos una correccion', detail: 'Revisa las observaciones y vuelve a enviar.' },
   active: { title: 'Cuenta activa', detail: 'Ya puedes comprar con Atlas.' },
   rejected: { title: 'Solicitud no aprobada', detail: 'Por ahora no podemos habilitar tu línea.' },
