@@ -58,6 +58,7 @@ export const CONTROLES = [
   'ahora_no',
   'elegir_opcion',
   'subir_extracto',
+  'extracto_despues',
   'subir_qr',
   'subir_factura',
   'grabar_audio',

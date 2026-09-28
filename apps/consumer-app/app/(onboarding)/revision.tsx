@@ -200,7 +200,7 @@ export default function Review() {
           <CardHeader
             icon="reloj"
             title="Qué sigue"
-            detail="Un analista revisa tu documento y tu información. Te avisamos por notificación apenas haya respuesta; no hace falta que dejes la app abierta."
+            detail="Una persona revisa tu carnet, tu selfie y tu información. Cuando tu cuenta esté verificada te llega un aviso «Tu cuenta ha sido verificada»; no hace falta que dejes la app abierta."
             divider={false}
           />
         </Card>

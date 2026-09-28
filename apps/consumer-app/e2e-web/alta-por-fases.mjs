@@ -336,7 +336,10 @@ await paso('economía', async () => {
   await page.goto(`${BASE}/economia`, { waitUntil: 'load' });
   await texto('Tu situación económica').waitFor({ timeout: 20000 });
   await elegir('Situación laboral', 'Trabajo por mi cuenta');
-  await caja(/Ingreso mensual/).fill('4500');
+  await caja(/Años en tu trabajo actual/).fill('3');
+  // El ingreso se pide por banda (no por monto) y con su frecuencia de cobro.
+  await elegir('Rango de ingreso mensual', 'Bs 3.000 a 5.000');
+  await elegir('¿Cada cuánto cobras\\?', 'Mensual');
   await caja(/Gastos mensuales/).fill('2100');
   // La hoja buscable: cada opción es un botón cuyo nombre accesible es «Etiqueta. Detalle».
   await boton(/^Actividad económica/).first().click();
@@ -406,6 +409,15 @@ await paso('hábitos: seis preguntas, una por pantalla', async () => {
   const guardadas = llamadas.filter((l) => l.startsWith(`PUT /customer-onboarding/${customerId}/consumer-survey`) && / 20\d$/.test(l)).length;
   if (guardadas < 6) throw new Error(`solo ${guardadas} respuestas guardadas`);
   return `${guardadas} respuestas`;
+});
+
+/* ---- último paso: el extracto, dentro del alta y sin rebotar a «progreso» ---- */
+await paso('extracto bancario: último paso del alta, se puede dejar para después', async () => {
+  await page.goto(`${BASE}/extracto`, { waitUntil: 'load' });
+  await texto('Tu extracto bancario').waitFor({ timeout: 20000 });
+  if (!page.url().includes('/extracto')) throw new Error(`rebotó a ${page.url()}`);
+  await boton('Lo subo después').first().click();
+  await page.waitForURL(/\/revision/, { timeout: 20000 });
 });
 
 /* ---- cierre ---- */
