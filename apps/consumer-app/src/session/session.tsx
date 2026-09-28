@@ -17,6 +17,7 @@ import { activarSeñalesDelDispositivo, desactivarSeñalesDelDispositivo } from 
 import { profileStorage, secureTokenStore, type StoredProfile } from './token-storage';
 import { bitacora } from '../features/bitacora';
 import { useRastreoEnPrimerPlano } from './use-rastreo-primer-plano';
+import { cerrarSesionEnServidor } from './cierre-de-sesion';
 import { useLatidoDeSesion, type ContextoDeLatido } from './use-latido-de-sesion';
 
 export type SessionStatus = 'restoring' | 'anonymous' | 'authenticated';
@@ -321,7 +322,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if (abierta && salienteId) {
       // Cerrarla antes de revocar el token: despues ya no hay con que autenticar la llamada, y una
       // sesion que nunca se cierra se queda «activa» para siempre en la auditoria.
-      await customerApi.endSession(salienteId, abierta).catch(() => undefined);
+      // Con plazo: como mucho 5 s, y si no se pudo, el cierre local sigue igual. Ver `cierre-de-sesion.ts`.
+      await cerrarSesionEnServidor(salienteId, abierta);
       sesionTelemetria.current = null;
     }
     const tokens = await secureTokenStore.read();

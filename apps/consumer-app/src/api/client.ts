@@ -40,6 +40,12 @@ export type RequestOptions = {
    */
   sinPantalla?: boolean;
   signal?: AbortSignal;
+  /**
+   * Tiempo maximo que se sigue reintentando ante un fallo de infraestructura. Por defecto el de
+   * `reintentos.ts` (45 s, el hueco de un despliegue); lo acorta quien no puede esperar tanto, como el
+   * cierre de sesion, que tiene a la persona delante esperando a salir.
+   */
+  presupuestoReintentosMs?: number;
 };
 
 type Envelope<T> = { requestId?: string; data?: T; error?: { code?: string; message?: string } };
@@ -218,6 +224,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     conReintentos(() => rawRequest<T>(path, options, accessToken, correlationId, pantalla, idempotencyKey), {
       repeticion,
       signal: options.signal,
+      presupuestoMs: options.presupuestoReintentosMs,
     });
 
   try {

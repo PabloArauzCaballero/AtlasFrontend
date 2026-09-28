@@ -105,10 +105,27 @@ export const startSession = (customerId: string, body: SessionStartInput, origen
     { method: 'POST', idempotent: true, body, ...origen },
   );
 
-export const endSession = (customerId: string, sessionId: string, reasonCode = 'customer_logout') =>
-  request<{ ended: boolean }>(`/customers/${customerId}/sessions/${sessionId}/end`, {
+/**
+ * Cerrar la sesion: `POST /customers/:customerId/sessions/:sessionId/end` (200).
+ *
+ * `idempotent` es obligatorio: el backend exige `x-idempotency-key` y sin ella responde 400 antes de
+ * mirar nada. La llamada iba sin la cabecera, `signOut` se tragaba el 400 y ninguna sesion se cerro
+ * nunca desde la app: todas acababan cerradas por `expire_stale_sessions`.
+ *
+ * `opciones` deja al llamador acotar la espera (`signal`, `presupuestoReintentosMs`): con la clave, el
+ * cliente reintentaria hasta 45 s ante un fallo de red. Ver `session/cierre-de-sesion.ts`.
+ */
+export const endSession = (
+  customerId: string,
+  sessionId: string,
+  reasonCode = 'customer_logout',
+  opciones: Pick<RequestOptions, 'signal' | 'presupuestoReintentosMs'> = {},
+) =>
+  request<{ sessionId: string; sessionStatus: string; endedAt: string }>(`/customers/${customerId}/sessions/${sessionId}/end`, {
     method: 'POST',
+    idempotent: true,
     body: { reasonCode },
+    ...opciones,
   });
 
 export type SessionHeartbeatInput = {
