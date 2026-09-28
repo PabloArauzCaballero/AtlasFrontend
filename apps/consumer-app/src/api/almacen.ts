@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { apiConfig } from './config';
 import { fetchRepetible } from './reintentos';
 
 /**
@@ -17,8 +18,7 @@ import { fetchRepetible } from './reintentos';
  * es el que cubre la firma. Sólo se reescriben hosts `minio.*`, los mismos que nginx acepta: en
  * local (`localhost:59000`) no hay nginx delante y la subida sigue yendo directa.
  */
-export function urlDeSubidaAlAlmacen(url: string, plataforma: string = Platform.OS): string {
-  if (plataforma !== 'web') return url;
+export function urlDeSubidaAlAlmacen(url: string, plataforma: string = Platform.OS, apiBase: string = apiConfig.baseUrl): string {
   let destino: URL;
   try {
     destino = new URL(url);
@@ -27,7 +27,22 @@ export function urlDeSubidaAlAlmacen(url: string, plataforma: string = Platform.
   }
   if (!destino.hostname.startsWith('minio.')) return url;
   const esquema = destino.protocol.replace(':', '');
-  return `/almacen/${esquema}/${destino.host}${destino.pathname}${destino.search}`;
+  const ruta = `/almacen/${esquema}/${destino.host}${destino.pathname}${destino.search}`;
+  if (plataforma === 'web') return ruta;
+  /*
+    En el teléfono, un almacén por http con la API por https (TestFlight contra TEST, 2026-09-28):
+    iOS bloquea el http plano (ATS) y la red de Pablo corta `*.sslip.io`. Se usa el mismo proxy que
+    la web, en el ORIGEN de la API, que es https y sirve el mismo nginx. Con el almacén por https
+    (DEV por Tailscale) la URL firmada sigue yendo directa.
+  */
+  if (destino.protocol !== 'http:') return url;
+  let api: URL;
+  try {
+    api = new URL(apiBase);
+  } catch {
+    return url;
+  }
+  return api.protocol === 'https:' ? `${api.origin}${ruta}` : url;
 }
 
 /** `fetchRepetible` hacia el almacén: misma política de reintentos, URL adecuada a la plataforma. */
