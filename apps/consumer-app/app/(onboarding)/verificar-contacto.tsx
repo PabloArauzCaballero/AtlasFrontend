@@ -298,6 +298,7 @@ export default function VerifyContact() {
   };
 
   const described = error ? describeError(error) : null;
+  const envioIncierto = error instanceof AtlasApiError && (error.kind === 'timeout' || error.kind === 'network');
 
   // El fallo se pinta arriba y el boton esta abajo: hay que llevar la vista hasta el.
 
@@ -414,12 +415,16 @@ export default function VerifyContact() {
             ? sent
               ? 'Te enviamos un código a tu correo. Puedes hacerlo después: no detiene tu registro.'
               : described
-                ? 'No pudimos enviarlo. Puedes reintentar o hacerlo después: no detiene tu registro.'
+                ? envioIncierto
+                  ? 'No pudimos confirmar si se envió el código. Puedes reintentar o hacerlo después: no detiene tu registro.'
+                  : 'No pudimos enviarlo. Puedes reintentar o hacerlo después: no detiene tu registro.'
                 : 'Estamos enviando un código a tu correo…'
             : sent
               ? `Te enviamos un código ${channel === 'whatsapp' ? 'por WhatsApp' : 'por SMS'} para confirmar que el número es tuyo.`
               : described
-                ? 'No pudimos enviar el código. Prueba de nuevo o cambia de canal.'
+                ? envioIncierto
+                  ? 'No pudimos confirmar si se envió el código. Prueba de nuevo o cambia de canal.'
+                  : 'No pudimos enviar el código. Prueba de nuevo o cambia de canal.'
                 : 'Estamos enviando un código a tu número para confirmar que es tuyo…'
         }
       />
