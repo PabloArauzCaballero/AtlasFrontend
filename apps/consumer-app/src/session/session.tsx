@@ -17,6 +17,7 @@ import { activarSeñalesDelDispositivo, desactivarSeñalesDelDispositivo } from 
 import { profileStorage, secureTokenStore, type StoredProfile } from './token-storage';
 import { bitacora } from '../features/bitacora';
 import { useRastreoEnPrimerPlano } from './use-rastreo-primer-plano';
+import { useLatidoDeSesion, type ContextoDeLatido } from './use-latido-de-sesion';
 
 export type SessionStatus = 'restoring' | 'anonymous' | 'authenticated';
 
@@ -112,11 +113,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     referencia el efecto no se enteraria de que ya hay sesion con la que medir.
   */
   const [rastreo, setRastreo] = useState<ContextoDeRastreo | null>(null);
+  /*
+    La sesion a la que se le manda el latido. En estado por lo mismo que `rastreo`: el latido se
+    enciende cuando aparece y se apaga cuando desaparece. Aparte de `rastreo` porque no depende de
+    que las señales del dispositivo se activen: basta con que la sesion este abierta.
+  */
+  const [latido, setLatido] = useState<ContextoDeLatido | null>(null);
 
   useEffect(() => {
     configureClient({
       tokenStore: secureTokenStore,
       onSessionExpired: () => {
+        setLatido(null);
         setStatus('anonymous');
         setProfile(null);
         setOnboarding(null);
@@ -168,6 +176,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       }, { sinPantalla: true });
       sesionTelemetria.current = sessionId;
       dispositivoTelemetria.current = deviceId ?? null;
+      // El latido exige el `deviceId` de la sesion: sin el, el servidor responderia 400 a cada uno.
+      setLatido(deviceId ? { customerId, sessionId, deviceId } : null);
 
       /*
        * Y ahora se ESCRIBE en la sesion recien abierta.
@@ -300,6 +310,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       siguiente posicion y no ahora.
     */
     setRastreo(null);
+    // El latido se apaga lo primero: ni un latido mas de una sesion que se esta cerrando.
+    setLatido(null);
     await desactivarSeñalesDelDispositivo();
     // Lo que quede de bitacora sale con el token todavia valido; despues se borra del disco.
     await bitacora.cerrar().catch(() => undefined);
@@ -346,6 +358,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   // El temporizador de primer plano vive aqui porque aqui esta el contexto y aqui se sabe si la
   // persona tiene sesion: montarlo en una pantalla lo apagaria al navegar a otra.
   useRastreoEnPrimerPlano(rastreo, status === 'authenticated' && rastreo !== null);
+  // El latido, por la misma razon: vive con la sesion, no con una pantalla. Ver `use-latido-de-sesion.ts`.
+  useLatidoDeSesion(status === 'authenticated' ? latido : null);
 
   const value = useMemo<SessionValue>(
     () => ({
