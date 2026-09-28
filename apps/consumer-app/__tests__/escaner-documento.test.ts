@@ -332,12 +332,14 @@ describe('la bandera EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO', () => {
     expect(cargar({ bandera: 'true' }, 'lanza').escanerHabilitado()).toBe(false);
   });
 
-  it('eas.json la declara «false» en CADA perfil (EAS no sube el .env)', () => {
+  it('eas.json la declara en CADA perfil (EAS no sube el .env): encendida sólo en production', () => {
+    // `production` es la build de TestFlight y la lleva encendida a propósito (#5); `preview` y el
+    // simulador siguen apagados. Cualquier otro perfil nuevo nace apagado.
     const eas = JSON.parse(fuente('eas.json')) as { build: Record<string, { env?: Record<string, string> }> };
     const perfiles = Object.entries(eas.build);
     expect(perfiles.length).toBeGreaterThan(0);
-    for (const [, perfil] of perfiles) {
-      expect(perfil.env?.EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO).toBe('false');
+    for (const [nombre, perfil] of perfiles) {
+      expect(perfil.env?.EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO).toBe(nombre === 'production' ? 'true' : 'false');
     }
   });
 
