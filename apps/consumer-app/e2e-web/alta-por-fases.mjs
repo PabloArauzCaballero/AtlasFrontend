@@ -268,7 +268,9 @@ await paso('carnet: tres capturas con la cámara falsa y datos del documento', a
     await page.waitForTimeout(1200 + i * 1500);
     await boton('Tomar foto').first().click(); // el disparador
     // Vuelve al carrusel con la foto subida: la acción pasa a «Repetir».
-    await boton('Repetir').first().waitFor({ timeout: 45000 });
+    // Subida la foto, el contador del carrusel sube («Tus capturas (N de 3)») y la app pasa SOLA a
+    // la siguiente lámina pendiente: ya no se queda en esta con «Repetir».
+    await page.getByText(`Tus capturas (${i + 1} de 3)`).first().waitFor({ timeout: 90000 });
     if (i < laminas.length - 1) {
       // «Siguiente» desplaza el carrusel; en la web el primer toque tras subir la foto a veces se
       // pierde con el repintado (medido en DEV): se insiste hasta que el pie muestra la siguiente.
