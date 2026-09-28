@@ -125,7 +125,6 @@ export default function Home() {
 
   return (
     <Screen onRefresh={() => void session.refresh()}>
-      <Gap size="sm" />
       <View style={styles.greeting}>
         <View style={styles.greetingText}>
           <AtlasText variant="caption" tone="secondary">

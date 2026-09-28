@@ -154,6 +154,7 @@ export default function Privacidad() {
   return (
     <Screen>
       <ScreenHeader
+        onBack="auto"
         eyebrow="Privacidad"
         title="Tus datos"
         subtitle="Que permisos diste, cuales puedes retirar y que puedes pedir sobre tu informacion."

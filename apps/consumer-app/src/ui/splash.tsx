@@ -15,14 +15,17 @@
  * ## La coreografia
  *
  * ```
- *   0 ms  ┃ barras cinematograficas entran · el negro se abre a navy
- * 280 ms  ┃ la «A» SE DIBUJA sola, trazo a trazo, con una luz en la punta del trazo
- * 1180ms  ┃ el relleno de marca aparece por debajo del trazo y el travesano cierra la letra
- * 1520ms  ┃ barrido especular: una banda de luz cruza el metal en diagonal
- * 1660ms  ┃ ▶ IMPACTO — destello, onda expansiva, el resplandor de fondo se abre · suena el ta-dum
- * 1820ms  ┃ A·T·L·A·S aparecen una a una y el tracking se cierra hacia el centro
- * 2460ms  ┃ el respiro: todo quieto. Es el fotograma en el que se reconoce la marca
- * 2800ms  ┃ (si la app esta lista) la camara acelera hacia la marca y la atraviesa
+ *   0 ms  ┃ barras cinematograficas entran · un globo de puntos se enciende y gira
+ * 1020ms  ┃ el globo frena de frente a Bolivia y un pulso marca el punto (`ui/globo-arranque.tsx`)
+ * 1150ms  ┃ el globo se recoge hacia ese punto
+ * 1380ms  ┃ de ahi la «A» SE DIBUJA sola, trazo a trazo, con una luz en la punta del trazo
+ * 2020ms  ┃ el relleno de marca aparece por debajo del trazo y el travesano cierra la letra
+ * 2340ms  ┃ barrido especular: una banda de luz cruza el metal en diagonal
+ * 2500ms  ┃ ▶ IMPACTO — destello, onda expansiva, el resplandor de fondo se abre · suena el ta-dum
+ * 2560ms  ┃ un punto da una vuelta alrededor de la «A» dejando la orbita dibujada (`ui/orbita-arranque.tsx`)
+ * 2660ms  ┃ A·T·L·A·S aparecen una a una y el tracking se cierra hacia el centro
+ * 3300ms  ┃ el respiro: todo quieto. Es el fotograma en el que se reconoce la marca
+ * 3560ms  ┃ (si la app esta lista) la camara acelera hacia la marca y la atraviesa
  * ```
  *
  * ## Por que el intro NO espera a que la app este lista
@@ -62,13 +65,18 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import Svg, { Circle, ClipPath, Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { color, palette } from '../theme/tokens';
 import { useSonidoMarca } from './brand-sound';
+import { acelera, frena, frenaMucho, suave, tramo } from './curvas-arranque';
+import { DegradadosLetraA, LETRA_A } from './brand';
+import { GloboDeArranque } from './globo-arranque';
+import { OrbitaDelante, OrbitaDetras } from './orbita-arranque';
 import { AtlasText } from './primitives';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
+const AnimatedG = Animated.createAnimatedComponent(G);
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 /**
@@ -80,17 +88,25 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
  */
 const GUION = {
   barras: [0, 320],
-  trazo: [280, 1180],
-  relleno: [1140, 1520],
-  barrido: [1500, 2160],
-  impacto: 1660,
-  onda: [1660, 2320],
-  rotulo: [1820, 2460],
-  respiro: [2460, 2800],
+  globo: {
+    aparece: [0, 420],
+    giro: [0, 1200],
+    pulso: [1020, 1400],
+    recoge: [1150, 1450],
+  },
+  trazo: [1380, 2060],
+  relleno: [2020, 2360],
+  barrido: [2340, 3000],
+  impacto: 2500,
+  onda: [2500, 3160],
+  rotulo: [2660, 3300],
+  /** El punto da una vuelta alrededor de la letra mientras se forma el rotulo, y se para. */
+  orbita: [2560, 3380],
+  respiro: [3300, 3560],
 } as const;
 
 /** Lo que dura el intro completo. La salida se encadena DESPUES, y solo si la app esta lista. */
-const INTRO = 2800;
+const INTRO = 3560;
 const SALIDA = 640;
 
 /**
@@ -103,47 +119,12 @@ const SALIDA = 640;
  */
 const CONTORNO = 152;
 
-/** El trazado de la marca, el mismo que dibuja `ui/brand.tsx`. Aqui se usa dos veces: contorno y relleno. */
-const LETRA = 'M24 5 L43 43 H34 L24 21 L14 43 H5 Z';
-const TRAVESANO = 'M17.5 31 H30.5 L34 38 H14 Z';
+/** El trazado de la marca, el mismo que dibuja `ui/brand.tsx`: aqui se dibuja por partes. */
+const LETRA = LETRA_A.silueta;
 
 const MARCA_PX = 132;
 /** El lienzo del impacto: onda expansiva y resplandor. Mas grande que la marca, para que quepa lo que sale de ella. */
 const ESCENA_PX = 360;
-
-/*
-  Curvas de aceleracion, escritas a mano.
-
-  No son `Easing.out(Easing.cubic)` porque aqui cada capa lee de un reloj COMUN y aplica su propia
-  curva sobre su propio tramo; `withTiming` solo sabe curvar una animacion entera. Un reloj comun es
-  lo que garantiza que el destello, la onda y el sonido caigan exactamente en el mismo fotograma:
-  con seis animaciones independientes, cada una con su retardo, basta un fotograma perdido en el
-  arranque para que el golpe visual y el sonoro se separen — y separados dejan de ser un golpe.
-*/
-function tramo(reloj: number, desde: number, hasta: number): number {
-  'worklet';
-  return Math.min(1, Math.max(0, (reloj - desde) / (hasta - desde)));
-}
-
-function frena(x: number): number {
-  'worklet';
-  return 1 - Math.pow(1 - x, 3);
-}
-
-function frenaMucho(x: number): number {
-  'worklet';
-  return 1 - Math.pow(1 - x, 5);
-}
-
-function acelera(x: number): number {
-  'worklet';
-  return x * x * x;
-}
-
-function suave(x: number): number {
-  'worklet';
-  return x * x * (3 - 2 * x);
-}
 
 /**
  * El grano de pelicula.
@@ -267,7 +248,7 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
     bloqueado es el peor fallo posible de una app de dinero, porque no se distingue de que la app
     este rota. A los ocho segundos se descubre la interfaz: si debajo hay un error, al menos se lee.
 
-    Ocho y no seis: el intro solo ya ocupa 2,8 s, y el margen tiene que seguir siendo para la RED,
+    Ocho y no seis: el intro solo ya ocupa 3,6 s, y el margen tiene que seguir siendo para la RED,
     no para la animacion.
   */
   React.useEffect(() => {
@@ -364,7 +345,7 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
 
   const travesanoProps = useAnimatedProps(() => ({
     // El travesano cierra la letra DESPUES del relleno. Es el ultimo trazo que da un rotulista.
-    opacity: 0.55 * suave(tramo(reloj.value, GUION.relleno[1] - 80, GUION.relleno[1] + 220)),
+    opacity: suave(tramo(reloj.value, GUION.relleno[1] - 80, GUION.relleno[1] + 220)),
   }));
 
   /**
@@ -469,56 +450,78 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
             />
           </Svg>
 
-          <Animated.View style={marca}>
-            <Svg width={MARCA_PX} height={MARCA_PX} viewBox="0 0 48 48" accessibilityLabel="Logotipo de Atlas">
-              <Defs>
-                <LinearGradient id="arranque-marca" x1="0" y1="0" x2="1" y2="1">
-                  <Stop offset="0" stopColor={palette.brand500} />
-                  <Stop offset="0.55" stopColor={palette.brand400} />
-                  <Stop offset="1" stopColor={palette.brand300} />
-                </LinearGradient>
-                <LinearGradient id="arranque-brillo" x1="0" y1="0" x2="1" y2="0">
-                  <Stop offset="0" stopColor={palette.white} stopOpacity="0" />
-                  <Stop offset="0.5" stopColor={palette.white} stopOpacity="0.85" />
-                  <Stop offset="1" stopColor={palette.white} stopOpacity="0" />
-                </LinearGradient>
-                <ClipPath id="arranque-recorte">
-                  <Path d={LETRA} />
-                </ClipPath>
-              </Defs>
+          <View style={styles.marcaCaja}>
+            {/* Detras de la marca y centrado en ella: el globo se recoge hacia el punto donde nace la letra. */}
+            <GloboDeArranque reloj={reloj} guion={GUION.globo} />
+            <Animated.View style={marca}>
+              <OrbitaDetras reloj={reloj} guion={GUION.orbita} tamano={MARCA_PX} />
+              <Svg width={MARCA_PX} height={MARCA_PX} viewBox="0 0 48 48" accessibilityLabel="Logotipo de Atlas">
+                <Defs>
+                  <DegradadosLetraA prefijo="arranque-marca" />
+                  {/* La sombra en el suelo: sin ella la letra flota; con ella, esta apoyada en algo. */}
+                  <RadialGradient id="arranque-suelo" cx="50%" cy="50%" r="50%">
+                    <Stop offset="0" stopColor={palette.brand400} stopOpacity="0.45" />
+                    <Stop offset="1" stopColor={palette.brand400} stopOpacity="0" />
+                  </RadialGradient>
+                  <LinearGradient id="arranque-brillo" x1="0" y1="0" x2="1" y2="0">
+                    <Stop offset="0" stopColor={palette.white} stopOpacity="0" />
+                    <Stop offset="0.5" stopColor={palette.white} stopOpacity="0.85" />
+                    <Stop offset="1" stopColor={palette.white} stopOpacity="0" />
+                  </LinearGradient>
+                  <ClipPath id="arranque-recorte">
+                    <Path d={LETRA} />
+                  </ClipPath>
+                </Defs>
 
-              <AnimatedPath
-                d={LETRA}
-                fill="none"
-                stroke={palette.brand300}
-                strokeWidth={1.1}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeDasharray={CONTORNO}
-                strokeDashoffset={CONTORNO}
-                animatedProps={trazoProps}
-              />
-              <AnimatedPath d={LETRA} fill="url(#arranque-marca)" opacity={0} animatedProps={rellenoProps} />
-              <AnimatedPath d={TRAVESANO} fill={palette.brand900} opacity={0} animatedProps={travesanoProps} />
-
-              <G clipPath="url(#arranque-recorte)">
-                {/*
-                  Inclinada 18 grados: una banda vertical se lee como una persiana. La diagonal es
-                  la que parece luz rebotando en una superficie que no esta perfectamente de frente.
-                */}
-                <AnimatedRect
-                  y={-30}
-                  x={-70}
-                  opacity={0}
-                  width={16}
-                  height={110}
-                  fill="url(#arranque-brillo)"
-                  transform="rotate(18 24 24)"
-                  animatedProps={barridoProps}
+                <AnimatedPath
+                  d={LETRA}
+                  fill="none"
+                  stroke={palette.brand300}
+                  strokeWidth={1.1}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray={CONTORNO}
+                  strokeDashoffset={CONTORNO}
+                  animatedProps={trazoProps}
                 />
-              </G>
-            </Svg>
-          </Animated.View>
+                {/* Las dos caras de la letra: la luz a la izquierda, la sombra a la derecha (ver `LETRA_A`). */}
+                <AnimatedG opacity={0} animatedProps={rellenoProps}>
+                  <Ellipse cx={24} cy={44.5} rx={21} ry={2.2} fill="url(#arranque-suelo)" />
+                  <Path d={LETRA_A.caraLuz} fill="url(#arranque-marca-luz)" />
+                  <Path d={LETRA_A.caraSombra} fill="url(#arranque-marca-sombra)" />
+                  <Path
+                    d={LETRA_A.filo}
+                    stroke={palette.white}
+                    strokeWidth={0.35}
+                    strokeLinecap="round"
+                    opacity={0.55}
+                  />
+                </AnimatedG>
+                <AnimatedG opacity={0} animatedProps={travesanoProps}>
+                  <Path d={LETRA_A.travesano} fill="url(#arranque-marca-travesano)" />
+                  <Path d={LETRA_A.cantoTravesano} stroke={palette.brand300} strokeWidth={0.35} opacity={0.8} />
+                </AnimatedG>
+
+                <G clipPath="url(#arranque-recorte)">
+                  {/*
+                    Inclinada 18 grados: una banda vertical se lee como una persiana. La diagonal es
+                    la que parece luz rebotando en una superficie que no esta perfectamente de frente.
+                  */}
+                  <AnimatedRect
+                    y={-30}
+                    x={-70}
+                    opacity={0}
+                    width={16}
+                    height={110}
+                    fill="url(#arranque-brillo)"
+                    transform="rotate(18 24 24)"
+                    animatedProps={barridoProps}
+                  />
+                </G>
+              </Svg>
+              <OrbitaDelante reloj={reloj} guion={GUION.orbita} tamano={MARCA_PX} />
+            </Animated.View>
+          </View>
 
           <View style={styles.rotulo}>
             {LETRAS.map((letra, indice) => (
@@ -601,6 +604,7 @@ const styles = StyleSheet.create({
   centro: { alignItems: 'center', justifyContent: 'center' },
   centrado: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   escena: { width: ESCENA_PX, height: ESCENA_PX, alignItems: 'center', justifyContent: 'center', gap: 22 },
+  marcaCaja: { width: MARCA_PX, height: MARCA_PX, alignItems: 'center', justifyContent: 'center' },
   rotulo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   // El interletrado base del rotulo ya formado. El resto del recorrido lo pone `translateX`.
   letra: { letterSpacing: 6, textAlign: 'center' },

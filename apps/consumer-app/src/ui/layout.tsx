@@ -105,6 +105,17 @@ export function Screen({
     mismo aire que a los lados. En el telefono no cambia nada: ahi el area segura ya lo pone.
   */
   const aireArriba = Platform.OS === 'web' ? Math.max(insets.top, space.md) : insets.top;
+  /*
+    Cuanto mide el desvanecido POR DEBAJO del area segura.
+
+    Eran 20 px (`space.lg`), menos que un renglon: al desplazar, la linea que pasaba bajo el reloj
+    quedaba a medio apagar y se leia cortada —en Perfil, «ejecucion · politica…» asomando entre la
+    hora y la tarjeta siguiente—, y el filo de las tarjetas aparecia partido justo debajo de la barra
+    de estado. Con 40 px (`space.xxxl`) el texto se disuelve entero antes de llegar arriba. En reposo
+    no tapa nada: el contenido empieza `space.base` por debajo del area segura y el desvanecido
+    todavia es casi transparente a esa altura.
+  */
+  const DESVANECIDO_ARRIBA = space.xxxl;
   const body = padded ? [styles.content, { paddingTop: aireArriba + space.base }, contentStyle] : contentStyle;
 
   /*
@@ -185,8 +196,8 @@ export function Screen({
             del reloj queda cubierta del todo y el desvanecido gasta sus veinte pixeles justo por
             debajo, que es donde sirve para algo.
           */
-          locations={[0, insets.top / (insets.top + space.lg), 1]}
-          style={[styles.fadeTop, { height: insets.top + space.lg }]}
+          locations={[0, insets.top / (insets.top + DESVANECIDO_ARRIBA), 1]}
+          style={[styles.fadeTop, { height: insets.top + DESVANECIDO_ARRIBA }]}
           pointerEvents="none"
         />
       ) : null}
@@ -393,7 +404,14 @@ const styles = StyleSheet.create({
   fadeFooter: { position: 'absolute', bottom: '100%', left: 0, right: 0, height: space.xxl },
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, marginBottom: space.sm },
   headerText: { flex: 1, gap: space.xxs, paddingTop: space.xs },
-  headerActionSlot: { flexShrink: 0 },
+  /*
+    Tan alto como el boton de volver, con la accion CENTRADA dentro.
+
+    Un boton redondo mide eso mismo y no cambia nada; una insignia —«Entorno sandbox» en Escanear—
+    es mas baja, y con la fila alineada arriba quedaba flotando por encima del titulo en vez de a su
+    altura.
+  */
+  headerActionSlot: { flexShrink: 0, minHeight: touch.minSize, justifyContent: 'center' },
   backButton: {
     width: touch.minSize,
     height: touch.minSize,
