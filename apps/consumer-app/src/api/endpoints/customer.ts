@@ -128,6 +128,47 @@ export const endSession = (
     ...opciones,
   });
 
+export type SessionHeartbeatInput = {
+  deviceId: string;
+  /** Identificador del latido para la auditoria; el servidor lo guarda tal cual (1–120 caracteres). */
+  clientHeartbeatId: string;
+  capturedAt?: string;
+};
+
+export type SessionHeartbeatResponse = {
+  sessionId: string;
+  status: 'accepted';
+  gpsObservationCreated: boolean;
+  gpsObservationId: string | null;
+  gpsObservationSkippedReason: string | null;
+  riskSignalsCreated: number;
+};
+
+/**
+ * Latido de la sesion abierta: `POST /customers/:customerId/sessions/:sessionId/heartbeat` (202).
+ *
+ * Es lo que escribe `last_activity_at`, y `expire_stale_sessions` caduca por
+ * `COALESCE(last_activity_at, started_at)`: sin latidos, una sesion en uso mas de dos horas se
+ * cerraba igual. El servidor exige `x-idempotency-key` (de ahi `idempotent`) y que `deviceId` sea el
+ * de la sesion (403 si no). 422 `SESSION_NOT_ACTIVE` si la sesion ya se cerro.
+ *
+ * `sinPantalla`: lo manda la sesion, no una pantalla. `signal` deja al llamador cortar los reintentos
+ * del cliente (hasta 45 s ante un despliegue) cuando la app pasa a segundo plano.
+ */
+export const sessionHeartbeat = (
+  customerId: string,
+  sessionId: string,
+  body: SessionHeartbeatInput,
+  opciones: Pick<RequestOptions, 'signal'> = {},
+) =>
+  request<SessionHeartbeatResponse>(`/customers/${customerId}/sessions/${sessionId}/heartbeat`, {
+    method: 'POST',
+    idempotent: true,
+    sinPantalla: true,
+    body,
+    ...opciones,
+  });
+
 export type CreditProduct = {
   productId: string;
   productName: string;
