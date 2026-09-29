@@ -227,7 +227,7 @@ export default function Conversacion() {
     >
       <ScreenHeader
         title="Soporte"
-        subtitle="Estamos del otro lado."
+        subtitle="Escríbenos tu duda."
         onBack="auto"
         action={<Button label="Cerrar" variant="secondary" icon={null} onPress={cerrarConversacion} disabled={cargando} />}
       />

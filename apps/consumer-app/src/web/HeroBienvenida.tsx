@@ -29,14 +29,14 @@ export function HeroBienvenida({ pasos }: { pasos: readonly PasoDeBienvenida[] }
           <div>
             <a href="/registro" className="tag" onClick={ir('/(onboarding)/registro')}>
               <span className="tag__dot" />
-              Sube de nivel y paga menos inicial →
+              Crea tu cuenta y pide tu línea →
             </a>
             <h1 className="hero__title">
               Compra ahora, paga <em>después</em>.
             </h1>
             <p className="hero__lead">
-              Crédito aprobado en segundos para comprar en cientos de tiendas aliadas. Pagas una inicial y el resto en{' '}
-              <b>3 cuotas quincenales</b>, con <b>0% de intereses</b>.
+              Crédito para comprar en las tiendas aliadas. Atlas revisa tu solicitud, te da una línea y lo que compras lo
+              pagas en <b>cuotas mensuales</b>, con la <b>tasa que Atlas te asigna</b> según tu perfil.
             </p>
             <div className="hero__cta">
               <a href="/registro" className="btn btn--primary" onClick={ir('/(onboarding)/registro')}>
@@ -48,16 +48,16 @@ export function HeroBienvenida({ pasos }: { pasos: readonly PasoDeBienvenida[] }
             </div>
             <div className="hero__stats">
               <div>
-                <b>60s</b>
-                <span>Aprobación</span>
+                <b>Mensuales</b>
+                <span>Cuotas de tu crédito</span>
               </div>
               <div>
-                <b>0%</b>
-                <span>Intereses</span>
+                <b>Tu perfil</b>
+                <span>Fija tu tasa y tu línea</span>
               </div>
               <div>
-                <b>500+</b>
-                <span>Comercios</span>
+                <b>QR</b>
+                <span>Compras en el comercio</span>
               </div>
             </div>
           </div>
@@ -65,8 +65,8 @@ export function HeroBienvenida({ pasos }: { pasos: readonly PasoDeBienvenida[] }
             <div className="hero__badge hero__badge--ok">
               <i>✓</i>
               <div>
-                Aprobado
-                <small>en 42 segundos</small>
+                Línea aprobada
+                <small>ejemplo ilustrativo</small>
               </div>
             </div>
             <div className="hero__badge hero__badge--bs">Bs</div>

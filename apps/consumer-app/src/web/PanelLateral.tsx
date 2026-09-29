@@ -1,7 +1,7 @@
 /**
  * El panel derecho de acceso y registro: la mitad «de marca» de `login.html` y `registro.html`.
  *
- * En el acceso: la tarjeta de cuenta 3D que sigue al puntero, una cita de cliente y tres cifras.
+ * En el acceso: la tarjeta de cuenta 3D que sigue al puntero y tres datos del producto (sin cifras de folleto ni citas de clientes: eran inventadas).
  * En el registro: la tarjeta y la lista de pasos con el activo en degradado, y nada mas —los chips
  * de «lo que ya está» y las cifras se retiraron el 2026-09-21 por repetir lo que la lista ya dice—.
  * Sólo web y sólo DOM; el aspecto vive en `estilo.ts` (`.auth__side`, `.steps`).
@@ -16,7 +16,6 @@ export const PASOS_DEL_REGISTRO = [
   { ruta: '/economia', etiqueta: 'Situación económica' },
   { ruta: '/domicilio', etiqueta: 'Domicilio' },
   { ruta: '/identidad', etiqueta: 'Carnet y selfie' },
-  { ruta: '/referencias', etiqueta: 'Referencias' },
   { ruta: '/revision', etiqueta: 'Revisión' },
 ] as const;
 
@@ -29,35 +28,18 @@ export function PanelDeAcceso({ nombre, nivel }: { nombre?: string | null; nivel
         explica solo es una linea de texto que hay que leer para no enterarse de nada.
       */}
       <Tarjeta3D nombre={nombre} nivel={nivel} />
-      <p className="side__quote">“Compré la nevera que necesitaba sin descuadrar el mes. Las cuotas caen justo después de cobrar.”</p>
-      <div className="side__who">
-        {/*
-          La inicial sobre una superficie neutra, no sobre un disco de degradado de marca.
-
-          Un circulo verde macizo donde deberia ir una cara es el acabado que delata un hueco sin
-          rellenar: se lee como el avatar por defecto de una plantilla, no como una persona. Neutro y
-          con la inicial en el color de marca dice lo mismo sin fingir una foto que no existe.
-        */}
-        <span className="side__ini" aria-hidden="true">
-          V
-        </span>
-        <div>
-          <b>Valeria M.</b>
-          <span>Nivel 3 · Santa Cruz</span>
-        </div>
-      </div>
       <div className="side__stats">
         <div>
-          <b>0%</b>
-          <span>Intereses</span>
+          <b>Tu perfil</b>
+          <span>Fija tu tasa y tu línea</span>
         </div>
         <div>
-          <b>3</b>
-          <span>Cuotas quincenales</span>
+          <b>Mensuales</b>
+          <span>Cuotas de tu crédito</span>
         </div>
         <div>
-          <b>500+</b>
-          <span>Comercios</span>
+          <b>QR</b>
+          <span>Compras en el comercio</span>
         </div>
       </div>
     </aside>

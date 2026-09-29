@@ -153,7 +153,7 @@ export default function InstallmentDetail() {
         </AtlasText>
         {state === 'overdue' ? (
           <AtlasText variant="caption" tone="secondary">
-            El interés penal corre solo sobre el capital de esta cuota, nunca sobre el saldo total de tu crédito.
+            Mientras esta cuota siga vencida, tu puntaje baja. Págala cuanto antes para que deje de afectarte.
           </AtlasText>
         ) : null}
       </Card>
@@ -168,7 +168,7 @@ export default function InstallmentDetail() {
         <KeyValue label="Interés" numeric value={formatAmount(amountOf(installment.interestAmount), loan.currencyCode)} />
         {amountOf(installment.lateFeeAmount) > 0 ? (
           <KeyValue
-            label="Interés penal por mora"
+            label="Recargo por mora"
             numeric
             tone="danger"
             value={formatAmount(amountOf(installment.lateFeeAmount), loan.currencyCode)}

@@ -23,6 +23,30 @@ export async function leerBytes(uri: string): Promise<Uint8Array> {
   return new File(uri).bytes();
 }
 
+/**
+ * Borra la copia temporal que el selector de documentos dejo en la cache del telefono.
+ *
+ * `DocumentPicker` con `copyToCacheDirectory: true` copia el archivo elegido a la cache de la app, y
+ * ahi se quedaba despues de subirlo: el extracto bancario «no queda en tu telefono» era falso. Solo
+ * se borra si la ruta esta DENTRO de la cache: nunca el original que la persona eligio en sus
+ * archivos. Nunca lanza: limpiar es un extra y no puede romper una subida que ya salio bien. En web
+ * suelta la URL `blob:`.
+ */
+export function borrarCopiaLocal(uri: string): boolean {
+  try {
+    if (Platform.OS === 'web') {
+      if (uri.startsWith('blob:')) URL.revokeObjectURL(uri);
+      return true;
+    }
+    if (!uri.startsWith(Paths.cache.uri)) return false;
+    const archivo = new File(uri);
+    if (archivo.exists) archivo.delete();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** El contenido en base64 puro, sin cabecera `data:`. */
 export async function leerArchivoEnBase64(uri: string): Promise<string> {
   if (Platform.OS !== 'web') return new File(uri).base64();

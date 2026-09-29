@@ -3,8 +3,8 @@
  *
  * ## Por que es una pestana y no una campanita
  *
- * Porque lo que llega aqui no es ruido de producto: son vencimientos, moras y cambios en la linea
- * de credito de la persona. Escondido tras un icono con un punto rojo, el aviso que dice «te vence
+ * Porque lo que llega aqui no es ruido de producto: son los avisos de sus pagos, de su verificacion y
+ * de su cuenta (los de vencimiento y mora todavia no los emite Core: ver `features/avisos-copy.ts`). Escondido tras un icono con un punto rojo, el aviso que dice «te vence
  * una cuota manana» compite con la notificacion del sistema y pierde. En la barra, tiene el mismo
  * peso que sus pagos — que es el que le corresponde.
  *
@@ -18,6 +18,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import * as notificationsApi from '../../../src/api/endpoints/notifications';
+import { AVISOS_QUE_LLEGAN_RESUMEN } from '../../../src/features/avisos-copy';
 import { useSession } from '../../../src/session/session';
 import { color, radius, space } from '../../../src/theme/tokens';
 import type { IconName } from '../../../src/ui/icons';
@@ -209,7 +210,7 @@ export default function Avisos() {
         <EmptyState
           icon="sobre"
           title="Todavía no tienes avisos"
-          detail="Aquí llegarán tus vencimientos, los cambios en tu línea y cualquier cosa que necesites saber de tu cuenta."
+          detail={`Aquí verás lo que te avisamos. ${AVISOS_QUE_LLEGAN_RESUMEN}`}
           action={<Button label="Elegir cómo te avisamos" variant="secondary" onPress={() => router.push('/(app)/preferencias-avisos')} />}
         />
       ) : null}

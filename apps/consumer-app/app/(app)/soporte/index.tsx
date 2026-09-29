@@ -153,7 +153,7 @@ export default function Soporte() {
           value={busqueda}
           onChangeText={setBusqueda}
           placeholder="Ej.: no me llega el código"
-          ayuda="Escribe con tus palabras lo que te pasa y la lista se filtra mientras escribes. Ej.: «no me llega el código». Si nada coincide, abre una conversación y te atiende una persona."
+          ayuda="Escribe con tus palabras lo que te pasa y la lista se filtra mientras escribes. Ej.: «no me llega el código». Si nada coincide, abre una conversación con soporte."
         />
         <Button label="Hablar con soporte" onPress={empezar} loading={abriendo} />
       </Card>
@@ -276,7 +276,7 @@ export default function Soporte() {
         <EmptyState
           icon="ayuda"
           title="Aún no hay artículos"
-          detail="Puedes escribirnos igual: el botón de arriba abre una conversación con una persona."
+          detail="Puedes escribirnos igual: el botón de arriba abre una conversación con soporte."
         />
       ) : null}
 

@@ -6,7 +6,7 @@
  */
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Linking, StyleSheet, View } from 'react-native';
 import { isSandboxPurchase } from '../../../src/api/config';
 import { formatMoney } from '../../../src/domain/money';
 import { useSandbox } from '../../../src/sandbox/store';
@@ -33,7 +33,7 @@ import {
   StatRow,
 } from '../../../src/ui/primitives';
 import { PressSurface } from '../../../src/ui/motion';
-import { PartnerBanner } from '../../../src/ui/partner-banner';
+import { PartnerBanner, usePartnerBanner } from '../../../src/ui/partner-banner';
 import { downloadSpendingReport } from '../../../src/features/spending-report';
 import { categoryLook, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
@@ -53,6 +53,7 @@ export default function Home() {
    * que se debe, su reparto por rubro y la mora salen de `loans`, que es lo que de verdad se cobra.
    */
   const book = useCreditBook(session.customerId);
+  const partnerBanner = usePartnerBanner();
   // El informe tarda: sin este estado el boton parece no responder y la gente lo pulsa dos veces.
   const [reportBusy, setReportBusy] = useState(false);
   const spending = book.spending;
@@ -153,8 +154,8 @@ export default function Home() {
             {formatAmount(spending.totals.overdue, currency)}
           </AtlasText>
           <AtlasText variant="body" tone="secondary">
-            Si no regularizas, empezarán a correr intereses sobre el capital vencido. Incumplir nuestras políticas
-            puede llevar a la suspensión de tu cuenta.
+            Mientras tengas pagos vencidos, tu puntaje baja. Regularízalos cuanto antes; la política de mora
+            explica cómo se calcula.
           </AtlasText>
           <Button label="Ver qué debo pagar" onPress={() => router.push('/(app)/(tabs)/pagos')} />
           {/*
@@ -392,7 +393,12 @@ export default function Home() {
       )}
 
       {/* Al final del inicio: lo comercial nunca por encima de lo que el cliente debe. */}
-      <PartnerBanner />
+      {partnerBanner ? (
+        <PartnerBanner
+          content={partnerBanner}
+          onPress={partnerBanner.action ? () => void Linking.openURL(partnerBanner.action!.url) : undefined}
+        />
+      ) : null}
       <Gap size="lg" />
     </Screen>
   );

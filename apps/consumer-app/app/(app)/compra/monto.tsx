@@ -13,10 +13,12 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { formatMoney, type Minor } from '../../../src/domain/money';
 import { STANDARD_POLICY_V1, buildBreakdown, describeAmountRejection, validateGrossAmount } from '../../../src/domain/policy';
+import { AVISO_PLAN_SIMULADO, ROTULO_SIMULACION } from '../../../src/features/demo-copy';
 import { formatDate } from '../../../src/features/payment-copy';
 import { useSandbox, useScanSession } from '../../../src/sandbox/store';
 import { space } from '../../../src/theme/tokens';
 import { firstBlocker } from '../../../src/ui/blocked';
+import { DataSourceBadge } from '../../../src/ui/brand';
 import { AmountField } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, IconChip, KeyValue, Overline } from '../../../src/ui/primitives';
@@ -98,6 +100,7 @@ export default function PurchaseAmount() {
       }
     >
       <ScreenHeader title="Tu compra" subtitle="Escribe el monto total que te indica el comercio." onBack="auto" />
+      <DataSourceBadge label={ROTULO_SIMULACION} />
 
       {/*
         El comercio es el CONTEXTO de la compra, no un bloque mas de la pantalla.
@@ -123,7 +126,7 @@ export default function PurchaseAmount() {
 
       <AmountField
         value={raw}
-        ayuda="El precio total que te dice el comercio, en bolivianos y con centavos si los hay. Ej.: 1250,50. Con este monto se calculan tu pago inicial y tus cuotas; si supera tu disponible, la app te lo dice antes de seguir."
+        ayuda="El precio total que te dice el comercio, en bolivianos y con centavos si los hay. Ej.: 1250,50. Con este monto se calcula la simulación de tu pago inicial y tus cuotas; si supera tu disponible, la app te lo dice antes de seguir."
         autoFocus
         onChangeAmount={(next, parsed) => {
           setRaw(next);
@@ -155,7 +158,7 @@ export default function PurchaseAmount() {
 
       {breakdown && !exceedsAvailable ? (
         <Card>
-          <CardHeader icon="lista" title="Así quedaría tu plan" />
+          <CardHeader icon="lista" title="Así quedaría tu plan" trailing={<DataSourceBadge label={ROTULO_SIMULACION} />} />
 
           <KeyValue label="Pagas hoy al comercio (60 %)">
             <AtlasText variant="amountSmall">{formatMoney(breakdown.initialPaymentAmount)}</AtlasText>
@@ -180,7 +183,7 @@ export default function PurchaseAmount() {
 
           <Divider />
           <AtlasText variant="caption" tone="tertiary">
-            Sin intereses. Las tres cuotas suman exactamente el 40 % financiado.
+            {AVISO_PLAN_SIMULADO}
           </AtlasText>
         </Card>
       ) : null}

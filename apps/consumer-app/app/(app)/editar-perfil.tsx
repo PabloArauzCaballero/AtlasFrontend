@@ -121,7 +121,7 @@ export default function EditProfile() {
             opciones={LANGUAGES}
             value={language}
             onChange={setLanguage}
-            ayuda="En qué idioma te escribimos los avisos de cuotas, los correos y la atención de soporte. Cambiarlo no toca tu contrato, que queda en el idioma en que lo firmaste."
+            ayuda="Se guarda en tu perfil. Hoy los avisos y los correos salen en español: cambiarlo todavía no cambia el idioma en que te escribimos. Tampoco toca tu contrato, que queda en el idioma en que lo firmaste."
           />
           <SelectField<Gender>
             label="Género"
@@ -134,7 +134,7 @@ export default function EditProfile() {
           <CheckRow
             label="Quiero recibir novedades y promociones"
             detail="Puedes desactivarlo cuando quieras. No afecta a los avisos de tus pagos."
-            ayuda="Marcarlo autoriza que te escribamos sobre comercios nuevos, descuentos y cambios del producto. Desmarcarlo no afecta a tu crédito: los avisos de tus cuotas y de tus pagos siguen llegando porque no son publicidad."
+            ayuda="Marcarlo autoriza que te escribamos sobre comercios nuevos, descuentos y cambios del producto. Desmarcarlo no afecta a tu crédito: los avisos de tus pagos siguen llegando porque no son publicidad."
             checked={marketing}
             onToggle={setMarketing}
           />

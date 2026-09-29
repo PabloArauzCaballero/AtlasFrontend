@@ -212,11 +212,11 @@ export default function Privacidad() {
       <Card>
         <CardHeader
           title="Pedir algo sobre tus datos"
-          detail="Cada solicitud queda registrada con su fecha y te responderemos por los avisos que tengas activos."
+          detail="Cada solicitud queda registrada con su fecha con un plazo de resolución de 15 días. Hoy la respuesta no te llega como aviso: vuelve a esta pantalla o escríbenos para saber cómo va."
         />
         <OptionGroup
           label="Que quieres pedir"
-          ayuda="Elige qué derecho quieres ejercer sobre tus datos personales. La solicitud queda registrada con su fecha y te respondemos por los avisos que tengas activos; puedes enviar otra distinta después."
+          ayuda="Elige qué derecho quieres ejercer sobre tus datos personales. La solicitud queda registrada con su fecha con un plazo de resolución de 15 días. Hoy no te enviamos un aviso cuando cambia de estado, así que escríbenos por soporte si quieres saber cómo va; puedes enviar otra distinta después."
           options={DERECHOS}
           value={derecho}
           onChange={setDerecho}
@@ -229,7 +229,7 @@ export default function Privacidad() {
         />
         {derechoEnviado ? (
           <AtlasText variant="caption" tone="secondary">
-            Tu solicitud quedo registrada. Te avisaremos cuando haya respuesta.
+            Tu solicitud quedó registrada con un plazo de resolución de 15 días. No te enviaremos un aviso cuando cambie: escríbenos por soporte si quieres saber cómo va.
           </AtlasText>
         ) : null}
       </Card>
