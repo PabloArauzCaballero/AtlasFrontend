@@ -70,6 +70,9 @@ const FUENTES: Record<EvidenceKind, number> = {
   identity_front: require('../../assets/dev/carnet-anverso.png'),
   identity_back: require('../../assets/dev/carnet-reverso.png'),
   selfie: require('../../assets/dev/selfie.png'),
+  // Otras imágenes a propósito: con los mismos bytes el servidor rechaza la segunda (hash repetido).
+  selfie_left: require('../../assets/dev/selfie-izquierda.png'),
+  selfie_right: require('../../assets/dev/selfie-derecha.png'),
 };
 
 /** Solo en desarrollo. Ver la nota de arriba antes de tocar esta linea. */

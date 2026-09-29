@@ -5,10 +5,9 @@
  * opcional y el paso se puede completar sin ella. Pedir GPS al abrir la app, antes de que nada
  * tenga sentido, es la forma mas rapida de perder el permiso para siempre.
  */
-import * as Location from 'expo-location';
-import { StyleSheet, View, type ScrollView } from 'react-native';
+import { Alert, Platform, StyleSheet, View, type ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
@@ -19,9 +18,15 @@ import { IconField, SelectField } from '../../src/ui/form-controls';
 import { DEPARTAMENTOS, ciudadesDe, nombreCiudad, nombreDepartamento, nombreZona, zonasDe } from '../../src/features/geografia';
 import { Screen, useScrollToError } from '../../src/ui/layout';
 import { StepHeader } from '../../src/ui/step-header';
-import { AtlasText, Badge, Button, Card, CardHeader, ErrorState } from '../../src/ui/primitives';
+import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 import { MapaPunto } from '../../src/ui/mapa-punto';
-import { AdjuntoDeApoyo } from '../../src/ui/adjunto-de-apoyo';
+import {
+  pedirPermisoDeSegundoPlano,
+  pedirPermisoDeUbicacion,
+  permisosDeUbicacion,
+  posicionActual,
+} from '../../src/device/location';
+import { guardarDecisionDeArranque, leerDecisionDeArranque } from '../../src/session/permisos-de-arranque';
 import { bitacora } from '../../src/features/bitacora';
 import { TRUST_DOMICILIO } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
@@ -45,6 +50,33 @@ export default function Address() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
+  /*
+    Volver a este paso enseña lo ya guardado (pedido de Pablo, 2026-09-28). El servidor guarda los
+    NOMBRES del catálogo; aquí se vuelven a sus códigos. Lo que no esté en el catálogo se queda vacío.
+  */
+  useEffect(() => {
+    if (!session.customerId) return;
+    let vivo = true;
+    void onboardingApi
+      .getAnswers(session.customerId)
+      .then(({ address }) => {
+        if (!vivo || !address) return;
+        const dep = DEPARTAMENTOS.find((d) => d.nombre === address.department);
+        if (!dep) return;
+        const ciudad = ciudadesDe(dep.codigo).find((c) => c.nombre === address.city);
+        const zona = ciudad ? zonasDe(ciudad.codigo).find((z) => z.nombre === address.zone) : undefined;
+        setDepartment((actual) => actual ?? dep.codigo);
+        if (ciudad) setCity((actual) => actual ?? ciudad.codigo);
+        if (zona) setZone((actual) => actual || zona.codigo);
+        if (address.addressLine) setAddressLine((actual) => actual || address.addressLine!);
+        if (address.gps) setGps((actual) => actual ?? { lat: address.gps!.lat, lng: address.gps!.lng });
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [session.customerId]);
+
   const ciudades = ciudadesDe(department);
   const canSubmit = Boolean(department) && Boolean(city) && !busy;
 
@@ -55,47 +87,73 @@ export default function Address() {
     [Boolean(city), 'Falta elegir tu ciudad.'],
   ]);
 
-  const captureLocation = async () => {
+  /*
+    El mapa pide la ubicacion al abrirse (pedido de Pablo, 2026-09-28).
+
+    Tocar «Señalar mi casa en el mapa» es el momento en que la ubicacion tiene sentido para la
+    persona, asi que ahi se piden los dos permisos, en orden: primero «mientras se usa» —para abrir
+    el mapa sobre donde esta ahora—, y despues de elegir el punto el de «siempre», que enciende el
+    rastreo y la primera medida (`session.reactivarSeñales`). Negar cualquiera de los dos no corta
+    nada: el mapa abre igual, en Santa Cruz, y el domicilio se guarda sin coordenadas.
+  */
+  const [mapaAbierto, setMapaAbierto] = useState(false);
+  const [centro, setCentro] = useState<{ lat: number; lng: number } | null>(null);
+
+  const abrirMapa = async () => {
     setLocationState('asking');
-    const permission = await Location.requestForegroundPermissionsAsync();
-    if (!permission.granted) {
-      // Denegar no rompe el flujo: se registra la decision y se sigue sin ubicacion.
-      setLocationState('denied');
-      return;
+    const concedido = await pedirPermisoDeUbicacion();
+    bitacora.permiso('ubicacion', concedido ? 'concedido' : 'denegado');
+    if (concedido) {
+      const actual = await posicionActual();
+      if (actual) setCentro({ lat: actual.lat, lng: actual.lng });
     }
-    const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-    setGps({
-      lat: position.coords.latitude,
-      lng: position.coords.longitude,
-      accuracyMeters: position.coords.accuracy ?? undefined,
-    });
-    setLocationState('granted');
+    setLocationState(concedido ? 'granted' : 'denied');
+    setMapaAbierto(true);
   };
 
   /*
-    El enlace de Maps se convierte en el MISMO dato que el GPS: una observacion de coordenadas.
-
-    No es un campo nuevo en el expediente ni un texto que alguien tenga que abrir a mano; es la
-    ubicacion, obtenida por otra via. Quien rellena el alta desde el trabajo no puede darla con el
-    boton de «usar mi ubicacion» —diria donde esta, no donde vive— y en cambio pega un enlace de
-    Maps sin pensarlo, porque es como ya comparte su direccion todos los dias.
+    El «siempre», con el aviso delante. En Android el sistema no abre un dialogo: saca a la persona
+    a los Ajustes (ver `device/location.ts`), y sin avisar parece que la app se rompio.
   */
-  /*
-    El punto se SEÑALA en un mapa, no se pega como enlace.
+  const pedirSiempre = () =>
+    new Promise<void>((resolver) => {
+      const aviso =
+        Platform.OS === 'android'
+          ? 'Para registrar tu ubicación también con la app cerrada, en la siguiente pantalla elige «Permitir todo el tiempo» y vuelve a Atlas.'
+          : 'Para registrar tu ubicación también con la app cerrada, elige «Permitir siempre» cuando el teléfono te lo pregunte.';
+      Alert.alert('Ubicación siempre', aviso, [
+        { text: 'Ahora no', style: 'cancel', onPress: () => resolver() },
+        {
+          text: 'Continuar',
+          onPress: () => {
+            void (async () => {
+              const siempre = await pedirPermisoDeSegundoPlano();
+              bitacora.permiso('ubicacion_siempre', siempre ? 'concedido' : 'denegado');
+              resolver();
+            })();
+          },
+        },
+      ]);
+    });
 
-    Antes había un campo donde pegar un enlace de Google Maps y un `fetch` que intentaba sacarle las
-    coordenadas al enlace corto. Funcionaba, pero el trabajo lo hacía la persona: salir de Atlas,
-    encontrar el botón de compartir, copiar, volver y pegar —y si el enlace no era de los que el
-    lector entiende, un error que no se puede corregir sin repetir el viaje entero—.
-
-    No se puede «abrir Google Maps y volver con el punto»: esa vuelta no existe en ninguna de las dos
-    plataformas. Lo que sí se puede es traer el mapa aquí, que es lo que hace `MapaPunto`.
-  */
-  const [mapaAbierto, setMapaAbierto] = useState(false);
-
-  const elegirEnMapa = (punto: { lat: number; lng: number }) => {
+  const elegirEnMapa = async (punto: { lat: number; lng: number }) => {
     setGps({ lat: punto.lat, lng: punto.lng });
     setMapaAbierto(false);
+    if (Platform.OS === 'web') return;
+    const permisos = await permisosDeUbicacion();
+    if (!permisos.primerPlano) return;
+    if (!permisos.segundoPlano) await pedirSiempre();
+    // La decision viaja como consentimiento `location_tracking` y enciende las medidas: la del
+    // momento y, con «siempre», la de segundo plano. La agenda se decide en su paso.
+    const previa = await leerDecisionDeArranque();
+    const vigentes = await permisosDeUbicacion();
+    await guardarDecisionDeArranque({
+      ubicacion: true,
+      ubicacionSiempre: vigentes.segundoPlano,
+      contactos: previa?.contactos ?? false,
+      contactosSinDecidir: previa ? previa.contactosSinDecidir : true,
+    });
+    await session.reactivarSeñales();
   };
 
   const save = async () => {
@@ -223,7 +281,8 @@ export default function Address() {
           label={gps ? 'Cambiar el punto en el mapa' : 'Señalar mi casa en el mapa'}
           variant="secondary"
           haptic="none"
-          onPress={() => setMapaAbierto(true)}
+          loading={locationState === 'asking'}
+          onPress={() => void abrirMapa()}
         />
         {gps ? (
           <View style={styles.puntoGuardado}>
@@ -234,7 +293,9 @@ export default function Address() {
           </View>
         ) : (
           <AtlasText variant="caption" tone="tertiary">
-            Sirve para encontrar tu casa el día que haya que ir. Puedes continuar sin esto.
+            {locationState === 'denied'
+              ? 'No diste permiso de ubicación: el mapa abre en Santa Cruz y puedes señalar tu casa a mano.'
+              : 'El mapa abre donde estás ahora. Sirve para encontrar tu casa el día que haya que ir.'}
           </AtlasText>
         )}
       </View>
@@ -242,49 +303,13 @@ export default function Address() {
       <MapaPunto
         visible={mapaAbierto}
         inicial={gps}
+        centro={centro}
         onCancelar={() => setMapaAbierto(false)}
-        onElegir={elegirEnMapa}
+        onElegir={(punto) => void elegirEnMapa(punto)}
       />
 
-      <Card tone={locationState === 'granted' && gps ? 'success' : 'default'}>
-        <CardHeader
-          icon="ubicacion"
-          iconTone={locationState === 'granted' && gps ? 'success' : 'neutral'}
-          title="Confirmar con tu ubicación (opcional)"
-          detail="Nos ayuda a validar tu domicilio más rápido. No compartimos tu ubicación con comercios ni la usamos para seguirte."
-          divider={false}
-        />
-
-        {locationState === 'granted' && gps ? (
-          <Badge dot label="ubicación capturada" tone="success" />
-        ) : locationState === 'denied' ? (
-          <>
-            <Badge dot label="permiso denegado" tone="warning" />
-            <AtlasText variant="caption" tone="tertiary">
-              Puedes continuar sin ubicación. Si cambias de opinión, habilítala desde los ajustes del sistema.
-            </AtlasText>
-          </>
-        ) : (
-          <Button
-            label="Usar mi ubicación actual"
-            variant="secondary"
-            loading={locationState === 'asking'}
-            onPress={captureLocation}
-          />
-        )}
-      </Card>
       {/* Al final del formulario: ver `ui/trust-card.tsx`. */}
       <TrustCard items={TRUST_DOMICILIO} />
-      {session.customerId ? (
-        <AdjuntoDeApoyo
-          customerId={session.customerId}
-          kind="proof_of_address"
-          titulo="Factura o preaviso de un servicio (opcional)"
-          detalle="Luz, agua o gas a tu nombre o al de tu casa, de los últimos dos meses. Si no tienes, un comprobante de pago reciente. Sirve como prueba de domicilio."
-          bitacora="subir_factura"
-          origen="documento"
-        />
-      ) : null}
     </Screen>
   );
 }

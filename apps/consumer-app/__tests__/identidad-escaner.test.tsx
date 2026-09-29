@@ -125,7 +125,7 @@ describe('identidad con la bandera del escaner encendida', () => {
     escanear.mockResolvedValue({ tipo: 'imagen', uri: 'file:///escaneo.jpg', ancho: 2400, alto: 1513, origen: 'escaner_sistema' });
     await pintar();
     await medirCarrusel();
-    expect(screen.getByText('1 de 3')).toBeTruthy();
+    expect(screen.getByText('1 de 5')).toBeTruthy();
 
     await abrirEscanerConConsejo();
 
@@ -136,7 +136,7 @@ describe('identidad con la bandera del escaner encendida', () => {
     expect(typeof subir.mock.calls[0]![0].plazo).toBe('function');
     expect(subir.mock.calls[0]![0].signal).toBeDefined();
     // Y el carrusel se va a la siguiente pendiente, no a la primera.
-    await waitFor(() => expect(screen.getByText('2 de 3')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('2 de 5')).toBeTruthy());
     expect(screen.getByText('Reverso del carnet')).toBeTruthy();
     // Ni la camara de la app ni una segunda confirmacion: lo escaneado queda en la lamina.
     expect(screen.queryByTestId('visor-de-la-camara')).toBeNull();
@@ -230,13 +230,32 @@ describe('identidad con la bandera del escaner encendida', () => {
     await medirCarrusel();
     await fireEvent.press(screen.getByText('Siguiente'));
     await fireEvent.press(screen.getByText('Siguiente'));
-    await waitFor(() => expect(screen.getByText('3 de 3')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('3 de 5')).toBeTruthy());
 
     await fireEvent.press(screen.getByText('Tomar foto'));
 
     await waitFor(() => expect(screen.getByTestId('visor-de-la-camara')).toBeTruthy());
     expect(escanear).not.toHaveBeenCalled();
     expect(screen.queryByTestId('mira-con-forma')).toBeNull();
+  });
+
+  it('la prueba de vida pide TRES selfies: de frente, perfil izquierdo y perfil derecho, todas con la camara frontal', async () => {
+    await pintar();
+    await medirCarrusel();
+    await fireEvent.press(screen.getByText('Siguiente'));
+    await fireEvent.press(screen.getByText('Siguiente'));
+    await waitFor(() => expect(screen.getByText('3 de 5')).toBeTruthy());
+    expect(screen.getAllByText('Selfie de frente').length).toBeGreaterThan(0);
+    await fireEvent.press(screen.getByText('Siguiente'));
+    await waitFor(() => expect(screen.getByText('4 de 5')).toBeTruthy());
+    expect(screen.getAllByText('Selfie: perfil izquierdo').length).toBeGreaterThan(0);
+    await fireEvent.press(screen.getByText('Siguiente'));
+    await waitFor(() => expect(screen.getByText('5 de 5')).toBeTruthy());
+    expect(screen.getAllByText('Selfie: perfil derecho').length).toBeGreaterThan(0);
+
+    await fireEvent.press(screen.getByText('Tomar foto'));
+    await waitFor(() => expect(screen.getByTestId('visor-de-la-camara')).toBeTruthy());
+    expect(escanear).not.toHaveBeenCalled();
   });
 
   it('durante la subida dice que esta subiendo y deja cancelarla; tras un fallo, «Reintentar» sube la MISMA foto', async () => {
@@ -297,7 +316,7 @@ describe('identidad con la bandera apagada: como siempre', () => {
     // Guardada, vuelve al formulario... y el carrusel, montado de nuevo, esta ya en el reverso.
     await waitFor(() => expect(screen.queryByTestId('visor-de-la-camara')).toBeNull());
     await medirCarrusel();
-    await waitFor(() => expect(screen.getByText('2 de 3')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('2 de 5')).toBeTruthy());
   });
 
   it('con una subida en curso, «Cancelar» de la camara corta la subida y deja la camara abierta', async () => {

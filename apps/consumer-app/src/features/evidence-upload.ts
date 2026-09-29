@@ -18,8 +18,11 @@ import { fetchAlAlmacen } from '../api/almacen';
 import { PRESUPUESTO_REINTENTOS_MS } from '../api/reintentos';
 import { campoCaptureSource, type OrigenCaptura } from './origen-de-captura';
 
-/** Las tres capturas del paquete de identidad. */
-export type IdentityEvidenceKind = 'identity_front' | 'identity_back' | 'selfie';
+/**
+ * Las capturas del paquete de identidad: las dos caras del carnet y la prueba de vida en TRES poses
+ * —de frente, perfil izquierdo y perfil derecho— (pedido de Pablo, 2026-09-28).
+ */
+export type IdentityEvidenceKind = 'identity_front' | 'identity_back' | 'selfie' | 'selfie_left' | 'selfie_right';
 
 export type EvidenceKind = IdentityEvidenceKind | 'bank_qr_proof' | 'proof_of_address' | 'occupation_audio';
 

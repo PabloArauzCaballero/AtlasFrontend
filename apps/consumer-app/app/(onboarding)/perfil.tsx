@@ -16,23 +16,12 @@ import { useEffect, useRef, useState } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
-import { CheckRow } from '../../src/ui/fields';
-import { DateField, IconField, SelectField } from '../../src/ui/form-controls';
+import { DateField, IconField } from '../../src/ui/form-controls';
 import { bitacora } from '../../src/features/bitacora';
 import { leerLecturaDelCarnet } from '../../src/features/lectura-del-carnet';
 import { Gap, Screen, useScrollToError } from '../../src/ui/layout';
 import { StepHeader } from '../../src/ui/step-header';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
-
-type Gender = 'female' | 'male' | 'other' | 'undisclosed';
-/*
- * Solo los idiomas en los que la app EXISTE.
- *
- * Ofrecía quechua y aymara y no hay una sola cadena traducida a ninguno de los dos: elegirlos no
- * cambiaba nada y dejaba en el expediente una preferencia que el producto no puede atender. Ofrecer
- * un idioma es un compromiso de atender en él —también por escrito y en soporte—, no una casilla.
- */
-type Language = 'es' | 'en';
 
 export default function PersonalData() {
   const router = useRouter();
@@ -58,9 +47,26 @@ export default function PersonalData() {
       vivo = false;
     };
   }, [profile?.birthDate, profile?.firstName, profile?.lastName]);
-  const [gender, setGender] = useState<Gender>('undisclosed');
-  const [language, setLanguage] = useState<Language>((profile?.preferredLanguage as Language) ?? 'es');
-  const [marketingOptIn, setMarketingOptIn] = useState(false);
+  /*
+    Volver a este paso enseña lo ya confirmado (pedido de Pablo, 2026-09-28). `session.me` puede
+    llegar sin perfil; la fuente es lo que el servidor tiene guardado. No pisa lo tecleado ahora.
+  */
+  useEffect(() => {
+    if (!session.customerId) return;
+    let vivo = true;
+    void onboardingApi
+      .getAnswers(session.customerId)
+      .then(({ personalData }) => {
+        if (!vivo || !personalData) return;
+        if (personalData.firstName) setFirstName((actual) => actual || personalData.firstName!);
+        if (personalData.lastName) setLastName((actual) => actual || personalData.lastName!);
+        if (personalData.birthDate) setBirthDate((actual) => actual || personalData.birthDate!);
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [session.customerId]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -74,9 +80,6 @@ export default function PersonalData() {
           firstName: firstName.trim() || undefined,
           lastName: lastName.trim() || undefined,
           birthDate: birthDate || undefined,
-          genderDeclared: gender,
-          preferredLanguage: language,
-          marketingOptIn,
         }),
       );
       await session.refresh();
@@ -147,38 +150,6 @@ export default function PersonalData() {
         hint="Debes tener al menos 18 años."
         ayuda="El día que naciste, el mismo que figura en tu carnet. Con menos de 18 años no se puede firmar un crédito en Bolivia."
         required
-      />
-
-      <SelectField<Gender>
-        label="Género declarado"
-        value={gender}
-        onChange={setGender}
-        ayuda="Lo declaras tú; no se toma del carnet. Sirve para dirigirnos a ti como corresponde y para los informes de inclusión que la ley nos pide, agregados y sin nombres. No cambia tu evaluación."
-        opciones={[
-          { valor: 'female', etiqueta: 'Femenino', detalle: 'Te reconoces como mujer.' },
-          { valor: 'male', etiqueta: 'Masculino', detalle: 'Te reconoces como hombre.' },
-          { valor: 'other', etiqueta: 'Otro', detalle: 'Ninguna de las dos anteriores te describe.' },
-          { valor: 'undisclosed', etiqueta: 'Prefiero no decirlo', detalle: 'No queda registrado ningún género.' },
-        ]}
-      />
-
-      <SelectField<Language>
-        label="Idioma preferido"
-        value={language}
-        onChange={setLanguage}
-        ayuda="En qué idioma quieres que te escribamos: los avisos de cuotas, los correos y la atención de soporte. Son los dos idiomas en los que existe la app hoy."
-        opciones={[
-          { valor: 'es', etiqueta: 'Español', detalle: 'Te escribimos en español, como ahora.' },
-          { valor: 'en', etiqueta: 'Inglés', detalle: 'Te escribimos en inglés cuando esté disponible.' },
-        ]}
-      />
-
-      <CheckRow
-        label="Quiero recibir novedades y promociones"
-        detail="Puedes desactivarlo cuando quieras desde tu perfil."
-        ayuda="Marcarlo autoriza que te escribamos sobre comercios nuevos, descuentos y cambios del producto. No marcarlo no afecta a tu crédito ni a tu evaluación: los avisos de tus cuotas y de tus pagos llegan igual, porque esos no son publicidad."
-        checked={marketingOptIn}
-        onToggle={setMarketingOptIn}
       />
 
       <Gap size="sm" />

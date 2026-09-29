@@ -98,9 +98,9 @@ const [UBICACION_POR_DEFECTO, CONTACTOS_POR_DEFECTO]: [PiezaDePermiso, PiezaDePe
     icono: 'telefono',
     titulo: 'Tus contactos',
     para: [
-      'Verificar que las referencias que das son personas con las que hablas.',
+      'Confirmar que el teléfono es de una persona real, con su propia agenda.',
       'Detectar varias cuentas distintas que se avalan entre sí.',
-      'Poder ubicarte a través de tus referencias si perdemos contacto contigo.',
+      'Poder ubicarte a través de tus contactos si perdemos contacto contigo.',
     ],
     queNoHacemos: 'No les escribimos, no les ofrecemos nada y no vendemos su información.',
   },

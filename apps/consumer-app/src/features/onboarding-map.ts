@@ -43,6 +43,10 @@ export const SECTION_ROUTE: Record<OnboardingSectionCode, OnboardingRoute> = {
  * es abandonarlo.
  */
 /*
+ * Referencias y hábitos salieron del alta el 2026-09-28: no estaban entre los 15 datos que pidió
+ * Pablo. Siguen en el tipo y en `SECTION_ROUTE` porque un servidor anterior todavía puede
+ * devolverlos como `nextStep`, y la app tiene que saber llevar ahí en vez de romperse.
+ *
  * Las CUATRO FASES del alta (2026-09-18), en el mismo orden que `ONBOARDING_SECTION_CODES` del
  * servidor: contacto → identidad (el carnet ANTES que los datos personales) → situacion (domicilio,
  * economia, referencias y los permisos del telefono) → habitos. `onboarding-map.test.ts` comprueba
@@ -54,9 +58,7 @@ export const SECTION_ORDER: OnboardingSectionCode[] = [
   'personal_data',
   'address',
   'financial_profile',
-  'reference_contacts',
   'device_permissions',
-  'consumer_survey',
 ];
 
 /** A que fase pertenece cada seccion. Es lo que numera «Fase 2 de 4» en la cabecera de cada paso. */
@@ -92,7 +94,7 @@ export const SECTION_LABEL: Record<OnboardingSectionCode, { title: string; detai
   personal_data: { title: 'Tus datos personales', detail: 'Nombre, apellido y fecha de nacimiento.', icon: 'perfil' },
   financial_profile: { title: 'Tu situación económica', detail: 'Trabajo, ingresos y gastos declarados.', icon: 'billetera' },
   address: { title: 'Tu domicilio', detail: 'Dónde vives actualmente.', icon: 'hogar' },
-  identity_documents: { title: 'Tu documento de identidad', detail: 'Foto del carnet por ambos lados y una selfie.', icon: 'documento' },
+  identity_documents: { title: 'Tu documento de identidad', detail: 'Foto del carnet por ambos lados y tres selfies: de frente y de cada lado.', icon: 'documento' },
   reference_contacts: { title: 'Tus referencias', detail: 'Dos personas que puedan dar referencia de ti.', icon: 'telefono' },
   device_permissions: { title: 'Permisos del teléfono', detail: 'Ubicación y contactos: decides tú, y puedes decir que no.', icon: 'ubicacion' },
   consumer_survey: { title: 'Tus hábitos', detail: 'Seis preguntas cortas sobre cómo manejas tu dinero.', icon: 'billetera' },

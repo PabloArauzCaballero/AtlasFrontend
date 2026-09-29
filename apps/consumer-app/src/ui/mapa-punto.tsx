@@ -37,7 +37,7 @@
  * domicilio son unas coordenadas, y el mapa es una forma de conseguirlas, no la única.
  */
 import * as Location from 'expo-location';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { esExpoGo } from '../device/entorno';
 import { color, radius, space } from '../theme/tokens';
@@ -87,17 +87,27 @@ export function enlaceDeMaps(punto: Punto): string {
 export function MapaPunto({
   visible,
   inicial,
+  centro = null,
   onCancelar,
   onElegir,
 }: {
   visible: boolean;
   /** Dónde abre el mapa: el punto ya elegido, o el GPS, o el centro por defecto. */
   inicial: Punto | null;
+  /**
+   * Dónde está el teléfono AHORA, si dio permiso. Sin punto previo, el mapa abre ahí y lo propone
+   * como punto: quien rellena el alta desde su casa sólo tiene que confirmar.
+   */
+  centro?: Punto | null;
   onCancelar: () => void;
   onElegir: (punto: Punto) => void;
 }) {
-  const arranque = inicial ?? CENTRO_POR_DEFECTO;
-  const [punto, setPunto] = useState<Punto | null>(inicial);
+  const arranque = inicial ?? centro ?? CENTRO_POR_DEFECTO;
+  const [punto, setPunto] = useState<Punto | null>(inicial ?? centro);
+  // El modal vive montado: cada apertura vuelve a partir de lo último elegido o de la posición actual.
+  useEffect(() => {
+    if (visible) setPunto(inicial ?? centro);
+  }, [visible, inicial, centro]);
   const mapas = cargarMapas();
 
   const marcadores = punto ? [{ coordinates: { latitude: punto.lat, longitude: punto.lng }, title: 'Tu casa' }] : [];
