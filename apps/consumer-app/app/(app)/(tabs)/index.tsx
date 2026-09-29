@@ -39,6 +39,7 @@ import { categoryLook, formatAmount } from '../../../src/features/spending-copy'
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { dueLabel, statusTone, statusLabel } from '../../../src/features/payment-copy';
 import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS, TOUR_INICIO_TARGETS } from '../../../src/features/tour-inicio';
+import { SurfaceContent, esBannerDePartner, useSurfaceContent } from '../../../src/ui/surface-content';
 import { TourTarget, shouldAutoStart, useTour } from '../../../src/ui/tour';
 
 export default function Home() {
@@ -54,6 +55,8 @@ export default function Home() {
    */
   const book = useCreditBook(session.customerId);
   const partnerBanner = usePartnerBanner();
+  // Avisos y mensajes que negocio escribe para el inicio; los del banner de partner salen aparte.
+  const avisosDeInicio = useSurfaceContent('home', esBannerDePartner);
   // El informe tarda: sin este estado el boton parece no responder y la gente lo pulsa dos veces.
   const [reportBusy, setReportBusy] = useState(false);
   const spending = book.spending;
@@ -135,6 +138,8 @@ export default function Home() {
         </View>
         {isSandboxPurchase ? <DataSourceBadge /> : null}
       </View>
+
+      <SurfaceContent entries={avisosDeInicio} />
 
       {/*
         LO PRIMERO cuando hay mora, por encima incluso de la línea disponible.

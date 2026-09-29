@@ -11,6 +11,7 @@ import { Alert, Platform, StyleSheet, View } from 'react-native';
 import * as contentApi from '../../../src/api/endpoints/app-content';
 import { setMfaPreference } from '../../../src/api/endpoints/auth';
 import { ContentActionButton } from '../../../src/ui/content';
+import { SurfaceContent, useSurfaceContent } from '../../../src/ui/surface-content';
 import { SESION_GUARDADA_MOVIL, SESION_GUARDADA_WEB } from '../../../src/features/trust-copy';
 import { describeCustomerStatus } from '../../../src/features/onboarding-map';
 import { useSession } from '../../../src/session/session';
@@ -59,6 +60,10 @@ export default function Profile() {
     };
   }, []);
 
+  // Lo que negocio escribe para Perfil y para la explicacion de la linea y el puntaje.
+  const piezasDePerfil = useSurfaceContent('profile');
+  const piezasDeCredito = useSurfaceContent('credit');
+
   const book = useCreditBook(session.customerId);
   const rating = book.rating;
   const creditLine = book.creditLine;
@@ -105,6 +110,7 @@ export default function Profile() {
   return (
     <Screen onRefresh={() => void session.refresh()}>
       <Gap size="sm" />
+      <SurfaceContent entries={piezasDePerfil} />
       {/*
         La identidad, en un bloque y no en dos textos sueltos.
 
@@ -158,6 +164,8 @@ export default function Profile() {
           <ScoringPanel line={creditLine} />
         </Card>
       ) : null}
+
+      <SurfaceContent entries={piezasDeCredito} />
 
       {creditLine && overdue > 0 ? (
         <DelinquencyImpact line={creditLine} overdueAmount={overdue} currency={creditLine.currencyCode} />
