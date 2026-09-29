@@ -28,7 +28,10 @@
 import * as customerApi from '../api/endpoints/customer';
 import * as deviceSignalsApi from '../api/endpoints/device-signals';
 import * as privacyApi from '../api/endpoints/privacy';
-import { leerAgendaCompleta } from '../device/contacts';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as onboardingApi from '../api/endpoints/onboarding';
+import { leerAgendaCompleta, resumirAgenda } from '../device/contacts';
+import { agendaNoCompartida } from '../features/agenda';
 import {
   detenerRastreoEnSegundoPlano,
   iniciarRastreoEnSegundoPlano,
@@ -56,7 +59,7 @@ export const FINALIDAD_UBICACION = 'location_tracking';
  */
 async function registrarConsentimientos(
   customerId: string,
-  decision: { ubicacion: boolean; contactos: boolean; decidedAt: string },
+  decision: { ubicacion: boolean; contactos: boolean; contactosSinDecidir?: boolean; decidedAt: string },
 ): Promise<void> {
   if (await decisionYaRegistrada(customerId, decision.decidedAt)) return;
   // Se registra en segundo plano al activar las señales, no desde una pantalla.
@@ -75,7 +78,8 @@ async function registrarConsentimientos(
     });
   };
 
-  añadir(FINALIDAD_AGENDA, decision.contactos);
+  // Sin preguntar por la agenda no hay decision que registrar: ver `contactosSinDecidir`.
+  if (!decision.contactosSinDecidir) añadir(FINALIDAD_AGENDA, decision.contactos);
   añadir(FINALIDAD_UBICACION, decision.ubicacion);
   if (decisiones.length === 0) return;
 
@@ -121,6 +125,39 @@ async function subirAgenda(contexto: ContextoDeRastreo): Promise<number> {
   return subidos;
 }
 
+const KEY_RESUMEN_AGENDA = 'atlas.agenda.resumen-enviado';
+
+/**
+ * El RESUMEN agregado de la agenda (cuentas, proporciones y hashes de un solo uso), una vez por
+ * decision.
+ *
+ * Lo mandaba la pantalla de referencias, y las referencias salieron del alta (2026-09-28): sin
+ * moverlo aqui, el Motor se quedaba sin ninguna señal de agenda. Viaja tambien con la negativa —
+ * «no compartida» no es «agenda vacia»— y nunca antes de que la agenda se haya preguntado.
+ */
+async function enviarResumenDeAgenda(
+  customerId: string,
+  decision: { contactos: boolean; contactosSinDecidir?: boolean; decidedAt: string },
+): Promise<void> {
+  if (decision.contactosSinDecidir) return;
+  const marca = `${customerId}:${decision.decidedAt}`;
+  if ((await AsyncStorage.getItem(KEY_RESUMEN_AGENDA).catch(() => null)) === marca) return;
+  const resumen = decision.contactos ? await resumirAgenda([]) : agendaNoCompartida(0, new Date().toISOString());
+  await onboardingApi.submitContactsSnapshot(customerId, {
+    granted: resumen.permiso,
+    algorithmVersion: resumen.algorithmVersion,
+    computedAt: resumen.computedAt,
+    totalContacts: resumen.totalContacts,
+    contactsWithPhone: resumen.contactsWithPhone,
+    uniquePhoneCount: resumen.uniquePhoneCount,
+    bolivianPhoneCount: resumen.bolivianPhoneCount,
+    referencesFoundInAddressBook: resumen.referencesFoundInAddressBook,
+    referencesDeclared: resumen.referencesDeclared,
+    ...(resumen.phoneHashes.length > 0 ? { phoneHashes: resumen.phoneHashes } : {}),
+  });
+  await AsyncStorage.setItem(KEY_RESUMEN_AGENDA, marca).catch(() => undefined);
+}
+
 export type ResultadoDeActivacion = {
   contactosSubidos: number;
   ubicacionActiva: boolean;
@@ -158,6 +195,8 @@ export async function activarSeñalesDelDispositivo(input: {
     // un 422.
     return vacio;
   }
+
+  await enviarResumenDeAgenda(input.customerId, decision).catch(() => undefined);
 
   let contactosSubidos = 0;
   if (decision.contactos) {

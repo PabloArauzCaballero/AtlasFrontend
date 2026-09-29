@@ -81,6 +81,29 @@ export const startOnboarding = (body: StartOnboardingInput) =>
 export const getStatus = (customerId: string, origen: Pick<RequestOptions, 'sinPantalla'> = {}) =>
   request<OnboardingStatus>(`/customer-onboarding/${customerId}/status`, origen);
 
+/**
+ * Lo que la persona YA contestó en el alta. Espeja `GET /customer-onboarding/:id/answers`.
+ *
+ * Existe para que volver a un paso enseñe lo escrito: sin esta lectura, cada vuelta atrás era un
+ * formulario vacío y había que teclearlo todo otra vez.
+ */
+export type OnboardingAnswers = {
+  customerId: string;
+  personalData: { firstName: string | null; lastName: string | null; birthDate: string | null } | null;
+  financialProfile: Partial<Record<keyof FinancialProfileInput, string | number>>;
+  address: {
+    countryCode: string | null;
+    department: string | null;
+    city: string | null;
+    zone: string | null;
+    addressLine: string | null;
+    gps: { lat: number; lng: number; accuracyMeters: number | null } | null;
+  } | null;
+};
+
+export const getAnswers = (customerId: string) =>
+  request<OnboardingAnswers>(`/customer-onboarding/${customerId}/answers`, { sinPantalla: true });
+
 export const listObservations = (customerId: string) =>
   request<{ observations: { code: string; detail?: string }[]; blockers: Blocker[] }>(
     `/customer-onboarding/${customerId}/observations`,
@@ -257,6 +280,8 @@ export type UploadDocumentType =
   | 'identity_front'
   | 'identity_back'
   | 'selfie'
+  | 'selfie_left'
+  | 'selfie_right'
   | 'proof_of_address'
   | 'bank_statement'
   | 'bank_qr_proof'
@@ -337,7 +362,7 @@ export const saveConsumerSurvey = (customerId: string, body: { surveyVersion: st
   request<EstadoDeHabitos>(`/customer-onboarding/${customerId}/consumer-survey`, { method: 'PUT', body });
 
 export type IdentityEvidence = {
-  evidenceType: 'identity_front' | 'identity_back' | 'selfie' | 'proof_of_address' | 'other';
+  evidenceType: 'identity_front' | 'identity_back' | 'selfie' | 'selfie_left' | 'selfie_right' | 'proof_of_address' | 'other';
   storageKey: string;
   mimeType: 'image/jpeg' | 'image/png' | 'application/pdf';
   sha256Hash: string;

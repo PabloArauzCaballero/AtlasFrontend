@@ -40,6 +40,12 @@ export type DecisionDeArranque = {
   ubicacionSiempre: boolean;
   /** Si acepto que guardemos su agenda. */
   contactos: boolean;
+  /**
+   * La ubicacion se decidio ANTES que la agenda: desde el mapa del domicilio, que pide la ubicacion
+   * al abrirse. La agenda todavia no se le pregunto, y registrar su `contactos: false` como un
+   * consentimiento denegado seria inventar una negativa que la persona no dio.
+   */
+  contactosSinDecidir?: boolean;
   decidedAt: string;
 };
 
@@ -54,6 +60,7 @@ export async function leerDecisionDeArranque(): Promise<DecisionDeArranque | nul
       ubicacion: valor.ubicacion === true,
       ubicacionSiempre: valor.ubicacionSiempre === true,
       contactos: valor.contactos === true,
+      contactosSinDecidir: valor.contactosSinDecidir === true,
       decidedAt: valor.decidedAt,
     };
   } catch {

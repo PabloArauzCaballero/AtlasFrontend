@@ -1,7 +1,7 @@
 /**
  * Documento de identidad.
  *
- * Tres capturas —anverso, reverso y selfie— con la camara del dispositivo, subida directa al
+ * Cinco capturas —anverso, reverso y la selfie en tres poses— con la camara del dispositivo, subida directa al
  * almacenamiento con URL firmada y, recien al final, el paquete de identidad.
  *
  * Con la bandera `EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO` encendida, el anverso y el reverso se toman
@@ -56,7 +56,14 @@ import type { Captura } from '../../src/features/bitacora/tipos';
 const STEPS: { kind: EvidenceKind; title: string; hint: string; facing: 'back' | 'front'; que: string }[] = [
   { kind: 'identity_front', title: 'Anverso del carnet', hint: 'Que se lea el número y tu nombre.', facing: 'back', que: 'el anverso' },
   { kind: 'identity_back', title: 'Reverso del carnet', hint: 'Sin reflejos ni sombras.', facing: 'back', que: 'el reverso' },
-  { kind: 'selfie', title: 'Selfie', hint: 'Mira de frente, sin lentes oscuros ni gorra.', facing: 'front', que: 'la selfie' },
+  /*
+    La prueba de vida en TRES fotos: de frente y girando la cabeza a cada lado. Una sola foto de
+    frente se puede sacar de una red social; tres poses coherentes del mismo rostro, no. Las decide
+    una persona en el Motor (revisión humana obligatoria), que las ve juntas en el caso del alta.
+  */
+  { kind: 'selfie', title: 'Selfie de frente', hint: 'Mira de frente a la cámara, sin lentes oscuros ni gorra.', facing: 'front', que: 'la selfie de frente' },
+  { kind: 'selfie_left', title: 'Selfie: perfil izquierdo', hint: 'Gira la cabeza hacia tu IZQUIERDA hasta que se vea tu oreja derecha.', facing: 'front', que: 'la selfie de tu lado izquierdo' },
+  { kind: 'selfie_right', title: 'Selfie: perfil derecho', hint: 'Gira la cabeza hacia tu DERECHA hasta que se vea tu oreja izquierda.', facing: 'front', que: 'la selfie de tu lado derecho' },
 ];
 
 const ORDEN: readonly EvidenceKind[] = STEPS.map((step) => step.kind);
@@ -91,7 +98,14 @@ function vistaDeFallo(error: unknown): EstadoDeSubida {
 const isIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
 
 /** Que captura es cada evidencia, para la bitacora del alta. */
-const CAPTURA_DE: Record<EvidenceKind, Captura> = { identity_front: 'carnet_frente', identity_back: 'carnet_reverso', selfie: 'selfie' };
+const CAPTURA_DE: Record<EvidenceKind, Captura> = {
+  identity_front: 'carnet_frente',
+  identity_back: 'carnet_reverso',
+  selfie: 'selfie',
+  // Las dos poses de perfil son la parte de «prueba de vida»; la bitácora ya tenía ese código.
+  selfie_left: 'liveness',
+  selfie_right: 'liveness',
+};
 
 /** Un carnet vigente vence, como mínimo, mañana. El calendario lo impide por construcción. */
 const manana = (() => {
@@ -149,7 +163,9 @@ export default function Identity() {
     [!subiendo, 'Espera a que termine de subirse la foto.'],
     [Boolean(evidence.identity_front), 'Falta la foto del anverso del carnet.'],
     [Boolean(evidence.identity_back), 'Falta la foto del reverso del carnet.'],
-    [Boolean(evidence.selfie), 'Falta la selfie.'],
+    [Boolean(evidence.selfie), 'Falta la selfie de frente.'],
+    [Boolean(evidence.selfie_left), 'Falta la selfie de tu perfil izquierdo.'],
+    [Boolean(evidence.selfie_right), 'Falta la selfie de tu perfil derecho.'],
     [documentOk, 'Falta el número de tu carnet.'],
     [isIsoDate(expiresAt), 'Falta la fecha de vencimiento del carnet: elígela en el calendario.'],
     [expiryOk, 'El carnet está vencido: solo aceptamos documentos vigentes.'],
@@ -600,7 +616,7 @@ export default function Identity() {
             icon="chispa"
             iconTone="warning"
             title="Sin cámara: usar el carnet de prueba"
-            detail={`Rellena las tres capturas y los datos con un documento sintético (${CARNET_DE_PRUEBA.titular}). Solo en desarrollo.`}
+            detail={`Rellena las capturas y los datos con un documento sintético (${CARNET_DE_PRUEBA.titular}). Solo en desarrollo.`}
             trailing={<Badge label="prueba" tone="warning" />}
             divider={false}
           />

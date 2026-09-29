@@ -23,9 +23,7 @@ const ORDEN_DEL_SERVIDOR_FIJADO = [
   'personal_data',
   'address',
   'financial_profile',
-  'reference_contacts',
   'device_permissions',
-  'consumer_survey',
 ];
 
 function ordenDelServidor(): string[] {
@@ -43,11 +41,13 @@ describe('las cuatro fases del alta', () => {
     expect(SECTION_ORDER).toEqual(ORDEN_DEL_SERVIDOR_FIJADO);
   });
 
-  it('el carnet va antes que los datos personales, y los permisos y los habitos cierran', () => {
+  it('el carnet va antes que los datos personales, y los permisos cierran (sin referencias ni habitos)', () => {
     expect(SECTION_ORDER.indexOf('identity_documents')).toBeLessThan(SECTION_ORDER.indexOf('personal_data'));
-    expect(SECTION_ORDER.slice(-2)).toEqual(['device_permissions', 'consumer_survey']);
-    expect(stepPosition('identity_documents')).toEqual({ step: 2, total: 8 });
-    expect(stepPosition('consumer_survey')).toEqual({ step: 8, total: 8 });
+    expect(SECTION_ORDER.slice(-1)).toEqual(['device_permissions']);
+    expect(SECTION_ORDER).not.toContain('reference_contacts');
+    expect(SECTION_ORDER).not.toContain('consumer_survey');
+    expect(stepPosition('identity_documents')).toEqual({ step: 2, total: 6 });
+    expect(stepPosition('device_permissions')).toEqual({ step: 6, total: 6 });
   });
 
   it('cada seccion tiene ruta, rotulo y fase', () => {
@@ -57,6 +57,7 @@ describe('las cuatro fases del alta', () => {
       expect([1, 2, 3, 4]).toContain(FASE_DE_SECCION[code]);
     }
     expect(routeForNextStep('device_permissions')).toBe('/(onboarding)/permisos');
+    // Un servidor anterior todavia puede pedir habitos: la app sabe llevar ahi.
     expect(routeForNextStep('consumer_survey')).toBe('/(onboarding)/habitos');
     expect(routeForNextStep('awaiting_review')).toBe('/(onboarding)/revision');
   });

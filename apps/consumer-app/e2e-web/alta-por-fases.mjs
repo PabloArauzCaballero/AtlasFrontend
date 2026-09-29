@@ -2,8 +2,8 @@
  * El alta por fases, de punta a punta en el navegador, contra un entorno REAL (dev o test).
  *
  * Recorre las cuatro fases con toques de verdad —bienvenida, registro, código, carnet (cámara falsa
- * de Chromium con el carnet sintético), confirmación de datos, domicilio, economía, referencias,
- * permisos, hábitos, envío— y despues comprueba EN LA BASE que la bitácora quedó escrita: eventos
+ * de Chromium con el carnet sintético y la selfie en tres poses), confirmación de datos, domicilio,
+ * economía, permisos, vuelta atrás con las respuestas cargadas, envío— y despues comprueba EN LA BASE que la bitácora quedó escrita: eventos
  * de campo, pantallas con tiempos, toques con posición, resumen calculado, variables al Motor y
  * respuestas de la encuesta. No se da por bueno ningún paso por la pantalla: cuenta la respuesta
  * del servidor y la fila en la base.
@@ -255,9 +255,9 @@ await paso('progreso → el siguiente paso es el carnet (antes que los datos)', 
   await continuar.click();
   await texto('Anverso del carnet').waitFor({ timeout: 20000 });
 });
-await paso('carnet: tres capturas con la cámara falsa y datos del documento', async () => {
+await paso('carnet: cinco capturas (dos caras + selfie de frente, izquierda y derecha) y datos del documento', async () => {
   // El carrusel pinta UN solo botón de acción, el de la lámina activa; el pie dice cuál es.
-  const laminas = ['Anverso del carnet', 'Reverso del carnet', 'Selfie'];
+  const laminas = ['Anverso del carnet', 'Reverso del carnet', 'Selfie de frente', 'Selfie: perfil izquierdo', 'Selfie: perfil derecho'];
   for (let i = 0; i < laminas.length; i += 1) {
     await page.getByText(laminas[i], { exact: true }).first().waitFor({ timeout: 15000 });
     await boton('Tomar foto').first().click(); // abre la cámara de esa lámina
@@ -270,7 +270,7 @@ await paso('carnet: tres capturas con la cámara falsa y datos del documento', a
     // Vuelve al carrusel con la foto subida: la acción pasa a «Repetir».
     // Subida la foto, el contador del carrusel sube («Tus capturas (N de 3)») y la app pasa SOLA a
     // la siguiente lámina pendiente: ya no se queda en esta con «Repetir».
-    await page.getByText(`Tus capturas (${i + 1} de 3)`).first().waitFor({ timeout: 90000 });
+    await page.getByText(`Tus capturas (${i + 1} de ${laminas.length})`).first().waitFor({ timeout: 90000 });
     if (i < laminas.length - 1) {
       // «Siguiente» desplaza el carrusel; en la web el primer toque tras subir la foto a veces se
       // pierde con el repintado (medido en DEV): se insiste hasta que el pie muestra la siguiente.
@@ -342,40 +342,14 @@ await paso('economía', async () => {
   // El ingreso se pide por banda (no por monto) y con su frecuencia de cobro.
   await elegir('Rango de ingreso mensual', 'Bs 3.000 a 5.000');
   await elegir('¿Cada cuánto cobras\\?', 'Mensual');
-  await caja(/Gastos mensuales/).fill('2100');
   // La hoja buscable: cada opción es un botón cuyo nombre accesible es «Etiqueta. Detalle».
-  await boton(/^Actividad económica/).first().click();
+  await boton(/^Rubro o industria/).first().click();
   await page.waitForTimeout(400);
   await page.getByRole('button', { name: /^Comercio y ventas/ }).first().click();
   await page.waitForTimeout(300);
-  await elegir('Origen principal de tus ingresos', 'Mi negocio');
   await boton('Guardar').first().click();
   const r = await esperarLlamada(`PUT /customer-onboarding/${customerId}/financial-profile`, 40_000);
   if (!/ 20\d$/.test(r)) throw new Error(`economía rechazada: ${r}`);
-});
-await paso('referencias', async () => {
-  await page.goto(`${BASE}/referencias`, { waitUntil: 'load' });
-  await texto('Tus referencias').waitFor({ timeout: 20000 });
-  const nombres = page.getByRole('textbox', { name: 'Nombre completo' });
-  const telefonos = page.getByRole('textbox', { name: 'Teléfono' });
-  if ((await nombres.count()) < 2) await boton('Agregar otra referencia').first().click();
-  for (let i = 0; i < 2; i += 1) {
-    await nombres.nth(i).fill(i === 0 ? 'Juan Perez' : 'Ana Lopez');
-    await telefonos.nth(i).fill(i === 0 ? '70011223' : '70022334');
-    const relacion = page.getByRole('button', { name: /^Qué relación tienen/ }).nth(i);
-    if (await relacion.count()) {
-      await relacion.click();
-      await page.waitForTimeout(300);
-      const op = page.getByRole('radio').first();
-      if (await op.count()) await op.click();
-      else await page.getByText(/Familiar|Amigo/).last().click();
-    }
-    const aviso = page.getByRole('checkbox', { name: /Le avisé/ }).nth(i);
-    if (await aviso.count()) await aviso.click();
-  }
-  await boton('Guardar referencias').first().click();
-  const r = await esperarLlamada(`POST /customer-onboarding/${customerId}/reference-contacts`, 40_000);
-  if (!/ 20\d$/.test(r)) throw new Error(`referencias rechazadas: ${r}`);
 });
 await paso('permisos del teléfono: «ahora no» cierra la sección', async () => {
   await page.goto(`${BASE}/permisos`, { waitUntil: 'load' });
@@ -387,30 +361,25 @@ await paso('permisos del teléfono: «ahora no» cierra la sección', async () =
   return decision;
 });
 
-/* ---- fase 4 · hábitos ---- */
-await paso('hábitos: seis preguntas, una por pantalla', async () => {
-  await page.goto(`${BASE}/habitos`, { waitUntil: 'load' });
-  await texto('Tus hábitos').waitFor({ timeout: 20000 });
-  // La primera pregunta del catálogo habitos-v1 (gasto fijo) con sus opciones ya pintadas.
-  await boton(/cuarta parte/).first().waitFor({ timeout: 20000 });
-  for (let i = 0; i < 6; i += 1) {
-    await page.waitForTimeout(1800); // leer la pregunta: menos de 1,5 s se anota como «sin leer»
-    const monto = page.getByRole('textbox', { name: /Cuota mensual/ });
-    if (await monto.count()) {
-      await monto.fill('350');
-      await boton(/Siguiente|Terminar/).first().click();
-    } else {
-      const opciones = page.getByRole('button').filter({ hasNotText: /Anterior|Volver|Atrás/ });
-      // La primera opción de respuesta es el primer botón secundario después de la pregunta.
-      const candidatos = await opciones.allTextContents();
-      const indice = candidatos.findIndex((t) => t && !/Anterior|Volver|Atrás|Ayuda|Cerrar/.test(t));
-      await opciones.nth(Math.max(0, indice)).click();
-    }
-    await page.waitForTimeout(1500);
-  }
-  const guardadas = llamadas.filter((l) => l.startsWith(`PUT /customer-onboarding/${customerId}/consumer-survey`) && / 20\d$/.test(l)).length;
-  if (guardadas < 6) throw new Error(`solo ${guardadas} respuestas guardadas`);
-  return `${guardadas} respuestas`;
+/* ---- volver atrás: cada paso enseña lo ya contestado (pedido de Pablo, 2026-09-28) ---- */
+await paso('volver a los pasos: las respuestas se cargan', async () => {
+  const leido = [];
+  await page.goto(`${BASE}/perfil`, { waitUntil: 'load' });
+  await caja('Nombre').waitFor({ timeout: 20000 });
+  await page.waitForFunction(() => [...document.querySelectorAll('input')].some((i) => i.value === 'Maria Renee'), null, { timeout: 20000 });
+  leido.push('perfil');
+  await page.goto(`${BASE}/domicilio`, { waitUntil: 'load' });
+  await page.waitForFunction(() => [...document.querySelectorAll('input,textarea')].some((i) => i.value === 'Av. San Martín 123'), null, { timeout: 20000 });
+  await texto('Santa Cruz de la Sierra').first().waitFor({ timeout: 10000 });
+  leido.push('domicilio');
+  await page.goto(`${BASE}/economia`, { waitUntil: 'load' });
+  await texto('Trabajo por mi cuenta').first().waitFor({ timeout: 20000 });
+  await texto('Bs 3.000 a 5.000').first().waitFor({ timeout: 10000 });
+  await page.waitForFunction(() => [...document.querySelectorAll('input')].some((i) => i.value === '3'), null, { timeout: 10000 });
+  leido.push('economía');
+  const r = llamadas.filter((l) => l.startsWith(`GET /customer-onboarding/${customerId}/answers`) && / 20\d$/.test(l)).length;
+  if (r < 3) throw new Error(`answers respondió ${r} veces en 200`);
+  return leido.join(', ');
 });
 
 /* ---- último paso: el extracto, dentro del alta y sin rebotar a «progreso» ---- */
@@ -448,8 +417,8 @@ if (SSH && customerId) {
     ['resumen calculado (identidad + envío)', q(`select count(*) from telemetry.onboarding_behavior_summaries where customer_id=${customerId} and computation_version='behavior-summary-v1' and completion_time_seconds is not null`), (v) => Number(v) >= 2],
     ['cronómetro ≈ tiempo de pared', q(`select completion_time_seconds from telemetry.onboarding_behavior_summaries where customer_id=${customerId} and completion_time_seconds is not null order by _id desc limit 1`), (v) => Math.abs(Number(v) - (Date.now() - inicioDelAlta) / 1000) <= 90],
     ['identidad con resumen enlazado', q(`select coalesce(reason_codes_json->>'behaviorSummaryId','') from customer.identity_verification_attempts where customer_id=${customerId} order by _id desc limit 1`), (v) => v !== '' && v !== 'null'],
-    ['seis respuestas de hábitos', q(`select count(*) from customer.customer_consumer_survey_answers where customer_id=${customerId} and survey_version='habitos-v1'`), (v) => Number(v) === 6],
-    ['tiempos por respuesta > 0', q(`select min(answered_in_ms) from customer.customer_consumer_survey_answers where customer_id=${customerId}`), (v) => Number(v) > 0],
+    ['cinco evidencias: carnet x2 + selfie de frente, izquierda y derecha', q(`select string_agg(distinct document_type, ',' order by document_type) from customer.evidence_documents where customer_id=${customerId}`), (v) => ['identity_back', 'identity_front', 'selfie', 'selfie_left', 'selfie_right'].every((t) => String(v).split(',').includes(t))],
+    ['sin referencias pedidas', q(`select count(*) from customer.customer_reference_contacts where customer_id=${customerId}`), (v) => Number(v) === 0],
     ['permisos decididos (ambos)', q(`select count(distinct purpose_code) from privacy.customer_consents where customer_id=${customerId} and purpose_code in ('device_address_book','location_tracking')`), (v) => Number(v) === 2],
     ['solicitud enviada', q(`select lifecycle_status from customer.customers where _id=${customerId}`), (v) => v === 'under_review' || v === 'active'],
   ];
@@ -459,6 +428,14 @@ if (SSH && customerId) {
     informe.push({ n: ++n, nombre: `base: ${nombre}`, estado: bien ? 'ok' : 'FALLO', detalle: String(valor), red: [], archivo: '' });
     console.log(`${bien ? '✓' : '✗'} ${nombre}: ${valor}`);
   }
+  // El caso del alta en el Motor, con el expediente del teléfono dentro (`evidence_json.alta`).
+  const exec = q(`select coalesce(reason_codes_json->>'executionId','') from customer.identity_verification_attempts where customer_id=${customerId} order by _id desc limit 1`);
+  const casoAlta = exec
+    ? sql(`select c.case_code||' '||c.status||' bloques='||(select string_agg(k, ',' order by k) from jsonb_object_keys(c.evidence_json->'alta') k) from decision_manual_review_case c where c.execution_id=${exec}`, 'atlas_decision')
+    : '';
+  const casoOk = /bloques=.*declarado.*/.test(casoAlta) && /cronometro/.test(casoAlta) && /dispositivo/.test(casoAlta) && /ubicacion/.test(casoAlta);
+  informe.push({ n: ++n, nombre: 'motor: caso del alta abierto con el expediente del teléfono', estado: casoOk ? 'ok' : 'FALLO', detalle: casoAlta || `(sin caso para la ejecución ${exec})`, red: [], archivo: '' });
+  console.log(`${casoOk ? '✓' : '✗'} caso del alta en el Motor: ${casoAlta || '(ninguno)'}`);
   const ejecucion = sql(`select e.id||' '||e.decision_status||' '||coalesce(e.business_outcome,'')||' '||e.executed_at from decision_execution e order by e.id desc limit 1`, 'atlas_decision');
   console.log(`  última ejecución del Motor: ${ejecucion || '(sin acceso)'}`);
 }

@@ -7,7 +7,7 @@
  */
 import { type ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
@@ -21,7 +21,6 @@ import { TRUST_ECONOMIA } from '../../src/features/trust-copy';
 import { TrustCard } from '../../src/ui/trust-card';
 import { bitacora } from '../../src/features/bitacora';
 import { AdjuntoDeApoyo } from '../../src/ui/adjunto-de-apoyo';
-import { GrabadorDeOcupacion } from '../../src/ui/grabador-de-ocupacion';
 
 /*
  * Los dos catálogos los cierra el SERVIDOR (`customer-eligibility.constants.ts`), y hay que
@@ -33,8 +32,7 @@ import { GrabadorDeOcupacion } from '../../src/ui/grabador-de-ocupacion';
  * servidor no conoce. Tres de las cuatro opciones del desplegable rompían el paso, y la cuarta
  * —`salary`— lo salvaba, que es justo lo que hace que un fallo así sobreviva a las pruebas a mano.
  */
-type Employment = 'employee' | 'self_employed' | 'business_owner' | 'unemployed' | 'retired' | 'student';
-type SourceOfFunds = 'salary' | 'business_income' | 'rental_income' | 'pension' | 'remittances' | 'savings' | 'other';
+type Employment = 'employee' | 'self_employed' | 'business_owner' | 'unemployed' | 'student';
 type IncomeFrequency = 'monthly' | 'biweekly' | 'weekly' | 'irregular';
 
 /*
@@ -56,6 +54,9 @@ const BANDAS: readonly { valor: IncomeBand; etiqueta: string; detalle: string; d
   { valor: 'bs_20000_plus', etiqueta: 'Más de Bs 20.000', detalle: 'Te quedan más de 20.000 bolivianos al mes.', declarado: 20000 },
 ];
 
+const EMPLEOS: readonly Employment[] = ['employee', 'self_employed', 'business_owner', 'unemployed', 'student'];
+const FRECUENCIAS: readonly IncomeFrequency[] = ['monthly', 'biweekly', 'weekly', 'irregular'];
+
 const toNumber = (raw: string): number | undefined => {
   const cleaned = raw.replace(/[^\d.,]/g, '').replace(',', '.');
   if (cleaned === '') return undefined;
@@ -72,12 +73,40 @@ export default function FinancialProfile() {
   const [seniority, setSeniority] = useState('');
   const [incomeBand, setIncomeBand] = useState<IncomeBand | null>(null);
   const [incomeFrequency, setIncomeFrequency] = useState<IncomeFrequency | null>(null);
-  const [otherIncome, setOtherIncome] = useState('');
-  const [expenses, setExpenses] = useState('');
   const [activity, setActivity] = useState('');
-  const [sourceOfFunds, setSourceOfFunds] = useState<SourceOfFunds | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
+
+  /*
+    Volver a este paso enseña lo ya contestado (pedido de Pablo, 2026-09-28): antes cada vuelta atrás
+    era un formulario vacío. Sólo rellena lo que la persona todavía no tocó en esta visita.
+  */
+  useEffect(() => {
+    if (!session.customerId) return;
+    let vivo = true;
+    void onboardingApi
+      .getAnswers(session.customerId)
+      .then(({ financialProfile: guardado }) => {
+        if (!vivo) return;
+        const texto = (clave: keyof typeof guardado) => (typeof guardado[clave] === 'string' ? (guardado[clave] as string) : null);
+        const empleo = texto('employmentStatus');
+        if (empleo && EMPLEOS.includes(empleo as Employment)) setEmploymentStatus((actual) => actual ?? (empleo as Employment));
+        const empleador = texto('employerName');
+        if (empleador) setEmployerName((actual) => actual || empleador);
+        const meses = guardado.employmentSeniorityMonths;
+        if (typeof meses === 'number') setSeniority((actual) => actual || String(Math.floor(meses / 12)));
+        const banda = texto('monthlyIncomeBand');
+        if (banda && BANDAS.some((b) => b.valor === banda)) setIncomeBand((actual) => actual ?? (banda as IncomeBand));
+        const frecuencia = texto('incomeFrequency');
+        if (frecuencia && FRECUENCIAS.includes(frecuencia as IncomeFrequency)) setIncomeFrequency((actual) => actual ?? (frecuencia as IncomeFrequency));
+        const rubro = texto('economicActivityCode');
+        if (rubro) setActivity((actual) => actual || rubro);
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [session.customerId]);
 
   // El backend rechaza `employee` sin empleador: se valida antes de gastar un viaje de red.
   const employerRequired = employmentStatus === 'employee' && employerName.trim().length === 0;
@@ -94,11 +123,9 @@ export default function FinancialProfile() {
   const faltanAnios = pideAntiguedad && seniority.trim().length === 0;
   const canSubmit =
     employmentStatus !== null &&
-    sourceOfFunds !== null &&
     incomeBand !== null &&
     incomeFrequency !== null &&
     !faltanAnios &&
-    toNumber(expenses) !== undefined &&
     activity.trim().length > 0 &&
     !employerRequired &&
     !busy;
@@ -109,9 +136,7 @@ export default function FinancialProfile() {
     [!faltanAnios, 'Faltan tus años en el trabajo actual.'],
     [incomeBand !== null, 'Falta tu rango de ingreso mensual.'],
     [incomeFrequency !== null, 'Falta cada cuánto cobras.'],
-    [toNumber(expenses) !== undefined, 'Faltan tus gastos mensuales.'],
     [activity.trim().length > 0, 'Falta a que te dedicas.'],
-    [sourceOfFunds !== null, 'Falta el origen de tus ingresos.'],
   ]);
 
   const save = async () => {
@@ -128,10 +153,7 @@ export default function FinancialProfile() {
         monthlyIncomeBand: incomeBand ?? undefined,
         monthlyIncomeDeclared: BANDAS.find((banda) => banda.valor === incomeBand)?.declarado,
         incomeFrequency: incomeFrequency ?? undefined,
-        otherMonthlyIncome: toNumber(otherIncome) ?? 0,
-        monthlyExpensesDeclared: toNumber(expenses),
         economicActivityCode: activity.trim(),
-        sourceOfFunds: sourceOfFunds ?? undefined,
       }));
       await session.refresh();
       router.replace('/(onboarding)/progreso');
@@ -180,7 +202,6 @@ export default function FinancialProfile() {
           // Faltaban las dos, y el servidor las acepta: sin ellas, quien no trabaja no puede
           // terminar el alta —ni eligiendo otra cosa, porque estaria declarando algo falso—.
           { valor: 'unemployed', etiqueta: 'Ahora no trabajo', detalle: 'Sin ingreso propio por trabajo en este momento.' },
-          { valor: 'retired', etiqueta: 'Estoy jubilado', detalle: 'Cobras una jubilación o una renta.' },
         ]}
       />
 
@@ -234,28 +255,8 @@ export default function FinancialProfile() {
           { valor: 'irregular', etiqueta: 'Irregular', detalle: 'Depende de las ventas o de los trabajos.' },
         ]}
       />
-      <IconField
-        icon="billetera"
-        label="Otros ingresos mensuales (Bs)"
-        value={otherIncome}
-        onChangeText={setOtherIncome}
-        keyboardType="decimal-pad"
-        inputMode="decimal"
-        ayuda="Lo que entra cada mes además de tu trabajo principal: alquileres, remesas, pensiones, un segundo empleo. Si no hay nada más, déjalo vacío. Ej.: 800."
-      />
-      <IconField icon="grafico"
-        label="Gastos mensuales (Bs)"
-        value={expenses}
-        onChangeText={setExpenses}
-        keyboardType="decimal-pad"
-        inputMode="decimal"
-        hint="Alquiler, servicios, deudas y gastos fijos."
-        ayuda="Lo que se te va cada mes sí o sí: alquiler, luz, agua, colegio, cuotas de otras deudas. Ej.: 2200. Es lo que se resta a tus ingresos para ver cuánto queda libre; declararlo de menos hace que te ofrezcamos una cuota que te aprieta."
-        required
-      />
-
       <SelectField
-        label="Actividad económica"
+        label="Rubro o industria"
         value={activity || null}
         onChange={setActivity}
         opciones={OPCIONES_ACTIVIDAD}
@@ -264,22 +265,6 @@ export default function FinancialProfile() {
         ayuda="A qué se dedica el trabajo o el negocio del que vives, elegido de la lista. Si no encuentras el tuyo, escribe una palabra en el buscador de la hoja; si aun así no está, usa «Otra actividad» en vez de elegir uno parecido."
         required
         buscable
-      />
-
-      <SelectField<SourceOfFunds>
-        label="Origen principal de tus ingresos"
-        value={sourceOfFunds}
-        onChange={setSourceOfFunds}
-        ayuda="De dónde viene la mayor parte del dinero que declaraste arriba. La ley contra el lavado obliga a preguntarlo y a que la respuesta cuadre con tu situación laboral; elige la fuente que más pesa, no todas las que tienes."
-        opciones={[
-          { valor: 'salary', etiqueta: 'Salario', detalle: 'Un sueldo que te paga un empleador.' },
-          { valor: 'business_income', etiqueta: 'Mi negocio', detalle: 'Las ventas o los servicios de tu propio negocio.' },
-          { valor: 'rental_income', etiqueta: 'Alquileres', detalle: 'Rentas de una casa, un local o un vehículo.' },
-          { valor: 'remittances', etiqueta: 'Remesas del exterior', detalle: 'Dinero que te envía alguien desde otro país.' },
-          { valor: 'pension', etiqueta: 'Jubilación o renta', detalle: 'Una jubilación, una renta o una pensión.' },
-          { valor: 'savings', etiqueta: 'Ahorros', detalle: 'Vives de dinero que ahorraste antes.' },
-          { valor: 'other', etiqueta: 'Otro', detalle: 'Ninguna de las anteriores describe tu caso.' },
-        ]}
       />
 
       <Gap size="sm" />
@@ -307,7 +292,6 @@ export default function FinancialProfile() {
             bitacora="subir_qr"
             origen="imagen"
           />
-          <GrabadorDeOcupacion customerId={session.customerId} />
         </>
       ) : null}
       <Gap size="sm" />
