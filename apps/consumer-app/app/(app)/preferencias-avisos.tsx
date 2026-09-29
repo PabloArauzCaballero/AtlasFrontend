@@ -4,7 +4,8 @@
  * ## Que se puede apagar y que no
  *
  * Casi todo. NO se pueden apagar los avisos que el servidor marca `isMandatory`: el recordatorio de
- * cuota, el aviso de mora y las alertas de seguridad. La pantalla ensena el candado JUNTO A SU
+ * cuota, el aviso de mora y las alertas de seguridad SI Core los emite (ver `avisos-copy.ts`: los de
+ * cuota y mora hoy no salen, y se muestran como «Aún no se envía», sin candado). La pantalla ensena el candado JUNTO A SU
  * MOTIVO, que llega del servidor con cada aviso: un control desactivado sin explicacion se lee como
  * un error de la app o como abuso, y ninguna de las dos lecturas es la que corresponde.
  *
@@ -26,6 +27,7 @@ import { StyleSheet, View, Platform } from 'react-native';
 import * as notificationsApi from '../../src/api/endpoints/notifications';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
+import { AVISO_SIN_RECORDATORIOS, AVISOS_QUE_LLEGAN_RESUMEN, avisoSinEmisor } from '../../src/features/avisos-copy';
 import { activarAvisos, estadoAvisos, type EstadoAvisos } from '../../src/device/push';
 import { space, touch } from '../../src/theme/tokens';
 import type { IconName } from '../../src/ui/icons';
@@ -145,6 +147,9 @@ export default function PreferenciasAvisos() {
   return (
     <Screen>
       <ScreenHeader title="Cómo te avisamos" subtitle="Elige por dónde quieres recibir cada aviso." onBack="auto" />
+      <AtlasText variant="caption" tone="tertiary">
+        {AVISOS_QUE_LLEGAN_RESUMEN}
+      </AtlasText>
 
       {/*
         El permiso del sistema, dicho antes que las preferencias.
@@ -165,7 +170,7 @@ export default function PreferenciasAvisos() {
           <CardHeader
             icon="alerta"
             title="Los avisos llegan a la app del teléfono"
-            detail="Desde el navegador no podemos avisarte. Con la app instalada te avisamos cuando vence una cuota y cuando se aprueba una compra."
+            detail={`Desde el navegador no podemos avisarte. Con la app instalada: ${AVISOS_QUE_LLEGAN_RESUMEN}`}
             divider={false}
           />
         </Card>
@@ -174,7 +179,7 @@ export default function PreferenciasAvisos() {
           <CardHeader
             icon="alerta"
             title="Recibir avisos en este teléfono"
-            detail="Te avisamos cuando vence una cuota y cuando se aprueba una compra. Nada más."
+            detail={AVISOS_QUE_LLEGAN_RESUMEN}
             divider={false}
           />
           <Button label="Activar avisos" variant="secondary" onPress={pedirAvisos} loading={pidiendoAvisos} />
@@ -196,7 +201,7 @@ export default function PreferenciasAvisos() {
         <EmptyState
           icon="sobre"
           title="No pudimos cargar tus avisos"
-          detail="Vuelve a intentarlo en un momento. Mientras tanto seguimos avisándote de todo lo importante."
+          detail="Vuelve a intentarlo en un momento."
         />
       ) : null}
 
@@ -206,6 +211,17 @@ export default function PreferenciasAvisos() {
 
           {[...events.entries()].map(([eventCode, preferences]) => {
             const head = preferences[0]!;
+            /*
+              Un aviso que Core no emite no se presenta como obligatorio ni con interruptores: se
+              dice que no llega y donde mirar. Las preferencias que no hacen nada son promesas.
+            */
+            if (avisoSinEmisor(eventCode)) {
+              return (
+                <Card key={eventCode}>
+                  <CardHeader title={head.label} detail={AVISO_SIN_RECORDATORIOS} trailing={<Badge label="Aún no se envía" tone="neutral" />} divider={false} />
+                </Card>
+              );
+            }
             const mandatory = preferences.some((preference) => preference.isMandatory);
             return (
               <Card key={eventCode}>

@@ -25,14 +25,11 @@ import { POS_QRS } from '../../../src/sandbox/fixtures';
 import { useSession } from '../../../src/session/session';
 import { requestProofTicket, submitPaymentClaim, uploadProof } from '../../../src/api/endpoints/payment-claims';
 import { color, palette, radius, space } from '../../../src/theme/tokens';
+import { AVISO_DEMOSTRACION } from '../../../src/features/demo-copy';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, Overline } from '../../../src/ui/primitives';
-
-/** Lo que se le dice al cliente cuando la compra es simulada y toca un botón de dinero. */
-const AVISO_DEMOSTRACION =
-  'Esta compra es de demostración: el aviso no se envía a ningún comercio. Los pagos reales se avisan desde Pagos, abriendo la cuota.';
 
 export default function PaymentScreen() {
   const router = useRouter();

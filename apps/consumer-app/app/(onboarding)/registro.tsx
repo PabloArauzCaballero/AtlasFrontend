@@ -190,7 +190,7 @@ export default function Register() {
           country={country}
           onChangeCountry={setCountry}
           hint="Ahí te enviamos el código de verificación."
-          ayuda="Tu número de celular, sin el código de país: ese se elige aparte. Ahí llega el código que confirma que la línea es tuya, y es por donde te avisamos de tus cuotas, así que tiene que ser un número al que tengas acceso hoy."
+          ayuda="Tu número de celular, sin el código de país: ese se elige aparte. Ahí llega el código que confirma que la línea es tuya, y es por donde te avisamos de tus pagos y de tu cuenta, así que tiene que ser un número al que tengas acceso hoy."
           required
           error={form.phone ? errors.phone : null}
         />

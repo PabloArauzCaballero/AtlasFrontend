@@ -7,10 +7,11 @@
  */
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
+import { Alert, Platform, StyleSheet, View } from 'react-native';
 import * as contentApi from '../../../src/api/endpoints/app-content';
 import { setMfaPreference } from '../../../src/api/endpoints/auth';
 import { ContentActionButton } from '../../../src/ui/content';
+import { SESION_GUARDADA_MOVIL, SESION_GUARDADA_WEB } from '../../../src/features/trust-copy';
 import { describeCustomerStatus } from '../../../src/features/onboarding-map';
 import { useSession } from '../../../src/session/session';
 import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS } from '../../../src/features/tour-inicio';
@@ -248,7 +249,7 @@ export default function Profile() {
         <ListRow
           icon="documento"
           title="Recalcular mi línea"
-          subtitle="Sube tu extracto bancario y la recalculamos en 24 h"
+          subtitle="Sube tu extracto bancario y la recalculamos en un máximo de 24 h"
           onPress={() => router.push('/(app)/extracto-bancario')}
           accessibilityHint="Abrir para subir tu extracto bancario"
         />
@@ -307,7 +308,7 @@ export default function Profile() {
           onPress={() => router.push('/(app)/cambiar-pin')}
         />
         <Divider inset />
-        <ListRow title="Sesión" subtitle="Tus tokens se guardan cifrados en este dispositivo" />
+        <ListRow title="Sesión" subtitle={Platform.OS === 'web' ? SESION_GUARDADA_WEB : SESION_GUARDADA_MOVIL} />
       </Card>
 
       <Card padding="tight">

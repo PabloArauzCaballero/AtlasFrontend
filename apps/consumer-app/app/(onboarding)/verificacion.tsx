@@ -76,7 +76,7 @@ const COPY: Record<Estado, { titulo: string; detalle: string; tono: 'success' | 
   IN_REVIEW: {
     titulo: 'Lo está revisando una persona',
     detalle:
-      'Tu caso necesita una segunda mirada. Sigue con el registro: te avisamos en cuanto termine, normalmente el mismo día.',
+      'Tu caso necesita una segunda mirada. Sigue con el registro: te avisamos cuando tu identidad quede verificada. No tenemos un plazo fijo.',
     tono: 'warning',
   },
   REJECTED: {

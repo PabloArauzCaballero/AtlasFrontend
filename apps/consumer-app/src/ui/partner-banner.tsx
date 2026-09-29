@@ -14,10 +14,12 @@
  * recomendacion de Atlas. La etiqueta «Espacio de partner» es lo que separa lo que la app afirma de
  * lo que un tercero paga por decir.
  */
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { color, palette, press, radius, space } from '../theme/tokens';
-import { Icon, type IconName } from './icons';
+import { getContent, type ContentAction, type ContentEntry } from '../api/endpoints/app-content';
+import { ICON_NAMES, Icon, type IconName } from './icons';
 import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
 
@@ -27,23 +29,58 @@ export type PartnerBannerContent = {
   detail: string;
   ctaLabel: string;
   icon: IconName;
+  /** El enlace que trae el contenido; sin el, el banner informa y no es un boton. */
+  action: ContentAction | null;
 };
 
 /**
- * El contenido de muestra.
+ * Convierte la primera entrada de `app-content` (`surface: 'home'`) en un banner.
  *
- * Se declara aqui y no dentro del componente para que el dia que llegue del servidor solo cambie de
- * origen: la forma ya es la que tendra la respuesta.
+ * ## Por que ya no hay un contenido de muestra
+ *
+ * Habia uno: «Libreria Altiplano · 2x1 en utiles escolares · Paga en 3 cuotas sin interes». Lo veia
+ * TODO cliente en el inicio, aunque ninguna campana estuviera contratada, y prometia un plazo y una
+ * tasa que Core no cobra. Ahora el banner sale del catalogo de contenidos —lo edita negocio desde el
+ * portal— y si no hay una entrada con titulo, NO se pinta: un hueco vacio es mejor que un anuncio
+ * inventado.
+ *
+ * El nombre del comercio viaja en `metadata.partnerName`; sin el, no se sabe QUIEN paga por decirlo y
+ * tampoco se pinta.
  */
-export const SAMPLE_PARTNER_BANNER: PartnerBannerContent = {
-  partnerName: 'Libreria Altiplano',
-  headline: '2x1 en útiles escolares',
-  detail: 'Paga en 3 cuotas sin interés con tu línea Atlas. Válido hasta fin de mes.',
-  ctaLabel: 'Ver la promocion',
-  icon: 'educacion',
-};
+export function bannerDesdeContenido(entries: readonly ContentEntry[]): PartnerBannerContent | null {
+  for (const entry of entries) {
+    const partnerName = typeof entry.metadata?.partnerName === 'string' ? entry.metadata.partnerName.trim() : '';
+    const headline = entry.title?.trim() ?? '';
+    if (!partnerName || !headline) continue;
+    const icono = entry.bullets.find((bullet) => bullet.icon)?.icon ?? null;
+    return {
+      partnerName,
+      headline,
+      detail: (entry.subtitle ?? entry.body ?? '').trim(),
+      ctaLabel: entry.action?.label ?? '',
+      icon: icono && (ICON_NAMES as readonly string[]).includes(icono) ? (icono as IconName) : 'comercio',
+      action: entry.action && /^(https?|whatsapp):/i.test(entry.action.url) ? entry.action : null,
+    };
+  }
+  return null;
+}
 
-export function PartnerBanner({ content = SAMPLE_PARTNER_BANNER, onPress }: { content?: PartnerBannerContent; onPress?: () => void }) {
+/** El banner del inicio: `null` mientras carga, si no hay campana o si el servidor no contesta. */
+export function usePartnerBanner(): PartnerBannerContent | null {
+  const [banner, setBanner] = useState<PartnerBannerContent | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void getContent('home').then((entries) => {
+      if (!cancelled) setBanner(bannerDesdeContenido(entries));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return banner;
+}
+
+export function PartnerBanner({ content, onPress }: { content: PartnerBannerContent; onPress?: () => void }) {
   return (
     <View style={styles.wrapper}>
       <AtlasText variant="caption" tone="tertiary" style={styles.tag}>
@@ -52,7 +89,7 @@ export function PartnerBanner({ content = SAMPLE_PARTNER_BANNER, onPress }: { co
 
       <PressSurface
         onPress={onPress}
-        accessibilityRole="button"
+        accessibilityRole={onPress ? 'button' : 'text'}
         accessibilityLabel={`Publicidad de ${content.partnerName}: ${content.headline}`}
         style={styles.card}
         scaleTo={press.scaleSubtle}
@@ -79,9 +116,11 @@ export function PartnerBanner({ content = SAMPLE_PARTNER_BANNER, onPress }: { co
             <AtlasText variant="h3" style={styles.headline}>
               {content.headline}
             </AtlasText>
-            <AtlasText variant="caption" style={styles.detail}>
-              {content.detail}
-            </AtlasText>
+            {content.detail ? (
+              <AtlasText variant="caption" style={styles.detail}>
+                {content.detail}
+              </AtlasText>
+            ) : null}
           </View>
           <Icon name="adelante" size={18} tint={palette.tint} />
         </View>

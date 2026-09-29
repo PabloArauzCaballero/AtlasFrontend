@@ -95,7 +95,7 @@ export const SECTION_LABEL: Record<OnboardingSectionCode, { title: string; detai
   financial_profile: { title: 'Tu situación económica', detail: 'Trabajo, ingresos y gastos declarados.', icon: 'billetera' },
   address: { title: 'Tu domicilio', detail: 'Dónde vives actualmente.', icon: 'hogar' },
   identity_documents: { title: 'Tu documento de identidad', detail: 'Foto del carnet por ambos lados y tres selfies: de frente y de cada lado.', icon: 'documento' },
-  reference_contacts: { title: 'Tus referencias', detail: 'Dos personas que puedan dar referencia de ti.', icon: 'telefono' },
+  reference_contacts: { title: 'Tus referencias', detail: 'Opcional: personas que puedan dar referencia de ti.', icon: 'telefono' },
   device_permissions: { title: 'Permisos del teléfono', detail: 'Ubicación y contactos: decides tú, y puedes decir que no.', icon: 'ubicacion' },
   consumer_survey: { title: 'Tus hábitos', detail: 'Seis preguntas cortas sobre cómo manejas tu dinero.', icon: 'billetera' },
 };
@@ -119,7 +119,7 @@ const BLOCKER_COPY: Record<string, { title: string; detail: string; actionable: 
   CONTACT_NOT_VERIFIED: { title: 'Teléfono sin verificar', detail: 'Confirma el código que te enviamos.', actionable: true },
   FINANCIAL_PROFILE_INCOMPLETE: { title: 'Falta tu información económica', detail: 'Completa trabajo, ingresos y gastos.', actionable: true },
   ADDRESS_MISSING: { title: 'Falta tu domicilio', detail: 'Indica dónde vives.', actionable: true },
-  REFERENCES_INSUFFICIENT: { title: 'Faltan referencias', detail: 'Necesitamos dos contactos de referencia.', actionable: true },
+  REFERENCES_INSUFFICIENT: { title: 'Referencias', detail: 'Ya no son obligatorias: puedes agregarlas si quieres.', actionable: true },
   IDENTITY_DOCUMENT_MISSING: { title: 'Falta tu documento', detail: 'Sube tu carnet de identidad.', actionable: true },
   IDENTITY_NOT_VERIFIED: { title: 'Identidad en revisión', detail: 'Una persona está revisando tu carnet y tu selfie.', actionable: false },
   CONSUMER_SURVEY_INCOMPLETE: { title: 'Faltan tus hábitos', detail: 'Contesta las seis preguntas.', actionable: true },

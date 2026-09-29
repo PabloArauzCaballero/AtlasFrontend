@@ -75,7 +75,7 @@ import { bitacora } from '../../src/features/bitacora';
  * sin tramite. El eslogan tiene que decir ESO.
  */
 const ESLOGAN = 'Tu primer crédito no debería depender de un banco.';
-const ESLOGAN_PIE = 'Crédito al instante en los comercios de Santa Cruz.';
+const ESLOGAN_PIE = 'Crédito para comprar en los comercios de Santa Cruz.';
 
 type Paso = { icon: IconName; titulo: string; cuerpo: string };
 
@@ -84,13 +84,13 @@ const PASOS_POR_DEFECTO: Paso[] = [
     icon: 'escanear',
     titulo: 'Escaneas y listo',
     cuerpo:
-      'En la caja del comercio escaneas su QR y escribes el monto. Sin tarjeta, sin papeleo y sin esperar una respuesta que llega en tres días.',
+      'En la caja del comercio escaneas su QR y escribes el monto. Sin tarjeta de crédito de por medio.',
   },
   {
     icon: 'billetera',
-    titulo: 'Pagas 60% hoy',
+    titulo: 'Pagas en cuotas mensuales',
     cuerpo:
-      'El resto se divide en 3 cuotas cada 14 días. Antes de confirmar nada te mostramos cuánto pagas hoy y cómo quedan tus cuotas.',
+      'Atlas revisa tu solicitud y te asigna una línea con su tasa. Lo que compras con ella lo pagas en cuotas mensuales, y el detalle de cada cuota lo ves en la pantalla de tu crédito.',
   },
   {
     icon: 'tendencia',

@@ -26,7 +26,7 @@
  * registro, y se puede dejar para despues sin bloquear el envio.
  */
 import * as DocumentPicker from "expo-document-picker";
-import { leerBytes } from "../../device/archivos";
+import { borrarCopiaLocal, leerBytes } from "../../device/archivos";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
@@ -55,9 +55,9 @@ import {
 const PROMESAS: { icon: IconName; title: string; detail: string }[] = [
   {
     icon: "candado",
-    title: "Viaja cifrado y se guarda cifrado",
+    title: "Viaja por una conexión segura",
     detail:
-      "El archivo sube directo al almacén cifrado de Atlas. No pasa por la app ni queda en tu teléfono.",
+      "El archivo sube directo al almacén de Atlas por una conexión segura. Para subirlo, la app lo lee de una copia temporal en tu teléfono y la borra al terminar.",
   },
   {
     icon: "escudo",
@@ -75,7 +75,7 @@ const PROMESAS: { icon: IconName; title: string; detail: string }[] = [
     icon: "reloj",
     title: "Puedes pedir que lo borremos",
     detail:
-      "Una vez recalculada tu línea, el archivo ya no hace falta. Escríbenos y se elimina.",
+      "Una vez recalculada tu línea, el archivo ya no hace falta. Pídelo desde Privacidad, en tu perfil, como solicitud de supresión de datos: queda registrada con un plazo de resolución de 15 días.",
   },
 ];
 
@@ -228,6 +228,8 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
     } catch (caught) {
       setError(caught);
     } finally {
+      // La copia temporal ya cumplió: no se deja el extracto en la caché del teléfono.
+      borrarCopiaLocal(asset.uri);
       setBusy(false);
     }
   };
@@ -426,8 +428,9 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
         />
         <AtlasText variant="body" tone="secondary">
           En un máximo de <AtlasText variant="bodyStrong">24 horas</AtlasText>{" "}
-          recalculamos tu capacidad de pago con lo que diga tu extracto y te
-          avisamos. Tu línea puede subir, quedarse igual o bajar: depende de lo
+          recalculamos tu capacidad de pago con lo que diga tu extracto. Hoy no
+          te enviamos un aviso al terminar: vuelve a esta pantalla para ver el
+          resultado. Tu línea puede subir, quedarse igual o bajar: depende de lo
           que muestren tus movimientos, no de lo que declaraste.
         </AtlasText>
         <AtlasText variant="caption" tone="tertiary">

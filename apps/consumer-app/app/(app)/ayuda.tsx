@@ -149,7 +149,7 @@ export default function Ayuda() {
         <EmptyState
           icon="ayuda"
           title="No pudimos cargar la ayuda"
-          detail="Vuelve a intentarlo en un momento. Si necesitas hablar con alguien ahora, escríbenos por WhatsApp desde tu perfil."
+          detail="Vuelve a intentarlo en un momento. Si necesitas hablar con alguien ahora, abre una conversación desde Soporte."
         />
       ) : null}
 
