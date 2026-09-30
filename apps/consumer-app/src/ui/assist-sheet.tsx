@@ -20,10 +20,12 @@ import { router } from 'expo-router';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import type { AssistScreen } from '../api/endpoints/assist';
 import { PREGUNTAS_FRECUENTES, type BurbujaAssist, type useAssist } from '../features/assist';
-import { color, radius, space, stroke } from '../theme/tokens';
+import { color, radius, space, stroke, touch } from '../theme/tokens';
+import { AssistHistorial } from './assist-historial';
 import { Field } from './fields';
 import { BottomSheet } from './help-sheet';
-import { Icon } from './icons';
+import { toqueWeb } from './hit-slop';
+import { Icon, type IconName } from './icons';
 import { AtlasText, Button } from './primitives';
 import { webData } from '../web/estilo';
 
@@ -41,7 +43,29 @@ export function AssistSheet({
 }) {
   const [texto, setTexto] = useState('');
   const scrollRef = useRef<ScrollView>(null);
+  const [vista, setVista] = useState<'chat' | 'historial'>('chat');
   const { burbujas, estado, enviar, reintentar } = assist;
+
+  // Al cerrar la hoja se vuelve al chat: reabrirla no debe dejar a la persona en una lista.
+  useEffect(() => {
+    if (!visible) setVista('chat');
+  }, [visible]);
+
+  const abrirHistorial = () => {
+    setVista('historial');
+    void assist.cargarHistorial();
+  };
+  const abrirConversacion = async (id: string) => {
+    if (await assist.abrirConversacion(id)) setVista('chat');
+  };
+  const enviando = estado.fase === 'enviando';
+  const abriendo = estado.fase === 'cargando';
+  const razonNueva =
+    enviando || abriendo
+      ? 'Espera a que termine la respuesta para empezar otra conversación.'
+      : burbujas.length === 0
+        ? 'Ya estás en una conversación nueva.'
+        : null;
 
   /*
     El hilo se guarda en el servidor, pero lo ESCRITO y aún no enviado vive solo aquí: si la hoja
@@ -64,89 +88,160 @@ export function AssistSheet({
   return (
     <BottomSheet visible={visible} titulo="Atlas Assist" onClose={onClose} cierre="Cerrar" evitarTeclado>
       <View style={styles.cuerpo} {...webData('asistente-hoja')}>
-        <ScrollView
-          ref={scrollRef}
-          style={styles.lista}
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-          contentContainerStyle={styles.listaContenido}
-        >
-          {vacia ? (
-            <View style={styles.vacio}>
-              <AtlasText variant="body" tone="secondary">
-                Te ayudo con Atlas: qué es y cómo funciona, comprar con QR en un comercio, ver y pagar tus cuotas, tus avisos, tu
-                perfil y tu PIN.
-              </AtlasText>
-              <View style={styles.chips}>
-                {PREGUNTAS_FRECUENTES.map((pregunta) => (
-                  <Pressable
-                    key={pregunta}
-                    onPress={() => mandar(pregunta)}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Preguntar: ${pregunta}`}
-                    style={styles.chip}
-                    {...webData('presionable')}
-                    testID={`asistente-chip-${PREGUNTAS_FRECUENTES.indexOf(pregunta)}`}
-                  >
-                    <AtlasText variant="caption" tone="brand">
-                      {pregunta}
-                    </AtlasText>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          ) : null}
-
-          {burbujas.map((burbuja) => (
-            <Burbuja key={burbuja.id} burbuja={burbuja} onHablarConPersona={() => irASoporte(onClose)} />
-          ))}
-
-          {escribiendo ? (
-            <View style={styles.escribiendo}>
-              <Icon name="asistente" size={16} tint={color.text.tertiary} />
-              <AtlasText variant="caption" tone="tertiary">
-                Atlas Assist está escribiendo…
-              </AtlasText>
-            </View>
-          ) : null}
-
-          {estado.fase === 'error' ? (
-            <View style={styles.error}>
-              <AtlasText variant="caption" tone="danger">
-                {estado.mensaje}
-              </AtlasText>
-              <Button label="Reintentar" variant="secondary" icon={null} onPress={() => reintentar(pantalla)} />
-            </View>
-          ) : null}
-        </ScrollView>
-
-        <View style={styles.pie}>
-          <Field
-            label="Tu pregunta"
-            value={texto}
-            onChangeText={setTexto}
-            placeholder="Escribe aquí…"
-            multiline
-            testID="asistente-entrada"
+        {vista === 'historial' ? (
+          <AssistHistorial
+            historial={assist.historial}
+            actualId={assist.actualId}
+            aviso={assist.avisoHistorial}
+            onReintentar={() => void assist.cargarHistorial()}
+            onAbrir={(id) => void abrirConversacion(id)}
+            onBorrar={(id) => void assist.borrarConversacion(id)}
+            onVolver={() => setVista('chat')}
           />
-          <Button
-            label="Enviar"
-            onPress={() => mandar(texto)}
-            loading={escribiendo}
-            disabled={texto.trim().length === 0}
-            blockedReason={texto.trim().length === 0 ? 'Escribe una pregunta para enviarla.' : null}
-            testID="asistente-enviar"
-          />
-          {/*
-            El escalado SIEMPRE visible, no solo cuando el asistente lo sugiere: el asistente es un
-            atajo hacia la respuesta, nunca un peaje delante de las personas.
-          */}
-          <Button label="Hablar con una persona" variant="ghost" icon={null} onPress={() => irASoporte(onClose)} testID="asistente-humano" />
-          <AtlasText variant="micro" tone="tertiary" style={styles.aviso}>
-            Atlas Assist puede equivocarse. No ve tus saldos ni tus movimientos.
-          </AtlasText>
-        </View>
+        ) : (
+          <>
+            <View style={styles.acciones}>
+              <Accion
+                icono="editar"
+                etiqueta="Nueva conversación"
+                razon={razonNueva}
+                onPress={() => assist.nuevaConversacion()}
+                testID="asistente-nueva"
+              />
+              <Accion icono="reloj" etiqueta="Historial" razon={null} onPress={abrirHistorial} testID="asistente-historial" />
+            </View>
+            {razonNueva ? (
+              <AtlasText variant="caption" tone="tertiary" style={styles.razon} testID="asistente-nueva-razon">
+                {razonNueva}
+              </AtlasText>
+            ) : null}
+            {assist.avisoHistorial ? (
+              <AtlasText variant="caption" tone="danger" style={styles.razon}>
+                {assist.avisoHistorial}
+              </AtlasText>
+            ) : null}
+            <ScrollView
+              ref={scrollRef}
+              style={styles.lista}
+              onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+              contentContainerStyle={styles.listaContenido}
+            >
+              {vacia ? (
+                <View style={styles.vacio}>
+                  <AtlasText variant="body" tone="secondary">
+                    Te ayudo con Atlas: qué es y cómo funciona, comprar con QR en un comercio, ver y pagar tus cuotas, tus avisos, tu
+                    perfil y tu PIN.
+                  </AtlasText>
+                  <View style={styles.chips}>
+                    {PREGUNTAS_FRECUENTES.map((pregunta) => (
+                      <Pressable
+                        key={pregunta}
+                        onPress={() => mandar(pregunta)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Preguntar: ${pregunta}`}
+                        style={styles.chip}
+                        {...webData('presionable')}
+                        testID={`asistente-chip-${PREGUNTAS_FRECUENTES.indexOf(pregunta)}`}
+                      >
+                        <AtlasText variant="caption" tone="brand">
+                          {pregunta}
+                        </AtlasText>
+                      </Pressable>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              {burbujas.map((burbuja) => (
+                <Burbuja key={burbuja.id} burbuja={burbuja} onHablarConPersona={() => irASoporte(onClose)} />
+              ))}
+
+              {escribiendo ? (
+                <View style={styles.escribiendo}>
+                  <Icon name="asistente" size={16} tint={color.text.tertiary} />
+                  <AtlasText variant="caption" tone="tertiary">
+                    Atlas Assist está escribiendo…
+                  </AtlasText>
+                </View>
+              ) : null}
+
+              {estado.fase === 'error' ? (
+                <View style={styles.error}>
+                  <AtlasText variant="caption" tone="danger">
+                    {estado.mensaje}
+                  </AtlasText>
+                  <Button label="Reintentar" variant="secondary" icon={null} onPress={() => reintentar(pantalla)} />
+                </View>
+              ) : null}
+            </ScrollView>
+
+            <View style={styles.pie}>
+              <Field
+                label="Tu pregunta"
+                value={texto}
+                onChangeText={setTexto}
+                placeholder="Escribe aquí…"
+                multiline
+                testID="asistente-entrada"
+              />
+              <Button
+                label="Enviar"
+                onPress={() => mandar(texto)}
+                loading={escribiendo}
+                disabled={texto.trim().length === 0}
+                blockedReason={texto.trim().length === 0 ? 'Escribe una pregunta para enviarla.' : null}
+                testID="asistente-enviar"
+              />
+              {/*
+                El escalado SIEMPRE visible, no solo cuando el asistente lo sugiere: el asistente es un
+                atajo hacia la respuesta, nunca un peaje delante de las personas.
+              */}
+              <Button label="Hablar con una persona" variant="ghost" icon={null} onPress={() => irASoporte(onClose)} testID="asistente-humano" />
+              <AtlasText variant="micro" tone="tertiary" style={styles.aviso}>
+                Atlas Assist puede equivocarse. No ve tus saldos ni tus movimientos.
+              </AtlasText>
+            </View>
+          </>
+        )}
       </View>
     </BottomSheet>
+  );
+}
+
+/** Una acción de la barra de arriba del hilo. Apagada, sigue visible y dice por qué (debajo). */
+function Accion({
+  icono,
+  etiqueta,
+  razon,
+  onPress,
+  testID,
+}: {
+  icono: IconName;
+  etiqueta: string;
+  razon: string | null;
+  onPress: () => void;
+  testID: string;
+}) {
+  const apagada = razon !== null;
+  return (
+    <Pressable
+      onPress={apagada ? undefined : onPress}
+      disabled={apagada}
+      accessibilityRole="button"
+      accessibilityLabel={etiqueta}
+      accessibilityHint={razon ?? undefined}
+      accessibilityState={{ disabled: apagada }}
+      hitSlop={4}
+      {...toqueWeb(4)}
+      style={[styles.accion, apagada && styles.accionApagada]}
+      {...webData('presionable')}
+      testID={testID}
+    >
+      <Icon name={icono} size={18} tint={apagada ? color.text.tertiary : color.action.primary} />
+      <AtlasText variant="bodyStrong" tone={apagada ? 'tertiary' : 'brand'}>
+        {etiqueta}
+      </AtlasText>
+    </Pressable>
   );
 }
 
@@ -185,6 +280,19 @@ function Burbuja({ burbuja, onHablarConPersona }: { burbuja: BurbujaAssist; onHa
 
 const styles = StyleSheet.create({
   cuerpo: { flexShrink: 1 },
+  acciones: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.xs },
+  accion: {
+    minHeight: touch.minSize,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+    borderWidth: stroke.hairline,
+    borderColor: color.feedbackBorder.brand,
+  },
+  accionApagada: { borderColor: color.border.hairline },
+  razon: { paddingHorizontal: space.lg },
   lista: { maxHeight: 380, flexShrink: 1 },
   listaContenido: { padding: space.lg, gap: space.sm, flexGrow: 1, justifyContent: 'flex-end' },
   vacio: { gap: space.md, paddingBottom: space.sm },
