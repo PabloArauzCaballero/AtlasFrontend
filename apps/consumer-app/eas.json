@@ -4,28 +4,13 @@
     "appVersionSource": "remote"
   },
   "build": {
-    "preview": {
+    "development": {
+      "developmentClient": true,
       "distribution": "internal",
-      "channel": "preview",
-      "android": {
-        "buildType": "apk"
-      },
-      "env": {
-        "EXPO_PUBLIC_ATLAS_API_URL": "https://pablo-h310.taila8f993.ts.net/api/v1",
-        "EXPO_PUBLIC_ATLAS_TENANT_ID": "1",
-        "EXPO_PUBLIC_ATLAS_TIMEOUT_MS": "20000",
-        "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",
-        "EXPO_PUBLIC_ATLAS_DECISION_SOURCE": "backend",
-        "EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO": "false"
-      },
+      "channel": "development",
+      "environment": "development",
       "ios": {
         "simulator": false
-      }
-    },
-    "production": {
-      "channel": "production",
-      "android": {
-        "buildType": "app-bundle"
       },
       "env": {
         "EXPO_PUBLIC_ATLAS_API_URL": "https://atlas.consumerweb.test.arauzsoftware.com/api/v1",
@@ -34,19 +19,55 @@
         "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",
         "EXPO_PUBLIC_ATLAS_DECISION_SOURCE": "backend",
         "EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO": "true"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "environment": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": false,
+        "autoIncrement": true
+      },
+      "env": {
+        "EXPO_PUBLIC_ATLAS_API_URL": "https://atlas.consumerweb.test.arauzsoftware.com/api/v1",
+        "EXPO_PUBLIC_ATLAS_TENANT_ID": "1",
+        "EXPO_PUBLIC_ATLAS_TIMEOUT_MS": "20000",
+        "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",
+        "EXPO_PUBLIC_ATLAS_DECISION_SOURCE": "backend",
+        "EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO": "true"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "environment": "production",
+      "android": {
+        "buildType": "app-bundle"
       },
       "ios": {
         "autoIncrement": true
+      },
+      "env": {
+        "EXPO_PUBLIC_ATLAS_API_URL": "https://atlas.consumerweb.test.arauzsoftware.com/api/v1",
+        "EXPO_PUBLIC_ATLAS_TENANT_ID": "1",
+        "EXPO_PUBLIC_ATLAS_TIMEOUT_MS": "20000",
+        "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",
+        "EXPO_PUBLIC_ATLAS_DECISION_SOURCE": "backend",
+        "EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO": "true"
       }
     },
     "simulador-ios": {
       "distribution": "internal",
       "channel": "preview",
+      "environment": "preview",
       "ios": {
         "simulator": true
       },
       "env": {
-        "EXPO_PUBLIC_ATLAS_API_URL": "https://pablo-h310.taila8f993.ts.net/api/v1",
+        "EXPO_PUBLIC_ATLAS_API_URL": "https://atlas.consumerweb.test.arauzsoftware.com/api/v1",
         "EXPO_PUBLIC_ATLAS_TENANT_ID": "1",
         "EXPO_PUBLIC_ATLAS_TIMEOUT_MS": "20000",
         "EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE": "sandbox",

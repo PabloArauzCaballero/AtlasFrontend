@@ -72,7 +72,13 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "check:field-help": "node scripts/check-field-help.mjs",
-    "test": "node scripts/check-field-help.mjs && jest --passWithNoTests"
+    "test": "node scripts/check-field-help.mjs && jest --passWithNoTests",
+    "verify": "npm run typecheck && npm run lint && npm test",
+    "qa:doctor": "node scripts/check-eas-env.mjs preview && npx expo-doctor",
+    "qa:device": "npx --yes eas-cli device:create",
+    "qa:devices": "npx --yes eas-cli device:list",
+    "qa:build:ios": "npx --yes eas-cli build --platform ios --profile preview",
+    "qa:native-check": "npx --yes eas-cli fingerprint:compare --environment preview --build-id"
   },
   "private": true
 }
