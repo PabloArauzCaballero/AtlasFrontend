@@ -17,7 +17,11 @@
  */
 import { request } from '../client';
 
-export type ContentBullet = { text: string; icon?: string | null; emphasis?: boolean };
+/**
+ * `iconImage` es un icono PROPIO cargado desde el portal (data URI PNG/WebP, <= 32 KB). Gana sobre
+ * `icon` mientras se pueda pintar; si no, se cae al icono del catalogo de la app.
+ */
+export type ContentBullet = { text: string; icon?: string | null; iconImage?: string | null; emphasis?: boolean };
 
 export type ContentAction = { kind: string; label: string; url: string };
 
