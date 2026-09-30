@@ -58,3 +58,33 @@ export function preguntar(input: {
 export function conversacion(): Promise<AssistConversation> {
   return request('/mobile/assist/conversation');
 }
+
+/** Una conversación en la lista del historial. */
+export type AssistConversationSummary = {
+  conversationId: string;
+  title: string;
+  /** ISO 8601. */
+  updatedAt: string;
+  turnCount: number;
+};
+
+export type AssistConversationDetail = {
+  conversationId: string;
+  title: string;
+  turns: AssistTurn[];
+};
+
+/** Las conversaciones anteriores, la más reciente primero (el servidor devuelve hasta 30). */
+export function listarConversaciones(): Promise<{ conversations: AssistConversationSummary[] }> {
+  return request('/mobile/assist/conversations');
+}
+
+/** Una conversación anterior con todos sus turnos. 404 si ya no existe. */
+export function leerConversacion(conversationId: string): Promise<AssistConversationDetail> {
+  return request(`/mobile/assist/conversations/${encodeURIComponent(conversationId)}`);
+}
+
+/** Borra una conversación. `deleted: 0` si ya no estaba (borrarla dos veces no es un error). */
+export function borrarConversacion(conversationId: string): Promise<{ deleted: 0 | 1 }> {
+  return request(`/mobile/assist/conversations/${encodeURIComponent(conversationId)}`, { method: 'DELETE' });
+}

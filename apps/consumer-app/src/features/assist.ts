@@ -53,6 +53,42 @@ export type EstadoAssist =
 
 type Pendiente = { texto: string; clientMessageId: string };
 
+/** La lista del historial: sus cuatro caras. Un fallo aquí NUNCA toca el estado del chat. */
+export type EstadoHistorial =
+  | { fase: 'inactivo' }
+  | { fase: 'cargando' }
+  | { fase: 'lista'; items: assistApi.AssistConversationSummary[] }
+  | { fase: 'error'; mensaje: string };
+
+function turnosABurbujas(turnos: assistApi.AssistTurn[]): BurbujaAssist[] {
+  return turnos.flatMap((turno) => [
+    { id: `${turno.turnId}-p`, rol: 'persona' as const, texto: turno.prompt },
+    { id: turno.turnId, rol: 'asistente' as const, texto: turno.reply, sugiereHumano: turno.suggestHandoff },
+  ]);
+}
+
+/**
+ * «Hace 5 min», «Ayer», «12 sep»: la fecha como la diría una persona. `ahora` se inyecta para que
+ * la prueba no dependa del reloj. Una fecha ilegible devuelve cadena vacía (mejor nada que «NaN»).
+ */
+export function fechaRelativa(iso: string, ahora: Date = new Date()): string {
+  const fecha = new Date(iso);
+  const diff = ahora.getTime() - fecha.getTime();
+  if (Number.isNaN(diff)) return '';
+  const min = Math.floor(diff / 60_000);
+  if (min < 1) return 'Hace un momento';
+  if (min < 60) return `Hace ${min} min`;
+  const horas = Math.floor(min / 60);
+  if (horas < 24) return `Hace ${horas} h`;
+  const inicio = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const dias = Math.round((inicio(ahora) - inicio(fecha)) / 86_400_000);
+  if (dias <= 1) return 'Ayer';
+  if (dias < 7) return `Hace ${dias} días`;
+  const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const dia = `${fecha.getDate()} ${meses[fecha.getMonth()]}`;
+  return fecha.getFullYear() === ahora.getFullYear() ? dia : `${dia} ${fecha.getFullYear()}`;
+}
+
 function mensajeDeError(error: unknown): string {
   if (error instanceof AtlasApiError) {
     if (error.kind === 'network' || error.kind === 'timeout') {
@@ -78,6 +114,12 @@ export function useAssist() {
   const [burbujas, setBurbujas] = useState<BurbujaAssist[]>([]);
   const [estado, setEstado] = useState<EstadoAssist>({ fase: 'cargando' });
   const conversationId = useRef<string | null>(null);
+  /** Espejo de `conversationId` para pintar cuál es la conversación abierta en el historial. */
+  const [actualId, setActualId] = useState<string | null>(null);
+  const [historial, setHistorial] = useState<EstadoHistorial>({ fase: 'inactivo' });
+  /** Un aviso de la última acción del historial (abrir o borrar). Se limpia al volver a intentar. */
+  const [avisoHistorial, setAvisoHistorial] = useState<string | null>(null);
+  const cargaHistorial = useRef(0);
   const pendiente = useRef<Pendiente | null>(null);
   /*
     El candado es «hay una petición EN VIAJE», no «hay un mensaje sin responder»: tras un error la
@@ -106,12 +148,8 @@ export function useAssist() {
         const hilo = await assistApi.conversacion();
         if (cancelado) return;
         conversationId.current = hilo.conversationId;
-        setBurbujas(
-          hilo.turns.flatMap((turno) => [
-            { id: `${turno.turnId}-p`, rol: 'persona' as const, texto: turno.prompt },
-            { id: turno.turnId, rol: 'asistente' as const, texto: turno.reply, sugiereHumano: turno.suggestHandoff },
-          ]),
-        );
+        setActualId(hilo.conversationId);
+        setBurbujas(turnosABurbujas(hilo.turns));
         setDisponible(true);
         setEstado({ fase: 'lista' });
       } catch (error) {
@@ -145,6 +183,7 @@ export function useAssist() {
         enViaje.current = false;
         if (!montado.current) return;
         conversationId.current = respuesta.conversationId ?? conversationId.current;
+        setActualId(conversationId.current);
         pendiente.current = null;
         setBurbujas((actuales) => [
           ...actuales,
@@ -207,5 +246,104 @@ export function useAssist() {
     [preguntar],
   );
 
-  return { disponible, burbujas, estado, enviar, reintentar };
+  /** Deja el hilo en blanco, sin conversación. Nada viaja al servidor: la nueva nace al primer envío. */
+  const reiniciarHilo = useCallback(() => {
+    conversationId.current = null;
+    pendiente.current = null;
+    setActualId(null);
+    setBurbujas([]);
+    setEstado({ fase: 'lista' });
+  }, []);
+
+  /**
+   * «Nueva conversación». No llama al servidor: basta con que el próximo envío no lleve
+   * `conversationId` para que nazca otra. No se permite con una petición en viaje, porque su
+   * respuesta caería en un hilo que la persona ya dejó. Devuelve si se hizo.
+   */
+  const nuevaConversacion = useCallback((): boolean => {
+    if (enViaje.current) return false;
+    reiniciarHilo();
+    setAvisoHistorial(null);
+    return true;
+  }, [reiniciarHilo]);
+
+  /** Trae la lista del historial. Si dos cargas se cruzan, sólo cuenta la última. */
+  const cargarHistorial = useCallback(async () => {
+    const turno = ++cargaHistorial.current;
+    setAvisoHistorial(null);
+    setHistorial({ fase: 'cargando' });
+    try {
+      const { conversations } = await assistApi.listarConversaciones();
+      if (!montado.current || turno !== cargaHistorial.current) return;
+      setHistorial({ fase: 'lista', items: conversations });
+    } catch (error) {
+      if (!montado.current || turno !== cargaHistorial.current) return;
+      const mensaje =
+        error instanceof AtlasApiError && (error.kind === 'network' || error.kind === 'timeout')
+          ? 'Sin conexión. Revisa tu internet y vuelve a intentar.'
+          : 'No pudimos cargar tus conversaciones. Intenta de nuevo.';
+      setHistorial({ fase: 'error', mensaje });
+    }
+  }, []);
+
+  /** Abre una conversación anterior para continuarla: sus mensajes y su id quedan como el hilo vigente. */
+  const abrirConversacion = useCallback(async (id: string): Promise<boolean> => {
+    if (enViaje.current) return false;
+    enViaje.current = true;
+    setAvisoHistorial(null);
+    try {
+      const detalle = await assistApi.leerConversacion(id);
+      enViaje.current = false;
+      if (!montado.current) return false;
+      conversationId.current = detalle.conversationId;
+      pendiente.current = null;
+      setActualId(detalle.conversationId);
+      setBurbujas(turnosABurbujas(detalle.turns));
+      setEstado({ fase: 'lista' });
+      return true;
+    } catch (error) {
+      enViaje.current = false;
+      if (!montado.current) return false;
+      const yaNoExiste = error instanceof AtlasApiError && error.status === 404;
+      if (yaNoExiste) {
+        setHistorial((h) => (h.fase === 'lista' ? { fase: 'lista', items: h.items.filter((c) => c.conversationId !== id) } : h));
+      }
+      setAvisoHistorial(yaNoExiste ? 'Esa conversación ya no existe.' : 'No pudimos abrir la conversación. Intenta de nuevo.');
+      return false;
+    }
+  }, []);
+
+  /** Borra una conversación. Si era la abierta, el hilo se reinicia. Devuelve si quedó borrada. */
+  const borrarConversacion = useCallback(
+    async (id: string): Promise<boolean> => {
+      if (enViaje.current && id === conversationId.current) return false;
+      setAvisoHistorial(null);
+      try {
+        await assistApi.borrarConversacion(id);
+      } catch {
+        if (montado.current) setAvisoHistorial('No pudimos borrar la conversación. Intenta de nuevo.');
+        return false;
+      }
+      if (!montado.current) return true;
+      setHistorial((h) => (h.fase === 'lista' ? { fase: 'lista', items: h.items.filter((c) => c.conversationId !== id) } : h));
+      if (id === conversationId.current) reiniciarHilo();
+      return true;
+    },
+    [reiniciarHilo],
+  );
+
+  return {
+    disponible,
+    burbujas,
+    estado,
+    actualId,
+    historial,
+    avisoHistorial,
+    enviar,
+    reintentar,
+    nuevaConversacion,
+    cargarHistorial,
+    abrirConversacion,
+    borrarConversacion,
+  };
 }
