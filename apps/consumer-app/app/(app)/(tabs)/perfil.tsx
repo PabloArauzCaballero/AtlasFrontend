@@ -5,8 +5,9 @@
  * enmascarados: la app no necesita el correo completo en pantalla para que la persona reconozca su
  * propia cuenta.
  */
+import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 import * as contentApi from '../../../src/api/endpoints/app-content';
 import { setMfaPreference } from '../../../src/api/endpoints/auth';
@@ -14,6 +15,7 @@ import { ContentActionButton } from '../../../src/ui/content';
 import { SurfaceContent, useSurfaceContent } from '../../../src/ui/surface-content';
 import { SESION_GUARDADA_MOVIL, SESION_GUARDADA_WEB } from '../../../src/features/trust-copy';
 import { describeCustomerStatus } from '../../../src/features/onboarding-map';
+import { leerVersionApp, resumenDeVersion, textoParaSoporte } from '../../../src/device/version-app';
 import { useSession } from '../../../src/session/session';
 import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS } from '../../../src/features/tour-inicio';
 import { resetTour, useTour } from '../../../src/ui/tour';
@@ -36,6 +38,7 @@ import { color, radius, space } from '../../../src/theme/tokens';
 
 export default function Profile() {
   const router = useRouter();
+  const versionApp = useMemo(leerVersionApp, []);
   const session = useSession();
   const [signingOut, setSigningOut] = useState(false);
   /** `null` = no consultado (el backend no lo publica); un booleano = lo que contestó al cambiarlo. */
@@ -367,6 +370,24 @@ export default function Profile() {
             <ContentActionButton action={helpAction} />
           </>
         ) : null}
+        <Divider />
+        {/*
+          Discreto a proposito: una fila, sin banner. Quien reporta un fallo puede decir exactamente
+          que build y que update tiene, y «Copiar» deja el bloque listo para pegar en el reporte.
+          Lo que se muestra no incluye datos de la cuenta.
+        */}
+        <ListRow
+          title="Versión de la app"
+          subtitle={resumenDeVersion(versionApp)}
+          onPress={() => {
+            const texto = textoParaSoporte(versionApp);
+            Alert.alert('Versión de Atlas', texto, [
+              { text: 'Cerrar', style: 'cancel' },
+              { text: 'Copiar', onPress: () => void Clipboard.setStringAsync(texto) },
+            ]);
+          }}
+          accessibilityHint="Ver los datos de esta instalación para un reporte"
+        />
       </Card>
 
       <Button label="Cerrar sesión" variant="destructive" onPress={confirmSignOut} loading={signingOut} haptic="warning" />

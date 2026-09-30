@@ -332,14 +332,15 @@ describe('la bandera EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO', () => {
     expect(cargar({ bandera: 'true' }, 'lanza').escanerHabilitado()).toBe(false);
   });
 
-  it('eas.json la declara en CADA perfil (EAS no sube el .env): encendida sólo en production', () => {
-    // `production` es la build de TestFlight y la lleva encendida a propósito (#5); `preview` y el
-    // simulador siguen apagados. Cualquier otro perfil nuevo nace apagado.
+  it('eas.json la declara en CADA perfil (EAS no sube el .env): apagada sólo en el simulador', () => {
+    // preview y production son la MISMA app para el tester: el escáner nativo va encendido en las dos.
+    // El simulador no tiene VisionKit con cámara real, así que allí nace apagado. Cualquier perfil
+    // nuevo de dispositivo real debe llevarla encendida.
     const eas = JSON.parse(fuente('eas.json')) as { build: Record<string, { env?: Record<string, string> }> };
     const perfiles = Object.entries(eas.build);
     expect(perfiles.length).toBeGreaterThan(0);
     for (const [nombre, perfil] of perfiles) {
-      expect(perfil.env?.EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO).toBe(nombre === 'production' ? 'true' : 'false');
+      expect(perfil.env?.EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO).toBe(nombre === 'simulador-ios' ? 'false' : 'true');
     }
   });
 

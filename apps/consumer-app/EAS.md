@@ -57,6 +57,8 @@ binario propio y no el cliente de la tienda.
 
 ## iOS
 
+> **QA sin TestFlight:** ver [docs/distribucion-ios-qa.md](docs/distribucion-ios-qa.md) (build interna `preview` + EAS Update). La API de los testers es hoy la de TEST por HTTPS; lo del devtunnel de arriba está superado.
+
 Necesita Apple Developer ($99/ano). Con la cuenta ya activa:
 
     eas build -p ios --profile production
