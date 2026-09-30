@@ -14,7 +14,8 @@
  * publica contenido nuevo antes de que la version con el icono llegue a las tiendas. Cae a uno
  * generico en lugar de reventar la pantalla.
  */
-import { Linking, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { Image, Linking, StyleSheet, View } from 'react-native';
 import type { ContentAction, ContentBullet } from '../api/endpoints/app-content';
 import { color, press, radius, space, touch } from '../theme/tokens';
 import { Icon, ICON_NAMES, type IconName } from './icons';
@@ -23,6 +24,34 @@ import { AtlasText, IconChip } from './primitives';
 
 function iconOr(name: string | null | undefined, fallback: IconName): IconName {
   return name && (ICON_NAMES as readonly string[]).includes(name) ? (name as IconName) : fallback;
+}
+
+/** Solo imagenes que el portal puede haber guardado: cualquier otra cosa se ignora y se usa el icono del catalogo. */
+const ICON_IMAGE = /^data:image\/(png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+
+/**
+ * El icono de un punto: el propio si llego y se puede pintar, y si no el del catalogo.
+ *
+ * Se cae al del catalogo tambien cuando la imagen falla al decodificarse (`onError`): un punto con un
+ * hueco en lugar del icono se lee como un fallo de la app, y un icono generico no.
+ */
+function BulletIcon({ bullet }: { bullet: ContentBullet }) {
+  const [failed, setFailed] = useState(false);
+  const tone = bullet.emphasis ? 'brand' : 'success';
+  if (bullet.iconImage && ICON_IMAGE.test(bullet.iconImage) && !failed) {
+    return (
+      <View style={[styles.ownIcon, { backgroundColor: color.feedbackSoft.success }]} testID="icono-propio">
+        <Image
+          source={{ uri: bullet.iconImage }}
+          style={styles.ownIconImage}
+          resizeMode="contain"
+          accessibilityIgnoresInvertColors
+          onError={() => setFailed(true)}
+        />
+      </View>
+    );
+  }
+  return <IconChip name={iconOr(bullet.icon, 'check')} tone={tone} size="sm" />;
 }
 
 /**
@@ -46,7 +75,7 @@ export function ContentBullets({ bullets }: { bullets: ContentBullet[] }) {
               pesaba distinto segun el color de partida, asi que dos puntos de la misma lista no se
               veian igual de destacados aunque el codigo dijera que si.
             */}
-            <IconChip name={iconOr(bullet.icon, 'check')} tone={bullet.emphasis ? 'brand' : 'success'} size="sm" />
+            <BulletIcon bullet={bullet} />
             <AtlasText variant={bullet.emphasis ? 'title' : 'body'} tone={bullet.emphasis ? 'primary' : 'secondary'} style={styles.flex}>
               {bullet.text}
             </AtlasText>
@@ -121,6 +150,8 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   list: { gap: space.sm },
   bullet: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
+  ownIcon: { width: 32, height: 32, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
+  ownIconImage: { width: 20, height: 20 },
   action: {
     flexDirection: 'row',
     alignItems: 'center',
