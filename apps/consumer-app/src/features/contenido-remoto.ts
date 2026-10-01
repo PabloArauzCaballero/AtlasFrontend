@@ -112,3 +112,22 @@ export function fusionarPrivacidad(base: PrivacidadCopy, porClave: PorClave): Pr
     })),
   };
 }
+
+export type Promesa = { icon: IconName; title: string; detail: string };
+
+/**
+ * Las promesas de una pantalla en forma de fila simple (icono, título, detalle), para las que no llevan
+ * etiquetas de garantía. Mismo criterio que `trustDesdeContenido`: si el portal trae filas completas del
+ * grupo, reemplazan al grupo ENTERO; si no, queda el texto de fábrica.
+ */
+export function promesasDesdeContenido(grupo: string, entries: readonly ContentEntry[], base: Promesa[]): Promesa[] {
+  const filas = entries
+    .filter((entry) => entry.contentKey.startsWith(`${grupo}.`))
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .flatMap((entry): Promesa[] => {
+      const title = texto(entry.title);
+      const detail = texto(entry.body) || texto(entry.subtitle);
+      return title && detail ? [{ icon: iconoValido(entry.metadata?.icon) ?? 'escudo', title, detail }] : [];
+    });
+  return filas.length > 0 ? filas : base;
+}

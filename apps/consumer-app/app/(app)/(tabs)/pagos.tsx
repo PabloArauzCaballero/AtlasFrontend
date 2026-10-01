@@ -26,6 +26,7 @@ import type { IconName } from '../../../src/ui/icons';
 import { Appear, PressSurface } from '../../../src/ui/motion';
 import { PaymentCalendarView } from '../../../src/ui/payment-calendar';
 import { Gap, HeaderAction, Screen, ScreenHeader } from '../../../src/ui/layout';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
 import {
   AtlasText,
   Badge,
@@ -181,6 +182,7 @@ function groupByMerchant(loans: readonly LoanSummary[], overdueOfLoan: Map<strin
 }
 
 export default function Payments() {
+  const t = useCopy();
   const router = useRouter();
   const session = useSession();
   const book = useCreditBook(session.customerId);
@@ -273,7 +275,7 @@ export default function Payments() {
       <Gap size="sm" />
       <ScreenHeader
         title="Tus pagos"
-        subtitle="Agrupados por el comercio donde compraste."
+        subtitle={t.texto('pagos.subtitulo')}
         action={
           <HeaderAction
             icon={LAYOUT_ICON[siguienteVista]}
@@ -329,8 +331,8 @@ export default function Payments() {
         ) : (
           <EmptyState
             icon="pagos"
-            title="Todavía no hay cuotas que mostrar"
-            detail="Cuando compres con Atlas, aquí verás en qué día te toca cada pago."
+            title={t.titulo('pagos.vacio')}
+            detail={t.texto('pagos.vacio')}
             action={<Button label="Ver en lista" variant="secondary" onPress={() => setLayout('lista')} />}
           />
         )

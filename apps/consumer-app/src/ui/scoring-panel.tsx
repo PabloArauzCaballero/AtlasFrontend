@@ -23,6 +23,7 @@
 import { StyleSheet, View } from "react-native";
 import type { CreditLine } from "../api/endpoints/credit-line";
 import { formatAmount } from "../features/spending-copy";
+import { useCopy } from "../features/use-contenido-remoto";
 import { color, radius, space } from "../theme/tokens";
 import { Icon, type IconName } from "./icons";
 import { AtlasText, Badge, Divider, IconChip, Overline } from "./primitives";
@@ -58,6 +59,7 @@ const SHOWN_INPUTS: { key: string; label: string }[] = [
 ];
 
 export function ScoringPanel({ line }: { line: CreditLine }) {
+  const t = useCopy();
   const scoring = line.scoring ?? 0;
   const scale = line.scoringScale;
   const tint = TONE_COLOR[line.scoringBand.tone] ?? color.action.primary;
@@ -138,8 +140,7 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
         </AtlasText>
       ) : (
         <AtlasText variant="caption" tone="secondary">
-          Estás en el tramo más alto. Mantenerlo depende de seguir pagando a
-          tiempo.
+          {t.texto("puntaje.tramo_alto")}
         </AtlasText>
       )}
 
@@ -259,13 +260,14 @@ export function DelinquencyImpact({
   overdueAmount: number;
   currency: string;
 }) {
+  const t = useCopy();
   if (overdueAmount <= 0) return null;
 
   return (
     <View style={[styles.impact, { borderColor: color.feedbackBorder.danger }]}>
       <View style={styles.rowCenter}>
         <IconChip name="alerta" tone="danger" size="sm" />
-        <AtlasText variant="h3">La mora te está costando puntos</AtlasText>
+        <AtlasText variant="h3">{t.texto("puntaje.mora")}</AtlasText>
       </View>
       <AtlasText variant="caption" tone="secondary">
         Tienes {formatAmount(overdueAmount, currency)} vencidos. Cada atraso

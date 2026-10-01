@@ -25,13 +25,14 @@ import { POS_QRS } from '../../../src/sandbox/fixtures';
 import { useSession } from '../../../src/session/session';
 import { requestProofTicket, submitPaymentClaim, uploadProof } from '../../../src/api/endpoints/payment-claims';
 import { color, palette, radius, space } from '../../../src/theme/tokens';
-import { AVISO_DEMOSTRACION } from '../../../src/features/demo-copy';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, Overline } from '../../../src/ui/primitives';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
 
 export default function PaymentScreen() {
+  const t = useCopy();
   const router = useRouter();
   const sandbox = useSandbox();
   const session = useSession();
@@ -145,7 +146,7 @@ export default function PaymentScreen() {
      */
     if (isSandboxPurchase || !session.customerId) {
       sandbox.claimPayment({ instructionId: instruction.id, reference: reference.trim() || null, proofUri });
-      setFallo(AVISO_DEMOSTRACION);
+      setFallo(t.texto('demo.compra'));
       return;
     }
 
@@ -308,7 +309,7 @@ export default function PaymentScreen() {
           onPress={() => {
             if (isSandboxPurchase || !session.customerId) {
               sandbox.openDispute(item.id, 'CONSUMER_CLAIMS_PAID');
-              setFallo(AVISO_DEMOSTRACION);
+              setFallo(t.texto('demo.compra'));
               return;
             }
             router.push('/(app)/soporte');
