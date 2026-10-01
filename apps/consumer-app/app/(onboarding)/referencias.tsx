@@ -21,7 +21,7 @@ import { Screen, useScrollToError } from '../../src/ui/layout';
 import { StepHeader } from '../../src/ui/step-header';
 import { Badge, Button, Card, CardHeader, ErrorState } from '../../src/ui/primitives';
 import { TRUST_REFERENCIAS } from '../../src/features/trust-copy';
-import { TrustCard } from '../../src/ui/trust-card';
+import { TrustCardRemoto } from '../../src/features/use-contenido-remoto';
 
 type Relationship = onboardingApi.ReferenceContact['relationshipType'];
 
@@ -248,7 +248,7 @@ export default function References() {
         />
       </Card>
       {/* Al final del formulario: ver `ui/trust-card.tsx`. */}
-      <TrustCard items={TRUST_REFERENCIAS} />
+      <TrustCardRemoto grupo="referencias" base={TRUST_REFERENCIAS} />
     </Screen>
   );
 }

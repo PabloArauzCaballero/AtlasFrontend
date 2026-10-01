@@ -7,7 +7,7 @@
  */
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 import * as contentApi from '../../../src/api/endpoints/app-content';
 import { setMfaPreference } from '../../../src/api/endpoints/auth';
@@ -17,7 +17,8 @@ import { SESION_GUARDADA_MOVIL, SESION_GUARDADA_WEB } from '../../../src/feature
 import { describeCustomerStatus } from '../../../src/features/onboarding-map';
 import { leerVersionApp, resumenDeVersion, textoParaSoporte } from '../../../src/device/version-app';
 import { useSession } from '../../../src/session/session';
-import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS } from '../../../src/features/tour-inicio';
+import { TOUR_INICIO_KEY } from '../../../src/features/tour-inicio';
+import { useTourInicio } from '../../../src/features/use-contenido-remoto';
 import { resetTour, useTour } from '../../../src/ui/tour';
 import { Gap, Screen } from '../../../src/ui/layout';
 import {
@@ -44,6 +45,10 @@ export default function Profile() {
   /** `null` = no consultado (el backend no lo publica); un booleano = lo que contestó al cambiarlo. */
   const [mfa, setMfa] = useState<boolean | null>(null);
   const tour = useTour();
+  // El texto del recorrido sale del portal; el de fábrica queda de respaldo (sin red, o sin pieza).
+  const pasosTour = useTourInicio();
+  const pasosTourRef = useRef(pasosTour);
+  pasosTourRef.current = pasosTour;
 
   /*
    * El contacto de soporte sale del servidor, no del codigo. Si soporte cambia de numero —o si un
@@ -354,7 +359,7 @@ export default function Profile() {
           onPress={() => {
             void resetTour(TOUR_INICIO_KEY).then(() => {
               router.push('/(app)/(tabs)');
-              tour.start(TOUR_INICIO_STEPS, TOUR_INICIO_KEY);
+              tour.start(pasosTourRef.current, TOUR_INICIO_KEY);
             });
           }}
         />

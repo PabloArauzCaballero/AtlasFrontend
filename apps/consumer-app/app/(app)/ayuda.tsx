@@ -20,7 +20,7 @@
  * Quien abre esta pantalla ya tiene un problema. Obligarle a leer seis respuestas antes de encontrar
  * como hablar con alguien es hacerle pagar por nuestra organizacion del contenido.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as contentApi from '../../src/api/endpoints/app-content';
@@ -28,11 +28,16 @@ import { ContentActionButton, ContentBullets } from '../../src/ui/content';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Accordion, AtlasText, Button, Card, CardHeader, Divider, EmptyState, SectionHeader, Skeleton } from '../../src/ui/primitives';
 import { resetTour, useTour } from '../../src/ui/tour';
-import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS } from '../../src/features/tour-inicio';
+import { TOUR_INICIO_KEY } from '../../src/features/tour-inicio';
+import { useTourInicio } from '../../src/features/use-contenido-remoto';
 
 export default function Ayuda() {
   const router = useRouter();
   const tour = useTour();
+  // El texto del recorrido sale del portal; el de fábrica queda de respaldo (sin red, o sin pieza).
+  const pasosTour = useTourInicio();
+  const pasosTourRef = useRef(pasosTour);
+  pasosTourRef.current = pasosTour;
   const [help, setHelp] = useState<contentApi.ContentEntry[]>([]);
   const [faq, setFaq] = useState<contentApi.ContentEntry[]>([]);
   const [ready, setReady] = useState(false);
@@ -60,7 +65,7 @@ export default function Ayuda() {
     // estado quedaria en «visto» y el boton no tendria nada que restablecer la vez siguiente.
     void resetTour(TOUR_INICIO_KEY).then(() => {
       router.push('/(app)/(tabs)');
-      tour.start(TOUR_INICIO_STEPS, TOUR_INICIO_KEY);
+      tour.start(pasosTourRef.current, TOUR_INICIO_KEY);
     });
   };
 
