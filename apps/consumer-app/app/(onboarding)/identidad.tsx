@@ -42,6 +42,7 @@ import { DEPARTAMENTOS } from '../../src/features/geografia';
 import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, ErrorState } from '../../src/ui/primitives';
 import { CameraFrame } from '../../src/ui/camera-frame';
+import { ConsejosFoto } from '../../src/ui/consejos-foto';
 import { space } from '../../src/theme/tokens';
 import { BottomSheet } from '../../src/ui/help-sheet';
 import { EstadoDeSubidaVista, type EstadoDeSubida } from '../../src/ui/estado-de-subida';
@@ -543,9 +544,12 @@ export default function Identity() {
         {/* La misma mira de cuatro esquinas que el escaner de QR: dos superficies de captura que no
             se parecen se leen como dos apps distintas. Para el carnet, las esquinas tienen su forma
             —apaisada, 1,586— y el visor sigue llenando el hueco. Ver `ui/camera-frame.tsx`. */}
-        <CameraFrame mira={activeStep.facing === 'back' ? PROPORCION_CARNET : undefined}>
-          <CameraView ref={cameraRef} style={styles.camera} facing={activeStep.facing} />
-        </CameraFrame>
+        {/* Los consejos se superponen al visor, no lo encogen: ver `ui/consejos-foto.tsx`. */}
+        <ConsejosFoto tipo={activeStep.facing === 'back' ? 'carnet' : activeStep.kind === 'selfie' ? 'selfie' : 'perfil'}>
+          <CameraFrame mira={activeStep.facing === 'back' ? PROPORCION_CARNET : undefined}>
+            <CameraView ref={cameraRef} style={styles.camera} facing={activeStep.facing} />
+          </CameraFrame>
+        </ConsejosFoto>
         {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
         {subida && subida.kind === activeStep.kind ? (
           <EstadoDeSubidaVista estado={subida.vista} onReintentar={reintentarSubida} onRepetir={() => setSubida(null)} />
