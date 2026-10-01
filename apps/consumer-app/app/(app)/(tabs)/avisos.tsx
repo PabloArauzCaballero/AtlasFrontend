@@ -258,7 +258,7 @@ export default function Avisos() {
         </View>
       ))}
 
-      {unread > 0 ? <Button label="Marcar todo como leído" variant="ghost" onPress={() => void marcarTodo()} /> : null}
+      {unread > 0 ? <Button label="Marcar todo como leído" variant="ghost" onPress={() => marcarTodo()} /> : null}
 
       <Gap size="lg" />
     </Screen>

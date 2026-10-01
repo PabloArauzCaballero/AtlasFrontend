@@ -90,7 +90,7 @@ export default function CasoDeSoporte() {
               label="Mi problema sigue"
               variant="secondary"
               onPress={() => {
-                void supportApi
+                return supportApi
                   .reopenCase(caso.caseId, 'El problema volvió a ocurrir.')
                   .then(() => router.replace('/(app)/soporte' as never))
                   .catch(() => setError('No pudimos reabrirlo. Escríbenos y lo vemos.'));

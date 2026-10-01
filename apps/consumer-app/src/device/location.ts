@@ -41,6 +41,7 @@ import {
   type PosicionParaEnviar,
 } from '../features/rastreo';
 import { secureTokenStore } from '../session/token-storage';
+import { anotarEnHistorial } from './historial-ubicaciones';
 import { leerContextoDeRastreo, type ContextoDeRastreo } from './tracking-context';
 
 /** El nombre con el que el sistema recuerda la tarea. Cambiarlo deja huerfano el rastreo instalado. */
@@ -55,6 +56,9 @@ export type PermisosDeUbicacion = { primerPlano: boolean; segundoPlano: boolean 
  * que quien acumula sepa si puede vaciar su cola.
  */
 async function enviarLote(contexto: ContextoDeRastreo, posiciones: readonly PosicionParaEnviar[]): Promise<boolean> {
+  // Se anota en el telefono ANTES de subir y aunque la subida falle: es lo que alimenta «los sitios
+  // que frecuentas» del domicilio, y no depende de que haya red.
+  await anotarEnHistorial(posiciones.map((posicion) => ({ lat: posicion.lat, lng: posicion.lng, at: posicion.capturedAt })));
   const utiles = sinRepetidas(posiciones).slice(0, TAMANO_LOTE_UBICACION);
   if (utiles.length === 0) return true;
   try {

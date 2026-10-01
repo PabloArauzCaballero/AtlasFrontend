@@ -323,7 +323,7 @@ export default function Permisos() {
       footer={
         <View style={{ gap: space.sm }}>
           <Button label="Permitir" bitacora="permitir" onPress={() => void aceptar()} loading={pidiendo} />
-          <Button label="Ahora no" bitacora="ahora_no" variant="ghost" onPress={() => void ahoraNo()} disabled={pidiendo} />
+          <Button label="Ahora no" bitacora="ahora_no" variant="ghost" onPress={() => ahoraNo()} disabled={pidiendo} />
         </View>
       }
     >
