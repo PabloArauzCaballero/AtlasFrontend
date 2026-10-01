@@ -13,7 +13,7 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { formatMoney, type Minor } from '../../../src/domain/money';
 import { STANDARD_POLICY_V1, buildBreakdown, describeAmountRejection, validateGrossAmount } from '../../../src/domain/policy';
-import { AVISO_PLAN_SIMULADO, ROTULO_SIMULACION } from '../../../src/features/demo-copy';
+import { ROTULO_SIMULACION } from '../../../src/features/demo-copy';
 import { formatDate } from '../../../src/features/payment-copy';
 import { useSandbox, useScanSession } from '../../../src/sandbox/store';
 import { space } from '../../../src/theme/tokens';
@@ -22,10 +22,12 @@ import { DataSourceBadge } from '../../../src/ui/brand';
 import { AmountField } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, IconChip, KeyValue, Overline } from '../../../src/ui/primitives';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export default function PurchaseAmount() {
+  const t = useCopy();
   const router = useRouter();
   const sandbox = useSandbox();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
@@ -183,7 +185,7 @@ export default function PurchaseAmount() {
 
           <Divider />
           <AtlasText variant="caption" tone="tertiary">
-            {AVISO_PLAN_SIMULADO}
+            {t.texto('demo.plan_simulado')}
           </AtlasText>
         </Card>
       ) : null}

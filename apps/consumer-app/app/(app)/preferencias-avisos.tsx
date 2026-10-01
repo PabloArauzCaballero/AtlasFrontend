@@ -27,13 +27,14 @@ import { StyleSheet, View, Platform } from 'react-native';
 import * as notificationsApi from '../../src/api/endpoints/notifications';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
-import { AVISO_SIN_RECORDATORIOS, AVISOS_QUE_LLEGAN_RESUMEN, avisoSinEmisor } from '../../src/features/avisos-copy';
+import { avisoSinEmisor } from '../../src/features/avisos-copy';
 import { activarAvisos, estadoAvisos, type EstadoAvisos } from '../../src/device/push';
 import { space, touch } from '../../src/theme/tokens';
 import type { IconName } from '../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Switch } from '../../src/ui/fields';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, EmptyState, ErrorState, IconChip, SectionHeader, Skeleton } from '../../src/ui/primitives';
+import { useCopy } from '../../src/features/use-contenido-remoto';
 
 /** El canal, dicho como lo diria la persona. Es lo unico que sigue aqui: son cinco y no cambian. */
 const CHANNEL_LABEL: Record<string, { label: string; icon: IconName }> = {
@@ -61,6 +62,7 @@ function keyOf(preference: Pick<Preference, 'eventCode' | 'channel'>): string {
 }
 
 export default function PreferenciasAvisos() {
+  const t = useCopy();
   const session = useSession();
   const [items, setItems] = useState<Preference[]>([]);
   const [ready, setReady] = useState(false);
@@ -148,7 +150,7 @@ export default function PreferenciasAvisos() {
     <Screen>
       <ScreenHeader title="Cómo te avisamos" subtitle="Elige por dónde quieres recibir cada aviso." onBack="auto" />
       <AtlasText variant="caption" tone="tertiary">
-        {AVISOS_QUE_LLEGAN_RESUMEN}
+        {t.texto('avisos.resumen')}
       </AtlasText>
 
       {/*
@@ -170,7 +172,7 @@ export default function PreferenciasAvisos() {
           <CardHeader
             icon="alerta"
             title="Los avisos llegan a la app del teléfono"
-            detail={`Desde el navegador no podemos avisarte. Con la app instalada: ${AVISOS_QUE_LLEGAN_RESUMEN}`}
+            detail={`Desde el navegador no podemos avisarte. Con la app instalada: ${t.texto('avisos.resumen')}`}
             divider={false}
           />
         </Card>
@@ -179,7 +181,7 @@ export default function PreferenciasAvisos() {
           <CardHeader
             icon="alerta"
             title="Recibir avisos en este teléfono"
-            detail={AVISOS_QUE_LLEGAN_RESUMEN}
+            detail={t.texto('avisos.resumen')}
             divider={false}
           />
           <Button label="Activar avisos" variant="secondary" onPress={pedirAvisos} loading={pidiendoAvisos} />
@@ -218,7 +220,7 @@ export default function PreferenciasAvisos() {
             if (avisoSinEmisor(eventCode)) {
               return (
                 <Card key={eventCode}>
-                  <CardHeader title={head.label} detail={AVISO_SIN_RECORDATORIOS} trailing={<Badge label="Aún no se envía" tone="neutral" />} divider={false} />
+                  <CardHeader title={head.label} detail={t.texto('avisos.sin_recordatorios')} trailing={<Badge label="Aún no se envía" tone="neutral" />} divider={false} />
                 </Card>
               );
             }

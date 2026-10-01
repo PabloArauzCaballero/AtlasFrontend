@@ -39,7 +39,7 @@ import { categoryLook, formatAmount } from '../../../src/features/spending-copy'
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { dueLabel, statusTone, statusLabel } from '../../../src/features/payment-copy';
 import { TOUR_INICIO_KEY, TOUR_INICIO_TARGETS } from '../../../src/features/tour-inicio';
-import { useTourInicio } from '../../../src/features/use-contenido-remoto';
+import { useCopy, useTourInicio } from '../../../src/features/use-contenido-remoto';
 import { SurfaceContent, esBannerDePartner, useSurfaceContent } from '../../../src/ui/surface-content';
 import { TourTarget, shouldAutoStart, useTour } from '../../../src/ui/tour';
 
@@ -81,6 +81,7 @@ export default function Home() {
   const pasosTour = useTourInicio();
   const pasosTourRef = useRef(pasosTour);
   pasosTourRef.current = pasosTour;
+  const t = useCopy();
   /*
     El recorrido se lanza solo una vez y SOLO si no hay nada que atender.
 
@@ -224,7 +225,7 @@ export default function Home() {
                 —
               </AtlasText>
               <AtlasText variant="caption" tone="secondary">
-                Todavía estamos calculando tu línea. En cuanto la política la resuelva, aparecerá aquí.
+                {t.texto('inicio.calculando')}
               </AtlasText>
             </>
           )}
@@ -287,8 +288,7 @@ export default function Home() {
           <Card>
             <CardHeader icon="pagos" title="Tus pagos" />
             <AtlasText variant="body" tone="secondary">
-              Cuando tengas una compra activa, aquí aparece tu próxima cuota y el QR bancario del comercio donde
-              pagarla.
+              {t.texto('inicio.pagos.vacio')}
             </AtlasText>
           </Card>
         )}

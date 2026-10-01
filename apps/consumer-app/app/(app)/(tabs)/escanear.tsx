@@ -23,20 +23,17 @@ import { CameraFrame } from '../../../src/ui/camera-frame';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Button, Card, CardHeader, ErrorState } from '../../../src/ui/primitives';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
 
-const REJECTION_COPY: Record<string, { title: string; detail: string }> = {
-  QR_NOT_RECOGNIZED: {
-    title: 'Este QR no es de Atlas',
-    detail: 'Pide al comercio el código QR de Atlas que está pegado en la caja. El QR del banco se usa después.',
-  },
-  QR_REVOKED: {
-    title: 'QR dado de baja',
-    detail: 'Este código fue revocado por seguridad. Pide al comercio el código vigente.',
-  },
-  QR_EXPIRED: { title: 'QR vencido', detail: 'Este código ya no está activo. Pide al comercio el código vigente.' },
-};
+/** Qué clave del catálogo explica cada rechazo del QR (el texto vive en `copy-catalog.ts`). */
+const REJECTION_KEYS = {
+  QR_NOT_RECOGNIZED: 'escanear.qr.no_reconocido',
+  QR_REVOKED: 'escanear.qr.revocado',
+  QR_EXPIRED: 'escanear.qr.vencido',
+} as const;
 
 export default function ScanScreen() {
+  const t = useCopy();
   const router = useRouter();
   const sandbox = useSandbox();
   const [permission, requestPermission] = useCameraPermissions();
@@ -123,7 +120,7 @@ export default function ScanScreen() {
            * y el unico honesto cuando no sabemos por que fallo.
            */
           const raw = error instanceof Error ? error.message : '';
-          const known = Object.keys(REJECTION_COPY).find((code) => raw.includes(code));
+          const known = Object.keys(REJECTION_KEYS).find((code) => raw.includes(code));
           reject(known ?? 'QR_NOT_RECOGNIZED');
           return;
         }
@@ -160,7 +157,8 @@ export default function ScanScreen() {
     [router, sandbox],
   );
 
-  const copy = rejection ? REJECTION_COPY[rejection] : null;
+  const rejectionKey = rejection ? REJECTION_KEYS[rejection as keyof typeof REJECTION_KEYS] : undefined;
+  const copy = rejectionKey ? { title: t.titulo(rejectionKey), detail: t.texto(rejectionKey) } : null;
 
   return (
     <Screen>
@@ -191,8 +189,8 @@ export default function ScanScreen() {
         <Card>
           <CardHeader
             icon="camara"
-            title="Necesitamos tu cámara"
-            detail="Solo la usamos mientras escaneas. No grabamos video ni guardamos imágenes."
+            title={t.titulo('escanear.camara')}
+            detail={t.texto('escanear.camara')}
           />
           <Button label="Permitir cámara" onPress={() => void requestPermission()} />
           {permission?.canAskAgain === false ? (

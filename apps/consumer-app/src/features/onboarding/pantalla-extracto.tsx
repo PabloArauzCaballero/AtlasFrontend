@@ -28,7 +28,9 @@
 import * as DocumentPicker from "expo-document-picker";
 import { borrarCopiaLocal, leerBytes } from "../../device/archivos";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { promesasDesdeContenido } from "../contenido-remoto";
+import { useContenido } from "../use-contenido-remoto";
 import { Alert, StyleSheet, View } from "react-native";
 import * as creditLineApi from "../../api/endpoints/credit-line";
 import { describeError } from "../../api/errors";
@@ -143,6 +145,9 @@ function bolivianos(value: number | null): string {
 }
 
 export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
+  // Las promesas salen del portal (superficie `signup`, grupo `extracto`); las de fábrica son el respaldo.
+  const contenido = useContenido("signup");
+  const promesas = useMemo(() => promesasDesdeContenido("extracto", contenido, PROMESAS), [contenido]);
   const router = useRouter();
   const alEnvio = () => router.push("/(onboarding)/revision");
   const session = useSession();
@@ -407,7 +412,7 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
       */}
       <Card>
         <CardHeader icon="candado" title="Qué hacemos con tu extracto" />
-        {PROMESAS.map((promesa) => (
+        {promesas.map((promesa) => (
           <View key={promesa.title} style={styles.promesa}>
             <IconChip name={promesa.icon} />
             <View style={styles.flex}>

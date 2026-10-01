@@ -16,9 +16,10 @@ import { dueLabel, itemTitle, orderStatusCopy, reasonCopy, statusLabel, statusTo
 import { useSandbox } from '../../../src/sandbox/store';
 import { space } from '../../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { AVISO_PLAN_SIMULADO, ROTULO_SIMULACION } from '../../../src/features/demo-copy';
+import { ROTULO_SIMULACION } from '../../../src/features/demo-copy';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, KeyValue, ListRow, Overline, Skeleton } from '../../../src/ui/primitives';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
 
 const COMMIT_FAILURE_COPY: Record<string, string> = {
   ORDER_EXPIRED: 'La compra expiró antes de confirmarse. Pide al comercio iniciar una nueva.',
@@ -32,6 +33,7 @@ const COMMIT_FAILURE_COPY: Record<string, string> = {
 };
 
 export default function PurchaseDetail() {
+  const t = useCopy();
   const router = useRouter();
   const sandbox = useSandbox();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
@@ -120,7 +122,7 @@ export default function PurchaseDetail() {
         </KeyValue>
         <Divider />
         <AtlasText variant="caption" tone="tertiary">
-          {AVISO_PLAN_SIMULADO}
+          {t.texto('demo.plan_simulado')}
         </AtlasText>
       </Card>
 

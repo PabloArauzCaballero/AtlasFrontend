@@ -18,12 +18,12 @@ import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import * as notificationsApi from '../../../src/api/endpoints/notifications';
-import { AVISOS_QUE_LLEGAN_RESUMEN } from '../../../src/features/avisos-copy';
 import { useSession } from '../../../src/session/session';
 import { color, radius, space } from '../../../src/theme/tokens';
 import type { IconName } from '../../../src/ui/icons';
 import { Gap, HeaderAction, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { PressSurface } from '../../../src/ui/motion';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
 import {
   AtlasText,
   Button,
@@ -103,6 +103,7 @@ function relativeTime(iso: string): string {
 }
 
 export default function Avisos() {
+  const t = useCopy();
   const router = useRouter();
   const session = useSession();
 
@@ -210,7 +211,7 @@ export default function Avisos() {
         <EmptyState
           icon="sobre"
           title="Todavía no tienes avisos"
-          detail={`Aquí verás lo que te avisamos. ${AVISOS_QUE_LLEGAN_RESUMEN}`}
+          detail={`Aquí verás lo que te avisamos. ${t.texto('avisos.resumen')}`}
           action={<Button label="Elegir cómo te avisamos" variant="secondary" onPress={() => router.push('/(app)/preferencias-avisos')} />}
         />
       ) : null}

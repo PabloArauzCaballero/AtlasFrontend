@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { getContent, type ContentEntry } from '../api/endpoints/app-content';
 import { TrustCard, type TrustItem } from '../ui/trust-card';
 import { TOUR_INICIO_STEPS } from './tour-inicio';
-import { fusionarPrivacidad, fusionarTour, indexarPorClave, trustDesdeContenido, type PorClave } from './contenido-remoto';
+import { fusionarPrivacidad, fusionarTour, indexarPorClave, textoDe, trustDesdeContenido, type PorClave } from './contenido-remoto';
 import { PRIVACIDAD_DE_FABRICA } from './privacidad-copy';
+import { COPY, type CopyKey } from './copy-catalog';
 
 /*
   Una petición por superficie y por arranque de la app, no una por pantalla: el alta monta cinco
@@ -11,6 +12,11 @@ import { PRIVACIDAD_DE_FABRICA } from './privacidad-copy';
   nunca lanza (devuelve `[]`), así que la promesa guardada no puede quedar rechazada.
 */
 const PEDIDAS = new Map<string, Promise<ContentEntry[]>>();
+
+/** El campo de una pieza del portal, o vacío si no hay pieza o está en blanco. */
+function textoRemoto(porClave: PorClave, clave: string, campo: 'title' | 'body'): string {
+  return textoDe(porClave, clave, campo, '');
+}
 
 export function contenidoDe(superficie: string): Promise<ContentEntry[]> {
   let pedida = PEDIDAS.get(superficie);
@@ -53,6 +59,25 @@ export function useContenidoPorClave(superficie: string): PorClave {
 export function useTourInicio() {
   const porClave = useContenidoPorClave('tour');
   return useMemo(() => fusionarTour(TOUR_INICIO_STEPS, porClave), [porClave]);
+}
+
+/**
+ * El texto de una clave del catálogo (`copy-catalog.ts`): el del portal si la pieza está completa y si no
+ * el de fábrica. Devuelve un objeto con `titulo(clave)` y `texto(clave)`; mientras llega la respuesta
+ * (o sin red) sale el de fábrica, así que una pantalla nunca queda con un hueco.
+ */
+export function useCopy() {
+  const porClave = useContenidoPorClave('copy');
+  return useMemo(
+    () => ({
+      texto: (clave: CopyKey): string => textoRemoto(porClave, clave, 'body') || COPY[clave].texto,
+      titulo: (clave: CopyKey): string => {
+        const fabrica = (COPY[clave] as { titulo?: string }).titulo ?? '';
+        return textoRemoto(porClave, clave, 'title') || fabrica;
+      },
+    }),
+    [porClave],
+  );
 }
 
 /** Los textos de «Tus datos», con los del portal donde los haya. */

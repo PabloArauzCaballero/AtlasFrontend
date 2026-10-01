@@ -1,5 +1,12 @@
 import type { ContentEntry } from '../src/api/endpoints/app-content';
-import { fusionarTour, indexarPorClave, textoDe, trustDesdeContenido, fusionarPrivacidad } from '../src/features/contenido-remoto';
+import {
+  promesasDesdeContenido,
+  fusionarTour,
+  indexarPorClave,
+  textoDe,
+  trustDesdeContenido,
+  fusionarPrivacidad,
+} from '../src/features/contenido-remoto';
 import { TOUR_INICIO_STEPS } from '../src/features/tour-inicio';
 import type { TourStep } from '../src/ui/tour';
 import { PRIVACIDAD_DE_FABRICA } from '../src/features/privacidad-copy';
@@ -149,5 +156,28 @@ describe('«Tus datos» con el texto del portal', () => {
     const porClave = indexarPorClave([pieza({ contentKey: 'derecho.deletion', title: 'Eliminar mi cuenta' })]);
     const valores = fusionarPrivacidad(PRIVACIDAD_DE_FABRICA, porClave).derechos.map((derecho) => derecho.value);
     expect(valores).toEqual(PRIVACIDAD_DE_FABRICA.derechos.map((derecho) => derecho.value));
+  });
+});
+
+describe('las promesas simples (extracto) con el texto del portal', () => {
+  const base = [{ icon: 'candado' as const, title: 'De fábrica', detail: 'Detalle de fábrica' }];
+  const fila = (clave: string, orden: number, title: string | null, body: string | null) =>
+    pieza({ surface: 'signup', contentKey: clave, displayOrder: orden, title, body, metadata: { icon: 'ojo' } });
+
+  it('sin filas del grupo queda el texto de fábrica', () => {
+    expect(promesasDesdeContenido('extracto', [], base)).toBe(base);
+    expect(promesasDesdeContenido('extracto', [fila('registro.1', 1, 'X', 'Y')], base)).toBe(base);
+  });
+
+  it('las filas completas del portal reemplazan al grupo, en orden, con su icono', () => {
+    const filas = promesasDesdeContenido(
+      'extracto',
+      [fila('extracto.2', 20, 'B', 'bb'), fila('extracto.1', 10, 'A', 'aa'), fila('extracto.3', 30, 'C', null)],
+      base,
+    );
+    expect(filas).toEqual([
+      { icon: 'ojo', title: 'A', detail: 'aa' },
+      { icon: 'ojo', title: 'B', detail: 'bb' },
+    ]);
   });
 });

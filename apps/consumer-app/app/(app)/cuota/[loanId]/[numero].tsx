@@ -26,6 +26,7 @@ import * as loansApi from '../../../../src/api/endpoints/loans';
 import { categoryLook, dueCopy, formatAmount } from '../../../../src/features/spending-copy';
 import type { IconName } from '../../../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../../../src/ui/layout';
+import { useCopy } from '../../../../src/features/use-contenido-remoto';
 import {
   AtlasText,
   Badge,
@@ -62,6 +63,7 @@ function amountOf(value: string | null | undefined): number {
 }
 
 export default function InstallmentDetail() {
+  const t = useCopy();
   const router = useRouter();
   const params = useLocalSearchParams<{ loanId: string; numero: string }>();
   const [loan, setLoan] = useState<loansApi.LoanDetail | null>(null);
@@ -153,7 +155,7 @@ export default function InstallmentDetail() {
         </AtlasText>
         {state === 'overdue' ? (
           <AtlasText variant="caption" tone="secondary">
-            Mientras esta cuota siga vencida, tu puntaje baja. Págala cuanto antes para que deje de afectarte.
+            {t.texto('cuota.vencida')}
           </AtlasText>
         ) : null}
       </Card>
