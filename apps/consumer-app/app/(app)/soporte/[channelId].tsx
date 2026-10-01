@@ -27,6 +27,7 @@ import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, EmptyState, Skeleton } from '../../../src/ui/primitives';
 import { color, radius, space } from '../../../src/theme/tokens';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
 
 /** Identificador propio del mensaje. Se conserva al reintentar: es lo que evita duplicarlo. */
 function nuevoClientMessageId(): string {
@@ -274,6 +275,7 @@ export default function Conversacion() {
  * que el agente esta a punto de pedir algo.
  */
 function Burbuja({ mensaje, leido }: { mensaje: supportApi.SupportMessage; leido: boolean }) {
+  const t = useCopy();
   const mio = mensaje.senderActorType === 'CUSTOMER';
   const delSistema = mensaje.senderActorType === 'SYSTEM' || mensaje.visibility === 'SYSTEM';
 
@@ -312,7 +314,7 @@ function Burbuja({ mensaje, leido }: { mensaje: supportApi.SupportMessage; leido
         */}
         {mensaje.redacted ? (
           <AtlasText variant="caption" tone="secondary">
-            Ocultamos un dato sensible de este mensaje por tu seguridad.
+            {t.texto('soporte.dato_oculto')}
           </AtlasText>
         ) : null}
 

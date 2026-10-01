@@ -29,9 +29,10 @@ import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Accordion, AtlasText, Button, Card, CardHeader, Divider, EmptyState, SectionHeader, Skeleton } from '../../src/ui/primitives';
 import { resetTour, useTour } from '../../src/ui/tour';
 import { TOUR_INICIO_KEY } from '../../src/features/tour-inicio';
-import { useTourInicio } from '../../src/features/use-contenido-remoto';
+import { useCopy, useTourInicio } from '../../src/features/use-contenido-remoto';
 
 export default function Ayuda() {
+  const t = useCopy();
   const router = useRouter();
   const tour = useTour();
   // El texto del recorrido sale del portal; el de fábrica queda de respaldo (sin red, o sin pieza).
@@ -95,7 +96,7 @@ export default function Ayuda() {
         Lleva al centro de soporte, donde ademas puede buscar y ver sus casos abiertos.
       */}
       <Card>
-        <CardHeader icon="ayuda" title="¿Necesitas hablar con alguien?" detail="Te respondemos por chat y queda registrado en tu caso." divider={false} />
+        <CardHeader icon="ayuda" title={t.titulo('ayuda.hablar')} detail={t.texto('ayuda.hablar')} divider={false} />
         <Button label="Ir a soporte" onPress={() => router.push('/(app)/soporte' as never)} />
       </Card>
 

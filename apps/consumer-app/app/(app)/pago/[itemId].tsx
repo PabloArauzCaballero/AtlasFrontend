@@ -163,7 +163,7 @@ export default function PaymentScreen() {
         storageKey = ticket.storageKey;
       }
       if (!storageKey) {
-        setFallo('Adjunta el comprobante de tu transferencia antes de avisar.');
+        setFallo(t.texto('pago.comprobante_falta'));
         return;
       }
 
@@ -217,7 +217,7 @@ export default function PaymentScreen() {
           <CardHeader
             icon="escanear"
             title="Paga con el QR del comercio"
-            detail="Abre la app de tu banco, escanea este código y paga el monto exacto."
+            detail={t.texto('pago.qr_instruccion')}
             divider={false}
           />
 
@@ -260,8 +260,7 @@ export default function PaymentScreen() {
             trailing={<Badge dot label="en verificación" tone="info" />}
           />
           <AtlasText variant="body" tone="secondary">
-            Tu comprobante es evidencia, no confirma el pago por si solo. Lo damos por pagado cuando el comercio confirma
-            que recibio el dinero. Te avisamos apenas ocurra.
+            {t.texto('pago.comprobante_evidencia')}
           </AtlasText>
         </Card>
       ) : (

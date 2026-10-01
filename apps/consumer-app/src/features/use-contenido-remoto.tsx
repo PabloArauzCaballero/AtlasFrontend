@@ -5,6 +5,7 @@ import { TOUR_INICIO_STEPS } from './tour-inicio';
 import { fusionarPrivacidad, fusionarTour, indexarPorClave, textoDe, trustDesdeContenido, type PorClave } from './contenido-remoto';
 import { PRIVACIDAD_DE_FABRICA } from './privacidad-copy';
 import { COPY, type CopyKey } from './copy-catalog';
+import { recordarCopyRemoto } from './copy-cache';
 
 /*
   Una petición por superficie y por arranque de la app, no una por pantalla: el alta monta cinco
@@ -24,6 +25,8 @@ export function contenidoDe(superficie: string): Promise<ContentEntry[]> {
     pedida = getContent(superficie).then((entries) => {
       // Una respuesta vacía no se recuerda: si falló la red, la siguiente pantalla vuelve a intentarlo.
       if (entries.length === 0) PEDIDAS.delete(superficie);
+      // Las funciones que no son componentes leen los textos de aquí; se llena ANTES de avisar a las pantallas.
+      if (superficie === 'copy') recordarCopyRemoto(entries);
       return entries;
     });
     PEDIDAS.set(superficie, pedida);

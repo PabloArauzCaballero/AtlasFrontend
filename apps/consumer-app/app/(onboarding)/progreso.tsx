@@ -9,13 +9,15 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { OnboardingSectionCode } from '../../src/api/endpoints/onboarding';
-import { SECTION_LABEL, SECTION_ROUTE, describeLifecycle } from '../../src/features/onboarding-map';
+import { SECTION_ROUTE, describeLifecycle, etiquetaDeSeccion } from '../../src/features/onboarding-map';
 import { useSession } from '../../src/session/session';
 import { space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, Divider, ErrorState, ListRow, Overline, ProgressBar, SectionHeader, Skeleton } from '../../src/ui/primitives';
+import { useCopy } from '../../src/features/use-contenido-remoto';
 
 export default function OnboardingProgress() {
+  useCopy(); // vuelve a pintar cuando llegan los textos del portal (etapas y estado de la cuenta)
   const router = useRouter();
   const session = useSession();
   const [refreshing, setRefreshing] = useState(false);
@@ -108,7 +110,7 @@ export default function OnboardingProgress() {
           // Completo, el último paso es el extracto bancario (se puede dejar para después); de ahí, el envío.
           <Button label="Continuar: tu extracto bancario" onPress={() => router.push('/(onboarding)/extracto')} />
         ) : pending[0] ? (
-          <Button label={`Continuar: ${SECTION_LABEL[pending[0].code].title}`} onPress={() => router.push(SECTION_ROUTE[pending[0]!.code])} />
+          <Button label={`Continuar: ${etiquetaDeSeccion(pending[0].code).title}`} onPress={() => router.push(SECTION_ROUTE[pending[0]!.code])} />
         ) : (
           <Button label="Ver estado de mi solicitud" variant="secondary" onPress={() => router.push('/(onboarding)/revision')} />
         )
@@ -137,7 +139,7 @@ export default function OnboardingProgress() {
 
       <Card padding="tight">
         {status.sections.map((section, index) => {
-          const label = SECTION_LABEL[section.code as OnboardingSectionCode];
+          const label = etiquetaDeSeccion(section.code as OnboardingSectionCode);
           const done = section.status === 'completed';
           return (
             <View key={section.code}>
