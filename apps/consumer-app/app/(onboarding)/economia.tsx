@@ -18,7 +18,7 @@ import { Gap, Screen, useScrollToError } from '../../src/ui/layout';
 import { StepHeader } from '../../src/ui/step-header';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 import { TRUST_ECONOMIA } from '../../src/features/trust-copy';
-import { TrustCard } from '../../src/ui/trust-card';
+import { TrustCardRemoto } from '../../src/features/use-contenido-remoto';
 import { bitacora } from '../../src/features/bitacora';
 import { AdjuntoDeApoyo } from '../../src/ui/adjunto-de-apoyo';
 
@@ -295,7 +295,7 @@ export default function FinancialProfile() {
         </>
       ) : null}
       <Gap size="sm" />
-      <TrustCard items={TRUST_ECONOMIA} />
+      <TrustCardRemoto grupo="economia" base={TRUST_ECONOMIA} />
     </Screen>
   );
 }

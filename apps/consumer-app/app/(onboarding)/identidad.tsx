@@ -48,7 +48,7 @@ import { EstadoDeSubidaVista, type EstadoDeSubida } from '../../src/ui/estado-de
 import { ImageSlides, type ImageSlide, type PeticionDeLamina } from '../../src/ui/image-slides';
 import { StepHeader } from '../../src/ui/step-header';
 import { TRUST_IDENTIDAD } from '../../src/features/trust-copy';
-import { TrustCard } from '../../src/ui/trust-card';
+import { TrustCardRemoto } from '../../src/features/use-contenido-remoto';
 import { bitacora } from '../../src/features/bitacora';
 import type { Captura } from '../../src/features/bitacora/tipos';
 
@@ -504,7 +504,7 @@ export default function Identity() {
             </AtlasText>
           ) : null}
           {/* Al final del formulario: ver `ui/trust-card.tsx`. */}
-          <TrustCard items={TRUST_IDENTIDAD} />
+          <TrustCardRemoto grupo="identidad" base={TRUST_IDENTIDAD} />
         </Screen>
       );
     }

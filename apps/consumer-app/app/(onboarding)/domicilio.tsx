@@ -29,7 +29,7 @@ import {
 import { guardarDecisionDeArranque, leerDecisionDeArranque } from '../../src/session/permisos-de-arranque';
 import { bitacora } from '../../src/features/bitacora';
 import { TRUST_DOMICILIO } from '../../src/features/trust-copy';
-import { TrustCard } from '../../src/ui/trust-card';
+import { TrustCardRemoto } from '../../src/features/use-contenido-remoto';
 
 export default function Address() {
   const router = useRouter();
@@ -309,7 +309,7 @@ export default function Address() {
       />
 
       {/* Al final del formulario: ver `ui/trust-card.tsx`. */}
-      <TrustCard items={TRUST_DOMICILIO} />
+      <TrustCardRemoto grupo="domicilio" base={TRUST_DOMICILIO} />
     </Screen>
   );
 }

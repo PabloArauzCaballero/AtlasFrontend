@@ -25,7 +25,7 @@ import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { PinField } from '../../src/ui/pin-field';
 import { AtlasText, Button, Card, Divider, ErrorState, Overline, SectionHeader, Skeleton } from '../../src/ui/primitives';
 import { TRUST_REGISTRO } from '../../src/features/trust-copy';
-import { TrustCard } from '../../src/ui/trust-card';
+import { TrustCardRemoto } from '../../src/features/use-contenido-remoto';
 import { bitacora } from '../../src/features/bitacora';
 
 /**
@@ -276,7 +276,7 @@ export default function Register() {
         Guardamos qué versión aceptaste y cuándo, tal como exige la normativa de protección de datos.
       </AtlasText>
       {/* Al final del formulario: ver `ui/trust-card.tsx`. */}
-      <TrustCard items={TRUST_REGISTRO} />
+      <TrustCardRemoto grupo="registro" base={TRUST_REGISTRO} />
     </Screen>
   );
 }

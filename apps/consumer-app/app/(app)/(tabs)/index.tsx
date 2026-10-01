@@ -5,7 +5,7 @@
  * debo y que me vence primero. Todo lo demas baja en la jerarquia.
  */
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Linking, StyleSheet, View } from 'react-native';
 import { isSandboxPurchase } from '../../../src/api/config';
 import { formatMoney } from '../../../src/domain/money';
@@ -38,7 +38,8 @@ import { downloadSpendingReport } from '../../../src/features/spending-report';
 import { categoryLook, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { dueLabel, statusTone, statusLabel } from '../../../src/features/payment-copy';
-import { TOUR_INICIO_KEY, TOUR_INICIO_STEPS, TOUR_INICIO_TARGETS } from '../../../src/features/tour-inicio';
+import { TOUR_INICIO_KEY, TOUR_INICIO_TARGETS } from '../../../src/features/tour-inicio';
+import { useTourInicio } from '../../../src/features/use-contenido-remoto';
 import { SurfaceContent, esBannerDePartner, useSurfaceContent } from '../../../src/ui/surface-content';
 import { TourTarget, shouldAutoStart, useTour } from '../../../src/ui/tour';
 
@@ -76,6 +77,10 @@ export default function Home() {
   const activeOrders = sandbox.state.orders.filter((order) => order.status === 'ACTIVE' || order.status === 'WAITING_INITIAL_PAYMENT');
 
   const tour = useTour();
+  // El texto del recorrido sale del portal; el de fábrica queda de respaldo (sin red, o sin pieza).
+  const pasosTour = useTourInicio();
+  const pasosTourRef = useRef(pasosTour);
+  pasosTourRef.current = pasosTour;
   /*
     El recorrido se lanza solo una vez y SOLO si no hay nada que atender.
 
@@ -96,7 +101,7 @@ export default function Home() {
     if (!sandbox.ready || activeOrders.length > 0 || sandbox.nextDue) return;
     let cancelled = false;
     void shouldAutoStart(TOUR_INICIO_KEY).then((should) => {
-      if (should && !cancelled) tour.start(TOUR_INICIO_STEPS, TOUR_INICIO_KEY);
+      if (should && !cancelled) tour.start(pasosTourRef.current, TOUR_INICIO_KEY);
     });
     return () => {
       cancelled = true;

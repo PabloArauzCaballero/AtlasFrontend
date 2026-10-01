@@ -21,6 +21,7 @@ import { View } from 'react-native';
 import * as customerApi from '../../src/api/endpoints/customer';
 import * as deviceSignalsApi from '../../src/api/endpoints/device-signals';
 import * as privacyApi from '../../src/api/endpoints/privacy';
+import { usePrivacidadCopy } from '../../src/features/use-contenido-remoto';
 import { describeError } from '../../src/api/errors';
 import {
   desactivarSeñalesDelDispositivo,
@@ -42,17 +43,10 @@ import {
   Skeleton,
 } from '../../src/ui/primitives';
 
-const DERECHOS: { value: privacyApi.DataSubjectRequestType; label: string; detalle: string }[] = [
-  { value: 'access', label: 'Ver mis datos', detalle: 'Que se sabe de mi y de donde salio.' },
-  { value: 'rectification', label: 'Corregir un dato', detalle: 'Algo esta mal escrito o desactualizado.' },
-  { value: 'portability', label: 'Llevarme mis datos', detalle: 'Recibirlos en un archivo que pueda usar en otro sitio.' },
-  { value: 'restriction', label: 'Limitar el uso', detalle: 'Que dejen de usarse para algo concreto.' },
-  { value: 'revocation', label: 'Retirar consentimientos', detalle: 'Dejar sin efecto los permisos que di.' },
-  { value: 'deletion', label: 'Borrar mi cuenta', detalle: 'Se revisa: hay datos que la ley obliga a conservar.' },
-];
-
 export default function Privacidad() {
   const session = useSession();
+  // Los textos salen del portal; los de fábrica quedan de respaldo (`features/privacidad-copy.ts`).
+  const copy = usePrivacidadCopy();
   const [documentos, setDocumentos] = useState<customerApi.ConsentDocument[]>([]);
   const [decisiones, setDecisiones] = useState<Record<string, boolean>>({});
   const [listo, setListo] = useState(false);
@@ -156,8 +150,8 @@ export default function Privacidad() {
       <ScreenHeader
         onBack="auto"
         eyebrow="Privacidad"
-        title="Tus datos"
-        subtitle="Que permisos diste, cuales puedes retirar y que puedes pedir sobre tu informacion."
+        title={copy.titulo}
+        subtitle={copy.subtitulo}
       />
 
       {detalle ? (
@@ -166,8 +160,8 @@ export default function Privacidad() {
 
       <Card>
         <CardHeader
-          title="Permisos que diste"
-          detail="Retirar uno corta su uso de aqui en adelante. Lo que ya se decidio con ese dato se conserva, porque una decision de credito tiene que poder explicarse despues."
+          title={copy.permisosTitulo}
+          detail={copy.permisosDetalle}
         />
         {!listo ? (
           <View style={{ gap: space.sm }}>
@@ -200,9 +194,7 @@ export default function Privacidad() {
         />
         {guardado ? (
           <AtlasText variant="caption" tone="secondary">
-            {hayCambios
-              ? 'Listo. Los permisos que retiraste dejan de usarse desde ahora.'
-              : 'Listo. Tus permisos quedan como estaban.'}
+            {hayCambios ? copy.permisosRetirados : copy.permisosIgual}
           </AtlasText>
         ) : null}
       </Card>
@@ -211,13 +203,13 @@ export default function Privacidad() {
 
       <Card>
         <CardHeader
-          title="Pedir algo sobre tus datos"
-          detail="Cada solicitud queda registrada con su fecha con un plazo de resolución de 15 días. Hoy la respuesta no te llega como aviso: vuelve a esta pantalla o escríbenos para saber cómo va."
+          title={copy.derechosTitulo}
+          detail={copy.derechosDetalle}
         />
         <OptionGroup
-          label="Que quieres pedir"
-          ayuda="Elige qué derecho quieres ejercer sobre tus datos personales. La solicitud queda registrada con su fecha con un plazo de resolución de 15 días. Hoy no te enviamos un aviso cuando cambia de estado, así que escríbenos por soporte si quieres saber cómo va; puedes enviar otra distinta después."
-          options={DERECHOS}
+          label={copy.derechosPregunta}
+          ayuda={copy.derechosAyuda}
+          options={copy.derechos as { value: privacyApi.DataSubjectRequestType; label: string; detalle: string }[]}
           value={derecho}
           onChange={setDerecho}
         />
@@ -229,7 +221,7 @@ export default function Privacidad() {
         />
         {derechoEnviado ? (
           <AtlasText variant="caption" tone="secondary">
-            Tu solicitud quedó registrada con un plazo de resolución de 15 días. No te enviaremos un aviso cuando cambie: escríbenos por soporte si quieres saber cómo va.
+            {copy.solicitudEnviada}
           </AtlasText>
         ) : null}
       </Card>
