@@ -106,6 +106,51 @@ export const COPY = {
     donde: 'Bajo el puntaje, cuando está en el tramo más alto',
     texto: 'Estás en el tramo más alto. Mantenerlo depende de seguir pagando a tiempo.',
   },
+  'pago.qr_instruccion': {
+    pantalla: 'Pagos',
+    donde: 'Bajo «Paga con el QR…», al pagar una cuota',
+    texto: 'Abre la app de tu banco, escanea este código y paga el monto exacto.',
+  },
+  'pago.comprobante_falta': {
+    pantalla: 'Pagos',
+    donde: 'Al avisar un pago sin haber adjuntado el comprobante',
+    texto: 'Adjunta el comprobante de tu transferencia antes de avisar.',
+  },
+  'pago.comprobante_evidencia': {
+    pantalla: 'Pagos',
+    donde: 'Tras avisar un pago: qué pasa con el comprobante. Dice que te avisamos al confirmarlo',
+    texto:
+      'Tu comprobante es evidencia, no confirma el pago por sí solo. Lo damos por pagado cuando el comercio confirma que recibió el dinero. Te avisamos apenas ocurra.',
+  },
+  'pago.ya_pagaste': {
+    pantalla: 'Pagos',
+    donde: 'Tarjeta «Ya pagaste», donde se adjunta el comprobante',
+    titulo: 'Ya pagaste',
+    texto: 'Adjunta el comprobante de tu transferencia. Es lo que el comercio mira para confirmarla.',
+  },
+  'soporte.cabecera': {
+    pantalla: 'Soporte',
+    donde: 'Cabecera de la tarjeta de búsqueda en Soporte',
+    titulo: '¿Con qué te ayudamos?',
+    texto: 'Escribe tu duda en tus palabras.',
+  },
+  'soporte.ninguno': {
+    pantalla: 'Soporte',
+    donde: 'Última opción de la lista de ayuda: abrir la conversación',
+    titulo: 'Ninguno de estos / prefiero contarlo',
+    texto: 'Abrimos la conversación y la clasificamos nosotros.',
+  },
+  'soporte.dato_oculto': {
+    pantalla: 'Soporte',
+    donde: 'Bajo un mensaje del chat al que se le quitó un dato sensible',
+    texto: 'Ocultamos un dato sensible de este mensaje por tu seguridad.',
+  },
+  'ayuda.hablar': {
+    pantalla: 'Ayuda',
+    donde: 'Tarjeta «¿Necesitas hablar con alguien?» de Ayuda',
+    titulo: '¿Necesitas hablar con alguien?',
+    texto: 'Te respondemos por chat y queda registrado en tu caso.',
+  },
   'puntaje.mora': {
     pantalla: 'Perfil',
     donde: 'Encabezado del aviso de mora bajo el puntaje',

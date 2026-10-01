@@ -24,8 +24,10 @@ import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { Accordion, AtlasText, Badge, Button, Card, CardHeader, Divider, EmptyState, ListRow, SectionHeader, Skeleton } from '../../../src/ui/primitives';
 import { space } from '../../../src/theme/tokens';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
 
 export default function Soporte() {
+  const t = useCopy();
   const router = useRouter();
   const [faq, setFaq] = useState<supportApi.FaqArticle[]>([]);
   const [casos, setCasos] = useState<supportApi.SupportCase[]>([]);
@@ -147,7 +149,7 @@ export default function Soporte() {
       <ScreenHeader title="Soporte" subtitle="Busca tu respuesta o habla con nosotros." onBack="auto" />
 
       <Card>
-        <CardHeader icon="ayuda" title="¿Con qué te ayudamos?" detail="Escribe tu duda en tus palabras." divider={false} />
+        <CardHeader icon="ayuda" title={t.titulo('soporte.cabecera')} detail={t.texto('soporte.cabecera')} divider={false} />
         <Field
           label="Buscar en la ayuda"
           value={busqueda}
@@ -184,8 +186,8 @@ export default function Soporte() {
               se quedaria sin poder escribir, que es el fallo que este paso pretende evitar.
             */}
             <ListRow
-              title="Ninguno de estos / prefiero contarlo"
-              subtitle="Abrimos la conversación y la clasificamos nosotros."
+              title={t.titulo('soporte.ninguno')}
+              subtitle={t.texto('soporte.ninguno')}
               onPress={() => void hablarConSoporte()}
             />
           </Card>

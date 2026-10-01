@@ -41,6 +41,7 @@ import { color, palette, radius, space } from '../../../src/theme/tokens';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, KeyValue, Overline, Skeleton } from '../../../src/ui/primitives';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
 
 /** Por que no hay QR, dicho de forma que se sepa a quien reclamar. */
 const SIN_QR: Record<string, { titulo: string; detalle: string }> = {
@@ -64,6 +65,7 @@ const SIN_QR: Record<string, { titulo: string; detalle: string }> = {
 };
 
 export default function PayInstallmentScreen() {
+  const t = useCopy();
   const router = useRouter();
   const session = useSession();
   const { installmentId } = useLocalSearchParams<{ installmentId: string }>();
@@ -151,7 +153,7 @@ export default function PayInstallmentScreen() {
   const avisar = async () => {
     if (!session.customerId) return;
     if (!proofUri) {
-      setFallo('Adjunta el comprobante de tu transferencia antes de avisar.');
+      setFallo(t.texto('pago.comprobante_falta'));
       return;
     }
 
@@ -219,7 +221,7 @@ export default function PayInstallmentScreen() {
           <CardHeader
             icon="escanear"
             title={`Paga con el QR de ${instruction.merchant?.displayName ?? 'tu comercio'}`}
-            detail="Abre la app de tu banco, escanea este código y paga el monto exacto."
+            detail={t.texto('pago.qr_instruccion')}
             divider={false}
           />
 
@@ -272,16 +274,15 @@ export default function PayInstallmentScreen() {
             trailing={<Badge dot label="en verificación" tone="info" />}
           />
           <AtlasText variant="body" tone="secondary">
-            Tu comprobante es evidencia, no confirma el pago por sí solo. Lo damos por pagado cuando el comercio confirma
-            que recibió el dinero. Te avisamos apenas ocurra.
+            {t.texto('pago.comprobante_evidencia')}
           </AtlasText>
         </Card>
       ) : (
         <Card tone={rechazado ? 'danger' : 'default'}>
           <CardHeader
             icon="documento"
-            title="Ya pagaste"
-            detail="Adjunta el comprobante de tu transferencia. Es lo que el comercio mira para confirmarla."
+            title={t.titulo('pago.ya_pagaste')}
+            detail={t.texto('pago.ya_pagaste')}
             divider={false}
           />
           {rechazado ? (
