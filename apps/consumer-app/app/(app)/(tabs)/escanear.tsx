@@ -192,7 +192,7 @@ export default function ScanScreen() {
             title={t.titulo('escanear.camara')}
             detail={t.texto('escanear.camara')}
           />
-          <Button label="Permitir cámara" onPress={() => void requestPermission()} />
+          <Button label="Permitir cámara" onPress={() => requestPermission()} />
           {permission?.canAskAgain === false ? (
             <AtlasText variant="caption" tone="warning">
               El permiso está bloqueado. Habilitalo desde los ajustes del sistema o ingresa el código manualmente.

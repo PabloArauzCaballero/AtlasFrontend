@@ -191,7 +191,7 @@ export default function PaymentScreen() {
         ) : (
           <Button
             label={enviando ? 'Enviando tu aviso…' : 'Ya realicé el pago'}
-            onPress={() => void reportPayment()}
+            onPress={() => reportPayment()}
             disabled={!instruction || enviando}
             blockedReason={instruction ? null : 'Estamos preparando las instrucciones de pago.'}
             haptic="success"

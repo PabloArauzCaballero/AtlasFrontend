@@ -355,7 +355,7 @@ export default function Home() {
           <Button
             label={reportBusy ? 'Preparando informe…' : 'Descargar informe en PDF'}
             variant="secondary"
-            disabled={reportBusy}
+            loading={reportBusy}
             onPress={() => {
               if (!session.customerId || reportBusy) return;
               setReportBusy(true);

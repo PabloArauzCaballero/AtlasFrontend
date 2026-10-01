@@ -7,7 +7,7 @@
  */
 import { Alert, Platform, StyleSheet, View, type ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
@@ -26,6 +26,8 @@ import {
   permisosDeUbicacion,
   posicionActual,
 } from '../../src/device/location';
+import { anotarEnHistorial, leerHistorial } from '../../src/device/historial-ubicaciones';
+import { sitiosFrecuentes, type SitioFrecuente } from '../../src/features/sitios-frecuentes';
 import { guardarDecisionDeArranque, leerDecisionDeArranque } from '../../src/session/permisos-de-arranque';
 import { bitacora } from '../../src/features/bitacora';
 import { TRUST_DOMICILIO } from '../../src/features/trust-copy';
@@ -99,14 +101,35 @@ export default function Address() {
   const [mapaAbierto, setMapaAbierto] = useState(false);
   const [centro, setCentro] = useState<{ lat: number; lng: number } | null>(null);
 
+  /*
+    Los sitios que la persona frecuenta, para marcarlos TODOS en el mapa.
+
+    Salen de las posiciones que el telefono ya midio desde que concedio la ubicacion
+    (`device/historial-ubicaciones.ts`): el sistema no entrega un historial a las apps, asi que lo
+    unico que hay es lo que la app anoto. Antes el mapa abria vacio y la persona señalaba su casa
+    «a ciegas», sin que se viera nada de lo que el telefono ya sabia de ella.
+  */
+  const [sitios, setSitios] = useState<SitioFrecuente[]>([]);
+  const cargarSitios = useCallback(async () => {
+    setSitios(sitiosFrecuentes(await leerHistorial()));
+  }, []);
+  useEffect(() => {
+    void cargarSitios();
+  }, [cargarSitios]);
+
   const abrirMapa = async () => {
     setLocationState('asking');
     const concedido = await pedirPermisoDeUbicacion();
     bitacora.permiso('ubicacion', concedido ? 'concedido' : 'denegado');
     if (concedido) {
       const actual = await posicionActual();
-      if (actual) setCentro({ lat: actual.lat, lng: actual.lng });
+      if (actual) {
+        setCentro({ lat: actual.lat, lng: actual.lng });
+        // La posicion de AHORA tambien cuenta para los sitios que frecuenta.
+        await anotarEnHistorial([{ lat: actual.lat, lng: actual.lng, at: actual.capturedAt }]);
+      }
     }
+    await cargarSitios();
     setLocationState(concedido ? 'granted' : 'denied');
     setMapaAbierto(true);
   };
@@ -298,12 +321,23 @@ export default function Address() {
               : 'El mapa abre donde estás ahora. Sirve para encontrar tu casa el día que haya que ir.'}
           </AtlasText>
         )}
+        {sitios.length > 0 ? (
+          <View style={styles.puntoGuardado}>
+            <Icon name="ubicacion" size={14} tint={color.text.secondary} />
+            <AtlasText variant="caption" tone="secondary">
+              {sitios.length === 1
+                ? 'Marcamos 1 sitio que frecuentas en el mapa.'
+                : `Marcamos ${sitios.length} sitios que frecuentas en el mapa.`}
+            </AtlasText>
+          </View>
+        ) : null}
       </View>
 
       <MapaPunto
         visible={mapaAbierto}
         inicial={gps}
         centro={centro}
+        sitios={sitios}
         onCancelar={() => setMapaAbierto(false)}
         onElegir={(punto) => void elegirEnMapa(punto)}
       />

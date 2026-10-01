@@ -183,7 +183,7 @@ export default function Habitos() {
                     label={opcion.label}
                     bitacora="elegir_opcion"
                     variant={elegida ? 'primary' : 'secondary'}
-                    onPress={() => void contestar({ answerCode: opcion.code })}
+                    onPress={() => contestar({ answerCode: opcion.code })}
                     disabled={busy}
                     accessibilityState={{ selected: elegida }}
                   />

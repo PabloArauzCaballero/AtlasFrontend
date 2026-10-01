@@ -24,6 +24,7 @@ import { AppState, type AppStateStatus } from 'react-native';
 import { medirYEnviar } from '../device/location';
 import type { ContextoDeRastreo } from '../device/tracking-context';
 import { CADENCIA_PRIMER_PLANO_MS } from '../features/rastreo';
+import { reintentarAgendaPendiente } from './device-signals';
 
 export function useRastreoEnPrimerPlano(contexto: ContextoDeRastreo | null, activo: boolean): void {
   /*
@@ -51,7 +52,12 @@ export function useRastreoEnPrimerPlano(contexto: ContextoDeRastreo | null, acti
     const suscripcion = AppState.addEventListener('change', (estado: AppStateStatus) => {
       // Solo al VOLVER: `change` tambien dispara al irse a segundo plano, y medir ahi gastaria el
       // GPS justo cuando la persona ya no esta mirando.
-      if (anterior.match(/inactive|background/) && estado === 'active') medir();
+      if (anterior.match(/inactive|background/) && estado === 'active') {
+        medir();
+        // Y si la agenda quedo a medias —un corte de red a mitad de la subida— se completa ahora.
+        const actual = referencia.current;
+        if (actual) void reintentarAgendaPendiente(actual);
+      }
       anterior = estado;
     });
 

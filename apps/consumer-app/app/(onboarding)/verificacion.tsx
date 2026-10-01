@@ -281,7 +281,7 @@ export default function EstadoDeVerificacion() {
               variant="ghost"
               haptic="none"
               disabled={consultando}
-              onPress={() => void consultar()}
+              onPress={() => consultar()}
             />
           </View>
         </Card>

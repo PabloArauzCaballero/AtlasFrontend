@@ -139,6 +139,9 @@ export function Overline({
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 
+const esPromesa = (valor: unknown): valor is Promise<unknown> =>
+  typeof valor === 'object' && valor !== null && typeof (valor as { then?: unknown }).then === 'function';
+
 export function Button({
   label,
   onPress,
@@ -173,7 +176,24 @@ export function Button({
   blockedReason?: string | null;
   style?: ViewStyle;
 }) {
-  const isBlocked = disabled || loading;
+  /*
+    «Cargando» tambien lo decide el propio boton.
+
+    Si `onPress` devuelve una promesa —una funcion `async`, o `() => guardar()`— el boton se queda
+    en el spinner hasta que acaba, aunque la pantalla no haya cableado `loading`. Sin esto, media app
+    pulsaba un boton, esperaba la red sin ningun cambio visible y la persona concluia que no
+    funcionaba y volvia a tocar. `loading` sigue mandando cuando la pantalla lo pasa.
+  */
+  const [pendiente, setPendiente] = React.useState(false);
+  const montado = React.useRef(true);
+  React.useEffect(() => {
+    montado.current = true;
+    return () => {
+      montado.current = false;
+    };
+  }, []);
+  const cargando = loading || pendiente;
+  const isBlocked = disabled || cargando;
   const disposicion = useDisposicion();
 
   // Un doble toque en una accion financiera no puede producir dos operaciones. La clave de
@@ -190,10 +210,21 @@ export function Button({
       if (notification) void Haptics.notificationAsync(notification);
       else void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    onPress?.(event);
+    const resultado = onPress?.(event) as unknown;
+    if (esPromesa(resultado)) {
+      setPendiente(true);
+      const terminar = () => {
+        if (montado.current) setPendiente(false);
+      };
+      // El rechazo se relanza: quitar el spinner no puede esconder un fallo que antes se veia.
+      void resultado.then(terminar, (fallo: unknown) => {
+        terminar();
+        throw fallo;
+      });
+    }
   };
 
-  const showReason = Boolean(blockedReason) && disabled && !loading;
+  const showReason = Boolean(blockedReason) && disabled && !cargando;
 
   /*
     La accion principal se pinta con el DEGRADADO de la marca y lleva halo, no un relleno plano.
@@ -232,7 +263,7 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={rest.accessibilityLabel ?? label}
       accessibilityHint={showReason ? (blockedReason ?? undefined) : rest.accessibilityHint}
-      accessibilityState={{ disabled: isBlocked, busy: loading }}
+      accessibilityState={{ disabled: isBlocked, busy: cargando }}
       disabled={isBlocked}
       onPress={handlePress}
       onLayout={(event) => {
@@ -270,7 +301,7 @@ export function Button({
           style={StyleSheet.absoluteFill}
         />
       ) : null}
-      {loading ? (
+      {cargando ? (
         <ActivityIndicator color={variant === 'primary' ? color.text.onBrand : color.text.primary} />
       ) : (
         <View style={styles.buttonInner}>

@@ -211,7 +211,7 @@ export default function Conversacion() {
             multiline
           />
           <View style={{ flexDirection: 'row', gap: space.sm }}>
-            <Button label="Foto" variant="secondary" icon={null} onPress={() => void adjuntarFoto()} disabled={enviando} />
+            <Button label="Foto" variant="secondary" icon={null} onPress={() => adjuntarFoto()} disabled={enviando} />
             <View style={{ flex: 1 }}>
               <Button
                 label="Enviar"

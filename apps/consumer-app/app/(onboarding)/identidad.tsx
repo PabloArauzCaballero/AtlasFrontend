@@ -492,7 +492,7 @@ export default function Identity() {
   if (activeStep) {
     if (!permission?.granted) {
       return (
-        <Screen scrollRef={scroll} footer={<Button label="Permitir cámara" bitacora="permitir" onPress={() => void requestPermission()} />}>
+        <Screen scrollRef={scroll} footer={<Button label="Permitir cámara" bitacora="permitir" onPress={() => requestPermission()} />}>
           <ScreenHeader title="Necesitamos tu cámara" subtitle="Solo se usa para fotografiar tu documento." onBack={() => setCapturing(null)} />
           <Card>
             <AtlasText variant="body" tone="secondary">

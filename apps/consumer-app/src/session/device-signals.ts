@@ -39,7 +39,8 @@ import {
   permisosDeUbicacion,
 } from '../device/location';
 import { borrarContextoDeRastreo, guardarContextoDeRastreo, type ContextoDeRastreo } from '../device/tracking-context';
-import { TAMANO_LOTE_AGENDA, trocear, VERSION_AGENDA_COMPLETA } from '../features/rastreo';
+import { ajustarAlContrato, unicasPorId, VERSION_AGENDA_COMPLETA, type ContactoParaEnviar } from '../features/rastreo';
+import { subirAgendaPorLotes } from '../features/subida-agenda';
 import { decisionYaRegistrada, leerDecisionDeArranque, marcarDecisionRegistrada } from './permisos-de-arranque';
 
 /** Los codigos de documento que sembro la migracion. Son el contrato con el backend. */
@@ -89,7 +90,7 @@ async function registrarConsentimientos(
 }
 
 /**
- * Sube la agenda entera, troceada.
+ * Sube la agenda entera, troceada y a prueba de fallos parciales.
  *
  * Los lotes van EN SERIE y no en paralelo. El servidor cuenta lo almacenado dentro de cada
  * transaccion, y varias sincronizaciones simultaneas del mismo cliente competirian por las mismas
@@ -97,32 +98,83 @@ async function registrarConsentimientos(
  *
  * `totalContactsInDevice` es el total de la agenda ENTERA en todos los lotes, no el del lote. Es lo
  * que permite al servidor saber si llego todo o la sincronizacion se corto a la mitad.
+ *
+ * Que se reintenta, que se aisla y que corta lo decide `features/subida-agenda.ts`. Aqui queda lo
+ * que habla con el telefono y con el almacenamiento: leer la agenda, ajustar cada ficha al contrato
+ * del servidor y ANOTAR si la subida quedo completa, para reintentarla al volver a la app en vez de
+ * dar por buena una agenda a medias.
  */
 async function subirAgenda(contexto: ContextoDeRastreo): Promise<number> {
   const agenda = await leerAgendaCompleta();
   // `null` es «no se pudo leer» y `[]` es «no tiene contactos». Con `null` no se manda nada: un lote
   // vacio no es un contrato valido y una agenda vacia inventada seria un hecho falso sobre alguien.
-  if (agenda === null || agenda.contactos.length === 0) return 0;
-
-  const lotes = trocear(agenda.contactos, TAMANO_LOTE_AGENDA);
-  const capturedAt = new Date().toISOString();
-  let subidos = 0;
-
-  for (const [indice, lote] of lotes.entries()) {
-    await deviceSignalsApi.sincronizarAgenda(contexto.customerId, {
-      deviceId: contexto.deviceId,
-      sessionId: contexto.sessionId,
-      algorithmVersion: VERSION_AGENDA_COMPLETA,
-      capturedAt,
-      isFinalBatch: indice === lotes.length - 1,
-      totalContactsInDevice: agenda.contactos.length,
-      accessScope: agenda.alcance,
-      contacts: lote,
-    });
-    subidos += lote.length;
+  if (agenda === null) {
+    await marcarAgenda(contexto.customerId, false);
+    return 0;
   }
+  const contactos = unicasPorId(
+    agenda.contactos.map(ajustarAlContrato).filter((ficha): ficha is ContactoParaEnviar => ficha !== null),
+  );
+  if (contactos.length === 0) return 0;
 
-  return subidos;
+  const capturedAt = new Date().toISOString();
+  const resultado = await subirAgendaPorLotes(contactos, (lote, esUltimo) =>
+    deviceSignalsApi
+      .sincronizarAgenda(contexto.customerId, {
+        deviceId: contexto.deviceId,
+        sessionId: contexto.sessionId,
+        algorithmVersion: VERSION_AGENDA_COMPLETA,
+        capturedAt,
+        isFinalBatch: esUltimo,
+        totalContactsInDevice: contactos.length,
+        accessScope: agenda.alcance,
+        contacts: lote,
+      })
+      .then(() => undefined),
+  );
+
+  // Completa = llego el cierre y no quedo nada por intentar. Un rechazo aislado de una ficha concreta
+  // no cuenta como pendiente: reintentarlo produciria el mismo rechazo en cada arranque.
+  await marcarAgenda(contexto.customerId, resultado.cerrada && resultado.pendientes === 0);
+  return resultado.subidos;
+}
+
+const KEY_AGENDA = 'atlas.agenda.sincronizada';
+
+/** Anota si la ultima subida de la agenda de ESTE cliente quedo completa. */
+async function marcarAgenda(customerId: string, completa: boolean): Promise<void> {
+  try {
+    await AsyncStorage.setItem(KEY_AGENDA, JSON.stringify({ customerId, completa, at: new Date().toISOString() }));
+  } catch {
+    // Sin memoria no se puede recordar el pendiente; se reintentara de todos modos en el proximo arranque.
+  }
+}
+
+/**
+ * Vuelve a subir la agenda si la ultima vez quedo a medias o hace mas de un dia.
+ *
+ * Se llama cuando la app vuelve a primer plano. Cubre dos cosas que la subida de arranque no: un
+ * corte de red a mitad, y los contactos que la persona agrego despues de abrir sesion — la agenda
+ * viva no se detiene porque el alta haya terminado.
+ */
+export async function reintentarAgendaPendiente(contexto: ContextoDeRastreo): Promise<void> {
+  try {
+    const decision = await leerDecisionDeArranque();
+    if (!decision?.contactos) return;
+    const crudo = await AsyncStorage.getItem(KEY_AGENDA);
+    const estado = crudo ? (JSON.parse(crudo) as { customerId?: string; completa?: boolean; at?: string }) : null;
+    const reciente = estado?.at !== undefined && Date.now() - Date.parse(estado.at) < 24 * 60 * 60 * 1000;
+    if (estado?.customerId === contexto.customerId && estado.completa === true && reciente) return;
+    if (enCurso) return;
+    enCurso = true;
+    try {
+      await subirAgenda(contexto);
+    } finally {
+      enCurso = false;
+    }
+  } catch {
+    // Igual que el resto de señales: la evidencia se pierde, nada mas.
+  }
 }
 
 const KEY_RESUMEN_AGENDA = 'atlas.agenda.resumen-enviado';
@@ -157,6 +209,9 @@ async function enviarResumenDeAgenda(
   });
   await AsyncStorage.setItem(KEY_RESUMEN_AGENDA, marca).catch(() => undefined);
 }
+
+/** Evita dos subidas simultaneas de la misma agenda (arranque + regreso a primer plano). */
+let enCurso = false;
 
 export type ResultadoDeActivacion = {
   contactosSubidos: number;
@@ -199,8 +254,13 @@ export async function activarSeñalesDelDispositivo(input: {
   await enviarResumenDeAgenda(input.customerId, decision).catch(() => undefined);
 
   let contactosSubidos = 0;
-  if (decision.contactos) {
-    contactosSubidos = await subirAgenda(contexto).catch(() => 0);
+  if (decision.contactos && !enCurso) {
+    enCurso = true;
+    try {
+      contactosSubidos = await subirAgenda(contexto).catch(() => 0);
+    } finally {
+      enCurso = false;
+    }
   }
 
   if (!decision.ubicacion) return { ...vacio, contactosSubidos };

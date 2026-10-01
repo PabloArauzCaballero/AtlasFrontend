@@ -188,7 +188,7 @@ export default function PayInstallmentScreen() {
         ) : (
           <Button
             label={enviando ? 'Enviando tu aviso…' : 'Ya realicé el pago'}
-            onPress={() => void avisar()}
+            onPress={() => avisar()}
             disabled={enviando || pendiente <= 0}
             blockedReason={pendiente <= 0 ? 'Esta cuota ya está saldada.' : null}
             haptic="success"
@@ -249,7 +249,7 @@ export default function PayInstallmentScreen() {
             <Button
               label={copied ? 'Cuenta copiada' : 'Copiar cuenta'}
               variant="secondary"
-              onPress={() => void copiarCuenta()}
+              onPress={() => copiarCuenta()}
             />
           ) : null}
         </Card>
@@ -303,7 +303,7 @@ export default function PayInstallmentScreen() {
           <Button
             label={proofUri ? 'Comprobante adjunto' : 'Adjuntar comprobante'}
             variant="secondary"
-            onPress={() => void adjuntar()}
+            onPress={() => adjuntar()}
           />
           {proofUri ? <Image source={{ uri: proofUri }} style={styles.preview} resizeMode="contain" /> : null}
           {fallo ? (

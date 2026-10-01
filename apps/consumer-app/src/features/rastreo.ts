@@ -27,11 +27,13 @@ export const VERSION_AGENDA_COMPLETA = 'contacts-address-book-1.0.0';
 /**
  * Contactos por peticion.
  *
- * El servidor acepta 500 y la agenda mediana tiene unos doscientos, asi que la mayoria de las
- * personas sincroniza en UN lote. El troceo existe para la minoria con miles: sin el, una agenda de
- * 8.000 fichas seria un cuerpo de varios megas que muere en el primer tunel.
+ * El servidor acepta hasta 500, pero se manda de 100 en 100. Con 500 por peticion, UNA ficha que el
+ * servidor rechazara tiraba las otras 499, y el servidor cifra cada ficha antes de contestar: un
+ * lote grande en una red lenta pasaba de los 20 s del cliente y la app lo daba por perdido aunque el
+ * servidor lo hubiera guardado. Con 100 se pierde poco por fallo y `subida-agenda.ts` aisla la
+ * ficha mala.
  */
-export const TAMANO_LOTE_AGENDA = 500;
+export const TAMANO_LOTE_AGENDA = 100;
 
 /** Posiciones por peticion. El servidor acepta 200; el mismo tope evita un 400 por pasarse. */
 export const TAMANO_LOTE_UBICACION = 200;
@@ -194,6 +196,96 @@ export function aContactoParaEnviar(contacto: ContactoDelTelefono): ContactoPara
     emails,
     addresses,
   };
+}
+
+/* Los topes del contrato (`deviceContactSchema` de AtlasBackend). Pasarse de UNO rechaza el lote entero. */
+const TOPE = { texto: 200, nombre: 120, etiqueta: 60, telefono: 40, correo: 200, calle: 300, zona: 120 } as const;
+const TOPE_LISTAS = { telefonos: 20, correos: 20, direcciones: 10 } as const;
+
+const recortar = (valor: string | null, max: number): string | null => {
+  if (valor === null) return null;
+  const texto = valor.slice(0, max).trim();
+  return texto === '' ? null : texto;
+};
+
+/** Una fecha `YYYY-MM-DD` que de verdad existe (el 31 de febrero tiene forma de fecha y el servidor la rechaza). */
+const fechaReal = (valor: string | null): string | null => {
+  if (!valor) return null;
+  const [anio, mes, dia] = valor.split('-').map(Number) as [number, number, number];
+  const fecha = new Date(Date.UTC(anio, mes - 1, dia));
+  return fecha.getUTCFullYear() === anio && fecha.getUTCMonth() === mes - 1 && fecha.getUTCDate() === dia ? valor : null;
+};
+
+/**
+ * Ajusta una ficha al contrato del servidor SIN perder el contacto.
+ *
+ * ## Por que existe
+ *
+ * El servidor valida el lote entero con Zod: un telefono de dos cifras, una etiqueta de 80
+ * caracteres, un nombre de 300 o 21 telefonos en una ficha devuelven un 400 para TODAS las fichas
+ * del lote. La app lo tragaba en silencio y el resultado era una agenda guardada a medias, con
+ * justo las fichas de las personas con las agendas mas sucias — que son las mas largas.
+ *
+ * Aqui se recorta lo que sobra y se descarta solo el DATO inservible (un telefono de menos de tres
+ * cifras no es un telefono), nunca el contacto: la ficha sigue viajando con lo que si vale.
+ */
+export function ajustarAlContrato(ficha: ContactoParaEnviar): ContactoParaEnviar | null {
+  const externalId = recortar(ficha.externalId, TOPE.texto);
+  if (!externalId) return null;
+
+  const phones = ficha.phones
+    .map((entrada) => ({ label: recortar(entrada.label, TOPE.etiqueta), number: recortar(entrada.number, TOPE.telefono) }))
+    .filter((entrada): entrada is { label: string | null; number: string } => entrada.number !== null && entrada.number.length >= 3)
+    .slice(0, TOPE_LISTAS.telefonos);
+  const emails = ficha.emails
+    .map((entrada) => ({ label: recortar(entrada.label, TOPE.etiqueta), email: recortar(entrada.email, TOPE.correo) }))
+    .filter((entrada): entrada is { label: string | null; email: string } => entrada.email !== null)
+    .slice(0, TOPE_LISTAS.correos);
+  const addresses = ficha.addresses
+    .map((entrada) => ({
+      label: recortar(entrada.label, TOPE.etiqueta),
+      street: recortar(entrada.street, TOPE.calle),
+      city: recortar(entrada.city, TOPE.zona),
+      region: recortar(entrada.region, TOPE.zona),
+      country: recortar(entrada.country, TOPE.zona),
+    }))
+    .filter((entrada) => entrada.street !== null || entrada.city !== null || entrada.region !== null)
+    .slice(0, TOPE_LISTAS.direcciones);
+
+  const displayName = recortar(ficha.displayName, TOPE.texto);
+  const company = recortar(ficha.company, TOPE.texto);
+  if (!displayName && !company && phones.length === 0 && emails.length === 0) return null;
+
+  return {
+    ...ficha,
+    externalId,
+    displayName: displayName ?? company,
+    givenName: recortar(ficha.givenName, TOPE.nombre),
+    familyName: recortar(ficha.familyName, TOPE.nombre),
+    company,
+    jobTitle: recortar(ficha.jobTitle, TOPE.texto),
+    birthday: fechaReal(ficha.birthday),
+    phones,
+    emails,
+    addresses,
+  };
+}
+
+/**
+ * Una ficha por `externalId`.
+ *
+ * Dos fichas con el mismo identificador en un mismo lote se insertan las dos —el servidor consulta
+ * lo existente ANTES de escribir— y chocan con el indice unico: el lote entero cae. Pasa en Android
+ * con cuentas sincronizadas duplicadas. Se queda la que tiene mas datos.
+ */
+export function unicasPorId(fichas: readonly ContactoParaEnviar[]): ContactoParaEnviar[] {
+  const peso = (ficha: ContactoParaEnviar) => ficha.phones.length + ficha.emails.length + ficha.addresses.length;
+  const porId = new Map<string, ContactoParaEnviar>();
+  for (const ficha of fichas) {
+    const previa = porId.get(ficha.externalId);
+    if (!previa || peso(ficha) > peso(previa)) porId.set(ficha.externalId, ficha);
+  }
+  return [...porId.values()];
 }
 
 /** Trocea una lista en lotes del tamaño pedido. El ultimo lote es el que queda, no se rellena. */

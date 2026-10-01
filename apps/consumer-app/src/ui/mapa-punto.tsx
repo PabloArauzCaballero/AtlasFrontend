@@ -38,8 +38,9 @@
  */
 import * as Location from 'expo-location';
 import { useEffect, useState } from 'react';
-import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { esExpoGo } from '../device/entorno';
+import { etiquetaDeSitio, RADIO_MISMO_SITIO_M, type SitioFrecuente } from '../features/sitios-frecuentes';
 import { color, radius, space } from '../theme/tokens';
 import { Icon } from './icons';
 import { AtlasText, Button } from './primitives';
@@ -90,7 +91,13 @@ export function MapaPunto({
   centro = null,
   onCancelar,
   onElegir,
+  sitios = [],
 }: {
+  /**
+   * Los sitios que la persona frecuenta, sacados de las posiciones que el telefono ya midio. Se
+   * pintan TODOS en el mapa y se pueden tocar en la lista para usar uno como casa.
+   */
+  sitios?: readonly SitioFrecuente[];
   visible: boolean;
   /** Dónde abre el mapa: el punto ya elegido, o el GPS, o el centro por defecto. */
   inicial: Punto | null;
@@ -102,16 +109,38 @@ export function MapaPunto({
   onCancelar: () => void;
   onElegir: (punto: Punto) => void;
 }) {
-  const arranque = inicial ?? centro ?? CENTRO_POR_DEFECTO;
-  const [punto, setPunto] = useState<Punto | null>(inicial ?? centro);
+  /*
+    Donde abre el mapa: el punto ya elegido, la posicion actual, y si no hay, el sitio mas visitado —
+    que es donde es mas probable que este su casa— y si no, el centro por defecto.
+  */
+  const sitioPrincipal = sitios[0] ? { lat: sitios[0].lat, lng: sitios[0].lng } : null;
+  const arranque = inicial ?? centro ?? sitioPrincipal ?? CENTRO_POR_DEFECTO;
+  const [punto, setPunto] = useState<Punto | null>(inicial ?? centro ?? null);
   // El modal vive montado: cada apertura vuelve a partir de lo último elegido o de la posición actual.
   useEffect(() => {
-    if (visible) setPunto(inicial ?? centro);
+    if (visible) setPunto(inicial ?? centro ?? null);
   }, [visible, inicial, centro]);
   const mapas = cargarMapas();
 
-  const marcadores = punto ? [{ coordinates: { latitude: punto.lat, longitude: punto.lng }, title: 'Tu casa' }] : [];
-  const camara = { coordinates: { latitude: arranque.lat, longitude: arranque.lng }, zoom: 16 };
+  const marcadoresDeSitios = sitios.map((sitio, indice) => ({
+    id: `sitio-${indice}`,
+    coordinates: { latitude: sitio.lat, longitude: sitio.lng },
+    title: etiquetaDeSitio(sitio),
+  }));
+  const circulos = sitios.map((sitio, indice) => ({
+    id: `zona-${indice}`,
+    center: { latitude: sitio.lat, longitude: sitio.lng },
+    radius: RADIO_MISMO_SITIO_M,
+    color: '#2BD9A133',
+    lineColor: '#2BD9A1',
+    lineWidth: 1,
+  }));
+  const marcadores = [
+    ...marcadoresDeSitios,
+    ...(punto ? [{ id: 'casa', coordinates: { latitude: punto.lat, longitude: punto.lng }, title: 'Tu casa' }] : []),
+  ];
+  // Con varios sitios se aleja la camara para que quepan los que estan cerca del primero.
+  const camara = { coordinates: { latitude: arranque.lat, longitude: arranque.lng }, zoom: sitios.length > 1 ? 14 : 16 };
 
   /* El evento trae `coordinates` con latitud y longitud opcionales: sin las dos no hay punto. */
   const alTocar = (evento: { coordinates?: { latitude?: number; longitude?: number } }) => {
@@ -131,7 +160,9 @@ export function MapaPunto({
             <AtlasText variant="h3">Señala tu casa</AtlasText>
             <AtlasText variant="caption" tone="secondary">
               {mapas
-                ? 'Toca el mapa donde vives. Puedes corregirlo tocando otra vez.'
+                ? sitios.length > 0
+                  ? 'Marcamos los sitios que más frecuentas. Toca uno de la lista o el mapa donde vives.'
+                  : 'Toca el mapa donde vives. Puedes corregirlo tocando otra vez.'
                 : 'Aquí no hay mapa, pero podemos tomar tu ubicación actual.'}
             </AtlasText>
           </View>
@@ -144,6 +175,7 @@ export function MapaPunto({
                 style={StyleSheet.absoluteFill}
                 cameraPosition={camara}
                 markers={marcadores}
+                circles={circulos}
                 onMapClick={alTocar}
               />
             ) : (
@@ -151,6 +183,7 @@ export function MapaPunto({
                 style={StyleSheet.absoluteFill}
                 cameraPosition={camara}
                 markers={marcadores}
+                circles={circulos}
                 onMapClick={alTocar}
               />
             )
@@ -158,6 +191,30 @@ export function MapaPunto({
             <SinMapa onPunto={setPunto} />
           )}
         </View>
+
+        {sitios.length > 0 ? (
+          <View style={styles.sitios}>
+            <AtlasText variant="label" tone="secondary">
+              {sitios.length === 1 ? 'Un sitio que frecuentas' : `${sitios.length} sitios que frecuentas`}
+            </AtlasText>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sitiosFila}>
+              {sitios.map((sitio, indice) => (
+                <Pressable
+                  key={`${sitio.lat}-${sitio.lng}`}
+                  onPress={() => setPunto({ lat: sitio.lat, lng: sitio.lng })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Usar como mi casa: ${etiquetaDeSitio(sitio)}`}
+                  style={styles.sitio}
+                >
+                  <Icon name="ubicacion" size={14} tint={color.text.secondary} />
+                  <AtlasText variant="caption" tone="secondary">
+                    {indice + 1}. {etiquetaDeSitio(sitio)}
+                  </AtlasText>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
 
         <View style={styles.pie}>
           {/*
@@ -263,4 +320,16 @@ const styles = StyleSheet.create({
   sinMapa: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.md, padding: space.lg },
   sinMapaTexto: { textAlign: 'center' },
   pie: { padding: space.lg, gap: space.md },
+  sitios: { paddingHorizontal: space.lg, paddingTop: space.md, gap: space.xs },
+  sitiosFila: { gap: space.sm },
+  sitio: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
+    borderRadius: radius.xxl,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
+  },
 });

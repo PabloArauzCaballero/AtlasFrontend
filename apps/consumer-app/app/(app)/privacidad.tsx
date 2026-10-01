@@ -189,7 +189,7 @@ export default function Privacidad() {
         <Gap size="sm" />
         <Button
           label={guardando ? 'Guardando…' : 'Guardar mis permisos'}
-          onPress={() => void guardar()}
+          onPress={() => guardar()}
           disabled={!listo || guardando || documentos.length === 0}
         />
         {guardado ? (
@@ -216,7 +216,7 @@ export default function Privacidad() {
         <Gap size="sm" />
         <Button
           label={enviandoDerecho ? 'Enviando…' : 'Enviar solicitud'}
-          onPress={() => void pedirDerecho()}
+          onPress={() => pedirDerecho()}
           disabled={!derecho || enviandoDerecho}
         />
         {derechoEnviado ? (
