@@ -19,6 +19,7 @@
  */
 import { AVISO_SIN_RECORDATORIOS, AVISOS_QUE_LLEGAN_RESUMEN } from './avisos-copy';
 import { AVISO_DEMOSTRACION, AVISO_PLAN_SIMULADO } from './demo-copy';
+import { BLOCKER_COPY, LIFECYCLE_COPY, SECTION_LABEL } from './onboarding-map';
 
 export type CopyEntry = {
   /** La pantalla a la que pertenece, para agrupar en el portal. */
@@ -159,3 +160,47 @@ export const COPY = {
 } as const satisfies Record<string, CopyEntry>;
 
 export type CopyKey = keyof typeof COPY;
+
+/**
+ * Los textos del alta que NO se piden por clave fija sino por código (la etapa, el bloqueo, el estado de la
+ * cuenta): se generan de los mapas de `onboarding-map.ts`, que siguen siendo el valor de fábrica. Se piden con
+ * `etiquetaDeSeccion`, `describeBlocker` y `describeLifecycle`, no con `useCopy`.
+ */
+export const COPY_DEL_ALTA: Record<string, CopyEntry> = {
+  ...Object.fromEntries(
+    Object.entries(SECTION_LABEL).map(([codigo, etapa]): [string, CopyEntry] => [
+      `etapa.${codigo}`,
+      {
+        pantalla: 'Alta · etapas',
+        donde: `Etapa «${etapa.title}» en la lista de pasos y en la cabecera de su pantalla`,
+        titulo: etapa.title,
+        texto: etapa.detail,
+      },
+    ]),
+  ),
+  ...Object.fromEntries(
+    Object.entries(BLOCKER_COPY).map(([codigo, bloqueo]): [string, CopyEntry] => [
+      `bloqueo.${codigo}`,
+      {
+        pantalla: 'Alta · revisión',
+        donde: `Lo que se dice cuando el servidor reporta el bloqueo ${codigo}`,
+        titulo: bloqueo.title,
+        texto: bloqueo.detail,
+      },
+    ]),
+  ),
+  ...Object.fromEntries(
+    Object.entries(LIFECYCLE_COPY).map(([estado, ciclo]): [string, CopyEntry] => [
+      `ciclo.${estado}`,
+      {
+        pantalla: 'Alta · estado de la cuenta',
+        donde: `Cabecera del progreso del alta cuando la cuenta está «${estado}»`,
+        titulo: ciclo.title,
+        texto: ciclo.detail,
+      },
+    ]),
+  ),
+};
+
+/** Todos los textos configurables, para sembrar el portal y para las pruebas. */
+export const COPY_TODOS: Record<string, CopyEntry> = { ...COPY, ...COPY_DEL_ALTA };

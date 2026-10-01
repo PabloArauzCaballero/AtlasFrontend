@@ -5,6 +5,7 @@ import { render, screen, waitFor } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import type { ContentEntry } from '../src/api/endpoints/app-content';
 import { COPY } from '../src/features/copy-catalog';
+import { copyRemoto, olvidarCopyRemoto } from '../src/features/copy-cache';
 import { olvidarContenidoPedido, useCopy } from '../src/features/use-contenido-remoto';
 
 const mockGetContent = jest.fn();
@@ -39,6 +40,7 @@ function Probe() {
 describe('useCopy', () => {
   beforeEach(() => {
     olvidarContenidoPedido();
+    olvidarCopyRemoto();
     mockGetContent.mockReset();
   });
 
@@ -78,5 +80,11 @@ describe('useCopy', () => {
     await waitFor(() => expect(screen.getAllByTestId('texto')[0]?.props.children).toBe('X'));
     expect(mockGetContent).toHaveBeenCalledTimes(1);
     expect(mockGetContent).toHaveBeenCalledWith('copy');
+  });
+
+  it('al cargar, deja los textos a mano de las funciones que no son componentes (etapas, bloqueos)', async () => {
+    mockGetContent.mockResolvedValue([pieza({ contentKey: 'etapa.address', title: 'Dónde vives', body: 'Tu dirección.' })]);
+    await render(<Probe />);
+    await waitFor(() => expect(copyRemoto('etapa.address')).toEqual({ title: 'Dónde vives', body: 'Tu dirección.' }));
   });
 });

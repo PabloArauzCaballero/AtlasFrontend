@@ -24,10 +24,11 @@
  */
 import { View, StyleSheet } from 'react-native';
 import type { OnboardingSectionCode } from '../api/endpoints/onboarding';
-import { SECTION_LABEL, stepPosition } from '../features/onboarding-map';
+import { etiquetaDeSeccion, stepPosition } from '../features/onboarding-map';
 import { space } from '../theme/tokens';
 import { ScreenHeader } from './layout';
 import { ProgressBar } from './primitives';
+import { useCopy } from '../features/use-contenido-remoto';
 
 export function StepHeader({
   code,
@@ -41,8 +42,9 @@ export function StepHeader({
   subtitle?: string;
   action?: React.ReactNode;
 }) {
+  useCopy(); // vuelve a pintar cuando llegan los textos del portal (título de la etapa)
   const { step, total } = stepPosition(code);
-  const label = SECTION_LABEL[code];
+  const label = etiquetaDeSeccion(code);
 
   return (
     <View style={styles.block}>

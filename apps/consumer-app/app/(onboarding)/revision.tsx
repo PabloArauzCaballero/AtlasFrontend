@@ -13,15 +13,17 @@ import { View, type ScrollView } from 'react-native';
 import { useCallback, useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { AtlasApiError, describeError } from '../../src/api/errors';
-import { SECTION_LABEL, SECTION_ROUTE, describeBlocker, describeLifecycle } from '../../src/features/onboarding-map';
+import { SECTION_ROUTE, describeBlocker, describeLifecycle, etiquetaDeSeccion } from '../../src/features/onboarding-map';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, ListRow } from '../../src/ui/primitives';
 import { bitacora } from '../../src/features/bitacora';
 import { useBrandCut } from '../../src/ui/brand-cut';
+import { useCopy } from '../../src/features/use-contenido-remoto';
 
 export default function Review() {
+  useCopy(); // vuelve a pintar cuando llegan los textos del portal (etapas, bloqueos y estado de la cuenta)
   const router = useRouter();
   const session = useSession();
 
@@ -116,7 +118,7 @@ export default function Review() {
     [
       status?.canSubmit ?? false,
       firstPending
-        ? `Falta completar ${(SECTION_LABEL[firstPending.code]?.title ?? firstPending.code).toLowerCase()}.`
+        ? `Falta completar ${(etiquetaDeSeccion(firstPending.code)?.title ?? firstPending.code).toLowerCase()}.`
         : 'Todavía falta completar una parte de tu expediente.',
     ],
   ]);
@@ -162,9 +164,9 @@ export default function Review() {
             <View key={section.code}>
               {index > 0 ? <Divider inset /> : null}
               <ListRow
-                title={SECTION_LABEL[section.code]?.title ?? section.code}
-                subtitle={SECTION_LABEL[section.code]?.detail}
-                icon={SECTION_LABEL[section.code]?.icon}
+                title={etiquetaDeSeccion(section.code)?.title ?? section.code}
+                subtitle={etiquetaDeSeccion(section.code)?.detail}
+                icon={etiquetaDeSeccion(section.code)?.icon}
                 right={<Badge dot label="pendiente" tone="warning" />}
                 onPress={() => router.push(SECTION_ROUTE[section.code])}
               />

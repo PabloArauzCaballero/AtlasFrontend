@@ -5,6 +5,7 @@
  * necesita saber a que pantalla corresponde cada codigo y como nombrarlo en espanol para una
  * persona que no sabe que es un "reference_contact".
  */
+import { copyRemoto } from './copy-cache';
 import type { Blocker, OnboardingSectionCode } from '../api/endpoints/onboarding';
 import type { IconName } from '../ui/icons';
 
@@ -94,13 +95,32 @@ export const SECTION_LABEL: Record<OnboardingSectionCode, { title: string; detai
   personal_data: { title: 'Tus datos personales', detail: 'Nombre, apellido y fecha de nacimiento.', icon: 'perfil' },
   financial_profile: { title: 'Tu situación económica', detail: 'Trabajo, ingresos y gastos declarados.', icon: 'billetera' },
   address: { title: 'Tu domicilio', detail: 'Dónde vives actualmente.', icon: 'hogar' },
-  identity_documents: { title: 'Tu documento de identidad', detail: 'Foto del carnet por ambos lados y tres selfies: de frente y de cada lado.', icon: 'documento' },
+  identity_documents: {
+    title: 'Tu documento de identidad',
+    detail: 'Foto del carnet por ambos lados y tres selfies: de frente y de cada lado.',
+    icon: 'documento',
+  },
   reference_contacts: { title: 'Tus referencias', detail: 'Opcional: personas que puedan dar referencia de ti.', icon: 'telefono' },
-  device_permissions: { title: 'Permisos del teléfono', detail: 'Ubicación y contactos: decides tú, y puedes decir que no.', icon: 'ubicacion' },
+  device_permissions: {
+    title: 'Permisos del teléfono',
+    detail: 'Ubicación y contactos: decides tú, y puedes decir que no.',
+    icon: 'ubicacion',
+  },
   consumer_survey: { title: 'Tus hábitos', detail: 'Seis preguntas cortas sobre cómo manejas tu dinero.', icon: 'billetera' },
 };
 
 /** `nextStep` del servidor -> ruta. `awaiting_review` no es una seccion: es el estado de espera. */
+/**
+ * La etiqueta de una etapa, con el texto del portal donde lo haya (`etapa.<código>`: título y detalle). El
+ * icono sigue siendo del código: es lo que reconoce el paso en todas las listas. Sin texto del portal, o con
+ * la pieza a medias, queda el de fábrica.
+ */
+export function etiquetaDeSeccion(code: OnboardingSectionCode): { title: string; detail: string; icon: IconName } {
+  const base = SECTION_LABEL[code];
+  const remoto = copyRemoto(`etapa.${code}`);
+  return remoto?.title && remoto.body ? { ...base, title: remoto.title, detail: remoto.body } : base;
+}
+
 export function routeForNextStep(nextStep: string): OnboardingRoute {
   if (nextStep === 'awaiting_review' || nextStep === 'submit') return '/(onboarding)/revision';
   const known = SECTION_ROUTE[nextStep as OnboardingSectionCode];
@@ -114,22 +134,33 @@ export function routeForNextStep(nextStep: string): OnboardingRoute {
  * servidor incluye codigos como `RISK_NOT_APPROVED`, que a la persona no le sirve de nada leer tal
  * cual y que tampoco conviene detallar.
  */
-const BLOCKER_COPY: Record<string, { title: string; detail: string; actionable: boolean }> = {
+export const BLOCKER_COPY: Record<string, { title: string; detail: string; actionable: boolean }> = {
   ACCOUNT_NOT_ACTIVE: { title: 'Cuenta en proceso', detail: 'Tu cuenta todavía no está activa.', actionable: false },
   CONTACT_NOT_VERIFIED: { title: 'Teléfono sin verificar', detail: 'Confirma el código que te enviamos.', actionable: true },
-  FINANCIAL_PROFILE_INCOMPLETE: { title: 'Falta tu información económica', detail: 'Completa trabajo, ingresos y gastos.', actionable: true },
+  FINANCIAL_PROFILE_INCOMPLETE: {
+    title: 'Falta tu información económica',
+    detail: 'Completa trabajo, ingresos y gastos.',
+    actionable: true,
+  },
   ADDRESS_MISSING: { title: 'Falta tu domicilio', detail: 'Indica dónde vives.', actionable: true },
   REFERENCES_INSUFFICIENT: { title: 'Referencias', detail: 'Ya no son obligatorias: puedes agregarlas si quieres.', actionable: true },
   IDENTITY_DOCUMENT_MISSING: { title: 'Falta tu documento', detail: 'Sube tu carnet de identidad.', actionable: true },
   IDENTITY_NOT_VERIFIED: { title: 'Identidad en revisión', detail: 'Una persona está revisando tu carnet y tu selfie.', actionable: false },
   CONSUMER_SURVEY_INCOMPLETE: { title: 'Faltan tus hábitos', detail: 'Contesta las seis preguntas.', actionable: true },
-  DEVICE_PERMISSIONS_UNDECIDED: { title: 'Falta decidir los permisos', detail: 'Ubicación y contactos: puedes decir que no.', actionable: true },
+  DEVICE_PERMISSIONS_UNDECIDED: {
+    title: 'Falta decidir los permisos',
+    detail: 'Ubicación y contactos: puedes decir que no.',
+    actionable: true,
+  },
   EVIDENCE_PENDING_REVIEW: { title: 'Documentos en revisión', detail: 'Un analista está revisando lo que enviaste.', actionable: false },
   RISK_NOT_APPROVED: { title: 'Evaluación en curso', detail: 'Estamos evaluando tu solicitud.', actionable: false },
 };
 
 export function describeBlocker(blocker: Blocker): { title: string; detail: string; actionable: boolean } {
-  return BLOCKER_COPY[blocker.code] ?? { title: 'Requisito pendiente', detail: 'Estamos revisando tu solicitud.', actionable: false };
+  const base = BLOCKER_COPY[blocker.code] ?? { title: 'Requisito pendiente', detail: 'Estamos revisando tu solicitud.', actionable: false };
+  // Qué texto sale lo decide el portal; si el bloqueo es accionable lo decide el código (cambia lo que se pide hacer).
+  const remoto = copyRemoto(`bloqueo.${blocker.code}`);
+  return remoto?.title && remoto.body ? { ...base, title: remoto.title, detail: remoto.body } : base;
 }
 
 /** Bloqueadores sobre los que la persona puede actuar hoy. El resto solo se informa. */
@@ -137,7 +168,7 @@ export function actionableBlockers(blockers: Blocker[]): Blocker[] {
   return blockers.filter((blocker) => describeBlocker(blocker).actionable);
 }
 
-const LIFECYCLE_COPY: Record<string, { title: string; detail: string }> = {
+export const LIFECYCLE_COPY: Record<string, { title: string; detail: string }> = {
   registered: { title: 'Cuenta creada', detail: 'Termina de completar tus datos para pedir tu línea.' },
   onboarding_in_progress: { title: 'Registro en curso', detail: 'Te falta poco para terminar.' },
   under_review: {
@@ -151,7 +182,9 @@ const LIFECYCLE_COPY: Record<string, { title: string; detail: string }> = {
 };
 
 export function describeLifecycle(status: string): { title: string; detail: string } {
-  return LIFECYCLE_COPY[status] ?? { title: 'Registro en curso', detail: 'Continúa donde lo dejaste.' };
+  const base = LIFECYCLE_COPY[status] ?? { title: 'Registro en curso', detail: 'Continúa donde lo dejaste.' };
+  const remoto = copyRemoto(`ciclo.${status}`);
+  return remoto?.title && remoto.body ? { title: remoto.title, detail: remoto.body } : base;
 }
 
 /**
