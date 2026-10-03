@@ -212,10 +212,10 @@ export default function Conversacion() {
             multiline
           />
           <View style={{ flexDirection: 'row', gap: space.sm }}>
-            <Button label="Foto" variant="secondary" icon={null} onPress={() => adjuntarFoto()} disabled={enviando} />
+            <Button label="Foto" icon="camara" variant="secondary" onPress={() => adjuntarFoto()} disabled={enviando} />
             <View style={{ flex: 1 }}>
               <Button
-                label="Enviar"
+                label="Enviar" icon="enviar"
                 onPress={() => void enviar()}
                 loading={enviando}
                 disabled={texto.trim().length === 0}
@@ -230,7 +230,7 @@ export default function Conversacion() {
         title="Soporte"
         subtitle="Escríbenos tu duda."
         onBack="auto"
-        action={<Button label="Cerrar" variant="secondary" icon={null} onPress={cerrarConversacion} disabled={cargando} />}
+        action={<Button label="Cerrar" icon="cerrar" variant="secondary" onPress={cerrarConversacion} disabled={cargando} />}
       />
 
       {cargando ? (

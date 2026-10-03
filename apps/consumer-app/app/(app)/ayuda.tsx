@@ -97,7 +97,7 @@ export default function Ayuda() {
       */}
       <Card>
         <CardHeader icon="ayuda" title={t.titulo('ayuda.hablar')} detail={t.texto('ayuda.hablar')} divider={false} />
-        <Button label="Ir a soporte" onPress={() => router.push('/(app)/soporte' as never)} />
+        <Button label="Ir a soporte" icon="telefono" onPress={() => router.push('/(app)/soporte' as never)} />
       </Card>
 
       {help.map((entry) => (

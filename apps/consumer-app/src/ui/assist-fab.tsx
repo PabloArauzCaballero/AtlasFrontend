@@ -37,6 +37,13 @@ const ALTO_BARRA = 72;
 /** Diámetro del botón: por encima del mínimo táctil (48) porque es un objeto flotante, no un ⓘ. */
 const DIAMETRO = 56;
 
+/**
+ * Las rutas que SÍ llevan la barra de pestañas debajo. Sólo ahí el botón se levanta por encima de
+ * ella; en cualquier otra (Privacidad, Crédito, un caso de soporte…) no hay barra y subirlo 72 px lo
+ * dejaba flotando a media pantalla, «muy arriba» (visto en el iPhone, 2026-10-02).
+ */
+const CON_BARRA = [/^\/?$/, /^\/index$/, /^\/escanear(\/|$)/, /^\/pagos(\/|$)/, /^\/avisos(\/|$)/, /^\/perfil(\/|$)/];
+
 /** Las pantallas donde el botón estorbaría más de lo que ayuda. */
 const OCULTO_EN = [/^\/soporte(\/|$)/, /^\/compra\/monto$/, /^\/pago\//, /^\/pagar\//];
 
@@ -100,7 +107,12 @@ export function AssistFab() {
   */
   const conCascara = Platform.OS === 'web' && tramo !== 'telefono';
   const carrilLateral = tramo === 'escritorio' && !conCascara;
-  const bottom = carrilLateral ? insets.bottom + space.xl : ALTO_BARRA + insets.bottom + space.md;
+  const conBarra = CON_BARRA.some((regla) => regla.test(pathname));
+  const bottom = carrilLateral
+    ? insets.bottom + space.xl
+    : conBarra
+      ? ALTO_BARRA + insets.bottom + space.sm
+      : insets.bottom + space.lg;
 
   return (
     <>

@@ -57,7 +57,7 @@ export default function ChangePin() {
       footer={
         step === 'current' ? (
           <Button
-            label="Enviarme el código"
+            label="Enviarme el código" icon="sobre"
             loading={busy}
             disabled={currentPin.length !== 4 || busy}
             blockedReason={firstBlocker([[currentPin.length === 4, 'Escribe tu PIN actual (4 dígitos).']])}

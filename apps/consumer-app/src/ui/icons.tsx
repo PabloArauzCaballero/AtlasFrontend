@@ -87,7 +87,13 @@ export type IconName =
   // Correo. El documento generico servia de relleno y no dice «correo» a nadie.
   | 'sobre'
   // Telefono. La chincheta de mapa decia «donde vives», que es otro dato distinto del perfil.
-  | 'telefono';
+  | 'telefono'
+  | 'enviar'
+  | 'cerrar'
+  | 'clip'
+  | 'chat'
+  | 'galeria'
+  | 'papelera';
 
 export type IconProps = {
   name: IconName;
@@ -436,6 +442,43 @@ const PATHS: Record<IconName, (stroke: string, width: number) => React.ReactNode
       <Path d="M9.9 9.9a2.9 2.9 0 0 0 4.2 4.2" stroke={s} strokeWidth={w} strokeLinecap="round" />
       <Path d="M17.8 15.93A9.6 9.6 0 0 1 12 18c-5.9 0-9.5-6-9.5-6" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
       <Path d="M3.6 3.6l16.8 16.8" stroke={s} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  // Avion de papel: la accion de enviar un mensaje.
+  enviar: (s, w) => (
+    <>
+      <Path d="M21.5 3 10.2 14.3" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M21.5 3 14.6 21l-4.4-6.7L3.5 9.9 21.5 3z" stroke={s} strokeWidth={w} strokeLinejoin="round" />
+    </>
+  ),
+  cerrar: (s, w) => <Path d="M6 6l12 12M18 6 6 18" stroke={s} strokeWidth={w} strokeLinecap="round" />,
+  // Clip de adjuntos, el mismo gesto que el de cualquier chat.
+  clip: (s, w) => (
+    <Path
+      d="M20.2 11.6 12 19.8a5.2 5.2 0 0 1-7.4-7.4l8.5-8.5a3.5 3.5 0 0 1 4.9 4.9l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8"
+      stroke={s}
+      strokeWidth={w}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  chat: (s, w) => (
+    <>
+      <Path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8A2.5 2.5 0 0 1 17.5 16H10l-4.5 4v-4h0A2.5 2.5 0 0 1 4 13.5v-8z" stroke={s} strokeWidth={w} strokeLinejoin="round" />
+      <Path d="M8.5 8.5h7M8.5 11.5h4.5" stroke={s} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  papelera: (s, w) => (
+    <>
+      <Path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l.8 12.2A2 2 0 0 0 9.3 21h5.4a2 2 0 0 0 2-1.8L17.5 7" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M10 11v6M14 11v6" stroke={s} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  galeria: (s, w) => (
+    <>
+      <Rect x={3} y={4.5} width={18} height={15} rx={3} stroke={s} strokeWidth={w} />
+      <Circle cx={9} cy={10} r={1.7} stroke={s} strokeWidth={w} />
+      <Path d="m4 17 5-4.5 3.5 3L16 12l5 5" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
 };

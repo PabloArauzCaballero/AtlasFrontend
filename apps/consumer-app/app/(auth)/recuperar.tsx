@@ -56,7 +56,7 @@ export default function RecoverPassword() {
       footer={
         step === 'request' ? (
           <Button
-            label="Enviarme el código"
+            label="Enviarme el código" icon="sobre"
             loading={busy}
             disabled={!email.includes('@') || busy}
             blockedReason={firstBlocker([[email.includes('@'), 'Escribe el correo de tu cuenta.']])}
@@ -69,7 +69,7 @@ export default function RecoverPassword() {
           />
         ) : (
           <Button
-            label="Guardar mi PIN"
+            label="Guardar mi PIN" icon="check"
             loading={busy}
             disabled={code.length !== 6 || newPassword.length !== 4 || busy}
             blockedReason={firstBlocker([

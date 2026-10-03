@@ -73,8 +73,8 @@ export default function SignIn() {
     <Screen
       footer={
         <>
-          <Button label="Ingresar" onPress={submit} loading={submitting} disabled={!canSubmit} blockedReason={blockedReason} />
-          <Button label="Crear una cuenta" variant="ghost" onPress={() => router.replace('/(onboarding)/registro')} />
+          <Button label="Ingresar" icon="adelante" onPress={submit} loading={submitting} disabled={!canSubmit} blockedReason={blockedReason} />
+          <Button label="Crear una cuenta" icon="perfil" variant="ghost" onPress={() => router.replace('/(onboarding)/registro')} />
         </>
       }
     >
@@ -155,7 +155,7 @@ export default function SignIn() {
       />
 
       <Gap size="xs" />
-      <Button label="Olvidé mi PIN" variant="ghost" onPress={() => router.push('/(auth)/recuperar')} />
+      <Button label="Olvidé mi PIN" icon="candado" variant="ghost" onPress={() => router.push('/(auth)/recuperar')} />
 
       <Gap size="base" />
       <AtlasText variant="caption" tone="tertiary">

@@ -164,7 +164,11 @@ export function Button({
   variant?: ButtonVariant;
   loading?: boolean;
   haptic?: 'none' | 'light' | 'success' | 'warning';
-  icon?: React.ReactNode;
+  /**
+   * Un nombre del set de iconos (`'camara'`) o un nodo propio. Con nombre, el icono toma el color de
+   * la variante —el mismo que el texto— y no hay que pasar `tint` a mano.
+   */
+  icon?: IconName | React.ReactNode;
   /**
    * Por que el boton no responde.
    *
@@ -301,11 +305,22 @@ export function Button({
           style={StyleSheet.absoluteFill}
         />
       ) : null}
-      {cargando ? (
-        <ActivityIndicator color={variant === 'primary' ? color.text.onBrand : color.text.primary} />
-      ) : (
-        <View style={styles.buttonInner}>
-          {icon}
+      {/*
+        Cargando: el spinner SUSTITUYE al icono, no a todo el contenido. Antes el boton entero se
+        quedaba en un circulo suelto y la persona perdia el rotulo de lo que acababa de pulsar.
+      */}
+      <View style={styles.buttonInner}>
+          {cargando ? (
+            <ActivityIndicator size="small" color={variant === 'primary' ? color.text.onBrand : color.text.primary} />
+          ) : typeof icon === 'string' ? (
+            <Icon
+              name={icon as IconName}
+              size={18}
+              tint={variant === 'primary' ? color.text.onBrand : variant === 'destructive' ? color.feedback.danger : color.text.primary}
+            />
+          ) : (
+            icon
+          )}
           <AtlasText
             variant="bodyStrong"
             tone={variant === 'primary' ? 'onBrand' : variant === 'destructive' ? 'danger' : 'primary'}
@@ -314,7 +329,6 @@ export function Button({
             {label}
           </AtlasText>
         </View>
-      )}
     </AnimatedPressable>
   );
 
@@ -1039,7 +1053,7 @@ export function ErrorState({
       ) : null}
       {onRetry ? (
         <View style={styles.stateAction}>
-          <Button label="Reintentar" variant="secondary" onPress={onRetry} />
+          <Button label="Reintentar" icon="refrescar" variant="secondary" onPress={onRetry} />
         </View>
       ) : null}
       {actions ? <View style={styles.stateAction}>{actions}</View> : null}

@@ -17,7 +17,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import type { AssistScreen } from '../api/endpoints/assist';
 import { PREGUNTAS_FRECUENTES, type BurbujaAssist, type useAssist } from '../features/assist';
 import { color, radius, space, stroke, touch } from '../theme/tokens';
@@ -25,6 +25,7 @@ import { AssistHistorial } from './assist-historial';
 import { Field } from './fields';
 import { BottomSheet } from './help-sheet';
 import { toqueWeb } from './hit-slop';
+import { PressSurface } from './motion';
 import { Icon, type IconName } from './icons';
 import { AtlasText, Button } from './primitives';
 import { webData } from '../web/estilo';
@@ -86,7 +87,7 @@ export function AssistSheet({
   const vacia = burbujas.length === 0 && estado.fase !== 'cargando';
 
   return (
-    <BottomSheet visible={visible} titulo="Atlas Assist" onClose={onClose} cierre="Cerrar" evitarTeclado>
+    <BottomSheet visible={visible} titulo="Atlas Assist" onClose={onClose} cierre="Cerrar" evitarTeclado altura="alta">
       <View style={styles.cuerpo} {...webData('asistente-hoja')}>
         {vista === 'historial' ? (
           <AssistHistorial
@@ -134,7 +135,7 @@ export function AssistSheet({
                   </AtlasText>
                   <View style={styles.chips}>
                     {PREGUNTAS_FRECUENTES.map((pregunta) => (
-                      <Pressable
+                      <PressSurface
                         key={pregunta}
                         onPress={() => mandar(pregunta)}
                         accessibilityRole="button"
@@ -146,7 +147,7 @@ export function AssistSheet({
                         <AtlasText variant="caption" tone="brand">
                           {pregunta}
                         </AtlasText>
-                      </Pressable>
+                      </PressSurface>
                     ))}
                   </View>
                 </View>
@@ -170,7 +171,7 @@ export function AssistSheet({
                   <AtlasText variant="caption" tone="danger">
                     {estado.mensaje}
                   </AtlasText>
-                  <Button label="Reintentar" variant="secondary" icon={null} onPress={() => reintentar(pantalla)} />
+                  <Button label="Reintentar" icon="refrescar" variant="secondary" onPress={() => reintentar(pantalla)} />
                 </View>
               ) : null}
             </ScrollView>
@@ -185,7 +186,7 @@ export function AssistSheet({
                 testID="asistente-entrada"
               />
               <Button
-                label="Enviar"
+                label="Enviar" icon="enviar"
                 onPress={() => mandar(texto)}
                 loading={escribiendo}
                 disabled={texto.trim().length === 0}
@@ -196,7 +197,7 @@ export function AssistSheet({
                 El escalado SIEMPRE visible, no solo cuando el asistente lo sugiere: el asistente es un
                 atajo hacia la respuesta, nunca un peaje delante de las personas.
               */}
-              <Button label="Hablar con una persona" variant="ghost" icon={null} onPress={() => irASoporte(onClose)} testID="asistente-humano" />
+              <Button label="Hablar con una persona" icon="telefono" variant="ghost" onPress={() => irASoporte(onClose)} testID="asistente-humano" />
               <AtlasText variant="micro" tone="tertiary" style={styles.aviso}>
                 Atlas Assist puede equivocarse. No ve tus saldos ni tus movimientos.
               </AtlasText>
@@ -224,7 +225,7 @@ function Accion({
 }) {
   const apagada = razon !== null;
   return (
-    <Pressable
+    <PressSurface
       onPress={apagada ? undefined : onPress}
       disabled={apagada}
       accessibilityRole="button"
@@ -241,7 +242,7 @@ function Accion({
       <AtlasText variant="bodyStrong" tone={apagada ? 'tertiary' : 'brand'}>
         {etiqueta}
       </AtlasText>
-    </Pressable>
+    </PressSurface>
   );
 }
 
@@ -261,7 +262,7 @@ function Burbuja({ burbuja, onHablarConPersona }: { burbuja: BurbujaAssist; onHa
       <View style={[styles.burbuja, mia ? styles.burbujaMia : styles.burbujaAsistente]}>
         <AtlasText variant="body">{burbuja.texto}</AtlasText>
         {burbuja.sugiereHumano ? (
-          <Pressable
+          <PressSurface
             onPress={onHablarConPersona}
             accessibilityRole="button"
             accessibilityLabel="Hablar con una persona"
@@ -271,7 +272,7 @@ function Burbuja({ burbuja, onHablarConPersona }: { burbuja: BurbujaAssist; onHa
             <AtlasText variant="captionStrong" tone="brand">
               Hablar con una persona
             </AtlasText>
-          </Pressable>
+          </PressSurface>
         ) : null}
       </View>
     </View>
@@ -279,7 +280,7 @@ function Burbuja({ burbuja, onHablarConPersona }: { burbuja: BurbujaAssist; onHa
 }
 
 const styles = StyleSheet.create({
-  cuerpo: { flexShrink: 1 },
+  cuerpo: { flex: 1 },
   acciones: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, paddingHorizontal: space.lg, paddingTop: space.sm, paddingBottom: space.xs },
   accion: {
     minHeight: touch.minSize,
@@ -293,7 +294,7 @@ const styles = StyleSheet.create({
   },
   accionApagada: { borderColor: color.border.hairline },
   razon: { paddingHorizontal: space.lg },
-  lista: { maxHeight: 380, flexShrink: 1 },
+  lista: { flex: 1 },
   listaContenido: { padding: space.lg, gap: space.sm, flexGrow: 1, justifyContent: 'flex-end' },
   vacio: { gap: space.md, paddingBottom: space.sm },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
