@@ -22,6 +22,9 @@ import { useCallback, useEffect, useState } from 'react';
 import * as customerApi from '../../src/api/endpoints/customer';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { useCreditBook } from '../../src/features/use-credit-book';
+import { useProgress } from '../../src/features/use-progress';
+import { fraseDeExperiencia } from '../../src/features/puntaje-explicado';
+import { NivelCard } from '../../src/ui/nivel-card';
 import { marcarPinConfirmado, pinConfirmadoReciente } from '../../src/features/pin-verificado';
 import { useSession } from '../../src/session/session';
 import { ConfirmarPinSheet } from '../../src/ui/confirmar-pin-sheet';
@@ -64,6 +67,7 @@ export default function MisDatos() {
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState(false);
   const book = useCreditBook(verificado ? customerId : null);
+  const nivel = useProgress(verificado ? customerId : null);
 
   const cargar = useCallback(async () => {
     if (!customerId) return;
@@ -132,6 +136,21 @@ export default function MisDatos() {
   return (
     <Screen>
       <ScreenHeader title="Mis datos" subtitle="Lo que Atlas sabe de ti." onBack="auto" />
+
+      {/*
+        Tu nivel y por qué: el puntaje también es un dato que Atlas tiene de la persona. Se muestra aquí con su
+        explicación a un toque (la cuenta parte por parte vive en «Tu nivel Atlas»).
+      */}
+      {nivel.fase === 'lista' ? (
+        <>
+          <NivelCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} />
+          <AtlasText variant="caption" tone="secondary">
+            {`${fraseDeExperiencia(nivel.progress.experience.xp)} Toca la tarjeta para ver por qué tienes este puntaje.`}
+          </AtlasText>
+        </>
+      ) : nivel.fase === 'cargando' ? (
+        <SkeletonLista filas={1} alto={110} />
+      ) : null}
 
       <Card>
         <CardHeader icon="perfil" title="Quién eres" divider={false} />

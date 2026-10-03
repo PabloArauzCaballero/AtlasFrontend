@@ -16,12 +16,16 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../../src/api/endpoints/credit-line';
+import { cuentaDeUnaParte, fraseDeExperiencia, fraseDelResultado } from '../../src/features/puntaje-explicado';
+import { useCreditBook } from '../../src/features/use-credit-book';
 import { useProgress } from '../../src/features/use-progress';
 import { useSession } from '../../src/session/session';
 import { Icon } from '../../src/ui/icons';
+import { Insignia } from '../../src/ui/insignia';
+import { ScoringPanel } from '../../src/ui/scoring-panel';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { NivelCard } from '../../src/ui/nivel-card';
-import { Appear } from '../../src/ui/motion';
+import { Appear, Vivo } from '../../src/ui/motion';
 import { AtlasText, Button, Card, CardHeader, Divider, EmptyState, ErrorState, ProgressBar, SectionHeader, SkeletonLista } from '../../src/ui/primitives';
 import { color, radius, space } from '../../src/theme/tokens';
 
@@ -39,6 +43,7 @@ export default function Progreso() {
   const router = useRouter();
   const session = useSession();
   const { fase, progress, recargar } = useProgress(session.customerId);
+  const book = useCreditBook(session.customerId);
 
   if (fase === 'cargando') {
     return (
@@ -67,20 +72,98 @@ export default function Progreso() {
 
       <Appear index={1}>
         <Card>
-          <CardHeader icon="grafico" title="De dónde salen tus puntos" detail="Cada parte pesa distinto en tu nivel." divider={false} />
+          <View style={styles.xpFila}>
+            <Vivo tipo="late" periodo={1800}>
+              <View style={styles.xpInsignia}>
+                <Icon name="chispa" size={26} tint={color.action.primary} />
+              </View>
+            </Vivo>
+            <View style={styles.misionTexto}>
+              <AtlasText variant="overline" tone="secondary">
+                EXPERIENCIA
+              </AtlasText>
+              <AtlasText variant="amount">{`${progress.experience.xp.toLocaleString('es-BO')} XP`}</AtlasText>
+            </View>
+            <View style={styles.derecha}>
+              <AtlasText variant="bodyStrong">{`Racha ${progress.experience.currentStreak}`}</AtlasText>
+              <AtlasText variant="caption" tone="secondary">{`mejor: ${progress.experience.bestStreak}`}</AtlasText>
+            </View>
+          </View>
+          <AtlasText variant="caption" tone="secondary">
+            {fraseDeExperiencia(progress.experience.xp)}
+          </AtlasText>
+        </Card>
+      </Appear>
+
+      <Appear index={2}>
+        <SectionHeader
+          title="Insignias"
+          detail={`${progress.experience.badges.filter((b) => b.earned).length} de ${progress.experience.badges.length} ganadas`}
+        />
+        <Card>
+          <View style={styles.rejilla} testID="insignias">
+            {progress.experience.badges.map((insignia, indice) => (
+              <Insignia key={insignia.code} insignia={insignia} indice={indice} />
+            ))}
+          </View>
+        </Card>
+      </Appear>
+
+      <Appear index={3}>
+        <Card testID="por-que-puntaje">
+          <CardHeader
+            icon="grafico"
+            title="Por qué tienes este puntaje"
+            detail="Esta es la cuenta de tu nivel, parte por parte, con tus datos."
+            divider={false}
+          />
           {progress.components.map((componente) => (
             <View key={componente.code} style={styles.componente}>
               <View style={styles.componenteTitulo}>
                 <AtlasText variant="bodyStrong">{componente.label}</AtlasText>
-                <AtlasText variant="caption" tone="secondary">{`pesa ${Math.round(componente.weight * 100)} %`}</AtlasText>
+                <AtlasText variant="caption" tone="brand">
+                  {cuentaDeUnaParte(componente)}
+                </AtlasText>
               </View>
-              <ProgressBar value={componente.value} label={`${componente.value} de 100`} />
+              <ProgressBar value={componente.value} label={`${componente.label}: ${componente.value} de 100`} />
+              <AtlasText variant="caption" tone="secondary">
+                {componente.why}
+              </AtlasText>
+            </View>
+          ))}
+          <Divider />
+          <AtlasText variant="bodyStrong">{fraseDelResultado(progress)}</AtlasText>
+          {progress.caps.map((tope) => (
+            <View key={tope.code} style={styles.tope} accessibilityLabel={`Tope. ${tope.detail}`}>
+              <Icon name="info" size={18} tint={color.feedback.warning} />
+              <AtlasText variant="caption" tone="secondary" style={styles.misionTexto}>
+                {tope.detail}
+              </AtlasText>
             </View>
           ))}
         </Card>
       </Appear>
 
-      <Appear index={2}>
+      <Appear index={4}>
+        <SectionHeader title="Tu puntaje Atlas de 0 a 1000" detail="El que decide cuánto puedes gastar." />
+        {book.creditLine ? (
+          <Card>
+            <ScoringPanel line={book.creditLine} />
+          </Card>
+        ) : (
+          <Card>
+            <AtlasText variant="body" tone="secondary">
+              Es un número aparte de tu nivel: lo calcula el motor de decisión de Atlas con una política de crédito publicada, usando tus datos
+              declarados, tus pagos y, si la subes, la información de tu extracto bancario. Todavía no se calculó tu línea, por eso no aparece.
+            </AtlasText>
+            <AtlasText variant="caption" tone="secondary">
+              Cuando se calcule verás aquí tu puntaje, en qué tramo estás, qué datos pesaron y cómo subirlo.
+            </AtlasText>
+          </Card>
+        )}
+      </Appear>
+
+      <Appear index={5}>
         <SectionHeader title="Misiones" detail="Lo que te hace subir de nivel." />
         <Card padding="none">
           {progress.missions.map((mision, indice) => (
@@ -110,7 +193,7 @@ export default function Progreso() {
         </AtlasText>
       </Appear>
 
-      <Appear index={3}>
+      <Appear index={6}>
         <SectionHeader title="Los niveles" detail="Cada uno amplía hasta cuánto puede crecer tu límite." />
         <Card padding="none">
           {[...progress.ladder].reverse().map((escalon, indice) => (
@@ -133,7 +216,7 @@ export default function Progreso() {
         </Card>
       </Appear>
 
-      <Appear index={4}>
+      <Appear index={7}>
         <SectionHeader title="Tu evolución" detail="Cómo ha cambiado tu línea con el tiempo." />
         {progress.history.length === 0 ? (
           <EmptyState
@@ -195,6 +278,10 @@ function EvolucionDeLinea({ history }: { history: Progress['history'] }) {
 
 const styles = StyleSheet.create({
   componente: { gap: space.xs, paddingTop: space.sm },
+  xpFila: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  xpInsignia: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: color.feedbackSoft.success },
+  rejilla: { flexDirection: 'row', flexWrap: 'wrap' },
+  tope: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, paddingTop: space.xs },
   componenteTitulo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   mision: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.lg },
   escalon: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },

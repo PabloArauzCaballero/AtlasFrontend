@@ -31,6 +31,7 @@ import Animated, {
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
+  withRepeat,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
@@ -218,6 +219,71 @@ export function useCountUp(value: number, enabled = true): SharedValue<number> {
   }, [value, enabled, reduced, progress]);
 
   return progress;
+}
+
+/**
+ * Movimiento CONSTANTE y discreto para lo que tiene que sentirse vivo: la insignia de nivel, las medallas, un icono
+ * clave. No es adorno que se mueve sin motivo: es la señal de «esto está ganado» o «esto es lo que sigue».
+ *
+ * Reglas que lo hacen aguantable:
+ *  - Sólo `transform` y `opacity`, en el hilo de UI (Reanimated): no cuesta nada aunque el hilo de JS esté ocupado.
+ *  - Amplitud pequeña: 3 px, 6 % de escala. Se nota al mirar y no se persigue con la vista.
+ *  - Con movimiento reducido NO se mueve (el contenido nunca depende de la animación).
+ *  - `retardo` descompasa varios a la vez: diez medallas que respiran en fase se leen como un parpadeo.
+ *
+ *   `flota`  sube y baja despacio        (medallas, nivel)
+ *   `pulsa`  respira creciendo y volviendo (icono principal)
+ *   `late`   latido más vivo, con brillo  (algo recién ganado o pendiente)
+ *   `oscila` se mece de lado a lado       (insignia sin ganar que invita a ganarla)
+ */
+export type TipoDeVida = 'flota' | 'pulsa' | 'late' | 'oscila';
+
+export function Vivo({
+  children,
+  tipo = 'flota',
+  periodo = 2600,
+  retardo = 0,
+  style,
+}: {
+  children: React.ReactNode;
+  tipo?: TipoDeVida;
+  /** Un ciclo completo (ida y vuelta), en ms. */
+  periodo?: number;
+  retardo?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const reduced = useReducedMotion();
+  const fase = useSharedValue(0);
+
+  React.useEffect(() => {
+    if (reduced) {
+      fase.value = 0;
+      return;
+    }
+    // Ida y vuelta con `reverse`: la mitad del periodo en cada sentido, suave en los dos extremos.
+    fase.value = withRepeat(withTiming(1, { duration: periodo / 2, easing: Easing.inOut(Easing.sin) }), -1, true);
+    return () => {
+      fase.value = 0;
+    };
+  }, [fase, periodo, reduced]);
+
+  const animado = useAnimatedStyle(() => {
+    if (reduced) return {};
+    // El retardo descompasa sin esperar: se desplaza la fase en vez de retrasar la animación.
+    const t = (fase.value + retardo / periodo) % 1;
+    switch (tipo) {
+      case 'pulsa':
+        return { transform: [{ scale: 1 + t * 0.06 }] };
+      case 'late':
+        return { opacity: 0.82 + t * 0.18, transform: [{ scale: 1 + t * 0.1 }] };
+      case 'oscila':
+        return { transform: [{ rotate: `${(t - 0.5) * 8}deg` }] };
+      default:
+        return { transform: [{ translateY: (t - 0.5) * 6 }] };
+    }
+  });
+
+  return <Animated.View style={[style, animado]}>{children}</Animated.View>;
 }
 
 export { Animated as MotionView };

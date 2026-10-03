@@ -188,6 +188,25 @@ export const createBankStatementUploadUrl = (
 
 export type TierCode = 'NUEVO' | 'EN_CONSTRUCCION' | 'ESTABLECIDO' | 'CONSOLIDADO' | 'PREFERENTE';
 
+export type Badge = {
+  code: string;
+  label: string;
+  detail: string;
+  icon: string;
+  earned: boolean;
+  current: number;
+  target: number;
+};
+
+/** Puntos de experiencia: 1 por cada boliviano PAGADO a tiempo (comprar no suma). */
+export type Experience = {
+  xp: number;
+  onTimeInstallments: number;
+  currentStreak: number;
+  bestStreak: number;
+  badges: Badge[];
+};
+
 export type ProgressMission = { code: string; label: string; detail: string; done: boolean; points: string };
 
 /**
@@ -204,7 +223,14 @@ export type Progress = {
   tier: { code: TierCode; label: string; index: number; of: number; multiplier: number };
   nextTier: { code: TierCode; label: string; from: number; pointsMissing: number; multiplier: number } | null;
   ladder: { code: TierCode; label: string; from: number; multiplier: number; reached: boolean }[];
-  components: { code: string; label: string; value: number; weight: number }[];
+  /**
+   * La cuenta de ESTA persona: valor 0-100 de cada parte, su peso, los puntos que aporta (valor × peso) y la razón en
+   * una frase. Los `points` suman `rawScore`; si un tope recortó el resultado, `score` es menor y `caps` dice cuál.
+   */
+  components: { code: string; label: string; value: number; weight: number; points: number; why: string }[];
+  rawScore: number;
+  caps: { code: string; limit: number; detail: string }[];
+  experience: Experience;
   missions: ProgressMission[];
   signals: { tenureMonths: number; loansSettled: number; loansActive: number; onTimeRatio: number | null; kycComplete: boolean };
   history: {
