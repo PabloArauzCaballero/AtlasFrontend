@@ -41,6 +41,9 @@ export function PinField({
   autoFocus = false,
   onComplete,
   bitacora,
+  tamano = 'base',
+  autoComplete,
+  textContentType = 'oneTimeCode',
 }: {
   label: string;
   value: string;
@@ -54,6 +57,15 @@ export function PinField({
   onComplete?: (pin: string) => void;
   /** Codigo en la bitacora del alta. De un PIN solo se anotan foco, desenfoque y «completo». */
   bitacora?: string;
+  /**
+   * `'grande'` para la pantalla de ingreso, donde el PIN es lo único que se teclea: casillas de 72
+   * en vez de 64 y más aire entre ellas, para que se acierten con el pulgar y se lean de un vistazo.
+   */
+  tamano?: 'base' | 'grande';
+  /** El login quiere `current-password` (el gestor de contraseñas lo rellena); el alta no. */
+  autoComplete?: 'current-password' | 'new-password' | 'one-time-code' | 'off';
+  /** `password` en el login; por defecto `oneTimeCode`, que es lo que sirve al alta y a recuperar. */
+  textContentType?: 'password' | 'newPassword' | 'oneTimeCode';
 }) {
   const anotar = ganchosDeCampo(bitacora, () => value.length);
   const input = useRef<TextInput>(null);
@@ -113,14 +125,14 @@ export function PinField({
         accessibilityLabel={`${label}: ${PIN_LENGTH} dígitos`}
         testID="pin-field"
       >
-        <View style={styles.boxes}>
+        <View style={[styles.boxes, tamano === 'grande' && styles.boxesGrande]}>
           {Array.from({ length: PIN_LENGTH }, (_, index) => {
             const filled = index < value.length;
             const active = focused && index === value.length;
             return (
               <View
                 key={index}
-                style={[styles.box, filled && styles.boxFilled, active && styles.boxActive, error ? styles.boxError : null]}
+                style={[styles.box, tamano === 'grande' && styles.boxGrande, filled && styles.boxFilled, active && styles.boxActive, error ? styles.boxError : null]}
               >
                 {filled ? (
                   visible ? (
@@ -153,7 +165,8 @@ export function PinField({
           autoFocus={autoFocus}
           caretHidden
           secureTextEntry={!visible && Platform.OS === 'ios'}
-          textContentType="oneTimeCode"
+          textContentType={textContentType}
+          autoComplete={autoComplete}
           onFocus={() => {
             setFocused(true);
             anotar.onFocus();
@@ -162,7 +175,7 @@ export function PinField({
             setFocused(false);
             anotar.onBlur();
           }}
-          style={styles.hiddenInput}
+          style={[styles.hiddenInput, tamano === 'grande' && styles.hiddenInputGrande]}
           accessibilityLabel={label}
         />
       </Pressable>
@@ -173,6 +186,7 @@ export function PinField({
 }
 
 const BOX = 64;
+const BOX_GRANDE = 72;
 
 const styles = StyleSheet.create({
   wrapper: { gap: space.xs },
@@ -195,6 +209,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  boxesGrande: { gap: space.lg },
+  boxGrande: { width: BOX_GRANDE, height: BOX_GRANDE },
+  hiddenInputGrande: { height: BOX_GRANDE },
   boxFilled: { borderColor: color.border.focus, backgroundColor: color.brandWash.to },
   boxActive: { borderColor: color.border.focus, borderWidth: 2 },
   boxError: { borderColor: color.feedback.danger },

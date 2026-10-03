@@ -15,15 +15,11 @@ appId: bo.atlas.consumer
       text: 'Correo o teléfono *'
 - inputText: "${CORREO}"
 - tapOn:
-    below:
-      text: 'PIN *'
+    id: 'pin-field'
 - inputText: "${PIN}"
 - takeScreenshot: ingreso-lleno
 
-# «Ingresar» aparece dos veces —el título de la pantalla y el botón—, así que se toma el segundo.
-- tapOn:
-    text: 'Ingresar'
-    index: 1
+# Con el cuarto dígito el ingreso se envía solo: no hay botón que tocar.
 - extendedWaitUntil:
     visible: 'Avance de tu registro'
     timeout: 30000

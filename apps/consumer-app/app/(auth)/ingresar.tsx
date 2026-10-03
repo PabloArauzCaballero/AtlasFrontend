@@ -9,11 +9,10 @@ import { useState } from 'react';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { IconField } from '../../src/ui/form-controls';
-import { toqueWeb } from '../../src/ui/hit-slop';
-import { Icon } from '../../src/ui/icons';
-import { color, space } from '../../src/theme/tokens';
+import { PIN_LENGTH, PinField } from '../../src/ui/pin-field';
+import { space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasLogo } from '../../src/ui/brand';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
@@ -23,29 +22,33 @@ export default function SignIn() {
   const session = useSession();
 
   const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  const [pin, setPin] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  // El mismo interruptor que el registro: quien se equivoca al teclear aqui vuelve a la pantalla
-  // de recuperar contrasena, que es el camino mas caro de todos.
-  const [showPassword, setShowPassword] = useState(false);
 
-  const canSubmit = identifier.trim().length >= 3 && password.length >= 1 && !submitting;
+  const canSubmit = identifier.trim().length >= 3 && pin.length === PIN_LENGTH && !submitting;
 
   const blockedReason = firstBlocker([
     [identifier.trim().length >= 3, 'Escribe el correo o teléfono con el que te registraste.'],
-    [password.length >= 1, 'Falta tu PIN.'],
+    [pin.length === PIN_LENGTH, pin.length === 0 ? 'Falta tu PIN.' : `Faltan ${PIN_LENGTH - pin.length} dígitos del PIN.`],
   ]);
 
-  const submit = async () => {
-    if (!canSubmit) return;
+  /*
+    `entrante` es el PIN recién completado: `onComplete` dispara en la misma pasada que `setPin`, y el
+    `pin` del cierre todavía es el de tres dígitos. Sin pasarlo, el cuarto dígito no enviaba nada.
+  */
+  const submit = async (entrante?: string) => {
+    const clave = entrante ?? pin;
+    if (submitting || identifier.trim().length < 3 || clave.length !== PIN_LENGTH) return;
     setSubmitting(true);
     setError(null);
     try {
-      await session.signIn(identifier.trim(), password);
+      await session.signIn(identifier.trim(), clave);
       router.replace('/');
     } catch (caught) {
       setError(caught);
+      // Casillas vacías para reescribir: con las cuatro llenas el cuarto dígito no dispararía otro intento.
+      setPin('');
     } finally {
       setSubmitting(false);
     }
@@ -73,7 +76,7 @@ export default function SignIn() {
     <Screen
       footer={
         <>
-          <Button label="Ingresar" icon="adelante" onPress={submit} loading={submitting} disabled={!canSubmit} blockedReason={blockedReason} />
+          <Button label="Ingresar" icon="adelante" onPress={() => submit()} loading={submitting} disabled={!canSubmit} blockedReason={blockedReason} />
           <Button label="Crear una cuenta" icon="perfil" variant="ghost" onPress={() => router.replace('/(onboarding)/registro')} />
         </>
       }
@@ -125,33 +128,20 @@ export default function SignIn() {
         required
       />
 
-      <IconField
+      {/*
+        El PIN son CUATRO casillas grandes y nada más: es lo único que se teclea aquí. El ojo sigue
+        (lo trae `PinField`) para verlo como números normales; con el cuarto dígito, entra solo.
+      */}
+      <PinField
         label="PIN"
-        icon="candado"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry={!showPassword}
-        textContentType="password"
+        value={pin}
+        onChangeText={setPin}
+        tamano="grande"
         autoComplete="current-password"
-        returnKeyType="go"
-        onSubmitEditing={submit}
+        textContentType="password"
+        onComplete={(completo) => void submit(completo)}
+        error={credentialsRejected ? 'PIN incorrecto' : null}
         ayuda="Los cuatro dígitos que elegiste al registrarte. Tras cinco intentos fallidos la cuenta se bloquea un rato por seguridad; si no lo recuerdas, usa «Recuperar acceso» antes de agotarlos."
-        required
-        trailing={
-          <Pressable
-            onPress={() => setShowPassword(!showPassword)}
-            accessibilityRole="button"
-            accessibilityLabel={showPassword ? 'Ocultar PIN' : 'Mostrar PIN'}
-            hitSlop={10}
-            {...toqueWeb(10)}
-          >
-            <Icon
-              name={showPassword ? 'ojo-tachado' : 'ojo'}
-              size={20}
-              tint={showPassword ? color.action.primary : color.text.tertiary}
-            />
-          </Pressable>
-        }
       />
 
       <Gap size="xs" />
