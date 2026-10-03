@@ -28,7 +28,7 @@ import { color, palette, radius, space } from '../../../src/theme/tokens';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, Overline } from '../../../src/ui/primitives';
+import { AtlasText, Badge, Button, Cargando, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, Overline, Skeleton } from '../../../src/ui/primitives';
 import { useCopy } from '../../../src/features/use-contenido-remoto';
 
 export default function PaymentScreen() {
@@ -79,6 +79,15 @@ export default function PaymentScreen() {
       });
     return () => { cancelled = true; };
   }, [itemId, instruction, partnerId, posId, realPos, qrRetry, ensureUploadedQrInstruction]);
+
+  if (!sandbox.ready) {
+    return (
+      <Screen>
+        <ScreenHeader title="Pago" onBack="auto" />
+        <Cargando bloque texto="Buscando tu pago…" />
+      </Screen>
+    );
+  }
 
   if (!item || !order) {
     return (
@@ -236,10 +245,19 @@ export default function PaymentScreen() {
 
           {instruction.qrPayloadSnapshot ? <Button label={copied ? 'Código copiado' : 'Copiar código de pago'} variant="secondary" onPress={copyEndpoint} /> : null}
         </Card>
+      ) : !qrError ? (
+        /*
+          Sin error todavía NO es un fallo: es el QR del comercio que aún viene. Se pintaba un
+          «Sin instrucción de pago» con botón de reintentar durante toda la espera, y parecía roto.
+        */
+        <Card>
+          <Skeleton height={220} />
+          <Cargando texto="Preparando el QR de pago del comercio…" />
+        </Card>
       ) : (
         <ErrorState
-          title="Sin instruccion de pago"
-          detail={qrError ?? 'Estamos preparando el QR bancario aprobado del comercio.'}
+          title="No pudimos preparar el pago"
+          detail={qrError}
           onRetry={() => {
             if (!itemId) return;
             if (realPos) {

@@ -49,6 +49,7 @@ import {
   ErrorState,
   IconChip,
   KeyValue,
+  Skeleton,
   Stat,
   StatRow,
 } from "../../ui/primitives";
@@ -154,25 +155,32 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
   const [review, setReview] =
     useState<creditLineApi.BankStatementReview | null>(null);
   const [loading, setLoading] = useState(true);
+  const [cargaFallo, setCargaFallo] = useState(false);
+  const [recarga, setRecarga] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
     if (!session.customerId) return;
     let cancelled = false;
+    setLoading(true);
+    setCargaFallo(false);
     creditLineApi
       .getLatestBankStatement(session.customerId)
       .then((value) => {
         if (!cancelled) setReview(value);
       })
-      .catch(() => undefined)
+      // Antes se tragaba: un fallo se veía igual que «no has subido nada». Ahora se dice y se reintenta.
+      .catch(() => {
+        if (!cancelled) setCargaFallo(true);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [session.customerId]);
+  }, [session.customerId, recarga]);
 
   const pending =
     review?.status === "received" || review?.status === "processing";
@@ -283,6 +291,21 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
           title={described.title}
           detail={described.detail}
           reference={described.reference}
+        />
+      ) : null}
+
+      {loading ? (
+        <Card>
+          <Skeleton height={11} width="45%" />
+          <Skeleton height={24} width="70%" />
+          <Skeleton height={14} />
+        </Card>
+      ) : null}
+      {!loading && cargaFallo ? (
+        <ErrorState
+          title="No pudimos ver tu último extracto"
+          detail="Puedes subir uno nuevo igual, o volver a intentar."
+          onRetry={() => setRecarga((n) => n + 1)}
         />
       ) : null}
 

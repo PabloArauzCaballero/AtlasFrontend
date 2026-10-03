@@ -22,7 +22,22 @@ import { useRouter } from 'expo-router';
 import * as supportApi from '../../../src/api/endpoints/support';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { Accordion, AtlasText, Badge, Button, Card, CardHeader, Divider, EmptyState, ListRow, SectionHeader, Skeleton } from '../../../src/ui/primitives';
+import {
+  Accordion,
+  AtlasText,
+  Badge,
+  Button,
+  Cargando,
+  Card,
+  CardHeader,
+  Divider,
+  EmptyState,
+  ErrorState,
+  ListRow,
+  SectionHeader,
+  Skeleton,
+  SkeletonLista,
+} from '../../../src/ui/primitives';
 import { space } from '../../../src/theme/tokens';
 import { useCopy } from '../../../src/features/use-contenido-remoto';
 
@@ -33,6 +48,9 @@ export default function Soporte() {
   const [casos, setCasos] = useState<supportApi.SupportCase[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [resultados, setResultados] = useState<supportApi.KnowledgeHit[] | null>(null);
+  /** La búsqueda está en el aire: se pinta una espera, no los resultados viejos ni «nada por aquí». */
+  const [buscando, setBuscando] = useState(false);
+  const [errorBusqueda, setErrorBusqueda] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [abriendo, setAbriendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,15 +68,19 @@ export default function Soporte() {
       que no puede pasar es lo contrario: que la lista salga vacia sin decirlo y parezca que no hay
       por donde empezar.
     */
-    Promise.all([supportApi.getFaq(), supportApi.listCases(), supportApi.listCategories().catch(() => ({ categories: [] }))])
+    /*
+      `allSettled`: cada pieza se pinta con lo que llegó. Con `Promise.all`, que fallara UNA —los casos,
+      por ejemplo— tiraba también la ayuda que sí había llegado, y la persona veía sólo un error.
+    */
+    Promise.allSettled([supportApi.getFaq(), supportApi.listCases(), supportApi.listCategories()])
       .then(([ayuda, mios, catalogo]) => {
         if (cancelado) return;
-        setFaq(ayuda.faq);
-        setCasos(mios.cases);
-        setMotivos(catalogo.categories);
-      })
-      .catch(() => {
-        if (!cancelado) setError('No pudimos cargar la ayuda. Puedes escribirnos igual.');
+        if (ayuda.status === 'fulfilled') setFaq(ayuda.value.faq);
+        if (mios.status === 'fulfilled') setCasos(mios.value.cases);
+        if (catalogo.status === 'fulfilled') setMotivos(catalogo.value.categories);
+        if (ayuda.status === 'rejected' && mios.status === 'rejected') {
+          setError('No pudimos cargar la ayuda. Puedes escribirnos igual.');
+        }
       })
       .finally(() => {
         if (!cancelado) setCargando(false);
@@ -78,13 +100,21 @@ export default function Soporte() {
   const buscar = useCallback(async (texto: string) => {
     if (texto.trim().length < 3) {
       setResultados(null);
+      setBuscando(false);
+      setErrorBusqueda(false);
       return;
     }
+    setBuscando(true);
+    setErrorBusqueda(false);
     try {
       const encontrado = await supportApi.searchKnowledge(texto.trim());
       setResultados(encontrado.results);
     } catch {
-      setResultados([]);
+      // Un fallo NO es «nada por aquí»: decirlo así mandaba a la persona a creer que no hay respuesta.
+      setResultados(null);
+      setErrorBusqueda(true);
+    } finally {
+      setBuscando(false);
     }
   }, []);
 
@@ -158,6 +188,7 @@ export default function Soporte() {
           ayuda="Escribe con tus palabras lo que te pasa y la lista se filtra mientras escribes. Ej.: «no me llega el código». Si nada coincide, abre una conversación con soporte."
         />
         <Button label="Hablar con soporte" icon="chat" onPress={empezar} loading={abriendo} />
+        {abriendo ? <Cargando texto="Abriendo tu conversación…" /> : null}
       </Card>
 
       {eligiendo !== null ? (
@@ -200,7 +231,18 @@ export default function Soporte() {
         </AtlasText>
       ) : null}
 
-      {resultados !== null ? (
+      {busqueda.trim().length >= 3 && buscando ? (
+        <>
+          <SectionHeader title="Resultados" />
+          <SkeletonLista filas={3} alto={64} />
+        </>
+      ) : errorBusqueda ? (
+        <ErrorState
+          title="No pudimos buscar"
+          detail="La búsqueda no respondió. Inténtalo otra vez o escríbenos."
+          onRetry={() => void buscar(busqueda)}
+        />
+      ) : resultados !== null ? (
         <>
           <SectionHeader title="Resultados" detail={resultados.length === 0 ? 'Nada por aquí. Escríbenos y lo vemos.' : undefined} />
           {resultados.map((hit) => (
@@ -236,10 +278,10 @@ export default function Soporte() {
       ) : null}
 
       {cargando ? (
-        <Card>
-          <Skeleton height={22} width="70%" />
-          <Skeleton height={22} width="50%" />
-        </Card>
+        <>
+          <SectionHeader title="Preguntas frecuentes" detail="Lo que más nos preguntan." />
+          <SkeletonLista filas={4} alto={52} />
+        </>
       ) : null}
 
       {faq.length > 0 && resultados === null ? (
