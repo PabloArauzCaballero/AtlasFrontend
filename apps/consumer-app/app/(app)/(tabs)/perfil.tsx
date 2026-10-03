@@ -21,6 +21,8 @@ import { TOUR_INICIO_KEY } from '../../../src/features/tour-inicio';
 import { useTourInicio } from '../../../src/features/use-contenido-remoto';
 import { resetTour, useTour } from '../../../src/ui/tour';
 import { Gap, Screen } from '../../../src/ui/layout';
+import { NivelCard } from '../../../src/ui/nivel-card';
+import { useProgress } from '../../../src/features/use-progress';
 import {
   AtlasText,
   Avatar,
@@ -75,6 +77,7 @@ export default function Profile() {
   const piezasDeCredito = useSurfaceContent('credit');
 
   const book = useCreditBook(session.customerId);
+  const nivel = useProgress(session.customerId);
   const rating = book.rating;
   const creditLine = book.creditLine;
   // Lo vencido sale del reparto por rubro, que ya lo mide contra el calendario en el servidor.
@@ -169,6 +172,24 @@ export default function Profile() {
         Va por encima de la calificacion de deuda —que es como se clasifica su cartera para la
         provision contable— porque esa responde a otra pregunta y no es accionable para el cliente.
       */}
+      {/*
+        EL NIVEL, siempre.
+
+        Sale de la base de datos, no del motor, así que lo ve también quien todavía no tiene línea calculada.
+        Antes, sin línea, Perfil no pintaba NINGUNA tarjeta de puntaje y la persona no sabía ni que existía.
+      */}
+      {nivel.fase === 'lista' ? (
+        <NivelCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} />
+      ) : nivel.fase === 'cargando' ? (
+        <Card>
+          <Skeleton height={11} width="35%" />
+          <Skeleton height={28} width="50%" />
+          <Skeleton height={10} />
+        </Card>
+      ) : (
+        <ErrorState title="No pudimos cargar tu nivel" detail="Revisa tu conexión y vuelve a intentar." onRetry={() => void nivel.recargar()} />
+      )}
+
       {creditLine ? (
         <Card>
           <ScoringPanel line={creditLine} />
@@ -183,7 +204,20 @@ export default function Profile() {
         </Card>
       ) : book.error ? (
         <ErrorState title="No pudimos cargar tu puntaje" detail={book.error} onRetry={() => void book.reload()} />
-      ) : null}
+      ) : (
+        /*
+          Sin línea calculada y sin error: se DICE. Un hueco sin explicación se lee como un fallo de la app.
+          El puntaje Atlas (0-1000) sale de la línea de crédito; hasta que el motor la calcule, lo que sí
+          existe es el nivel de arriba.
+        */
+        <Card>
+          <CardHeader icon="grafico" title="Tu puntaje Atlas" detail="Todavía no calculamos tu línea de crédito." divider={false} />
+          <AtlasText variant="body" tone="secondary">
+            Tu puntaje (de 0 a 1000) aparece aquí en cuanto se calcule tu línea. Subir tu extracto bancario ayuda a que se calcule y a que sea más alta.
+          </AtlasText>
+          <Button label="Subir mi extracto bancario" icon="documento" variant="secondary" onPress={() => router.push('/(app)/extracto-bancario')} />
+        </Card>
+      )}
 
       <SurfaceContent entries={piezasDeCredito} />
 

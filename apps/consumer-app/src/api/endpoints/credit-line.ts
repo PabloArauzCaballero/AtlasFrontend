@@ -183,3 +183,38 @@ export const createBankStatementUploadUrl = (
       },
     },
   );
+
+/* ------------------------------------------------------------------ nivel Atlas */
+
+export type TierCode = 'NUEVO' | 'EN_CONSTRUCCION' | 'ESTABLECIDO' | 'CONSOLIDADO' | 'PREFERENTE';
+
+export type ProgressMission = { code: string; label: string; detail: string; done: boolean; points: string };
+
+/**
+ * El nivel del cliente. Espeja `GET /customers/:id/progress`.
+ *
+ * Sale de la base de datos del backend —antigüedad, pagos, compras cerradas, identidad—, NO del motor, así que
+ * existe aunque `hasCreditLine` sea falso: quien todavía no tiene línea ve igual dónde está y qué le falta.
+ */
+export type Progress = {
+  customerId: string;
+  hasCreditLine: boolean;
+  /** Puntuación de relación 0-100. No es el puntaje Atlas 0-1000 de la línea. */
+  score: number;
+  tier: { code: TierCode; label: string; index: number; of: number; multiplier: number };
+  nextTier: { code: TierCode; label: string; from: number; pointsMissing: number; multiplier: number } | null;
+  ladder: { code: TierCode; label: string; from: number; multiplier: number; reached: boolean }[];
+  components: { code: string; label: string; value: number; weight: number }[];
+  missions: ProgressMission[];
+  signals: { tenureMonths: number; loansSettled: number; loansActive: number; onTimeRatio: number | null; kycComplete: boolean };
+  history: {
+    validFrom: string;
+    trigger: string;
+    scoring: number | null;
+    approvedLimit: number;
+    relationshipScore: number | null;
+    relationshipTier: TierCode | null;
+  }[];
+};
+
+export const getProgress = (customerId: string) => request<Progress>(`/customers/${customerId}/progress`);
