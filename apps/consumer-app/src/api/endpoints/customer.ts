@@ -11,6 +11,10 @@ export type CustomerMe = {
   onboarding: { onboardingFlowId: string; completionStatus: string; startedAt: string; completedAt: string | null } | null;
   eligibility: { eligible: boolean; completionPercentage: number; blockerCodes: string[] };
   contacts: { contactType: string; status: string; isPrimary: boolean; valueLast4: string | null }[];
+  /** Los permisos que la persona dio y los que negó, por código de finalidad. */
+  consents?: { accepted: string[]; declined: string[] };
+  risk?: { latestDecision: string | null; latestRiskLevel: string | null };
+  nextStep?: string | null;
 };
 
 /** `sinPantalla` cuando lo pide la sesion al arrancar, no una pantalla. Ver `RequestOptions`. */

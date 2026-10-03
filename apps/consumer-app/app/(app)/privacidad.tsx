@@ -16,6 +16,7 @@
  * creyendo que retiro algo que no retiro. Para el borrado esta la solicitud de derechos, que es
  * otro tramite y tiene otros plazos.
  */
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import * as customerApi from '../../src/api/endpoints/customer';
@@ -23,6 +24,8 @@ import * as deviceSignalsApi from '../../src/api/endpoints/device-signals';
 import * as privacyApi from '../../src/api/endpoints/privacy';
 import { usePrivacidadCopy } from '../../src/features/use-contenido-remoto';
 import { describeError } from '../../src/api/errors';
+import { marcarPinConfirmado } from '../../src/features/pin-verificado';
+import { ConfirmarPinSheet } from '../../src/ui/confirmar-pin-sheet';
 import {
   desactivarSeñalesDelDispositivo,
   FINALIDAD_AGENDA,
@@ -40,11 +43,15 @@ import {
   Divider,
   EmptyState,
   ErrorState,
+  ListRow,
   Skeleton,
 } from '../../src/ui/primitives';
 
 export default function Privacidad() {
   const session = useSession();
+  const router = useRouter();
+  // «Ver mis datos» es SIEMPRE posible, pero pide el PIN otra vez antes de enseñar nada.
+  const [pidiendoPin, setPidiendoPin] = useState(false);
   // Los textos salen del portal; los de fábrica quedan de respaldo (`features/privacidad-copy.ts`).
   const copy = usePrivacidadCopy();
   const [documentos, setDocumentos] = useState<customerApi.ConsentDocument[]>([]);
@@ -201,6 +208,32 @@ export default function Privacidad() {
 
       <Gap />
 
+      {/*
+        Ver mis datos: siempre disponible, sin solicitud ni espera. Se vuelve a pedir el PIN: la sesión
+        dice quién abrió la app, no que quien la tiene en la mano sea esa persona.
+      */}
+      <Card padding="none">
+        <ListRow
+          icon="ojo"
+          title="Ver mis datos"
+          subtitle="Siempre disponible. Te pediremos tu PIN otra vez."
+          onPress={() => setPidiendoPin(true)}
+          accessibilityHint="Abre la confirmación del PIN y después tus datos"
+        />
+      </Card>
+      <ConfirmarPinSheet
+        visible={pidiendoPin}
+        onClose={() => setPidiendoPin(false)}
+        onVerificado={() => {
+          marcarPinConfirmado();
+          setPidiendoPin(false);
+          router.push('/(app)/mis-datos');
+        }}
+        motivo="Vas a ver tus datos personales. Escribe tu PIN para continuar."
+      />
+
+      <Gap />
+
       <Card>
         <CardHeader
           title={copy.derechosTitulo}
@@ -216,6 +249,7 @@ export default function Privacidad() {
         <Gap size="sm" />
         <Button
           label={enviandoDerecho ? 'Enviando…' : 'Enviar solicitud'}
+          icon="enviar"
           onPress={() => pedirDerecho()}
           disabled={!derecho || enviandoDerecho}
         />
