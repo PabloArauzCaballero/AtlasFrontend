@@ -23,9 +23,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as supportApi from '../../../src/api/endpoints/support';
 import { CHAT_POLL_MS, fueLeido, mezclarMensajes, subirFotoAlChat, ultimaSecuencia } from '../../../src/features/support-chat';
-import { Field } from '../../../src/ui/fields';
-import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, EmptyState, Skeleton } from '../../../src/ui/primitives';
+import { AdjuntoImagen } from '../../../src/ui/adjunto-imagen';
+import { CompositorChat } from '../../../src/ui/compositor-chat';
+import { Icon } from '../../../src/ui/icons';
+import { Gap, HeaderAction, Screen, ScreenHeader } from '../../../src/ui/layout';
+import { AtlasText, Badge, Card, EmptyState, Skeleton } from '../../../src/ui/primitives';
 import { color, radius, space } from '../../../src/theme/tokens';
 import { useCopy } from '../../../src/features/use-contenido-remoto';
 
@@ -40,6 +42,8 @@ export default function Conversacion() {
   const [mensajes, setMensajes] = useState<supportApi.SupportMessage[]>([]);
   const [readState, setReadState] = useState<supportApi.ReadState[]>([]);
   const [texto, setTexto] = useState('');
+  /** La foto elegida y aún sin enviar: se ve, se puede quitar y admite un texto antes de mandarla. */
+  const [fotoPendiente, setFotoPendiente] = useState<string | null>(null);
   const [cargando, setCargando] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -122,64 +126,66 @@ export default function Conversacion() {
 
   const enviar = async () => {
     const cuerpo = texto.trim();
-    if (!cuerpo || enviando) return;
+    if ((!cuerpo && !fotoPendiente) || enviando) return;
     setEnviando(true);
 
-    /*
-     * El identificador se CONSERVA entre reintentos del mismo mensaje.
-     *
-     * Se vio en el simulador: el envío venció por tiempo del lado del cliente, el servidor sí lo
-     * había guardado, y al reintentar con un identificador nuevo el mensaje salió DOS veces. La
-     * idempotencia la ofrece el backend, pero sólo funciona si el cliente repite el mismo
-     * `clientMessageId` — generarlo otra vez en el reintento la anula.
-     */
     if (pendiente.current?.cuerpo !== cuerpo) {
       pendiente.current = { cuerpo, clientMessageId: nuevoClientMessageId() };
     }
     const { clientMessageId } = pendiente.current;
 
-    // El campo se vacia YA: si esperara a la respuesta, en una conexion lenta la persona creeria
-    // que no se envio y volveria a escribirlo.
-    setTexto('');
     try {
-      const enviado = await supportApi.sendMessage(canal, { clientMessageId, body: cuerpo });
+      if (fotoPendiente) {
+        // Con foto: se sube y se manda con el texto que la persona quiso poner (o el de siempre).
+        const adjunto = await subirFotoAlChat({ channelId: canal, localUri: fotoPendiente });
+        const enviado = await supportApi.sendMessage(canal, {
+          clientMessageId,
+          body: cuerpo || 'Te envío una imagen',
+          messageType: 'IMAGE',
+          attachment: adjunto,
+        });
+        setMensajes((previos) => mezclarMensajes(previos, [enviado]));
+        setFotoPendiente(null);
+        setTexto('');
+      } else {
+        // El campo se vacia YA: si esperara a la respuesta, en una conexion lenta la persona creeria
+        // que no se envio y volveria a escribirlo.
+        setTexto('');
+        const enviado = await supportApi.sendMessage(canal, { clientMessageId, body: cuerpo });
+        setMensajes((previos) => mezclarMensajes(previos, [enviado]));
+      }
       pendiente.current = null;
-      setMensajes((previos) => mezclarMensajes(previos, [enviado]));
       setError(null);
     } catch {
-      // El texto vuelve al campo y `pendiente` se mantiene: el próximo intento reusa su identificador.
-      setTexto(cuerpo);
-      setError('No pudimos enviar tu mensaje. Inténtalo de nuevo.');
+      // Texto y foto se QUEDAN: el próximo intento reusa su identificador y no se pierde nada.
+      if (!fotoPendiente) setTexto(cuerpo);
+      setError(fotoPendiente ? 'No pudimos enviar la imagen. Inténtalo de nuevo.' : 'No pudimos enviar tu mensaje. Inténtalo de nuevo.');
     } finally {
       setEnviando(false);
     }
   };
 
-  const adjuntarFoto = async () => {
-    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  const elegirFoto = async (origen: 'camara' | 'galeria') => {
+    const permiso =
+      origen === 'camara' ? await ImagePicker.requestCameraPermissionsAsync() : await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permiso.granted) {
-      setError('Necesitamos permiso para acceder a tus fotos.');
+      setError(origen === 'camara' ? 'Necesitamos permiso para usar la cámara.' : 'Necesitamos permiso para acceder a tus fotos.');
       return;
     }
-    const elegida = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.7 });
+    const opciones = { mediaTypes: ['images'] as ImagePicker.MediaType[], quality: 0.7 };
+    const elegida = origen === 'camara' ? await ImagePicker.launchCameraAsync(opciones) : await ImagePicker.launchImageLibraryAsync(opciones);
     if (elegida.canceled || !elegida.assets[0]) return;
+    // NO se envía: queda como adjunto pendiente.
+    setFotoPendiente(elegida.assets[0].uri);
+    setError(null);
+  };
 
-    setEnviando(true);
-    try {
-      const adjunto = await subirFotoAlChat({ channelId: canal, localUri: elegida.assets[0].uri });
-      const enviado = await supportApi.sendMessage(canal, {
-        clientMessageId: nuevoClientMessageId(),
-        body: 'Te envío una imagen',
-        messageType: 'IMAGE',
-        attachment: adjunto,
-      });
-      setMensajes((previos) => mezclarMensajes(previos, [enviado]));
-      setError(null);
-    } catch {
-      setError('No pudimos enviar la imagen. Inténtalo de nuevo.');
-    } finally {
-      setEnviando(false);
-    }
+  const adjuntarFoto = () => {
+    Alert.alert('Adjuntar una foto', undefined, [
+      { text: 'Tomar foto', onPress: () => void elegirFoto('camara') },
+      { text: 'Elegir de la galería', onPress: () => void elegirFoto('galeria') },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
   };
 
   return (
@@ -199,30 +205,27 @@ export default function Conversacion() {
               {error}
             </AtlasText>
           ) : null}
-          <Field
-            label="Tu mensaje"
-            value={texto}
+          <CompositorChat
+            texto={texto}
             onChangeText={(valor) => {
               setTexto(valor);
               // Avisar «escribiendo…» es efimero y no se guarda: si falla, no se pierde nada.
               if (valor.length === 1) void supportApi.announceTyping(canal).catch(() => undefined);
             }}
-            placeholder="Escribe aquí…"
-            ayuda="Cuéntanos qué pasó con tus palabras: qué intentabas hacer, qué viste y cuándo. Nunca escribas tu PIN ni el código que te llega por SMS o correo: nadie de Atlas te los va a pedir."
-            multiline
+            onEnviar={() => void enviar()}
+            onAdjuntar={adjuntarFoto}
+            adjuntoUri={fotoPendiente}
+            onQuitarAdjunto={() => setFotoPendiente(null)}
+            enviando={enviando}
+            placeholder="Escribe un mensaje…"
           />
-          <View style={{ flexDirection: 'row', gap: space.sm }}>
-            <Button label="Foto" icon="camara" variant="secondary" onPress={() => adjuntarFoto()} disabled={enviando} />
-            <View style={{ flex: 1 }}>
-              <Button
-                label="Enviar" icon="enviar"
-                onPress={() => void enviar()}
-                loading={enviando}
-                disabled={texto.trim().length === 0}
-                blockedReason={texto.trim().length === 0 ? 'Escribe un mensaje para enviarlo.' : null}
-              />
-            </View>
-          </View>
+          {/*
+            La advertencia del ⓘ del campo viejo, ahora a la vista: nadie de Atlas pide el PIN ni los
+            códigos, y quien escribe con prisa no abre una ayuda para enterarse.
+          */}
+          <AtlasText variant="micro" tone="tertiary" style={{ textAlign: 'center' }}>
+            Nunca escribas tu PIN ni el código que te llega por SMS o correo.
+          </AtlasText>
         </View>
       }
     >
@@ -230,7 +233,7 @@ export default function Conversacion() {
         title="Soporte"
         subtitle="Escríbenos tu duda."
         onBack="auto"
-        action={<Button label="Cerrar" icon="cerrar" variant="secondary" onPress={cerrarConversacion} disabled={cargando} />}
+        action={<HeaderAction icon="cerrar" label="Cerrar la conversación" onPress={cerrarConversacion} />}
       />
 
       {cargando ? (
@@ -298,15 +301,21 @@ function Burbuja({ mensaje, leido }: { mensaje: supportApi.SupportMessage; leido
           // el lado ya lo dice, pero el color lo dice también para quien no distingue el lado.
           backgroundColor: mio ? color.surface.raisedStrong : color.surface.raised,
           borderRadius: radius.lg,
+          // La cola: la esquina de abajo del lado de quien habla se aprieta, como en cualquier chat.
+          ...(mio ? { borderBottomRightRadius: radius.xs } : { borderBottomLeftRadius: radius.xs }),
           padding: space.sm,
           gap: space.xs,
         }}
       >
         <AtlasText variant="body">{mensaje.body}</AtlasText>
 
-        {mensaje.attachments.map((adjunto) => (
-          <Badge key={adjunto.attachmentId} label={`📎 ${adjunto.filename}`} tone="info" />
-        ))}
+        {mensaje.attachments.map((adjunto) =>
+          adjunto.mime?.startsWith('image/') ? (
+            <AdjuntoImagen key={adjunto.attachmentId} adjunto={adjunto} />
+          ) : (
+            <Badge key={adjunto.attachmentId} label={`📎 ${adjunto.filename}`} tone="info" />
+          ),
+        )}
 
         {/*
           La redaccion se EXPLICA. Un texto que aparece tachado sin motivo se lee como un fallo de la
@@ -323,9 +332,23 @@ function Burbuja({ mensaje, leido }: { mensaje: supportApi.SupportMessage; leido
             {new Date(mensaje.createdAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}
           </AtlasText>
           {mio ? (
-            <AtlasText variant="caption" tone={leido ? 'brand' : 'secondary'}>
-              {leido ? 'Leído' : 'Enviado'}
-            </AtlasText>
+            /*
+              Un check = enviado; dos = leído (y en el color de marca). El texto se queda: el color solo
+              no lo lee quien no distingue colores, y el check solo no lo anuncia un lector de pantalla.
+            */
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }} accessibilityLabel={leido ? 'Leído' : 'Enviado'}>
+              <View style={{ flexDirection: 'row' }}>
+                <Icon name="check" size={14} tint={leido ? color.action.primary : color.text.secondary} />
+                {leido ? (
+                  <View style={{ marginLeft: -8 }}>
+                    <Icon name="check" size={14} tint={color.action.primary} />
+                  </View>
+                ) : null}
+              </View>
+              <AtlasText variant="caption" tone={leido ? 'brand' : 'secondary'}>
+                {leido ? 'Leído' : 'Enviado'}
+              </AtlasText>
+            </View>
           ) : null}
         </View>
       </View>
