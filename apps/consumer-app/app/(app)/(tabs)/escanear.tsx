@@ -230,38 +230,6 @@ export default function ScanScreen() {
         />
       </Card>
 
-      {/*
-        Los codigos de demostracion existen SOLO en sandbox, y hasta ahora la tarjeta se pintaba
-        siempre: en una compilacion contra el backend real, la pantalla de escaneo terminaba con dos
-        botones que no llevan a ningun sitio y con un rotulo que dice, encima, que no estan
-        disponibles. Es la misma condicion que ya gobierna que esos tokens se acepten mas arriba.
-      */}
-      {isSandboxPurchase ? (
-      <Card>
-        <CardHeader
-          icon="chispa"
-          iconTone="neutral"
-          title="Códigos de prueba"
-          detail="Disponibles solo en el entorno sandbox, para recorrer el flujo sin un QR físico."
-        />
-        <Button
-          label="Comercio válido"
-          variant="ghost"
-          onPress={() => {
-            locked.current = false;
-            handleToken(DEMO_TOKEN);
-          }}
-        />
-        <Button
-          label="Comercio con QR revocado"
-          variant="ghost"
-          onPress={() => {
-            locked.current = false;
-            handleToken(REVOKED_DEMO_TOKEN);
-          }}
-        />
-      </Card>
-      ) : null}
     </Screen>
   );
 }
