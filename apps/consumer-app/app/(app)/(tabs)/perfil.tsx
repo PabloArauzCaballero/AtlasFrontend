@@ -275,6 +275,14 @@ export default function Profile() {
         />
         <Divider inset />
         <ListRow
+          icon="lista"
+          title="Mis compras"
+          subtitle="Todo lo que compraste con Atlas, también lo que ya pagaste"
+          onPress={() => router.push('/(app)/compras')}
+          accessibilityHint="Abrir el historial de tus compras"
+        />
+        <Divider inset />
+        <ListRow
           icon="documento"
           title="Recalcular mi línea"
           subtitle="Sube tu extracto bancario y la recalculamos en un máximo de 24 h"

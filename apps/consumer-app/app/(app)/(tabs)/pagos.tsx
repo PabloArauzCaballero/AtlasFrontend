@@ -277,11 +277,15 @@ export default function Payments() {
         title="Tus pagos"
         subtitle={t.texto('pagos.subtitulo')}
         action={
-          <HeaderAction
-            icon={LAYOUT_ICON[siguienteVista]}
-            label={LAYOUT_LABEL[siguienteVista]}
-            onPress={() => setLayout(siguienteVista)}
-          />
+          <View style={{ flexDirection: 'row', gap: space.sm }}>
+            {/* El historial: lo que ya se pagó o se canceló no aparece en esta pantalla, vive ahí. */}
+            <HeaderAction icon="reloj" label="Mis compras" onPress={() => router.push('/(app)/compras')} />
+            <HeaderAction
+              icon={LAYOUT_ICON[siguienteVista]}
+              label={LAYOUT_LABEL[siguienteVista]}
+              onPress={() => setLayout(siguienteVista)}
+            />
+          </View>
         }
       />
 
