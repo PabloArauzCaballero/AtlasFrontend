@@ -29,9 +29,11 @@ import {
   Card,
   CardHeader,
   Divider,
+  ErrorState,
   ListRow,
   Overline,
   ProgressBar,
+  Skeleton,
 } from '../../../src/ui/primitives';
 import { DelinquencyImpact, ScoringPanel } from '../../../src/ui/scoring-panel';
 import { useCreditBook } from '../../../src/features/use-credit-book';
@@ -171,6 +173,16 @@ export default function Profile() {
         <Card>
           <ScoringPanel line={creditLine} />
         </Card>
+      ) : !book.ready ? (
+        // Mientras llega, el hueco del puntaje se ve como lo que es: algo que viene. Sin esto la
+        // tarjeta simplemente no existía y aparecía de golpe, y si fallaba, nunca aparecía y nadie sabía por qué.
+        <Card>
+          <Skeleton height={11} width="40%" />
+          <Skeleton height={36} width="55%" />
+          <Skeleton height={10} />
+        </Card>
+      ) : book.error ? (
+        <ErrorState title="No pudimos cargar tu puntaje" detail={book.error} onRetry={() => void book.reload()} />
       ) : null}
 
       <SurfaceContent entries={piezasDeCredito} />

@@ -19,10 +19,12 @@ import {
   Badge,
   BrandPanel,
   Button,
+  Cargando,
   Card,
   CardHeader,
   Divider,
   EmptyState,
+  ErrorState,
   IconChip,
   ListRow,
   Overline,
@@ -219,6 +221,18 @@ export default function Home() {
                 </AtlasText>
               ) : null}
             </>
+          ) : !book.ready ? (
+            /*
+              Todavía NO sabemos si hay línea: la petición sigue en el aire. Antes caía en la rama de
+              abajo y se leía «—» y «Todavía estamos calculando tu línea…» durante la carga, el mismo
+              texto que cuando el motor de verdad no la ha calculado: una espera pintada como un estado.
+            */
+            <>
+              <Skeleton height={40} width="62%" />
+              <Cargando texto="Consultando tu línea…" />
+            </>
+          ) : book.error ? (
+            <ErrorState title="No pudimos cargar tu línea" detail={book.error} onRetry={() => void book.reload()} />
           ) : (
             <>
               <AtlasText variant="amountHero" tone="tertiary">

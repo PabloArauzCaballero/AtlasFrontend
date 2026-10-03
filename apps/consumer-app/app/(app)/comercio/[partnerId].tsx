@@ -13,7 +13,7 @@ import { categoryLook, formatAmount } from '../../../src/features/spending-copy'
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useSession } from '../../../src/session/session';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { AtlasText, Badge, Card, Divider, EmptyState, IconChip, ListRow, Skeleton, Stat } from '../../../src/ui/primitives';
+import { AtlasText, Badge, Card, Divider, EmptyState, ErrorState, IconChip, ListRow, Skeleton, Stat } from '../../../src/ui/primitives';
 
 export default function MerchantCredits() {
   const router = useRouter();
@@ -39,6 +39,16 @@ export default function MerchantCredits() {
           <Skeleton height={11} width="60%" />
           <Skeleton height={23} width="40%" />
         </Card>
+      </Screen>
+    );
+  }
+
+  if (book.error && book.loans.length === 0) {
+    // Una carga fallida NO es «Sin créditos aquí»: decirlo así hacía creer que la cuenta estaba vacía.
+    return (
+      <Screen>
+        <ScreenHeader title="Comercio" onBack="auto" />
+        <ErrorState title="No pudimos cargar este comercio" detail={book.error} onRetry={() => void book.reload()} />
       </Screen>
     );
   }

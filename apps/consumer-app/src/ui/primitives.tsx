@@ -13,8 +13,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import {
   ActivityIndicator,
-  Animated,
-  Easing,
   Platform,
   type PressableProps,
   StyleSheet,
@@ -25,7 +23,15 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
-import Reanimated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
+import Reanimated, {
+  cancelAnimation,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withRepeat,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { color, palette, press, radius, shadow, space, spring, stroke, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { AnimatedPressable, PressSurface } from './motion';
@@ -939,6 +945,7 @@ export function ProgressBar({ value, label }: { value: number; label?: string })
   const clamped = Math.max(0, Math.min(100, value));
   return (
     <View
+      accessible
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: 100, now: clamped }}
       accessibilityLabel={label ?? `Avance ${clamped}%`}
@@ -969,20 +976,60 @@ export function ProgressBar({ value, label }: { value: number; label?: string })
  * visual cuando llegan los datos.
  */
 export function Skeleton({ height = 16, width = '100%', style }: { height?: number; width?: number | `${number}%`; style?: ViewStyle }) {
-  const pulse = React.useRef(new Animated.Value(0.4)).current;
+  // Reanimated y no `Animated`: corre en el hilo de UI, así que el pulso no se entrecorta mientras la
+  // pantalla parsea la respuesta que justamente se está esperando. Con movimiento reducido no pulsa.
+  const reduced = useReducedMotion();
+  const pulse = useSharedValue(reduced ? 0.6 : 0.4);
 
   React.useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.9, duration: 700, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0.4, duration: 700, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-      ]),
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [pulse]);
+    if (reduced) {
+      pulse.value = 0.6;
+      return;
+    }
+    pulse.value = withRepeat(withTiming(0.9, { duration: 700 }), -1, true);
+    return () => cancelAnimation(pulse);
+  }, [pulse, reduced]);
 
-  return <Animated.View style={[styles.skeleton, { height, width, opacity: pulse }, style]} />;
+  const animated = useAnimatedStyle(() => ({ opacity: pulse.value }));
+  return <Reanimated.View accessibilityElementsHidden importantForAccessibility="no" style={[styles.skeleton, { height, width }, style, animated]} />;
+}
+
+/** Varias filas de esqueleto: la forma de una lista que todavía no llegó. */
+export function SkeletonLista({ filas = 3, alto = 56 }: { filas?: number; alto?: number }) {
+  return (
+    <View style={{ gap: space.sm }}>
+      {Array.from({ length: filas }, (_, indice) => (
+        <Skeleton key={indice} height={alto} />
+      ))}
+    </View>
+  );
+}
+
+/**
+ * El círculo de «cargando».
+ *
+ * Para las esperas que no tienen forma de lista —abrir una conversación, pedir un QR, subir una
+ * foto—. Un esqueleto sin nada que imitar es ruido; un círculo con una frase dice QUÉ se espera.
+ * Es lo que evita que una espera se lea como un fallo: antes se veía el texto de «vacío» o de
+ * «error» mientras la respuesta aún venía en camino.
+ */
+export function Cargando({ texto, bloque = false }: { texto?: string; bloque?: boolean }) {
+  return (
+    <View
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityLabel={texto ?? 'Cargando'}
+      accessibilityState={{ busy: true }}
+      style={bloque ? styles.cargandoBloque : styles.cargandoFila}
+    >
+      <ActivityIndicator size={bloque ? 'large' : 'small'} color={color.action.primary} />
+      {texto ? (
+        <AtlasText variant="body" tone="secondary" align={bloque ? 'center' : undefined}>
+          {texto}
+        </AtlasText>
+      ) : null}
+    </View>
+  );
 }
 
 /* ------------------------------------------------------------- estados */
@@ -1267,6 +1314,8 @@ const styles = StyleSheet.create({
   progressTrack: { height: 6, borderRadius: radius.pill, backgroundColor: color.surface.raisedStrong, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: radius.pill, backgroundColor: color.action.primary },
 
+  cargandoFila: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  cargandoBloque: { alignItems: 'center', justifyContent: 'center', gap: space.md, paddingVertical: space.xl },
   skeleton: { borderRadius: radius.md, backgroundColor: color.surface.raisedStrong },
 
   stateBox: {

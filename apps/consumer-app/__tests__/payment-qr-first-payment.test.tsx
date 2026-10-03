@@ -24,6 +24,7 @@ jest.mock('../src/sandbox/store', () => ({
       setInstruction(issueUploadedQrInstruction({ item, qr, beneficiaryName: 'Comercio Andino', currency: 'BOB', now: Date.UTC(2026, 8, 23) }));
     }, []);
     return {
+      ready: true,
       state: { schedules: [{ purchaseOrderId: 'order-1', items: [item] }], orders: [order], claims: [] },
       ensureInstruction: jest.fn(),
       ensureUploadedQrInstruction,
