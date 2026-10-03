@@ -18,7 +18,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as assistApi from '../api/endpoints/assist';
-import { newIdempotencyKey } from '../api/client';
+import { nuevoUuid } from '../lib/criptografia';
 import { AtlasApiError } from '../api/errors';
 
 /** Cuánto se espera cuando el servidor dice «la misma consulta sigue en curso» (409). */
@@ -228,7 +228,10 @@ export function useAssist() {
     (texto: string, pantalla: assistApi.AssistScreen) => {
       const limpio = texto.trim();
       if (!limpio || enViaje.current) return;
-      const clientMessageId = newIdempotencyKey();
+      // UUID v4 SIEMPRE: el backend lo valida como UUID y `newIdempotencyKey` cae a `atlas-…` donde no
+      // hay `crypto.randomUUID` (Hermes, la web por HTTP plano). Ese respaldo era el 400 «Entrada
+      // inválida en body» que veía el cliente en el iPhone el 2026-10-02.
+      const clientMessageId = nuevoUuid();
       pendiente.current = { texto: limpio, clientMessageId };
       setBurbujas((actuales) => [...actuales, { id: `local-${clientMessageId}`, rol: 'persona', texto: limpio }]);
       void preguntar(limpio, pantalla, clientMessageId);

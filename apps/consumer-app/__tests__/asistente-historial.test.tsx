@@ -28,8 +28,8 @@ jest.mock('../src/api/endpoints/assist', () => ({
   borrarConversacion: jest.fn(),
 }));
 
-let mockClave = 0;
-jest.mock('../src/api/client', () => ({ newIdempotencyKey: jest.fn(() => `clave-${++mockClave}`) }));
+
+jest.mock('expo-crypto', () => ({ randomUUID: () => require('node:crypto').randomUUID() }));
 
 const preguntar = assistApi.preguntar as jest.Mock;
 const conversacion = assistApi.conversacion as jest.Mock;
@@ -47,7 +47,6 @@ const ERROR_RED = () => new AtlasApiError({ kind: 'network', code: 'NETWORK', me
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockClave = 0;
   conversacion.mockResolvedValue(HILO_ACTUAL);
   listar.mockResolvedValue({ conversations: RESUMENES });
   leer.mockResolvedValue({ conversationId: 'conv-vieja', title: 'Qué es el QR', turns: [turno(7), turno(8)] });
