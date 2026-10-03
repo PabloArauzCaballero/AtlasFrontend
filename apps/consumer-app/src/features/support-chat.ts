@@ -79,7 +79,8 @@ export async function subirFotoAlChat(input: { channelId: string; localUri: stri
 
   return {
     storageObjectKey: ticket.storageKey,
-    filename: input.filename ?? 'foto.jpg',
+    // El nombre sigue al TIPO detectado: una PNG llamada «foto.jpg» se ve rara en el panel del agente.
+    filename: input.filename ?? (mimeType === 'image/png' ? 'foto.png' : 'foto.jpg'),
     declaredMime: mimeType,
     sizeBytes: bytes.length,
     sha256,

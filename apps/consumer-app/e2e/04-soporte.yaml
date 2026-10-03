@@ -113,9 +113,9 @@ appId: bo.atlas.consumer
 - takeScreenshot: soporte-07-chat
 
 - tapOn:
-    below:
-      text: 'Tu mensaje'
+    id: 'compositor-campo'
 - inputText: 'Hola, tengo una duda con mi cuota de septiembre.'
-- tapOn: 'Enviar'
+- tapOn:
+    id: 'compositor-enviar'
 - extendedWaitUntil: { visible: 'duda con mi cuota', timeout: 30000 }
 - takeScreenshot: soporte-08-mensaje-enviado
