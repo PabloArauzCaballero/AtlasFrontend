@@ -39,6 +39,8 @@ import { PartnerBanner, usePartnerBanner } from '../../../src/ui/partner-banner'
 import { downloadSpendingReport } from '../../../src/features/spending-report';
 import { categoryLook, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
+import { useProgress } from '../../../src/features/use-progress';
+import { NivelCard } from '../../../src/ui/nivel-card';
 import { dueLabel, statusTone, statusLabel } from '../../../src/features/payment-copy';
 import { TOUR_INICIO_KEY, TOUR_INICIO_TARGETS } from '../../../src/features/tour-inicio';
 import { useCopy, useTourInicio } from '../../../src/features/use-contenido-remoto';
@@ -57,6 +59,7 @@ export default function Home() {
    * que se debe, su reparto por rubro y la mora salen de `loans`, que es lo que de verdad se cobra.
    */
   const book = useCreditBook(session.customerId);
+  const nivel = useProgress(session.customerId);
   const partnerBanner = usePartnerBanner();
   // Avisos y mensajes que negocio escribe para el inicio; los del banner de partner salen aparte.
   const avisosDeInicio = useSurfaceContent('home', esBannerDePartner);
@@ -249,6 +252,12 @@ export default function Home() {
           </TourTarget>
         </BrandPanel>
       </TourTarget>
+
+      {/*
+        El nivel, justo debajo de la línea: la línea dice cuánto puedes gastar y el nivel, cómo ampliarlo. Sale de
+        la base de datos y no del motor, así que se ve igual aunque la línea aún no esté calculada.
+      */}
+      {nivel.fase === 'lista' ? <NivelCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} /> : null}
 
       <TourTarget id={TOUR_INICIO_TARGETS.pagos}>
         {proximaCuotaReal ? (
