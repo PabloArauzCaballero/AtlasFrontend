@@ -24,14 +24,10 @@ appId: bo.atlas.consumer
 # funciona en esta app, así que se toca el subtítulo, que no es interactivo.
 - tapOn: 'Usa el correo o teléfono con el que te registraste.'
 - tapOn:
-    below:
-      text: 'PIN *'
+    id: 'pin-field'
 - inputText: "${PIN}"
 - tapOn: 'Usa el correo o teléfono con el que te registraste.'
-# «Ingresar» aparece dos veces —el título y el botón—, así que se toma el segundo.
-- tapOn:
-    text: 'Ingresar'
-    index: 1
+# Con el cuarto dígito el ingreso se envía solo: no hay botón que tocar.
 # No se afirma una pantalla concreta: según el avance del registro, entrar deja al cliente en el
 # progreso o en el inicio. Lo que importa aquí es que la sesión existe, y eso lo prueba el perfil.
 # Tras entrar pueden interponerse dos cosas, y ninguna es segura que aparezca.
