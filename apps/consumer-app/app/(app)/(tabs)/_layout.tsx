@@ -58,7 +58,7 @@ function TabIcon({ name, focused, highlighted }: { name: IconName; focused: bool
       <Icon
         name={name}
         size={highlighted ? 20 : 22}
-        tint={highlighted ? (focused ? color.text.onBrand : color.text.secondary) : focused ? color.action.primary : color.text.tertiary}
+        tint={highlighted ? (focused ? color.text.onBrand : color.text.tertiary) : focused ? color.action.primary : color.text.tertiary}
       />
     </Animated.View>
   );
@@ -199,9 +199,11 @@ const styles = StyleSheet.create({
     width: 46,
     height: 30,
     borderRadius: radius.pill,
-    backgroundColor: color.feedbackSoft.success,
+    // Sin foco: sólo un filo neutro. Antes llevaba el relleno verde SIEMPRE y, estando en Perfil,
+    // se leía como una segunda pestaña activa («duplica mi comportamiento», 2026-10-02).
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: color.feedbackBorder.brand,
+    borderColor: color.border.hairline,
   },
   iconHighlightedActive: { backgroundColor: color.action.primary, borderColor: color.action.primary },
 });
