@@ -48,7 +48,7 @@ export type RequestOptions = {
   presupuestoReintentosMs?: number;
 };
 
-type Envelope<T> = { requestId?: string; data?: T; error?: { code?: string; message?: string } };
+type Envelope<T> = { requestId?: string; data?: T; error?: { code?: string; message?: string; issues?: { path?: string; message?: string }[] } };
 
 let tokenStore: TokenStore | null = null;
 let onSessionExpired: (() => void) | null = null;
@@ -173,7 +173,15 @@ async function rawRequest<T>(
     // Sin sobre —lo contesto la pasarela— no hay mensaje de negocio, y `statusText` puede faltar: por
     // HTTP/2, que es como llega el tunel, el motivo va vacio. Sin respaldo, el `split` de abajo
     // reventaba y un fallo transitorio salia como un TypeError que ninguna pantalla sabe pintar.
-    const rawMessage = envelope.error?.message ?? flat.message ?? (response.statusText || `HTTP ${response.status}`);
+    const generico = envelope.error?.message ?? flat.message ?? (response.statusText || `HTTP ${response.status}`);
+    /*
+      En un 400 de validación el backend manda `error.issues[{path, message}]` y un mensaje genérico
+      («Entrada inválida en body.»). La app sólo mostraba el genérico, así que nadie sabía QUÉ campo
+      falló: el 400 del asistente (`clientMessageId` no era UUID) se vio semanas como «Entrada
+      inválida» sin pista. Con el primer `issue` el mensaje dice el campo y el motivo.
+    */
+    const primero = response.status === 400 ? envelope.error?.issues?.find((issue) => issue?.message) : undefined;
+    const rawMessage = primero ? `${generico.replace(/\.$/, '')}: ${primero.path ? `${primero.path} — ` : ''}${primero.message}` : generico;
     // `CODIGO_DE_NEGOCIO: detalle` -> se conserva el codigo de negocio, que es lo accionable.
     const businessCode = /^[A-Z0-9_]+$/.test(rawMessage.split(':')[0]?.trim() ?? '') ? (rawMessage.split(':')[0] as string).trim() : code;
     throw new AtlasApiError({

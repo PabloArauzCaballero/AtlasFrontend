@@ -23,10 +23,12 @@ jest.mock('../src/api/endpoints/assist', () => ({
   conversacion: jest.fn(),
 }));
 
-let mockClave = 0;
-jest.mock('../src/api/client', () => ({
-  newIdempotencyKey: jest.fn(() => `clave-${++mockClave}`),
-}));
+// SIN mock de la clave: la prueba tiene que ver la que viaja de verdad. Con `clave-N` mockeada la
+// suite estuvo verde mientras el iPhone mandaba `atlas-…` y el backend devolvía 400 (2026-10-02).
+// `expo-crypto` en jest es un doble nativo sin `randomUUID`; se le da el UUID v4 real de Node.
+jest.mock('expo-crypto', () => ({ randomUUID: () => require('node:crypto').randomUUID() }));
+
+const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 const preguntar = assistApi.preguntar as jest.Mock;
 const conversacion = assistApi.conversacion as jest.Mock;
@@ -44,7 +46,6 @@ function apagado(): AtlasApiError {
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockClave = 0;
   conversacion.mockResolvedValue({ conversationId: null, turns: [] });
 });
 
@@ -92,7 +93,7 @@ describe('useAssist', () => {
     // La pregunta primero y la respuesta despues: el hilo se lee como se vivio.
     expect(result.current.burbujas.at(-2)).toMatchObject({ rol: 'persona', texto: '¿Como pago una cuota?' });
     expect(result.current.burbujas.at(-1)).toMatchObject({ rol: 'asistente', texto: RESPUESTA.reply });
-    expect(preguntar).toHaveBeenCalledWith({ prompt: '¿Como pago una cuota?', clientMessageId: 'clave-1', screen: 'pagos' });
+    expect(preguntar).toHaveBeenCalledWith({ prompt: '¿Como pago una cuota?', clientMessageId: expect.stringMatching(UUID_V4), screen: 'pagos' });
   });
 
   it('el fallo conserva el mensaje y el reintento viaja con la MISMA clave', async () => {
@@ -111,7 +112,9 @@ describe('useAssist', () => {
     await waitFor(() => expect(result.current.estado.fase).toBe('lista'));
 
     const claves = preguntar.mock.calls.map(([entrada]) => (entrada as { clientMessageId: string }).clientMessageId);
-    expect(claves).toEqual(['clave-1', 'clave-1']);
+    expect(claves).toHaveLength(2);
+    expect(claves[0]).toMatch(UUID_V4);
+    expect(claves[1]).toBe(claves[0]);
   });
 
   it('el 409 de «sigue en curso» se reintenta solo, con la misma clave, sin molestar a nadie', async () => {
@@ -138,7 +141,9 @@ describe('useAssist', () => {
 
       expect(result.current.estado.fase).toBe('lista');
       const claves = preguntar.mock.calls.map(([entrada]) => (entrada as { clientMessageId: string }).clientMessageId);
-      expect(claves).toEqual(['clave-1', 'clave-1']);
+      expect(claves).toHaveLength(2);
+      expect(claves[0]).toMatch(UUID_V4);
+      expect(claves[1]).toBe(claves[0]);
     } finally {
       jest.useRealTimers();
     }

@@ -42,7 +42,12 @@ export function nuevoUuid(): string {
     const h = aHex(b);
     return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
   }
-  return `app-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  // Último recurso: sigue siendo un UUID v4 con forma válida. Un identificador con otra forma lo
+  // rechaza cualquier endpoint que valide `uuid()` (el asistente lo hace) y el fallo sale como un 400.
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.floor(Math.random() * 16);
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
 }
 
 function aHex(bytes: Uint8Array): string {
