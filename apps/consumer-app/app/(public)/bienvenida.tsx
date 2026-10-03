@@ -51,9 +51,10 @@ import { toqueWeb } from '../../src/ui/hit-slop';
 import { useAnchoDeColumna, useTramo } from '../../src/ui/responsive';
 import { color, radius, space } from '../../src/theme/tokens';
 import * as contentApi from '../../src/api/endpoints/app-content';
-import { Icon, ICON_NAMES, type IconName } from '../../src/ui/icons';
 import { AtlasText, Button } from '../../src/ui/primitives';
 import { bitacora } from '../../src/features/bitacora';
+import { PASOS_POR_DEFECTO, pasosDesdeContenido, type Paso } from '../../src/features/bienvenida-pasos';
+import { Ilustracion } from '../../src/ui/ilustraciones-bienvenida';
 
 /**
  * El eslogan y los pasos, POR DEFECTO.
@@ -77,45 +78,6 @@ import { bitacora } from '../../src/features/bitacora';
 const ESLOGAN = 'Tu primer crédito no debería depender de un banco.';
 const ESLOGAN_PIE = 'Crédito para comprar en los comercios de Santa Cruz.';
 
-type Paso = { icon: IconName; titulo: string; cuerpo: string };
-
-const PASOS_POR_DEFECTO: Paso[] = [
-  {
-    icon: 'escanear',
-    titulo: 'Escaneas y listo',
-    cuerpo:
-      'En la caja del comercio escaneas su QR y escribes el monto. Sin tarjeta de crédito de por medio.',
-  },
-  {
-    icon: 'billetera',
-    titulo: 'Pagas en cuotas mensuales',
-    cuerpo:
-      'Atlas revisa tu solicitud y te asigna una línea con su tasa. Lo que compras con ella lo pagas en cuotas mensuales, y el detalle de cada cuota lo ves en la pantalla de tu crédito.',
-  },
-  {
-    icon: 'tendencia',
-    titulo: 'Construyes tu historial',
-    cuerpo:
-      'Cada cuota que pagas a tiempo sube tu puntaje Atlas y tu línea. El historial que ningún buró tiene todavía, lo empiezas aquí.',
-  },
-];
-
-/**
- * Convierte una pieza del catalogo en un paso pintable.
- *
- * El cuerpo sale del subtitulo, del cuerpo largo o de los bullets unidos, en ese orden: quien edita
- * desde el portal no tiene por que saber cual de los tres campos lee esta pantalla en concreto, y
- * dejar el paso vacio porque escribio en el campo «equivocado» seria culparle de nuestra estructura.
- */
-function pasoDesdeContenido(entry: contentApi.ContentEntry, indice: number): Paso {
-  const cuerpo = entry.subtitle ?? entry.body ?? entry.bullets.map((bullet) => bullet.text).join(' ');
-  const icono = entry.bullets.find((bullet) => bullet.icon)?.icon ?? null;
-  return {
-    icon: icono && (ICON_NAMES as readonly string[]).includes(icono) ? (icono as IconName) : (PASOS_POR_DEFECTO[indice]?.icon ?? 'chispa'),
-    titulo: entry.title ?? '',
-    cuerpo,
-  };
-}
 
 /*
   El ancho de cada página del carrusel se lee en cada render y no una vez al cargar el módulo.
@@ -152,11 +114,8 @@ export default function Welcome() {
       const cabecera = entries.find((entry) => entry.contentKey === 'eslogan');
       if (cabecera?.subtitle) setEslogan({ titulo: cabecera.subtitle, pie: cabecera.body ?? ESLOGAN_PIE });
 
-      const publicados = entries.filter((entry) => entry.contentKey !== 'eslogan').map(pasoDesdeContenido);
-      // Un paso sin titulo o sin cuerpo se descarta: media tarjeta en el recorrido de bienvenida se
-      // lee como un fallo de la app, no como contenido pendiente de escribir.
-      const utiles = publicados.filter((paso) => paso.titulo && paso.cuerpo);
-      if (utiles.length > 0) setPasos(utiles);
+      // Siempre «Qué es Atlas» primero, con o sin contenido del portal (ver `features/bienvenida-pasos.ts`).
+      setPasos(pasosDesdeContenido(entries));
     });
     return () => {
       cancelled = true;
@@ -361,8 +320,13 @@ function PasoView({
   return (
     <View style={[styles.page, { width: SCREEN_WIDTH }]}>
       <Animated.View style={[styles.pasoContenido, contenidoStyle]}>
-        <Animated.View style={[styles.pasoIcono, iconoStyle]}>
-          <Icon name={paso.icon} size={40} tint={color.action.primary} />
+        {/*
+          La ilustración, grande y encima del título: es lo primero que se ve de cada paso y cuenta lo mismo
+          que el texto. Es vectorial (SVG), así que se dibuja con la resolución de la pantalla. Decorativa para
+          el lector de pantalla: el título de debajo ya dice lo mismo.
+        */}
+        <Animated.View style={iconoStyle}>
+          <Ilustracion nombre={paso.ilustracion} ancho={Math.min(SCREEN_WIDTH - space.xl * 2, 360)} decorativa />
         </Animated.View>
         <AtlasText variant="hero" style={styles.pasoTitulo}>
           {paso.titulo}
@@ -465,25 +429,6 @@ const styles = StyleSheet.create({
   esloganPie: { textAlign: 'center', marginTop: space.sm },
 
   pasoContenido: { alignItems: 'center', gap: space.base },
-  /*
-    El icono del paso va en un CIRCULO tenido de marca, no en un cuadrado gris.
-
-    Era un cuadrado de 92 px del color de una tarjeta, es decir, la misma superficie que usa
-    cualquier bloque de datos de la app: el simbolo que abre cada pagina del recorrido se leia como
-    una tarjeta vacia con un dibujo dentro. Redondo y tenido, se lee como un simbolo; y el contorno
-    de marca lo ata a la identidad en la unica pantalla que existe para presentarla.
-  */
-  pasoIcono: {
-    width: 96,
-    height: 96,
-    borderRadius: radius.pill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.feedbackSoft.success,
-    borderWidth: 1,
-    borderColor: color.feedbackBorder.brand,
-    marginBottom: space.md,
-  },
   pasoTitulo: { textAlign: 'center' },
   pasoCuerpo: { textAlign: 'center' },
 
