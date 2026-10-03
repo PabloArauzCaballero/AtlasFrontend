@@ -40,13 +40,12 @@ export const registrarDecisiones = (
     ...origen,
   });
 
-export type DataSubjectRequestType =
-  | 'access'
-  | 'rectification'
-  | 'deletion'
-  | 'portability'
-  | 'revocation'
-  | 'restriction';
+/**
+ * Lo que Atlas OFRECE como solicitud: corregir un dato y borrar la cuenta. Llevarse los datos, limitar el
+ * uso y retirar consentimientos no se ofrecen (decisión de producto, 2026-10-02) y «ver mis datos» es una
+ * pantalla —siempre disponible, tras volver a pedir el PIN—, no una solicitud.
+ */
+export type DataSubjectRequestType = 'rectification' | 'deletion';
 
 export const solicitarDerecho = (
   customerId: string,

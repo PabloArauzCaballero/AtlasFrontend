@@ -41,29 +41,9 @@ export const PRIVACIDAD_DE_FABRICA: PrivacidadCopy = {
     'Tu solicitud quedó registrada con un plazo de resolución de 15 días. No te enviaremos un aviso cuando cambie: escríbenos por soporte si quieres saber cómo va.',
   derechos: [
     {
-      value: 'access',
-      label: 'Ver mis datos',
-      detalle: 'Que se sabe de mi y de donde salio.',
-    },
-    {
       value: 'rectification',
       label: 'Corregir un dato',
       detalle: 'Algo esta mal escrito o desactualizado.',
-    },
-    {
-      value: 'portability',
-      label: 'Llevarme mis datos',
-      detalle: 'Recibirlos en un archivo que pueda usar en otro sitio.',
-    },
-    {
-      value: 'restriction',
-      label: 'Limitar el uso',
-      detalle: 'Que dejen de usarse para algo concreto.',
-    },
-    {
-      value: 'revocation',
-      label: 'Retirar consentimientos',
-      detalle: 'Dejar sin efecto los permisos que di.',
     },
     {
       value: 'deletion',

@@ -16,6 +16,7 @@ import type { ContextoDeRastreo } from '../device/tracking-context';
 import { activarSeñalesDelDispositivo, desactivarSeñalesDelDispositivo } from './device-signals';
 import { profileStorage, secureTokenStore, type StoredProfile } from './token-storage';
 import { bitacora } from '../features/bitacora';
+import { olvidarPinConfirmado } from '../features/pin-verificado';
 import { useRastreoEnPrimerPlano } from './use-rastreo-primer-plano';
 import { cerrarSesionEnServidor } from './cierre-de-sesion';
 import { useLatidoDeSesion, type ContextoDeLatido } from './use-latido-de-sesion';
@@ -311,6 +312,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       siguiente posicion y no ahora.
     */
     setRastreo(null);
+    // Quien entre después en este teléfono NO hereda un PIN confirmado: «Mis datos» lo vuelve a pedir.
+    olvidarPinConfirmado();
     // El latido se apaga lo primero: ni un latido mas de una sesion que se esta cerrando.
     setLatido(null);
     await desactivarSeñalesDelDispositivo();

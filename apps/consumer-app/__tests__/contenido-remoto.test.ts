@@ -139,7 +139,7 @@ describe('«Tus datos» con el texto del portal', () => {
     const porClave = indexarPorClave([
       pieza({ surface: 'privacy', contentKey: 'cabecera', title: 'Tus datos personales', subtitle: 'Nuevo subtítulo' }),
       pieza({ surface: 'privacy', contentKey: 'derechos', title: 'Ejercer tus derechos', body: 'Plazo de 10 días.' }),
-      pieza({ surface: 'privacy', contentKey: 'derecho.access', title: 'Ver lo que sabemos', subtitle: 'Detalle nuevo' }),
+      pieza({ surface: 'privacy', contentKey: 'derecho.rectification', title: 'Arreglar un dato', subtitle: 'Detalle nuevo' }),
     ]);
     const copy = fusionarPrivacidad(PRIVACIDAD_DE_FABRICA, porClave);
     expect(copy).toMatchObject({
@@ -149,7 +149,7 @@ describe('«Tus datos» con el texto del portal', () => {
       derechosDetalle: 'Plazo de 10 días.',
     });
     expect(copy.permisosTitulo).toBe(PRIVACIDAD_DE_FABRICA.permisosTitulo);
-    expect(copy.derechos[0]).toEqual({ value: 'access', label: 'Ver lo que sabemos', detalle: 'Detalle nuevo' });
+    expect(copy.derechos[0]).toEqual({ value: 'rectification', label: 'Arreglar un dato', detalle: 'Detalle nuevo' });
   });
 
   it('el valor de cada derecho (lo que entiende el servidor) nunca cambia, solo su etiqueta', () => {
@@ -179,5 +179,17 @@ describe('las promesas simples (extracto) con el texto del portal', () => {
       { icon: 'ojo', title: 'A', detail: 'aa' },
       { icon: 'ojo', title: 'B', detail: 'bb' },
     ]);
+  });
+});
+
+describe('lo que Atlas ofrece pedir sobre los datos', () => {
+  it('sólo corregir un dato y borrar la cuenta: llevarse los datos, limitar el uso y retirar consentimientos no se ofrecen', () => {
+    expect(PRIVACIDAD_DE_FABRICA.derechos.map((derecho) => derecho.value)).toEqual(['rectification', 'deletion']);
+  });
+
+  it('el portal no puede volver a ofrecer lo retirado: una pieza vieja `derecho.portability` se ignora', () => {
+    const porClave = indexarPorClave([pieza({ contentKey: 'derecho.portability', title: 'Llevarme mis datos' })]);
+    const valores = fusionarPrivacidad(PRIVACIDAD_DE_FABRICA, porClave).derechos.map((derecho) => derecho.value);
+    expect(valores).toEqual(['rectification', 'deletion']);
   });
 });

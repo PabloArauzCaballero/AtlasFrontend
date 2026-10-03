@@ -65,3 +65,13 @@ export const requestPinChange = (currentPassword: string) =>
 
 export const confirmPinChange = (input: { challengeToken: string; code: string; newPassword: string }) =>
   request<{ updated: boolean }>('/auth/password/change/confirm', { method: 'POST', body: input });
+
+/**
+ * Volver a pedir el PIN con la sesión abierta (antes de enseñar datos personales).
+ *
+ * No crea sesión ni manda correo. Un PIN incorrecto es un 400 `PIN_INCORRECT` —no un 401— para que el
+ * cliente HTTP no lo lea como «sesión caducada» y expulse a la persona al login por un dedo torpe. Sin
+ * contador de intentos en el servidor: lo frena un límite de 5 por minuto (429).
+ */
+export const verifyPin = (pin: string) =>
+  request<{ verified: true; verifiedAt: string }>('/auth/pin/verify', { method: 'POST', body: { pin } });
