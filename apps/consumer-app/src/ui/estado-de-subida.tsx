@@ -73,7 +73,7 @@ export function EstadoDeSubidaVista({
       reference={estado.referencia}
       actions={
         <>
-          {estado.puedeReintentar && onReintentar ? <Button label="Reintentar" variant="secondary" onPress={onReintentar} /> : null}
+          {estado.puedeReintentar && onReintentar ? <Button label="Reintentar" icon="refrescar" variant="secondary" onPress={onReintentar} /> : null}
           {onRepetir ? <Button label="Repetir la foto" variant="ghost" onPress={onRepetir} /> : null}
         </>
       }

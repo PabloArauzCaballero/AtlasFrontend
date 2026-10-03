@@ -78,7 +78,7 @@ export default function CasoDeSoporte() {
           </Card>
 
           {canalVivo ? (
-            <Button label="Ver la conversación" onPress={() => router.push(`/(app)/soporte/${canalVivo.channelId}` as never)} />
+            <Button label="Ver la conversación" icon="chat" onPress={() => router.push(`/(app)/soporte/${canalVivo.channelId}` as never)} />
           ) : null}
 
           {/*
@@ -87,7 +87,7 @@ export default function CasoDeSoporte() {
           */}
           {caso.closedAt ? (
             <Button
-              label="Mi problema sigue"
+              label="Mi problema sigue" icon="alerta"
               variant="secondary"
               onPress={() => {
                 return supportApi

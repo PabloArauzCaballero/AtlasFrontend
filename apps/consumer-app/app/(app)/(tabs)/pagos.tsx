@@ -265,7 +265,7 @@ export default function Payments() {
       <Screen>
         <Gap size="lg" />
         <ErrorState title="No pudimos cargar tus pagos" detail={book.error} />
-        <Button label="Reintentar" variant="secondary" onPress={() => book.reload()} />
+        <Button label="Reintentar" icon="refrescar" variant="secondary" onPress={() => book.reload()} />
       </Screen>
     );
   }

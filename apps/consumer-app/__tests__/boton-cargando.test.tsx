@@ -36,4 +36,17 @@ describe('Button con onPress asincrono', () => {
     await fireEvent.press(boton('Seguir'));
     expect(boton('Seguir').props.accessibilityState).toMatchObject({ busy: false });
   });
+
+  it('cargando conserva el rótulo: el spinner sustituye al icono, no a todo el contenido', async () => {
+    await render(<Button label="Enviar" icon="enviar" loading onPress={jest.fn()} />);
+    expect(screen.getByText('Enviar')).toBeTruthy();
+    expect(boton('Enviar').props.accessibilityState).toMatchObject({ busy: true });
+  });
+
+  it('un icono por nombre se pinta junto al texto', async () => {
+    await render(<Button label="Foto" icon="camara" variant="secondary" onPress={jest.fn()} />);
+    expect(screen.getByText('Foto')).toBeTruthy();
+    // El icono es decorativo (sin `label`): queda fuera del árbol de accesibilidad, el botón ya se llama «Foto».
+    expect(boton('Foto')).toBeTruthy();
+  });
 });

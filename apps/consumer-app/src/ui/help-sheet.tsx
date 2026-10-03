@@ -39,6 +39,7 @@ export function BottomSheet({
   onClose,
   cierre = 'Listo',
   evitarTeclado = false,
+  altura = 'contenido',
   alCerrarse,
   children,
 }: {
@@ -53,6 +54,11 @@ export function BottomSheet({
    * lectura no lo necesitan y el envoltorio cambia como se reparte el alto.
    */
   evitarTeclado?: boolean;
+  /**
+   * `'alta'` para una hoja que ES una pantalla (el chat del asistente): ocupa casi todo el alto y el
+   * contenido se reparte dentro. `'contenido'` —la de siempre— mide lo que mida lo que lleva.
+   */
+  altura?: 'contenido' | 'alta';
   /**
    * Cuando la hoja TERMINÓ de irse, no cuando se pidió cerrarla. Hace falta para abrir algo nativo
    * a pantalla completa justo después (el escáner del carnet): en iOS se presenta encima de la
@@ -97,7 +103,7 @@ export function BottomSheet({
           tiene por que anunciar un rectangulo llamado «velo» antes del contenido de la hoja.
         */}
         <Pressable style={styles.backdrop} onPress={onClose} accessibilityElementsHidden importantForAccessibility="no" />
-        <View style={[styles.sheet, estrecha && styles.sheetEstrecha]} accessibilityViewIsModal>
+        <View style={[styles.sheet, altura === 'alta' && styles.sheetAlta, estrecha && styles.sheetEstrecha]} accessibilityViewIsModal>
           <View style={styles.grabber} />
           <View style={styles.sheetHead}>
             <AtlasText variant="h3" style={styles.sheetTitle}>
@@ -300,6 +306,8 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     ...shadow.sheet,
   },
+  // Una hoja-pantalla: el alto lo fija ella y no su contenido, así el chat tiene sitio para crecer.
+  sheetAlta: { height: '88%' },
   sheetEstrecha: {
     width: '100%',
     maxWidth: ANCHO_COLUMNA,

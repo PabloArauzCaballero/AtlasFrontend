@@ -81,7 +81,7 @@ export function AssistHistorial({
             <AtlasText variant="body" tone="danger">
               {historial.mensaje}
             </AtlasText>
-            <Button label="Reintentar" variant="secondary" icon={null} onPress={onReintentar} testID="asistente-historial-reintentar" />
+            <Button label="Reintentar" icon="refrescar" variant="secondary" onPress={onReintentar} testID="asistente-historial-reintentar" />
           </View>
         ) : null}
 
@@ -133,7 +133,7 @@ function Fila({
           <Button
             label="Cancelar"
             variant="secondary"
-            icon={null}
+            icon="cerrar"
             haptic="none"
             style={styles.confirmarBoton}
             onPress={() => setConfirmando(false)}
@@ -142,7 +142,7 @@ function Fila({
           <Button
             label="Borrar"
             variant="destructive"
-            icon={null}
+            icon="papelera"
             style={styles.confirmarBoton}
             onPress={() => {
               setConfirmando(false);
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     borderBottomColor: color.border.hairline,
   },
   volver: { minHeight: touch.minSize, flexDirection: 'row', alignItems: 'center', gap: space.xs, alignSelf: 'flex-start' },
-  lista: { maxHeight: 480, flexShrink: 1 },
+  lista: { flex: 1, flexShrink: 1 },
   listaContenido: { padding: space.lg, gap: space.sm },
   cargando: { gap: space.sm },
   estado: { gap: space.md, paddingVertical: space.md },

@@ -157,7 +157,7 @@ export default function Soporte() {
           placeholder="Ej.: no me llega el código"
           ayuda="Escribe con tus palabras lo que te pasa y la lista se filtra mientras escribes. Ej.: «no me llega el código». Si nada coincide, abre una conversación con soporte."
         />
-        <Button label="Hablar con soporte" onPress={empezar} loading={abriendo} />
+        <Button label="Hablar con soporte" icon="chat" onPress={empezar} loading={abriendo} />
       </Card>
 
       {eligiendo !== null ? (
