@@ -23,7 +23,12 @@ services:
         EXPO_PUBLIC_ATLAS_TENANT_ID: '1'
         EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE: 'sandbox'
         EXPO_PUBLIC_ATLAS_DECISION_SOURCE: 'backend'
-    networks: ['default', 'coolify']
+    # Alias estable en la red `coolify`: el nombre del servicio es ambiguo entre apps y el del
+    # contenedor cambia en cada despliegue. Lo usan el failover de Traefik y el guardián de TEST.
+    networks:
+      default: {}
+      coolify:
+        aliases: ['consumer-web']
     restart: unless-stopped
     init: true
     environment:
