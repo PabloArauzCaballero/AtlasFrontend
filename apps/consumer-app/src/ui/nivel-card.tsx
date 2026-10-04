@@ -13,7 +13,7 @@ import type { Progress } from '../api/endpoints/credit-line';
 import { fraseDeLoQueFalta, ICONO_DE_NIVEL, porcentajeDeBarra } from '../features/nivel';
 import { color, radius, space, stroke } from '../theme/tokens';
 import { Icon } from './icons';
-import { PressSurface } from './motion';
+import { PressSurface, Vivo } from './motion';
 import { AtlasText, ProgressBar } from './primitives';
 
 export function NivelCard({ progress, onPress }: { progress: Progress; onPress?: () => void }) {
@@ -21,9 +21,12 @@ export function NivelCard({ progress, onPress }: { progress: Progress; onPress?:
   const cuerpo = (
     <>
       <View style={styles.cabecera}>
-        <View style={styles.insignia}>
-          <Icon name={ICONO_DE_NIVEL[tier.code]} size={26} tint={color.action.primary} />
-        </View>
+        {/* La insignia del nivel respira: es lo que se ha ganado y lo primero que se mira. */}
+        <Vivo tipo="flota" periodo={3200}>
+          <View style={styles.insignia}>
+            <Icon name={ICONO_DE_NIVEL[tier.code]} size={26} tint={color.action.primary} />
+          </View>
+        </Vivo>
         <View style={styles.titulos}>
           <AtlasText variant="overline" tone="secondary">
             {`NIVEL ${tier.index} DE ${tier.of}`}
