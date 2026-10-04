@@ -53,6 +53,11 @@ const envolver = (hijo: React.ReactElement) => (
 
 const PROGRESO: Progress = PROGRESO_DE_PRUEBA;
 
+/** La pantalla se reparte en pestañas: antes de buscar algo hay que abrir la que lo tiene. */
+const abrir = async (nombre: string) => {
+  await fireEvent.press(screen.getByLabelText(`Pestaña ${nombre}`));
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
   mockLibro.creditLine = null;
@@ -85,12 +90,14 @@ describe("pantalla «Tu nivel Atlas»", () => {
   it("sin línea de crédito igual muestra el nivel y los puntos (no una pantalla vacía)", async () => {
     await render(envolver(<Progreso />));
     expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
+    await abrir("Puntaje");
     expect(screen.getByText("Por qué tienes este puntaje")).toBeTruthy();
     expect(screen.getByText("Pagos a tiempo")).toBeTruthy();
   });
 
   it("lista las misiones y marca las cumplidas", async () => {
     await render(envolver(<Progreso />));
+    await abrir("Logros");
     expect(
       screen.getByLabelText(/Verifica tu identidad\. Cumplida/),
     ).toBeTruthy();
@@ -101,11 +108,13 @@ describe("pantalla «Tu nivel Atlas»", () => {
 
   it("dice que pedir crédito no suma puntos", async () => {
     await render(envolver(<Progreso />));
+    await abrir("Logros");
     expect(screen.getByText(/Pedir más crédito no suma puntos/)).toBeTruthy();
   });
 
   it("marca dónde está la persona en la escalera de niveles", async () => {
     await render(envolver(<Progreso />));
+    await abrir("Historia");
     expect(screen.getByText(/Nuevo · estás aquí/)).toBeTruthy();
     expect(
       screen.getByLabelText(/Establecido, desde 50 puntos\. Por alcanzar/),
@@ -114,6 +123,7 @@ describe("pantalla «Tu nivel Atlas»", () => {
 
   it("sin línea, la evolución lo explica y ofrece subir el extracto", async () => {
     await render(envolver(<Progreso />));
+    await abrir("Historia");
     expect(screen.getByText("Tu historia empieza aquí")).toBeTruthy();
     await fireEvent.press(
       screen.getByRole("button", { name: "Subir mi extracto bancario" }),
@@ -147,6 +157,7 @@ describe("pantalla «Tu nivel Atlas»", () => {
       },
     });
     await render(envolver(<Progreso />));
+    await abrir("Historia");
     expect(screen.getByText(/Pago · 31 pts de nivel/)).toBeTruthy();
     expect(screen.getByText(/Alta · 12 pts de nivel/)).toBeTruthy();
     expect(screen.getByText(/▲/)).toBeTruthy();
@@ -170,6 +181,7 @@ describe("pantalla «Tu nivel Atlas»", () => {
 describe("«Por qué tienes este puntaje»", () => {
   it("cada parte enseña su cuenta con los números de la persona", async () => {
     await render(envolver(<Progreso />));
+    await abrir("Puntaje");
     expect(screen.getByText("50 de 100 × 45 % = 22,5 pts")).toBeTruthy();
     expect(screen.getByText("8 de 100 × 20 % = 1,6 pts")).toBeTruthy();
     expect(screen.getByText("100 de 100 × 10 % = 10 pts")).toBeTruthy();
@@ -177,6 +189,7 @@ describe("«Por qué tienes este puntaje»", () => {
 
   it("y la razón en una frase de cada una", async () => {
     await render(envolver(<Progreso />));
+    await abrir("Puntaje");
     expect(screen.getByText(/partes de 50: un valor neutro/)).toBeTruthy();
     expect(
       screen.getByText(/Tu identidad, domicilio y contacto están verificados/),
@@ -185,6 +198,7 @@ describe("«Por qué tienes este puntaje»", () => {
 
   it("si un tope recortó el resultado, dice cuánto sumaba y cuál es el tope", async () => {
     await render(envolver(<Progreso />));
+    await abrir("Puntaje");
     expect(
       screen.getByText(
         "Tus partes suman 33, pero hay un tope: tu nivel cuenta 24 y estás en «Nuevo».",
@@ -200,6 +214,7 @@ describe("«Por qué tienes este puntaje»", () => {
       progress: { ...PROGRESO_DE_PRUEBA, score: 33, rawScore: 33, caps: [] },
     });
     await render(envolver(<Progreso />));
+    await abrir("Puntaje");
     expect(
       screen.getByText("Suma 33 puntos: estás en el nivel «Nuevo»."),
     ).toBeTruthy();
@@ -241,6 +256,7 @@ describe("experiencia e insignias", () => {
 
   it("las insignias ganadas se distinguen de las pendientes y las pendientes dicen su avance", async () => {
     await render(envolver(<Progreso />));
+    await abrir("Logros");
     expect(screen.getByText("2 de 4 ganadas")).toBeTruthy();
     expect(screen.getByLabelText(/Primera compra\. Ganada/)).toBeTruthy();
     expect(
@@ -255,10 +271,74 @@ describe("experiencia e insignias", () => {
 describe("el puntaje de 0 a 1000", () => {
   it("sin línea explica que es otro número, quién lo calcula y por qué todavía no aparece", async () => {
     await render(envolver(<Progreso />));
+    await abrir("Puntaje");
     expect(screen.getByText("Tu puntaje Atlas de 0 a 1000")).toBeTruthy();
     expect(
       screen.getByText(/lo calcula el motor de decisión de Atlas/),
     ).toBeTruthy();
     expect(screen.getByText(/Todavía no se calculó tu línea/)).toBeTruthy();
+  });
+});
+
+describe("pestañas de «Tu nivel Atlas»", () => {
+  it("hay cuatro pestañas y la primera, Resumen, es la que está abierta", async () => {
+    await render(envolver(<Progreso />));
+    for (const nombre of ["Resumen", "Puntaje", "Logros", "Historia"])
+      expect(screen.getByLabelText(`Pestaña ${nombre}`)).toBeTruthy();
+    expect(
+      screen.getByLabelText("Pestaña Resumen").props.accessibilityState
+        .selected,
+    ).toBe(true);
+    expect(
+      screen.getByLabelText("Pestaña Puntaje").props.accessibilityState
+        .selected,
+    ).toBe(false);
+  });
+
+  it("Resumen enseña la tarjeta, el nivel y la experiencia, y NADA de las otras pestañas", async () => {
+    await render(envolver(<Progreso />));
+    expect(screen.getByTestId("tarjeta-seccion")).toBeTruthy();
+    expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
+    expect(screen.getByText("EXPERIENCIA")).toBeTruthy();
+    expect(screen.queryByText("Por qué tienes este puntaje")).toBeNull();
+    expect(screen.queryByText("Misiones")).toBeNull();
+    expect(screen.queryByText("Los niveles")).toBeNull();
+  });
+
+  it("al cambiar de pestaña desaparece lo anterior y aparece lo nuevo", async () => {
+    await render(envolver(<Progreso />));
+    await abrir("Logros");
+    expect(screen.getByText("Insignias")).toBeTruthy();
+    expect(screen.getByText("Misiones")).toBeTruthy();
+    expect(screen.queryByTestId("tarjeta-seccion")).toBeNull();
+    expect(
+      screen.getByLabelText("Pestaña Logros").props.accessibilityState.selected,
+    ).toBe(true);
+    await abrir("Resumen");
+    expect(screen.getByTestId("tarjeta-seccion")).toBeTruthy();
+    expect(screen.queryByText("Misiones")).toBeNull();
+  });
+
+  it("Puntaje junta la cuenta parte por parte y el puntaje de 0 a 1000", async () => {
+    await render(envolver(<Progreso />));
+    await abrir("Puntaje");
+    expect(screen.getByTestId("por-que-puntaje")).toBeTruthy();
+    expect(screen.getByText("Tu puntaje Atlas de 0 a 1000")).toBeTruthy();
+    expect(screen.queryByText("Insignias")).toBeNull();
+  });
+
+  it("Historia junta la escalera de niveles y la evolución", async () => {
+    await render(envolver(<Progreso />));
+    await abrir("Historia");
+    expect(screen.getByText("Los niveles")).toBeTruthy();
+    expect(screen.getByText("Tu evolución")).toBeTruthy();
+    expect(screen.queryByTestId("tarjeta-seccion")).toBeNull();
+  });
+
+  it("la cuenta de cada parte sigue visible aunque el nombre sea largo (no se sale de la fila)", async () => {
+    await render(envolver(<Progreso />));
+    await abrir("Puntaje");
+    expect(screen.getByText("Compras terminadas de pagar")).toBeTruthy();
+    expect(screen.getByText(/0 de 100 × 25 % = 0 pts/)).toBeTruthy();
   });
 });
