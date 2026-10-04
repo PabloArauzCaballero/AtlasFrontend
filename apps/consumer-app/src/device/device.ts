@@ -115,3 +115,23 @@ export async function deviceIdentity(): Promise<DeviceIdentity> {
 export async function hashSensitiveText(value: string): Promise<string> {
   return sha256HexDeTexto(value.trim().toLowerCase());
 }
+
+/**
+ * El snapshot que viaja al ABRIR SESIÓN, recortado a lo que ese contrato acepta.
+ *
+ * El del alta lleva además zona horaria e idioma; el esquema de sesiones es `.strict()` y no los declara, así que
+ * mandarlos tal cual convertiría cada inicio de sesión en un 400. Sólo salen las claves con valor.
+ */
+export function snapshotDeSesion(snapshot: DeviceSnapshot): {
+  brand?: string;
+  model?: string;
+  osFamily?: string;
+  osVersion?: string;
+  appVersion?: string;
+  isRooted?: boolean;
+  isEmulator?: boolean;
+} {
+  const { brand, model, osFamily, osVersion, appVersion, isRooted, isEmulator } = snapshot;
+  const completo = { brand, model, osFamily, osVersion, appVersion, isRooted, isEmulator };
+  return Object.fromEntries(Object.entries(completo).filter(([, valor]) => valor !== undefined && valor !== null));
+}

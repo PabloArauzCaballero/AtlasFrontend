@@ -10,7 +10,7 @@ import * as authApi from '../api/endpoints/auth';
 import * as customerApi from '../api/endpoints/customer';
 import * as onboardingApi from '../api/endpoints/onboarding';
 import * as telemetryApi from '../api/endpoints/telemetry';
-import { deviceIdentity } from '../device/device';
+import { deviceIdentity, snapshotDeSesion } from '../device/device';
 import { permisosDecididos, type PermissionReport } from '../device/permissions';
 import type { ContextoDeRastreo } from '../device/tracking-context';
 import { activarSeñalesDelDispositivo, desactivarSeñalesDelDispositivo } from './device-signals';
@@ -172,6 +172,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
           fingerprintVersion: device.fingerprintVersion,
           channel: device.channel,
           userAgent: device.userAgent,
+          /*
+            El detalle del teléfono en CADA inicio de sesión, no sólo en el alta. Sin esto, entrar después desde
+            un emulador o desde otro modelo no dejaba rastro: la IP la toma el servidor de la conexión, pero la
+            marca, el modelo y si hay root o emulador sólo los puede decir el dispositivo.
+          */
+          snapshot: snapshotDeSesion(device.snapshot),
         },
         authMethod,
         locationPermissionGranted: permisos.find((permiso) => permiso.permissionCode === 'location')?.granted,
