@@ -13,6 +13,10 @@ appId: bo.atlas.consumer
 - assertVisible: 'ATLAS'
 - takeScreenshot: bienvenida-marca
 
+# La marca y cuatro pasos (Qué es Atlas, Escaneas, Pagas, Construyes): cuatro deslizamientos hasta la última.
+- swipe: { direction: LEFT, duration: 600 }
+- assertVisible: 'Qué es Atlas'
+- takeScreenshot: bienvenida-que-es-atlas
 - swipe: { direction: LEFT, duration: 600 }
 - swipe: { direction: LEFT, duration: 600 }
 - swipe: { direction: LEFT, duration: 600 }
