@@ -58,6 +58,8 @@ function TabIcon({ name, focused, highlighted }: { name: IconName; focused: bool
       <Icon
         name={name}
         size={highlighted ? 20 : 22}
+        duo={focused}
+        vivo={focused}
         tint={highlighted ? (focused ? color.text.onBrand : color.text.tertiary) : focused ? color.action.primary : color.text.tertiary}
       />
     </Animated.View>

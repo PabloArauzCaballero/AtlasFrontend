@@ -458,7 +458,8 @@ export function IconChip({
         style,
       ]}
     >
-      <Icon name={name} size={glyph} tint={tint} />
+      {/* El chip es donde el icono es protagonista: dos tonos y vida propia. En un botón o una fila de texto, no. */}
+      <Icon name={name} size={glyph} tint={tint} duo vivo />
     </View>
   );
 }
