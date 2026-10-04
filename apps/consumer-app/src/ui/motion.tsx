@@ -27,6 +27,7 @@ import { Platform, Pressable, View, type PressableProps, type StyleProp, type Vi
 import Animated, {
   Easing,
   FadeInUp,
+  cancelAnimation,
   type SharedValue,
   useAnimatedStyle,
   useReducedMotion,
@@ -238,6 +239,18 @@ export function useCountUp(value: number, enabled = true): SharedValue<number> {
  */
 export type TipoDeVida = 'flota' | 'pulsa' | 'late' | 'oscila';
 
+/**
+ * La curva de la vida: 0 → 1 → 0 a lo largo de una fase que corre de 0 a 1, desplazada por `retardo`.
+ *
+ * Es periódica y continua en TODO su dominio, incluido el cierre del ciclo: `suavidad(1) === suavidad(0)` para cualquier
+ * desfase. Está aparte (y con `'worklet'`) para poder probarla: la versión anterior usaba `(fase + retardo / periodo) % 1`,
+ * que salta de ~1 a ~0 al envolverse, y ninguna prueba lo veía porque la fórmula vivía dentro de un hook de animación.
+ */
+export function suavidad(fase: number, retardo: number, periodo: number): number {
+  'worklet';
+  return 0.5 - 0.5 * Math.cos((fase + retardo / periodo) * 2 * Math.PI);
+}
+
 export function Vivo({
   children,
   tipo = 'flota',
@@ -247,7 +260,7 @@ export function Vivo({
 }: {
   children: React.ReactNode;
   tipo?: TipoDeVida;
-  /** Un ciclo completo (ida y vuelta), en ms. */
+  /** Un ciclo completo (ida y vuelta), en ms. La curva es un coseno continuo: sin saltos al cerrar el ciclo. */
   periodo?: number;
   retardo?: number;
   style?: StyleProp<ViewStyle>;
@@ -257,20 +270,27 @@ export function Vivo({
 
   React.useEffect(() => {
     if (reduced) {
+      cancelAnimation(fase);
       fase.value = 0;
       return;
     }
-    // Ida y vuelta con `reverse`: la mitad del periodo en cada sentido, suave en los dos extremos.
-    fase.value = withRepeat(withTiming(1, { duration: periodo / 2, easing: Easing.inOut(Easing.sin) }), -1, true);
-    return () => {
-      fase.value = 0;
-    };
+    /*
+      La fase corre de 0 a 1 en línea recta y vuelve a empezar SIN ida y vuelta, y la curva la pone un coseno (abajo).
+
+      Antes la fase iba y volvía con `reverse` y el desfase se aplicaba con `(fase + retardo / periodo) % 1`. Ese `% 1` hace
+      que, cuando la suma pasa de 1, el valor SALTE de ~1 a ~0 de golpe: la casa se sacudía 6 px, el escudo cambiaba de
+      tamaño en seco, en cada ciclo y en todo icono con desfase. Con un coseno sobre una fase lineal la curva es continua
+      y su velocidad también: no hay un solo instante en que algo arranque o se detenga de golpe.
+    */
+    fase.value = 0;
+    fase.value = withRepeat(withTiming(1, { duration: periodo, easing: Easing.linear }), -1, false);
+    return () => cancelAnimation(fase);
   }, [fase, periodo, reduced]);
 
   const animado = useAnimatedStyle(() => {
     if (reduced) return {};
-    // El retardo descompasa sin esperar: se desplaza la fase en vez de retrasar la animación.
-    const t = (fase.value + retardo / periodo) % 1;
+    // El retardo desplaza la fase sin esperar, y como la curva es periódica no hace falta envolverla.
+    const t = suavidad(fase.value, retardo, periodo); // 0 → 1 → 0, continua y suave en los extremos
     switch (tipo) {
       case 'pulsa':
         return { transform: [{ scale: 1 + t * 0.06 }] };

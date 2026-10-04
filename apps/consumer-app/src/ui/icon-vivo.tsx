@@ -95,16 +95,18 @@ function Gira({ periodo, children }: { periodo: number; children: React.ReactNod
 /** La línea de lectura del escáner: sube y baja por el visor, como el láser de una caja registradora. */
 function Barrido({ size, acento }: { size: number; acento: string }) {
   const reducido = useReducedMotion();
-  const pos = useSharedValue(0.5);
+  const fase = useSharedValue(0);
 
   useEffect(() => {
     if (reducido) return;
-    pos.value = withRepeat(withTiming(1, { duration: 1100, easing: Easing.inOut(Easing.sin) }), -1, true);
-    return () => cancelAnimation(pos);
-  }, [pos, reducido]);
+    fase.value = 0;
+    fase.value = withRepeat(withTiming(1, { duration: 2200, easing: Easing.linear }), -1, false);
+    return () => cancelAnimation(fase);
+  }, [fase, reducido]);
 
   const k = size / 24;
-  const estilo = useAnimatedStyle(() => ({ transform: [{ translateY: (3.2 + pos.value * 13.6) * k }] }));
+  // Coseno sobre fase lineal: sube y baja sin frenazos ni arranques secos, y arranca desde el centro del visor.
+  const estilo = useAnimatedStyle(() => ({ transform: [{ translateY: (3.2 + (0.5 - 0.5 * Math.cos(fase.value * 2 * Math.PI)) * 13.6) * k }] }));
   return (
     <Animated.View
       pointerEvents="none"

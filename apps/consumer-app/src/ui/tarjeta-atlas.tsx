@@ -61,6 +61,15 @@ export function TarjetaAtlas({ tier, tamano = 'grande', bloqueada = false, onPre
         end={{ x: 1, y: 1 }}
         style={[StyleSheet.absoluteFill, styles.cara, { borderColor: accent }]}
       >
+        {/* Luz de superficie: un velo claro arriba a la izquierda que se desvanece. Da volumen sin tapar el texto. */}
+        <LinearGradient
+          pointerEvents="none"
+          colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']}
+          locations={[0, 0.45, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0.8, y: 0.9 }}
+          style={StyleSheet.absoluteFill}
+        />
         <View style={grande ? styles.contenido : styles.contenidoMini}>
           <View style={styles.fila}>
             <AtlasText variant={grande ? 'overline' : 'micro'} style={{ color: ink, letterSpacing: grande ? 3 : 1.5 }}>
@@ -78,13 +87,23 @@ export function TarjetaAtlas({ tier, tamano = 'grande', bloqueada = false, onPre
     </View>
   );
 
+  // La sombra necesita un padre SIN `overflow: hidden`: la tarjeta recorta su contenido y recortaría también su sombra.
+  // Y `aire` le deja sitio: la tarjeta flota unos píxeles y su sombra se extiende 16 más; sin ese margen la animación
+  // chocaba con lo de arriba, lo de abajo y los bordes de la pantalla y se sentía apretada.
+  const conSombra = grande ? (
+    <View style={styles.aire}>
+      <View style={[styles.sombra, { backgroundColor: colores[0] }]}>{cuerpo}</View>
+    </View>
+  ) : (
+    cuerpo
+  );
   const flotante =
     grande && !bloqueada ? (
-      <Vivo tipo="flota" periodo={4200}>
-        {cuerpo}
+      <Vivo tipo="flota" periodo={5200}>
+        {conSombra}
       </Vivo>
     ) : (
-      cuerpo
+      conSombra
     );
 
   if (!onPress) return flotante;
@@ -110,33 +129,53 @@ function Chip({ accent, ink }: { accent: string; ink: string }) {
   );
 }
 
-/** Una banda clara e inclinada que cruza la tarjeta de lado a lado y espera antes de repetir. */
+/**
+ * Un destello suave que cruza la tarjeta y espera antes de repetir.
+ *
+ * Antes era una banda de 46 px con bordes duros que cruzaba en 1,3 s: se leía como una raya que pasa, no como luz sobre
+ * metal. Ahora la banda es un degradado (transparente → luz → transparente), ancha, y cruza en 2 s con curva cúbica de
+ * entrada y salida: acelera con suavidad, llega y se apaga, sin un solo borde que se vea pasar.
+ */
 function Destello() {
   const reducido = useReducedMotion();
   const [ancho, setAncho] = useState(0);
   const avance = useSharedValue(0);
+  const banda = ancho * 0.7;
 
   useEffect(() => {
     if (reducido || ancho === 0) return;
+    avance.value = 0;
     avance.value = withRepeat(
-      withSequence(withDelay(2400, withTiming(1, { duration: 1300, easing: Easing.inOut(Easing.quad) })), withTiming(0, { duration: 0 })),
+      // La espera va ANTES del recorrido y el regreso a 0 ocurre con la banda fuera de la tarjeta, así que no se ve.
+      withSequence(withDelay(3200, withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.cubic) })), withTiming(0, { duration: 0 })),
       -1,
     );
     return () => cancelAnimation(avance);
   }, [ancho, avance, reducido]);
 
   const estilo = useAnimatedStyle(() => ({
-    transform: [{ translateX: -ancho * 0.5 + avance.value * ancho * 1.6 }, { rotate: '18deg' }],
+    transform: [{ translateX: -banda * 1.2 + avance.value * (ancho + banda * 2.4) }, { rotate: '18deg' }],
   }));
 
   return (
     <View pointerEvents="none" style={StyleSheet.absoluteFill} onLayout={(e) => setAncho(e.nativeEvent.layout.width)} testID="tarjeta-destello">
-      {reducido ? null : <Animated.View style={[styles.banda, estilo]} />}
+      {reducido || ancho === 0 ? null : (
+        <Animated.View style={[styles.banda, { width: banda }, estilo]}>
+          <LinearGradient
+            colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.38)', 'rgba(255,255,255,0)']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Animated.View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  aire: { paddingVertical: space.lg, paddingHorizontal: space.sm },
+  sombra: { borderRadius: radius.xxl, shadowColor: '#000000', shadowOpacity: 0.32, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
   grande: {
     width: '100%',
     aspectRatio: PROPORCION,
