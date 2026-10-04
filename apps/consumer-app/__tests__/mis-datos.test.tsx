@@ -86,6 +86,13 @@ const ME = {
       isPrimary: true,
       valueLast4: "7232",
     },
+    {
+      contactType: "email",
+      status: "verified",
+      isPrimary: true,
+      valueLast4: null,
+      maskedValue: "pa***@gmail.com",
+    },
   ],
   consents: {
     accepted: ["device_address_book"],
@@ -122,12 +129,26 @@ it("sin PIN confirmado pide el PIN y NO pide ni pinta ningún dato", async () =>
   expect(screen.queryByText("33F148")).toBeNull();
 });
 
+it("NUNCA enseña el código interno del cliente: es una clave de la base y en una captura identifica la cuenta", async () => {
+  marcarPinConfirmado();
+  await montar();
+  await waitFor(() => expect(screen.getByText("Pablo Arauz")).toBeTruthy());
+  expect(screen.queryByText("33F148")).toBeNull();
+  expect(screen.queryByText("Código de cliente")).toBeNull();
+  expect(screen.queryByText(/CUS-/)).toBeNull();
+});
+
 it("con el PIN recién confirmado enseña todo lo que Atlas sabe", async () => {
   marcarPinConfirmado();
   await montar();
   await waitFor(() => expect(screen.getByText("Pablo Arauz")).toBeTruthy());
-  expect(screen.getByText("33F148")).toBeTruthy();
-  expect(screen.getByText("…7232 · principal")).toBeTruthy();
+  // Datos en lenguaje de persona: fecha larga, estado traducido, contactos legibles.
+  expect(screen.getByText("17 de mayo de 1990")).toBeTruthy();
+  expect(screen.getByText("Activa")).toBeTruthy();
+  expect(screen.getByText("Teléfono principal")).toBeTruthy();
+  expect(screen.getByText("•••• 7232 · Verificado")).toBeTruthy();
+  expect(screen.getByText("Correo principal")).toBeTruthy();
+  expect(screen.getByText("pa***@gmail.com · Verificado")).toBeTruthy();
   expect(screen.getByText("Calle 5 #120")).toBeTruthy();
   expect(screen.getByText("Equipetrol")).toBeTruthy();
   expect(screen.getByText("Agenda del dispositivo")).toBeTruthy();
@@ -136,6 +157,35 @@ it("con el PIN recién confirmado enseña todo lo que Atlas sabe", async () => {
   expect(screen.getByText("No lo diste")).toBeTruthy();
   expect(screen.getByText("Lo declaraste tú")).toBeTruthy();
   expect(screen.getByText("Falta")).toBeTruthy();
+});
+
+it("el estado no se enseña como código de base de datos ni el correo como «…—»", async () => {
+  marcarPinConfirmado();
+  await montar();
+  await waitFor(() => expect(screen.getByText("Pablo Arauz")).toBeTruthy());
+  expect(screen.queryByText("active")).toBeNull();
+  expect(screen.queryByText(/…—/)).toBeNull();
+});
+
+it("un domicilio con campos vacíos dice «Sin registrar», no un guion", async () => {
+  marcarPinConfirmado();
+  getAnswers.mockResolvedValue({
+    ...RESPUESTAS,
+    address: { ...RESPUESTAS.address, addressLine: null, zone: "" },
+  });
+  await montar();
+  await waitFor(() => expect(screen.getByText("Pablo Arauz")).toBeTruthy());
+  expect(screen.getAllByText("Sin registrar").length).toBe(2);
+  expect(screen.queryByText("—")).toBeNull();
+});
+
+it("el ingreso declarado se enseña en Bs con miles", async () => {
+  marcarPinConfirmado();
+  await montar();
+  await waitFor(() => expect(screen.getByText("Pablo Arauz")).toBeTruthy());
+  // Aparece en dos tarjetas (la economía y «de dónde salió cada dato»); el importe, sólo en la primera.
+  expect(screen.getAllByText("Ingreso mensual").length).toBe(2);
+  expect(screen.getByText(/^Bs 4[.,\s]?500$/)).toBeTruthy();
 });
 
 it("si el domicilio no carga, el resto se enseña igual", async () => {

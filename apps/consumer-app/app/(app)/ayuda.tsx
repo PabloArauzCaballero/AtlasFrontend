@@ -26,6 +26,7 @@ import { useRouter } from 'expo-router';
 import * as contentApi from '../../src/api/endpoints/app-content';
 import { ContentActionButton, ContentBullets } from '../../src/ui/content';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
+import { Markdown } from '../../src/ui/markdown';
 import { Accordion, AtlasText, Button, Card, CardHeader, Divider, EmptyState, SectionHeader, Skeleton } from '../../src/ui/primitives';
 import { resetTour, useTour } from '../../src/ui/tour';
 import { TOUR_INICIO_KEY } from '../../src/features/tour-inicio';
@@ -133,11 +134,7 @@ export default function Ayuda() {
               <View key={entry.contentKey}>
                 {index > 0 ? <Divider /> : null}
                 <Accordion title={entry.title ?? ''}>
-                  {entry.body ? (
-                    <AtlasText variant="body" tone="secondary">
-                      {entry.body}
-                    </AtlasText>
-                  ) : null}
+                  {entry.body ? <Markdown variant="body">{entry.body}</Markdown> : null}
 
                   {entry.bullets.length > 0 ? <ContentBullets bullets={entry.bullets} /> : null}
 

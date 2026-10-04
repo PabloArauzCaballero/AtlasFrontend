@@ -58,7 +58,13 @@ export const setMfaPreference = (enabled: boolean) =>
  * forma de cambiar el PIN de otra persona por aquí.
  */
 export const requestPinChange = (currentPassword: string) =>
-  request<{ pinChallengeRequired: boolean; challengeToken: string; expiresInMinutes: number }>('/auth/password/change/request', {
+  request<{
+    pinChallengeRequired: boolean;
+    challengeToken: string;
+    expiresInMinutes: number;
+    /** A qué correo se mandó el código, ENMASCARADO (`pa***@gmail.com`). Ausente en un backend que aún no lo manda. */
+    deliveredTo?: string | null;
+  }>('/auth/password/change/request', {
     method: 'POST',
     body: { currentPassword },
   });

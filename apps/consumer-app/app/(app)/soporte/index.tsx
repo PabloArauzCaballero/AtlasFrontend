@@ -22,6 +22,7 @@ import { useRouter } from 'expo-router';
 import * as supportApi from '../../../src/api/endpoints/support';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
+import { Markdown } from '../../../src/ui/markdown';
 import {
   Accordion,
   AtlasText,
@@ -292,11 +293,9 @@ export default function Soporte() {
               <View key={articulo.articleId}>
                 {index > 0 ? <Divider /> : null}
                 <Accordion title={articulo.question ?? articulo.title}>
-                  {articulo.shortAnswer ? <AtlasText variant="body">{articulo.shortAnswer}</AtlasText> : null}
+                  {articulo.shortAnswer ? <Markdown variant="body" tone="primary">{articulo.shortAnswer}</Markdown> : null}
                   <Gap size="xs" />
-                  <AtlasText variant="caption" tone="secondary">
-                    {articulo.body}
-                  </AtlasText>
+                  <Markdown variant="caption">{articulo.body}</Markdown>
                   {/*
                     Cuando escalar va aparte y destacado: un articulo que no dice donde termina su
                     utilidad deja a la persona insistiendo con una guia que ya no aplica a su caso.

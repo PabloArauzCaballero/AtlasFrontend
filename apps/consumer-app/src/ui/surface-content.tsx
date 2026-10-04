@@ -16,6 +16,7 @@
 import { useEffect, useState } from 'react';
 import { getContent, type ContentEntry } from '../api/endpoints/app-content';
 import { ContentActionButton, ContentBullets } from './content';
+import { Markdown } from './markdown';
 import { AtlasText, Card, CardHeader } from './primitives';
 
 /** Una pieza dice algo si tiene titulo, subtitulo, texto o al menos un punto con texto. */
@@ -63,11 +64,7 @@ export function SurfaceContent({ entries }: { entries: readonly ContentEntry[] }
           {!entry.title?.trim() && entry.subtitle?.trim() ? (
             <AtlasText variant="bodyStrong">{entry.subtitle}</AtlasText>
           ) : null}
-          {entry.body?.trim() ? (
-            <AtlasText variant="body" tone="secondary">
-              {entry.body}
-            </AtlasText>
-          ) : null}
+          {entry.body?.trim() ? <Markdown variant="body">{entry.body}</Markdown> : null}
           {entry.bullets.length > 0 ? <ContentBullets bullets={entry.bullets.filter((bullet) => bullet.text.trim())} /> : null}
           <ContentActionButton action={entry.action} onScreen={undefined} onTour={undefined} />
         </Card>

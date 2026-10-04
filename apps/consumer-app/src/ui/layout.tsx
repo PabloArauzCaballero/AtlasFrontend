@@ -116,7 +116,14 @@ export function Screen({
     todavia es casi transparente a esa altura.
   */
   const DESVANECIDO_ARRIBA = space.xxxl;
-  const body = padded ? [styles.content, { paddingTop: aireArriba + space.base }, contentStyle] : contentStyle;
+  /*
+    El contenido empieza `space.xxl` (32) por debajo del área segura. Eran `space.base` (16): en las capturas del iPhone los
+    títulos y las tarjetas quedaban pegados a la isla dinámica y a la hora, y el contenido se sentía «arriba del todo».
+    El desvanecido de arriba (`DESVANECIDO_ARRIBA`) sigue disolviendo lo que se desplaza bajo el reloj; este aire sólo
+    cambia dónde EMPIEZA la pantalla en reposo.
+  */
+  const AIRE_SOBRE_EL_CONTENIDO = space.xxl;
+  const body = padded ? [styles.content, { paddingTop: aireArriba + AIRE_SOBRE_EL_CONTENIDO }, contentStyle] : contentStyle;
 
   /*
     Se envuelve cada hijo por separado, no el conjunto: escalonar exige que cada bloque tenga su
