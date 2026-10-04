@@ -207,6 +207,34 @@ export type Experience = {
   badges: Badge[];
 };
 
+export type CardTierCode = 'NORMAL' | 'SILVER' | 'GOLD' | 'PREMIUM' | 'BLACK';
+
+/** Cómo se pinta una tarjeta. Viene del catálogo editable del backend: la app no tiene los colores escritos. */
+export type CardTheme = { gradient: string[]; ink: string; accent: string; finish: string };
+
+export type CardTier = {
+  code: CardTierCode;
+  label: string;
+  /** El nivel Atlas con el que se desbloquea sola. */
+  levelCode: TierCode;
+  displayOrder: number;
+  description: string;
+  benefits: { text: string; icon?: string }[];
+  theme: CardTheme;
+  current: boolean;
+};
+
+/**
+ * La tarjeta del cliente (Normal, Silver, Gold, Premium, Black): presentación y estatus, NO cambia su límite de crédito.
+ * `AUTOMATICA` la ganó por su nivel; `MANUAL` se la puso el personal. Nunca trae el motivo del ajuste.
+ */
+export type CardView = CardTier & {
+  source: 'AUTOMATICA' | 'MANUAL';
+  automatic: { code: CardTierCode; label: string };
+  manual: { since: string; expiresAt: string | null } | null;
+  catalog: CardTier[];
+};
+
 export type ProgressMission = { code: string; label: string; detail: string; done: boolean; points: string };
 
 /**
@@ -231,6 +259,8 @@ export type Progress = {
   rawScore: number;
   caps: { code: string; limit: number; detail: string }[];
   experience: Experience;
+  /** Ausente si el backend todavía no trae las tarjetas: las pantallas lo toleran y no la pintan. */
+  card?: CardView;
   missions: ProgressMission[];
   signals: { tenureMonths: number; loansSettled: number; loansActive: number; onTimeRatio: number | null; kycComplete: boolean };
   history: {

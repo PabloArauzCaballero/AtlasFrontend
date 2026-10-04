@@ -22,6 +22,7 @@ import { useTourInicio } from '../../../src/features/use-contenido-remoto';
 import { resetTour, useTour } from '../../../src/ui/tour';
 import { Gap, Screen } from '../../../src/ui/layout';
 import { NivelCard } from '../../../src/ui/nivel-card';
+import { TarjetaAtlas } from '../../../src/ui/tarjeta-atlas';
 import { useProgress } from '../../../src/features/use-progress';
 import {
   AtlasText,
@@ -179,7 +180,11 @@ export default function Profile() {
         Antes, sin línea, Perfil no pintaba NINGUNA tarjeta de puntaje y la persona no sabía ni que existía.
       */}
       {nivel.fase === 'lista' ? (
-        <NivelCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} />
+        <>
+          {/* La tarjeta Atlas (Normal … Black): el estatus que se ve de un vistazo; toca para ver la escalera. */}
+          {nivel.progress.card ? <TarjetaAtlas tier={nivel.progress.card} onPress={() => router.push('/(app)/progreso')} testID="perfil-tarjeta" /> : null}
+          <NivelCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} />
+        </>
       ) : nivel.fase === 'cargando' ? (
         <Card>
           <Skeleton height={11} width="35%" />

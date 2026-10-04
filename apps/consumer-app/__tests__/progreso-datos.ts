@@ -1,4 +1,48 @@
-import type { Progress } from "../src/api/endpoints/credit-line";
+import type {
+  CardTier,
+  CardTierCode,
+  CardView,
+  Progress,
+  TierCode,
+} from "../src/api/endpoints/credit-line";
+
+const TARJETAS: Array<[CardTierCode, string, TierCode, string[], string]> = [
+  ["NORMAL", "Normal", "NUEVO", ["#16314F", "#0A2038"], "azul marino"],
+  ["SILVER", "Silver", "EN_CONSTRUCCION", ["#E4E9EF", "#7B8794"], "plata"],
+  ["GOLD", "Gold", "ESTABLECIDO", ["#F7E08A", "#9C6F14"], "oro"],
+  ["PREMIUM", "Premium", "CONSOLIDADO", ["#6B3FA0", "#2A1250"], "violeta"],
+  ["BLACK", "Black", "PREFERENTE", ["#2B2B2B", "#000000"], "negro mate"],
+];
+
+/** El catálogo de cinco tarjetas con `actual` como la vigente. */
+export function catalogoDePrueba(actual: CardTierCode): CardTier[] {
+  return TARJETAS.map(([code, label, levelCode, gradient, finish], i) => ({
+    code,
+    label,
+    levelCode,
+    displayOrder: i + 1,
+    description: `Descripción ${label}`,
+    benefits: [],
+    theme: { gradient, ink: "#FFFFFF", accent: "#CCCCCC", finish },
+    current: code === actual,
+  }));
+}
+
+export function tarjetaDePrueba(
+  actual: CardTierCode = "NORMAL",
+  extra: Partial<CardView> = {},
+): CardView {
+  const catalog = catalogoDePrueba(actual);
+  const vigente = catalog.find((t) => t.code === actual) as CardTier;
+  return {
+    ...vigente,
+    source: "AUTOMATICA",
+    automatic: { code: actual, label: vigente.label },
+    manual: null,
+    catalog,
+    ...extra,
+  };
+}
 
 /** Un nivel de ejemplo con el contrato COMPLETO (cuenta por parte, topes, experiencia e insignias). */
 export const PROGRESO_DE_PRUEBA: Progress = {
@@ -110,6 +154,7 @@ export const PROGRESO_DE_PRUEBA: Progress = {
     onTimeRatio: null,
     kycComplete: true,
   },
+  card: tarjetaDePrueba("NORMAL"),
   experience: {
     xp: 350,
     onTimeInstallments: 3,

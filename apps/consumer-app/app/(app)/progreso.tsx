@@ -23,6 +23,7 @@ import { useSession } from '../../src/session/session';
 import { Icon } from '../../src/ui/icons';
 import { Insignia } from '../../src/ui/insignia';
 import { ScoringPanel } from '../../src/ui/scoring-panel';
+import { TarjetaSeccion } from '../../src/ui/tarjeta-seccion';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { NivelCard } from '../../src/ui/nivel-card';
 import { Appear, Vivo } from '../../src/ui/motion';
@@ -67,6 +68,10 @@ export default function Progreso() {
       <ScreenHeader title="Tu nivel Atlas" subtitle="Cómo subir y qué te falta." onBack="auto" />
 
       <Appear index={0}>
+        <TarjetaSeccion progress={progress} />
+      </Appear>
+
+      <Appear index={1}>
         <NivelCard progress={progress} />
       </Appear>
 
