@@ -647,7 +647,7 @@ export function KeyValue({
         {label}
       </AtlasText>
       {children ?? (
-        <AtlasText variant={numeric ? 'amountMicro' : 'captionStrong'} tone={tone} align="right" style={styles.keyValueValue}>
+        <AtlasText variant={numeric ? 'amountMicro' : 'captionStrong'} tone={tone} align="right" style={numeric ? styles.keyValueValue : styles.keyValueTexto}>
           {value}
         </AtlasText>
       )}
@@ -1294,7 +1294,14 @@ const styles = StyleSheet.create({
     // cual de los dos pertenece. Sin esto, un titulo a medio camino entre dos tarjetas parece el
     // pie de la de arriba.
     marginTop: space.sm,
-    marginBottom: -space.xs,
+    /*
+      Sin margen inferior NEGATIVO. Antes era `-space.xs` para acercar el título a su bloque, pero un margen negativo
+      mete al bloque SIGUIENTE encima del texto del título cuando ambos no están separados por el `gap` de la pantalla
+      (un título y su tarjeta dentro de un mismo bloque, o un contenedor que anima cada hijo por separado): «Lo que más nos
+      preguntan.» salía pisado por la tarjeta de debajo, en Soporte y en Progreso. La cercanía ya la da `marginTop`: el
+      título queda a `gap + space.sm` del bloque anterior y a `gap` del suyo.
+    */
+    marginBottom: 0,
   },
   sectionHeaderText: { flex: 1, gap: space.xxs },
   sectionHeaderAction: { flexShrink: 0 },
@@ -1311,6 +1318,9 @@ const styles = StyleSheet.create({
   // en dos lineas es la cifra.
   keyValueLabel: { flexShrink: 1 },
   keyValueValue: { flexShrink: 0 },
+  // Un valor de TEXTO sí tiene que poder partirse: con `flexShrink: 0` «Santa Cruz de la Sierra, Santa Cruz» o «Zona Norte»
+  // se salían de la tarjeta y la pantalla los cortaba. Sólo la cifra (`numeric`) es la que no se parte.
+  keyValueTexto: { flexShrink: 1 },
 
   progressTrack: { height: 6, borderRadius: radius.pill, backgroundColor: color.surface.raisedStrong, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: radius.pill, backgroundColor: color.action.primary },

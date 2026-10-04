@@ -10,7 +10,14 @@ export type CustomerMe = {
   profile: { firstName: string | null; lastName: string | null; birthDate: string | null; preferredLanguage: string | null };
   onboarding: { onboardingFlowId: string; completionStatus: string; startedAt: string; completedAt: string | null } | null;
   eligibility: { eligible: boolean; completionPercentage: number; blockerCodes: string[] };
-  contacts: { contactType: string; status: string; isPrimary: boolean; valueLast4: string | null }[];
+  contacts: {
+    contactType: string;
+    status: string;
+    isPrimary: boolean;
+    valueLast4: string | null;
+    /** El correo enmascarado (`pa***@gmail.com`); `null` en un teléfono y en un backend que aún no lo manda. */
+    maskedValue?: string | null;
+  }[];
   /** Los permisos que la persona dio y los que negó, por código de finalidad. */
   consents?: { accepted: string[]; declined: string[] };
   risk?: { latestDecision: string | null; latestRiskLevel: string | null };

@@ -23,6 +23,7 @@ import * as customerApi from '../../src/api/endpoints/customer';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { useCreditBook } from '../../src/features/use-credit-book';
 import { useProgress } from '../../src/features/use-progress';
+import { contactoLegible, estadoDeCuenta, etiquetaEconomia, fechaLarga, oSinRegistrar, valorEconomia } from '../../src/features/mis-datos-formato';
 import { fraseDeExperiencia } from '../../src/features/puntaje-explicado';
 import { NivelCard } from '../../src/ui/nivel-card';
 import { marcarPinConfirmado, pinConfirmadoReciente } from '../../src/features/pin-verificado';
@@ -53,8 +54,6 @@ const VARIABLE: Record<string, string> = {
   dependents: 'Dependientes',
 };
 const variable = (codigo: string) => VARIABLE[codigo] ?? codigo.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').toLowerCase();
-
-const fecha = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString('es-BO') : '—');
 
 type Datos = { me: customerApi.CustomerMe; respuestas: onboardingApi.OnboardingAnswers | null };
 
@@ -132,6 +131,7 @@ export default function MisDatos() {
   const economia = respuestas?.financialProfile ?? {};
   const permisos = me.consents ?? { accepted: [], declined: [] };
   const inputs = book.creditLine?.inputs ?? {};
+  const estado = estadoDeCuenta(me.customer.status);
 
   return (
     <Screen>
@@ -154,31 +154,28 @@ export default function MisDatos() {
 
       <Card>
         <CardHeader icon="perfil" title="Quién eres" divider={false} />
-        <KeyValue label="Nombre" value={[me.profile.firstName, me.profile.lastName].filter(Boolean).join(' ') || '—'} />
-        <KeyValue label="Fecha de nacimiento" value={fecha(me.profile.birthDate)} />
-        <KeyValue label="Código de cliente" value={me.customer.customerCode} />
-        <KeyValue label="Estado de tu cuenta" value={me.customer.status} />
+        {/* El código interno del cliente NO se enseña: es una clave de la base y en una captura identifica la cuenta. */}
+        <KeyValue label="Nombre" value={oSinRegistrar([me.profile.firstName, me.profile.lastName].filter(Boolean).join(' '))} />
+        <KeyValue label="Fecha de nacimiento" value={oSinRegistrar(fechaLarga(me.profile.birthDate))} />
+        <KeyValue label="Estado de tu cuenta" value={estado.texto} tone={estado.tono} />
       </Card>
 
       <Card>
         <CardHeader icon="telefono" title="Cómo te contactamos" divider={false} />
         {me.contacts.length === 0 ? <AtlasText variant="body" tone="secondary">No tenemos contactos registrados.</AtlasText> : null}
-        {me.contacts.map((contacto) => (
-          <KeyValue
-            key={`${contacto.contactType}-${contacto.valueLast4}`}
-            label={contacto.contactType === 'phone' ? 'Teléfono' : contacto.contactType === 'email' ? 'Correo' : contacto.contactType}
-            value={`…${contacto.valueLast4 ?? '—'}${contacto.isPrimary ? ' · principal' : ''}`}
-          />
-        ))}
+        {me.contacts.map((contacto, indice) => {
+          const fila = contactoLegible(contacto);
+          return <KeyValue key={`${contacto.contactType}-${indice}`} label={fila.etiqueta} value={fila.valor} />;
+        })}
       </Card>
 
       <Card>
         <CardHeader icon="ubicacion" title="Dónde vives" divider={false} />
         {direccion ? (
           <>
-            <KeyValue label="Dirección" value={direccion.addressLine ?? '—'} />
-            <KeyValue label="Zona" value={direccion.zone ?? '—'} />
-            <KeyValue label="Ciudad" value={[direccion.city, direccion.department].filter(Boolean).join(', ') || '—'} />
+            <KeyValue label="Dirección" value={oSinRegistrar(direccion.addressLine)} />
+            <KeyValue label="Zona" value={oSinRegistrar(direccion.zone)} />
+            <KeyValue label="Ciudad" value={oSinRegistrar([direccion.city, direccion.department].filter(Boolean).join(', '))} />
           </>
         ) : (
           <AtlasText variant="body" tone="secondary">Todavía no registraste tu domicilio.</AtlasText>
@@ -190,7 +187,7 @@ export default function MisDatos() {
         {Object.keys(economia).length === 0 ? (
           <AtlasText variant="body" tone="secondary">Todavía no declaraste datos económicos.</AtlasText>
         ) : (
-          Object.entries(economia).map(([clave, valor]) => <KeyValue key={clave} label={variable(clave)} value={String(valor)} />)
+          Object.entries(economia).map(([clave, valor]) => <KeyValue key={clave} label={etiquetaEconomia(clave)} value={valorEconomia(clave, valor)} />)
         )}
       </Card>
 
