@@ -47,13 +47,21 @@ export const registrarDecisiones = (
  */
 export type DataSubjectRequestType = 'rectification' | 'deletion';
 
+/**
+ * Pide corregir un dato o borrar la cuenta. Una corrección lleva el campo y el valor correcto (ver
+ * `features/solicitud-titular.ts`); el servidor guarda el valor cifrado y comprueba por su cuenta que el PIN se confirmó.
+ */
 export const solicitarDerecho = (
   customerId: string,
-  requestType: DataSubjectRequestType,
-  description?: string,
+  cuerpo: {
+    requestType: DataSubjectRequestType;
+    description?: string;
+    field?: string;
+    proposedValue?: string;
+  },
 ) =>
-  request<Record<string, unknown>>(`/customers/${customerId}/privacy/data-subject-requests`, {
+  request<{ dataSubjectRequestId: string; status: string }>(`/customers/${customerId}/privacy/data-subject-requests`, {
     method: 'POST',
     idempotent: true,
-    body: { requestType, ...(description ? { description } : {}) },
+    body: cuerpo,
   });

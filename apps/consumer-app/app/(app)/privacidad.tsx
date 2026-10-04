@@ -26,6 +26,7 @@ import { usePrivacidadCopy } from '../../src/features/use-contenido-remoto';
 import { describeError } from '../../src/api/errors';
 import { marcarPinConfirmado } from '../../src/features/pin-verificado';
 import { ConfirmarPinSheet } from '../../src/ui/confirmar-pin-sheet';
+import { SolicitudTitularForm } from '../../src/features/solicitud-titular-form';
 import {
   desactivarSeñalesDelDispositivo,
   FINALIDAD_AGENDA,
@@ -60,9 +61,6 @@ export default function Privacidad() {
   const [error, setError] = useState<unknown>(null);
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState(false);
-  const [derecho, setDerecho] = useState<privacyApi.DataSubjectRequestType | null>(null);
-  const [enviandoDerecho, setEnviandoDerecho] = useState(false);
-  const [derechoEnviado, setDerechoEnviado] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
@@ -131,22 +129,6 @@ export default function Privacidad() {
       setError(capturado);
     } finally {
       setGuardando(false);
-    }
-  }
-
-  async function pedirDerecho() {
-    if (!session.customerId || !derecho) return;
-    setEnviandoDerecho(true);
-    setDerechoEnviado(false);
-    setError(null);
-    try {
-      await privacyApi.solicitarDerecho(session.customerId, derecho);
-      setDerechoEnviado(true);
-      setDerecho(null);
-    } catch (capturado) {
-      setError(capturado);
-    } finally {
-      setEnviandoDerecho(false);
     }
   }
 
@@ -234,31 +216,8 @@ export default function Privacidad() {
 
       <Gap />
 
-      <Card>
-        <CardHeader
-          title={copy.derechosTitulo}
-          detail={copy.derechosDetalle}
-        />
-        <OptionGroup
-          label={copy.derechosPregunta}
-          ayuda={copy.derechosAyuda}
-          options={copy.derechos as { value: privacyApi.DataSubjectRequestType; label: string; detalle: string }[]}
-          value={derecho}
-          onChange={setDerecho}
-        />
-        <Gap size="sm" />
-        <Button
-          label={enviandoDerecho ? 'Enviando…' : 'Enviar solicitud'}
-          icon="enviar"
-          onPress={() => pedirDerecho()}
-          disabled={!derecho || enviandoDerecho}
-        />
-        {derechoEnviado ? (
-          <AtlasText variant="caption" tone="secondary">
-            {copy.solicitudEnviada}
-          </AtlasText>
-        ) : null}
-      </Card>
+      {/* Corregir un dato o borrar la cuenta: con qué dato y el valor correcto, o qué implica borrar. Pide el PIN. */}
+      <SolicitudTitularForm customerId={session.customerId} copy={copy} />
     </Screen>
   );
 }
