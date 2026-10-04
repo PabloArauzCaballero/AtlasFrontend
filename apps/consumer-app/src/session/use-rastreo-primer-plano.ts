@@ -21,7 +21,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
-import { medirYEnviar } from '../device/location';
+import { iniciarRastreoEnSegundoPlano, medirYEnviar } from '../device/location';
 import type { ContextoDeRastreo } from '../device/tracking-context';
 import { CADENCIA_PRIMER_PLANO_MS } from '../features/rastreo';
 import { reintentarAgendaPendiente } from './device-signals';
@@ -54,6 +54,14 @@ export function useRastreoEnPrimerPlano(contexto: ContextoDeRastreo | null, acti
       // GPS justo cuando la persona ya no esta mirando.
       if (anterior.match(/inactive|background/) && estado === 'active') {
         medir();
+        /*
+          Y si el sistema MATO el rastreo de segundo plano, se reinstala. Algunos fabricantes (Xiaomi,
+          Samsung, Huawei) cierran el servicio aunque lleve notificacion, y sin esto quien concedio
+          «siempre» se quedaba sin rastro hasta el siguiente inicio de sesion. Es idempotente y no
+          hace nada sin el permiso de «siempre» vigente; el contexto solo existe si la persona
+          consintio la ubicacion (`activarSeñalesDelDispositivo` lo borra si no).
+        */
+        void iniciarRastreoEnSegundoPlano();
         // Y si la agenda quedo a medias —un corte de red a mitad de la subida— se completa ahora.
         const actual = referencia.current;
         if (actual) void reintentarAgendaPendiente(actual);

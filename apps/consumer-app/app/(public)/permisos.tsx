@@ -31,10 +31,11 @@ import { useEffect, useState } from 'react';
 import { Platform, View } from 'react-native';
 import * as contentApi from '../../src/api/endpoints/app-content';
 import { pedirPermisoDeContactos } from '../../src/device/permissions';
-import { pedirPermisoDeSegundoPlano, pedirPermisoDeUbicacion } from '../../src/device/location';
-import { guardarDecisionDeArranque } from '../../src/session/permisos-de-arranque';
+import { pedirPermisoDeSegundoPlano, pedirPermisoDeUbicacion, permisosDeUbicacion } from '../../src/device/location';
+import { guardarDecisionDeArranque, leerDecisionDeArranque } from '../../src/session/permisos-de-arranque';
 import { useSession } from '../../src/session/session';
 import { bitacora } from '../../src/features/bitacora';
+import { LO_QUE_NO_HACEMOS_CON_LA_UBICACION, USOS_DE_LA_UBICACION } from '../../src/features/consentimiento-ubicacion';
 import { space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { type IconName } from '../../src/ui/icons';
@@ -87,12 +88,8 @@ const [UBICACION_POR_DEFECTO, CONTACTOS_POR_DEFECTO]: [PiezaDePermiso, PiezaDePe
   {
     icono: 'ubicacion',
     titulo: 'Tu ubicación',
-    para: [
-      'Comprobar que el domicilio que declaras es donde realmente estás.',
-      'Avisarte si alguien usa tu cuenta desde otro lugar.',
-      'Detectar ubicaciones simuladas, la señal más común de una solicitud falsa.',
-    ],
-    queNoHacemos: 'No la compartimos con los comercios ni la usamos para publicidad.',
+    para: [...USOS_DE_LA_UBICACION],
+    queNoHacemos: LO_QUE_NO_HACEMOS_CON_LA_UBICACION,
   },
   {
     icono: 'telefono',
@@ -262,9 +259,23 @@ export default function Permisos() {
   }
 
   async function ahoraNo() {
-    bitacora.permiso('ubicacion', 'omitido');
     bitacora.permiso('contactos', 'omitido');
-    await guardarDecisionDeArranque({ ubicacion: false, ubicacionSiempre: false, contactos: false });
+    /*
+      «Ahora no» niega lo que se pide AQUI, no lo que ya se concedio antes.
+
+      La ubicacion puede venir consentida del domicilio, con su texto y su «siempre». Guardar aqui
+      `ubicacion: false` registraba un `declined` encima de esa decision —una retirada que la persona
+      no pidio— y retirar un consentimiento tiene su sitio: «Privacidad».
+    */
+    const previa = await leerDecisionDeArranque();
+    const vigentes = await permisosDeUbicacion();
+    const ubicacionYaConcedida = previa?.ubicacion === true && vigentes.primerPlano;
+    if (!ubicacionYaConcedida) bitacora.permiso('ubicacion', 'omitido');
+    await guardarDecisionDeArranque({
+      ubicacion: ubicacionYaConcedida,
+      ubicacionSiempre: ubicacionYaConcedida && vigentes.segundoPlano,
+      contactos: false,
+    });
     // La negativa tambien se registra como consentimiento `declined`: es lo que cierra la seccion.
     if (session.status === 'authenticated') await session.reactivarSeñales();
     salir();

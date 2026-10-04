@@ -30,6 +30,7 @@ import { anotarEnHistorial, leerHistorial } from '../../src/device/historial-ubi
 import { sitiosFrecuentes, type SitioFrecuente } from '../../src/features/sitios-frecuentes';
 import { guardarDecisionDeArranque, leerDecisionDeArranque } from '../../src/session/permisos-de-arranque';
 import { bitacora } from '../../src/features/bitacora';
+import { TITULO_CONSENTIMIENTO_UBICACION, textoConsentimientoUbicacion } from '../../src/features/consentimiento-ubicacion';
 import { TRUST_DOMICILIO } from '../../src/features/trust-copy';
 import { TrustCardRemoto } from '../../src/features/use-contenido-remoto';
 
@@ -159,16 +160,40 @@ export default function Address() {
       ]);
     });
 
+  const aceptarRegistroDeUbicacion = () =>
+    new Promise<boolean>((resolver) => {
+      Alert.alert(TITULO_CONSENTIMIENTO_UBICACION, textoConsentimientoUbicacion(), [
+        {
+          text: 'Ahora no',
+          style: 'cancel',
+          onPress: () => {
+            bitacora.permiso('ubicacion', 'omitido');
+            resolver(false);
+          },
+        },
+        { text: 'Acepto', onPress: () => resolver(true) },
+      ]);
+    });
+
   const elegirEnMapa = async (punto: { lat: number; lng: number }) => {
     setGps({ lat: punto.lat, lng: punto.lng });
     setMapaAbierto(false);
     if (Platform.OS === 'web') return;
     const permisos = await permisosDeUbicacion();
     if (!permisos.primerPlano) return;
+    const previa = await leerDecisionDeArranque();
+    /*
+      El consentimiento se PIDE, con su texto, antes de registrarlo.
+
+      Hasta aqui la persona solo vio los dialogos del sistema, que prueban que pulso «Permitir» en una
+      caja de Apple o Google, no que se le dijo para que. Sin este aviso el domicilio registraba
+      `location_tracking` como concedido sin haber enseñado nunca el uso. Quien dice que no guarda su
+      domicilio igual: el punto del mapa no depende de esto.
+    */
+    if (previa?.ubicacion !== true && !(await aceptarRegistroDeUbicacion())) return;
     if (!permisos.segundoPlano) await pedirSiempre();
     // La decision viaja como consentimiento `location_tracking` y enciende las medidas: la del
     // momento y, con «siempre», la de segundo plano. La agenda se decide en su paso.
-    const previa = await leerDecisionDeArranque();
     const vigentes = await permisosDeUbicacion();
     await guardarDecisionDeArranque({
       ubicacion: true,
