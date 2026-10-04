@@ -263,7 +263,17 @@ export async function activarSeñalesDelDispositivo(input: {
     }
   }
 
-  if (!decision.ubicacion) return { ...vacio, contactosSubidos };
+  /*
+   * Sin ubicacion decidida, el rastreo se APAGA, no solo se deja de encender.
+   *
+   * La tarea de segundo plano sobrevive a la app: si la persona concedio «siempre» en el domicilio y
+   * despues dijo «Ahora no», salir sin detenerla dejaba la notificacion «registrando tu ubicacion» a
+   * la vista y cada lote rebotando con 422 — rastreo visible para alguien que acababa de negarlo.
+   */
+  if (!decision.ubicacion) {
+    await desactivarSeñalesDelDispositivo();
+    return { ...vacio, contactosSubidos };
+  }
 
   // El contexto se guarda ANTES de encender nada: la tarea de segundo plano puede recibir su primera
   // posicion inmediatamente, y sin contexto se apagaria sola creyendo que no hay sesion.
