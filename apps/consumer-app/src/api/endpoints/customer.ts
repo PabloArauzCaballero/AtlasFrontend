@@ -97,8 +97,26 @@ export const registerDeviceToken = (customerId: string, body: { platform: 'ios' 
 export const deleteDeviceToken = (customerId: string, deviceTokenId: string) =>
   request<{ deleted: boolean }>(`/customers/${customerId}/device-tokens/${deviceTokenId}`, { method: 'DELETE' });
 
+/** Las SIETE claves que acepta `startSessionSchema` (es `.strict()`: una de más es un 400). */
+export type SessionDeviceSnapshot = {
+  brand?: string;
+  model?: string;
+  osFamily?: string;
+  osVersion?: string;
+  appVersion?: string;
+  isRooted?: boolean;
+  isEmulator?: boolean;
+};
+
 export type SessionStartInput = {
-  device: { deviceFingerprintHash: string; fingerprintVersion: string; channel: 'mobile_app'; userAgent?: string };
+  device: {
+    deviceFingerprintHash: string;
+    fingerprintVersion: string;
+    channel: 'mobile_app';
+    userAgent?: string;
+    /** Marca, modelo, sistema y si es emulador o tiene root. El backend lo guarda en `device_snapshots` por sesión. */
+    snapshot?: SessionDeviceSnapshot;
+  };
   authMethod?: string;
   locationPermissionGranted?: boolean;
 };

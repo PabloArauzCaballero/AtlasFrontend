@@ -33,7 +33,9 @@ jest.mock('../src/device/device', () => ({
     fingerprintVersion: 'v1',
     channel: 'mobile_app',
     userAgent: 'ua',
+    snapshot: { osFamily: 'ios' },
   })),
+  snapshotDeSesion: jest.fn((snapshot: Record<string, unknown>) => snapshot),
 }));
 jest.mock('../src/device/permissions', () => ({ permisosDecididos: jest.fn(async () => []) }));
 jest.mock('../src/session/device-signals', () => ({
