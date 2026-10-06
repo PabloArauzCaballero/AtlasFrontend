@@ -40,7 +40,7 @@ export default function AppLayout() {
   if (session.status === 'restoring') return null;
 
   const area = areaFor(session);
-  if (area === 'auth') return <Redirect href="/(public)/bienvenida" />;
+  if (area === 'auth') return <Redirect href="/" />;
   if (area === 'onboarding') return <Redirect href="/(onboarding)/progreso" />;
 
   /*

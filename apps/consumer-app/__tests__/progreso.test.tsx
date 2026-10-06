@@ -57,6 +57,11 @@ const PROGRESO: Progress = PROGRESO_DE_PRUEBA;
 const abrir = async (nombre: string) => {
   await fireEvent.press(screen.getByLabelText(`Pestaña ${nombre}`));
 };
+/** «Puntaje» se parte en «Mis puntos» y «Mi calificación»: la cuenta 1-100 vive en la segunda. */
+const abrirCalificacion = async () => {
+  await abrir("Puntaje");
+  await fireEvent.press(screen.getByLabelText("Subpestaña Mi calificación"));
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -71,7 +76,7 @@ describe("NivelCard", () => {
     expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
     expect(screen.getByText("24")).toBeTruthy();
     expect(
-      screen.getByText("Te falta 1 punto para «En construcción»."),
+      screen.getByText("Te falta 1 de calificación para «En construcción»."),
     ).toBeTruthy();
   });
 
@@ -79,7 +84,7 @@ describe("NivelCard", () => {
     const onPress = jest.fn();
     await render(envolver(<NivelCard progress={PROGRESO} onPress={onPress} />));
     const tarjeta = screen.getByRole("button", {
-      name: /Tu nivel Atlas: Nuevo, nivel 1 de 5, 24 puntos/,
+      name: /Tu nivel Atlas: Nuevo, nivel 1 de 5, calificación 24 de 100/,
     });
     await fireEvent.press(tarjeta);
     expect(onPress).toHaveBeenCalledTimes(1);
@@ -90,8 +95,8 @@ describe("pantalla «Tu nivel Atlas»", () => {
   it("sin línea de crédito igual muestra el nivel y los puntos (no una pantalla vacía)", async () => {
     await render(envolver(<Progreso />));
     expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
-    await abrir("Puntaje");
-    expect(screen.getByText("Por qué tienes este puntaje")).toBeTruthy();
+    await abrirCalificacion();
+    expect(screen.getByText("Por qué tienes esta calificación")).toBeTruthy();
     expect(screen.getByText("Pagos a tiempo")).toBeTruthy();
   });
 
@@ -109,7 +114,7 @@ describe("pantalla «Tu nivel Atlas»", () => {
   it("dice que pedir crédito no suma puntos", async () => {
     await render(envolver(<Progreso />));
     await abrir("Logros");
-    expect(screen.getByText(/Pedir más crédito no suma puntos/)).toBeTruthy();
+    expect(screen.getByText(/Pedir más crédito no sube tu calificación/)).toBeTruthy();
   });
 
   it("marca dónde está la persona en la escalera de niveles", async () => {
@@ -117,7 +122,7 @@ describe("pantalla «Tu nivel Atlas»", () => {
     await abrir("Historia");
     expect(screen.getByText(/Nuevo · estás aquí/)).toBeTruthy();
     expect(
-      screen.getByLabelText(/Establecido, desde 50 puntos\. Por alcanzar/),
+      screen.getByLabelText(/Establecido, desde calificación 50\. Por alcanzar/),
     ).toBeTruthy();
   });
 
@@ -158,8 +163,8 @@ describe("pantalla «Tu nivel Atlas»", () => {
     });
     await render(envolver(<Progreso />));
     await abrir("Historia");
-    expect(screen.getByText(/Pago · 31 pts de nivel/)).toBeTruthy();
-    expect(screen.getByText(/Alta · 12 pts de nivel/)).toBeTruthy();
+    expect(screen.getByText(/Pago · calificación 31/)).toBeTruthy();
+    expect(screen.getByText(/Alta · calificación 12/)).toBeTruthy();
     expect(screen.getByText(/▲/)).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: "Subir mi extracto bancario" }),
@@ -181,15 +186,15 @@ describe("pantalla «Tu nivel Atlas»", () => {
 describe("«Por qué tienes este puntaje»", () => {
   it("cada parte enseña su cuenta con los números de la persona", async () => {
     await render(envolver(<Progreso />));
-    await abrir("Puntaje");
-    expect(screen.getByText("50 de 100 × 45 % = 22,5 pts")).toBeTruthy();
-    expect(screen.getByText("8 de 100 × 20 % = 1,6 pts")).toBeTruthy();
-    expect(screen.getByText("100 de 100 × 10 % = 10 pts")).toBeTruthy();
+    await abrirCalificacion();
+    expect(screen.getByText("50 de 100 × 45 % = 22,5")).toBeTruthy();
+    expect(screen.getByText("8 de 100 × 20 % = 1,6")).toBeTruthy();
+    expect(screen.getByText("100 de 100 × 10 % = 10")).toBeTruthy();
   });
 
   it("y la razón en una frase de cada una", async () => {
     await render(envolver(<Progreso />));
-    await abrir("Puntaje");
+    await abrirCalificacion();
     expect(screen.getByText(/partes de 50: un valor neutro/)).toBeTruthy();
     expect(
       screen.getByText(/Tu identidad, domicilio y contacto están verificados/),
@@ -198,10 +203,10 @@ describe("«Por qué tienes este puntaje»", () => {
 
   it("si un tope recortó el resultado, dice cuánto sumaba y cuál es el tope", async () => {
     await render(envolver(<Progreso />));
-    await abrir("Puntaje");
+    await abrirCalificacion();
     expect(
       screen.getByText(
-        "Tus partes suman 33, pero hay un tope: tu nivel cuenta 24 y estás en «Nuevo».",
+        "Tus partes suman 33, pero hay un tope: tu calificación queda en 24 y estás en «Nuevo».",
       ),
     ).toBeTruthy();
     expect(
@@ -214,9 +219,9 @@ describe("«Por qué tienes este puntaje»", () => {
       progress: { ...PROGRESO_DE_PRUEBA, score: 33, rawScore: 33, caps: [] },
     });
     await render(envolver(<Progreso />));
-    await abrir("Puntaje");
+    await abrirCalificacion();
     expect(
-      screen.getByText("Suma 33 puntos: estás en el nivel «Nuevo»."),
+      screen.getByText("Tu calificación es 33 de 100: estás en el nivel «Nuevo»."),
     ).toBeTruthy();
     expect(screen.queryByLabelText(/^Tope\./)).toBeNull();
   });
@@ -225,7 +230,7 @@ describe("«Por qué tienes este puntaje»", () => {
 describe("experiencia e insignias", () => {
   it("enseña los puntos por boliviano pagado a tiempo y la racha", async () => {
     await render(envolver(<Progreso />));
-    expect(screen.getByText("350 XP")).toBeTruthy();
+    expect(screen.getByText("350 puntos")).toBeTruthy();
     expect(screen.getByText("Racha 3")).toBeTruthy();
     expect(
       screen.getByText(
@@ -268,11 +273,11 @@ describe("experiencia e insignias", () => {
   });
 });
 
-describe("el puntaje de 0 a 1000", () => {
+describe("el índice de 0 a 1000 del motor", () => {
   it("sin línea explica que es otro número, quién lo calcula y por qué todavía no aparece", async () => {
     await render(envolver(<Progreso />));
-    await abrir("Puntaje");
-    expect(screen.getByText("Tu puntaje Atlas de 0 a 1000")).toBeTruthy();
+    await abrirCalificacion();
+    expect(screen.getByText("Lo que miró el motor para tu crédito")).toBeTruthy();
     expect(
       screen.getByText(/lo calcula el motor de decisión de Atlas/),
     ).toBeTruthy();
@@ -300,8 +305,8 @@ describe("pestañas de «Tu nivel Atlas»", () => {
     expect(screen.getByTestId("tarjeta-seccion")).toBeTruthy();
     expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
     expect(screen.getByTestId("experiencia-card")).toBeTruthy();
-    expect(screen.getByText(/^PUNTOS XP/)).toBeTruthy();
-    expect(screen.queryByText("Por qué tienes este puntaje")).toBeNull();
+    expect(screen.getByText("TU PUNTAJE")).toBeTruthy();
+    expect(screen.queryByText("Por qué tienes esta calificación")).toBeNull();
     expect(screen.queryByText("Misiones")).toBeNull();
     expect(screen.queryByText("Los niveles")).toBeNull();
   });
@@ -320,11 +325,11 @@ describe("pestañas de «Tu nivel Atlas»", () => {
     expect(screen.queryByText("Misiones")).toBeNull();
   });
 
-  it("Puntaje junta la cuenta parte por parte y el puntaje de 0 a 1000", async () => {
+  it("Mi calificación junta la cuenta parte por parte y el índice 0-1000 del motor", async () => {
     await render(envolver(<Progreso />));
-    await abrir("Puntaje");
+    await abrirCalificacion();
     expect(screen.getByTestId("por-que-puntaje")).toBeTruthy();
-    expect(screen.getByText("Tu puntaje Atlas de 0 a 1000")).toBeTruthy();
+    expect(screen.getByText("Lo que miró el motor para tu crédito")).toBeTruthy();
     expect(screen.queryByText("Insignias")).toBeNull();
   });
 
@@ -338,8 +343,37 @@ describe("pestañas de «Tu nivel Atlas»", () => {
 
   it("la cuenta de cada parte sigue visible aunque el nombre sea largo (no se sale de la fila)", async () => {
     await render(envolver(<Progreso />));
-    await abrir("Puntaje");
+    await abrirCalificacion();
     expect(screen.getByText("Compras terminadas de pagar")).toBeTruthy();
-    expect(screen.getByText(/0 de 100 × 25 % = 0 pts/)).toBeTruthy();
+    expect(screen.getByText(/0 de 100 × 25 % = 0/)).toBeTruthy();
+  });
+});
+
+describe("subpestañas de Puntaje: Mis puntos y Mi calificación", () => {
+  it("Puntaje abre en «Mis puntos»: los puntos ganados pagando y cómo se ganan, sin la calificación", async () => {
+    await render(envolver(<Progreso />));
+    await abrir("Puntaje");
+    expect(screen.getByLabelText("Subpestaña Mis puntos").props.accessibilityState.selected).toBe(true);
+    expect(screen.getByText("350 puntos")).toBeTruthy();
+    expect(screen.getByTestId("como-se-ganan-puntos")).toBeTruthy();
+    expect(screen.queryByTestId("calificacion-card")).toBeNull();
+    expect(screen.queryByTestId("por-que-puntaje")).toBeNull();
+  });
+
+  it("«Mi calificación» enseña el número de 1 a 100 y su cuenta, sin los puntos", async () => {
+    await render(envolver(<Progreso />));
+    await abrirCalificacion();
+    expect(screen.getByLabelText("Subpestaña Mi calificación").props.accessibilityState.selected).toBe(true);
+    expect(screen.getByTestId("calificacion-card")).toBeTruthy();
+    expect(screen.getByText("de 100")).toBeTruthy();
+    expect(screen.getByTestId("por-que-puntaje")).toBeTruthy();
+    expect(screen.queryByTestId("como-se-ganan-puntos")).toBeNull();
+  });
+
+  it("la calificación nunca dice 0: la escala empieza en 1", async () => {
+    Object.assign(mockEstado, { progress: { ...PROGRESO_DE_PRUEBA, score: 0, rating: undefined } });
+    await render(envolver(<Progreso />));
+    await abrirCalificacion();
+    expect(screen.getByLabelText("Calificación 1 de 100")).toBeTruthy();
   });
 });

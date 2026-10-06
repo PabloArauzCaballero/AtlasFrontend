@@ -43,8 +43,8 @@ describe('porcentajeDeBarra', () => {
 });
 
 describe('fraseDeLoQueFalta', () => {
-  it('dice cuántos puntos y para qué nivel', () => expect(fraseDeLoQueFalta(progreso(10))).toBe('Te faltan 15 puntos para «En construcción».'));
-  it('en singular cuando falta uno', () => expect(fraseDeLoQueFalta(progreso(24))).toBe('Te falta 1 punto para «En construcción».'));
+  it('dice cuántos puntos y para qué nivel', () => expect(fraseDeLoQueFalta(progreso(10))).toBe('Te faltan 15 de calificación para «En construcción».'));
+  it('en singular cuando falta uno', () => expect(fraseDeLoQueFalta(progreso(24))).toBe('Te falta 1 de calificación para «En construcción».'));
   it('en el último nivel lo dice', () => expect(fraseDeLoQueFalta(progreso(90))).toBe('Estás en el nivel más alto.'));
 });
 

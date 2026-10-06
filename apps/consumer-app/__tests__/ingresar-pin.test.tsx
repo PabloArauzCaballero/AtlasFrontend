@@ -45,8 +45,28 @@ it('con tres dígitos no envía y dice cuántos faltan', async () => {
   await montar();
   await escribirCorreo();
   await escribirPin('123');
+  await fireEvent.press(screen.getByTestId('ingresar-enviar'));
   expect(mockSignIn).not.toHaveBeenCalled();
   expect(screen.getByText('Faltan 1 dígitos del PIN.')).toBeTruthy();
+});
+
+it('«Ingresar» está habilitado desde el primer momento (va en verde, no apagado en gris)', async () => {
+  await montar();
+  expect(screen.getByTestId('ingresar-enviar').props.accessibilityState?.disabled).not.toBe(true);
+});
+
+it('pulsar «Ingresar» vacío señala los dos campos y no envía nada', async () => {
+  await montar();
+  await fireEvent.press(screen.getByTestId('ingresar-enviar'));
+  expect(mockSignIn).not.toHaveBeenCalled();
+  expect(screen.getByText('Escribe el correo o teléfono con el que te registraste.')).toBeTruthy();
+  expect(screen.getByText('Falta tu PIN.')).toBeTruthy();
+});
+
+it('«Crear una cuenta» está a la vista y lleva al registro', async () => {
+  await montar();
+  await fireEvent.press(screen.getByRole('button', { name: /Crear una cuenta/ }));
+  expect(mockReplace).toHaveBeenCalledWith('/(onboarding)/registro');
 });
 
 it('el ojo alterna entre puntos y números', async () => {

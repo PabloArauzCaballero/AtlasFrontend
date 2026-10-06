@@ -34,5 +34,6 @@ export function porcentajeDeBarra(progress: Pick<Progress, 'score' | 'ladder' | 
 export function fraseDeLoQueFalta(progress: Pick<Progress, 'nextTier'>): string {
   if (!progress.nextTier) return 'Estás en el nivel más alto.';
   const n = progress.nextTier.pointsMissing;
-  return `Te ${n === 1 ? 'falta' : 'faltan'} ${n} ${n === 1 ? 'punto' : 'puntos'} para «${progress.nextTier.label}».`;
+  // «Puntos» son sólo los que se ganan pagando (el Puntaje); el nivel se mide sobre la Calificación de 1 a 100.
+  return `Te ${n === 1 ? 'falta' : 'faltan'} ${n} de calificación para «${progress.nextTier.label}».`;
 }

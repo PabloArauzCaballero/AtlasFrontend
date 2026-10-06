@@ -16,7 +16,7 @@ import { AtlasText, Button, Card, CardHeader, Divider, ProgressBar } from './pri
 
 export function PuntajeDesglose({
   progress,
-  titulo = 'Por qué tienes este puntaje',
+  titulo = 'Por qué tienes esta calificación',
   onVerMas,
 }: {
   progress: Progress;
@@ -26,7 +26,7 @@ export function PuntajeDesglose({
 }) {
   return (
     <Card testID="por-que-puntaje">
-      <CardHeader icon="grafico" title={titulo} detail="Esta es la cuenta de tu nivel, parte por parte, con tus datos." divider={false} />
+      <CardHeader icon="grafico" title={titulo} detail="La cuenta de tu calificación de 1 a 100, parte por parte, con tus datos." divider={false} />
       {progress.components.map((componente) => (
         <View key={componente.code} style={styles.componente}>
           {/* El nombre y la cuenta van en una fila que se PARTE si no cabe: antes la cuenta se salía de la pantalla. */}

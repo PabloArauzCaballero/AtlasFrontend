@@ -29,7 +29,7 @@ describe("cuentaDeUnaParte", () => {
         points: 22.5,
         why: "",
       }),
-    ).toBe("50 de 100 × 45 % = 22,5 pts");
+    ).toBe("50 de 100 × 45 % = 22,5");
   });
   it("un peso de 20 % no sale como 0,2", () => {
     expect(
@@ -41,7 +41,7 @@ describe("cuentaDeUnaParte", () => {
         points: 20,
         why: "",
       }),
-    ).toBe("100 de 100 × 20 % = 20 pts");
+    ).toBe("100 de 100 × 20 % = 20");
   });
 });
 
@@ -50,11 +50,11 @@ describe("fraseDelResultado", () => {
   it("sin topes, la suma es el nivel", () => {
     expect(
       fraseDelResultado({ ...base, score: 31, rawScore: 31, caps: [] }),
-    ).toBe("Suma 31 puntos: estás en el nivel «Nuevo».");
+    ).toBe("Tu calificación es 31 de 100: estás en el nivel «Nuevo».");
   });
   it("con un tope, cuenta cuánto sumaba y por qué el resultado es menor", () => {
     expect(fraseDelResultado(PROGRESO_DE_PRUEBA)).toBe(
-      "Tus partes suman 33, pero hay un tope: tu nivel cuenta 24 y estás en «Nuevo».",
+      "Tus partes suman 33, pero hay un tope: tu calificación queda en 24 y estás en «Nuevo».",
     );
   });
   it("un tope que no recortó nada (suma igual al nivel) no se anuncia", () => {
@@ -65,7 +65,7 @@ describe("fraseDelResultado", () => {
         rawScore: 20,
         caps: PROGRESO_DE_PRUEBA.caps,
       }),
-    ).toBe("Suma 20 puntos: estás en el nivel «Nuevo».");
+    ).toBe("Tu calificación es 20 de 100: estás en el nivel «Nuevo».");
   });
 });
 

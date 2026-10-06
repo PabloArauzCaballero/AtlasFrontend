@@ -95,9 +95,14 @@ export function AssistFab() {
   };
 
   // Sin asistente en este despliegue no hay botón; mientras se sondea, tampoco (evita el parpadeo).
-  if (assist.disponible !== true) return null;
-  if (tourActivo || teclado) return null;
-  if (OCULTO_EN.some((regla) => regla.test(pathname))) return null;
+  // Con la hoja ABIERTA no se corta nunca: devolver `null` aquí desmontaba también la hoja, y el chat
+  // se cerraba solo en cuanto la persona tocaba el campo para escribir (aparece el teclado).
+  if (!abierta) {
+    if (assist.disponible !== true) return null;
+    if (OCULTO_EN.some((regla) => regla.test(pathname))) return null;
+  }
+  // El teclado y el tour sólo esconden el BOTÓN, no la conversación.
+  const botonOculto = tourActivo || teclado;
 
   /*
     La posición. En el teléfono, por ENCIMA de la barra de pestañas (72 + área segura + aire); en
@@ -116,6 +121,7 @@ export function AssistFab() {
 
   return (
     <>
+      {botonOculto ? null : (
       <PressSurface
         ref={fabRef}
         onPress={() => setAbierta(true)}
@@ -128,6 +134,7 @@ export function AssistFab() {
       >
         <Icon name="asistente" size={26} tint={color.text.onBrand} />
       </PressSurface>
+      )}
       <AssistSheet visible={abierta} onClose={cerrar} pantalla={pantallaDe(pathname)} assist={assist} />
     </>
   );

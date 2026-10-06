@@ -81,7 +81,7 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
       <View style={styles.header}>
         <View style={styles.rowCenter}>
           <Icon name="estrella" size={20} tint={tint} />
-          <AtlasText variant="h3">Tu puntaje Atlas</AtlasText>
+          <AtlasText variant="h3">Tu índice de crédito</AtlasText>
         </View>
         <Badge
           dot

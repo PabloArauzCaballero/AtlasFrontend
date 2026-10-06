@@ -9,7 +9,8 @@ import type { Progress } from '../api/endpoints/credit-line';
 /** «45 % de 50 = 22,5 puntos»: la cuenta de una parte, con números de la persona. */
 export function cuentaDeUnaParte(parte: Progress['components'][number]): string {
   const peso = Math.round(parte.weight * 100);
-  return `${parte.value} de 100 × ${peso} % = ${formatoPuntos(parte.points)} pts`;
+  // Sin «pts»: «puntos» son sólo los que se ganan pagando (el Puntaje); esto es la cuenta de la Calificación.
+  return `${parte.value} de 100 × ${peso} % = ${formatoPuntos(parte.points)}`;
 }
 
 /** Un punto decimal sólo cuando hace falta: «22,5» pero «20». */
@@ -23,8 +24,8 @@ export function formatoPuntos(valor: number): string {
  */
 export function fraseDelResultado(progress: Pick<Progress, 'score' | 'rawScore' | 'caps' | 'tier'>): string {
   const { score, rawScore, caps, tier } = progress;
-  if (caps.length === 0 || rawScore === score) return `Suma ${score} puntos: estás en el nivel «${tier.label}».`;
-  return `Tus partes suman ${rawScore}, pero hay un tope: tu nivel cuenta ${score} y estás en «${tier.label}».`;
+  if (caps.length === 0 || rawScore === score) return `Tu calificación es ${score} de 100: estás en el nivel «${tier.label}».`;
+  return `Tus partes suman ${rawScore}, pero hay un tope: tu calificación queda en ${score} y estás en «${tier.label}».`;
 }
 
 /** La experiencia en una línea: lo que suma, de dónde sale y qué NO suma. */
