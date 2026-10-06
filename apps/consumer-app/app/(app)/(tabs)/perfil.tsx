@@ -182,7 +182,7 @@ export default function Profile() {
       {nivel.fase === 'lista' ? (
         <>
           {/* La tarjeta Atlas (Normal … Black): el estatus que se ve de un vistazo; toca para ver la escalera. */}
-          {nivel.progress.card ? <TarjetaAtlas tier={nivel.progress.card} onPress={() => router.push('/(app)/progreso')} testID="perfil-tarjeta" /> : null}
+          {nivel.progress.card ? <TarjetaAtlas tier={nivel.progress.card} titular={[me?.profile.firstName, me?.profile.lastName].filter(Boolean).join(' ')} onPress={() => router.push('/(app)/progreso')} testID="perfil-tarjeta" /> : null}
           <NivelCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} />
         </>
       ) : nivel.fase === 'cargando' ? (

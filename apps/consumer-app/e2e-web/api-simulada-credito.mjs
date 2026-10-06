@@ -62,6 +62,21 @@ export const PROGRESO = {
   ],
   experience: { xp: 350, onTimeInstallments: 2, currentStreak: 2, bestStreak: 2, badges: [] },
   missions: [],
+  // La tarjeta Gold, con el tema del catálogo real: así «Perfil» y «Tu nivel» pintan la tarjeta y se pueden capturar.
+  card: {
+    code: 'GOLD',
+    label: 'Gold',
+    levelCode: 'ESTABLECIDO',
+    displayOrder: 3,
+    description: 'La tarjeta de quien ya demostró que paga a tiempo.',
+    benefits: [],
+    theme: { gradient: ['#F7E08A', '#C9A24A', '#9C6F14'], ink: '#2A1D05', accent: '#FFF1B8', finish: 'oro' },
+    current: true,
+    source: 'AUTOMATICA',
+    automatic: { code: 'GOLD', label: 'Gold' },
+    manual: null,
+    catalog: [],
+  },
   signals: { tenureMonths: 1, loansSettled: 0, loansActive: 1, onTimeRatio: 1, kycComplete: true },
   history: [],
 };

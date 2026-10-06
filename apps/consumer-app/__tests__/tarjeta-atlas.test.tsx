@@ -29,8 +29,10 @@ describe('TarjetaAtlas (la pieza)', () => {
     expect(screen.getByText('Gold')).toBeTruthy();
   });
 
-  it('la grande lleva destello; la mini y la bloqueada no', async () => {
-    const { rerender } = await render(envolver(<TarjetaAtlas tier={gold} />));
+  it('la grande lleva reflejo bajo el dedo; la mini y la bloqueada no', async () => {
+    const { rerender } = await render(envolver(<TarjetaAtlas tier={gold} testID="t" />));
+    // El reflejo se coloca cuando la tarjeta ya sabe cuánto mide.
+    await fireEvent(screen.getByTestId('t'), 'layout', { nativeEvent: { layout: { width: 340, height: 214, x: 0, y: 0 } } });
     expect(screen.queryByTestId('tarjeta-destello')).toBeTruthy();
     await rerender(envolver(<TarjetaAtlas tier={gold} tamano="mini" />));
     expect(screen.queryByTestId('tarjeta-destello')).toBeNull();
@@ -44,6 +46,28 @@ describe('TarjetaAtlas (la pieza)', () => {
     await render(envolver(<TarjetaAtlas tier={gold} onPress={onPress} testID="t" />));
     await fireEvent.press(screen.getByLabelText(/Toca para ver tus tarjetas/));
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('es una tarjeta de banco: logotipo, número en relieve y el titular en mayúsculas', async () => {
+    await render(envolver(<TarjetaAtlas tier={gold} titular="Pablo Arauz" testID="t" />));
+    expect(screen.getByText('ATLAS')).toBeTruthy();
+    expect(screen.getByText('•••• •••• •••• ••••')).toBeTruthy();
+    expect(screen.getByText('PABLO ARAUZ')).toBeTruthy();
+  });
+
+  it('sin titular no inventa un nombre: dice «Miembro Atlas»', async () => {
+    await render(envolver(<TarjetaAtlas tier={gold} />));
+    expect(screen.getByText('MIEMBRO ATLAS')).toBeTruthy();
+  });
+
+  it('responde al dedo sin romperse: tocar, mover y soltar', async () => {
+    await render(envolver(<TarjetaAtlas tier={gold} testID="t" />));
+    const tarjeta = screen.getByTestId('t');
+    await fireEvent(tarjeta, 'layout', { nativeEvent: { layout: { width: 340, height: 214, x: 0, y: 0 } } });
+    await fireEvent(tarjeta, 'touchStart', { nativeEvent: { locationX: 300, locationY: 40 } });
+    await fireEvent(tarjeta, 'touchMove', { nativeEvent: { locationX: 20, locationY: 200 } });
+    await fireEvent(tarjeta, 'touchEnd', { nativeEvent: {} });
+    expect(screen.getByText('Gold')).toBeTruthy();
   });
 
   it('un tema con un solo color no revienta: se duplica para formar el degradado', async () => {
