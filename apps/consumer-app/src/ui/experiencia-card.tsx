@@ -32,7 +32,13 @@ export function ExperienciaCard({ progress, onPress }: { progress: Progress; onP
           <AtlasText variant="overline" tone="secondary">
             TU PUNTAJE
           </AtlasText>
-          <AtlasText variant="amount">{puntos}</AtlasText>
+          {/* «puntos» más chico y en la MISMA línea: con 4 cifras el rótulo entero partía en dos renglones. */}
+          <AtlasText variant="amount" numberOfLines={1} accessibilityLabel={puntos}>
+            {xp.toLocaleString('es-BO')}
+            <AtlasText variant="bodyStrong" tone="secondary">
+              {' puntos'}
+            </AtlasText>
+          </AtlasText>
         </View>
         <View style={styles.derecha}>
           <AtlasText variant="bodyStrong">{`Racha ${currentStreak}`}</AtlasText>

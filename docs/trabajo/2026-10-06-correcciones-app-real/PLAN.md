@@ -23,29 +23,37 @@
 ## C1 — Crédito habilitado desde el motor, sin esperar a una tarea
 | ID | Microtarea | CA | DoD | Estado |
 |---|---|---|---|---|
-| C1.M1 | Backend: si un cliente ACTIVO no tiene línea, `GET /credit-line` pide la decisión al motor en ese momento (una sola vez a la vez por cliente, con pausa si el motor acaba de fallar) | Cliente activo sin línea → 200 con el monto del motor; motor caído → 503 `CREDIT_LINE_ENGINE_UNAVAILABLE`; no activo → 404 | `jest credit-line-on-demand` PASS (3 niveles) | TODO |
-| C1.M2 | App: 503 → error accionable con reintento (no «calculando»); 404 sigue diciendo calculando | Estados probados | `jest portada-orden` PASS | TODO |
-| C1.M3 | Verificación real: backend + Postgres + motor simulado por contrato; cliente activo sin línea abre Inicio y ve el monto | Captura | evidencia | TODO |
+| C1.M1 | Backend: si un cliente ACTIVO no tiene línea, `GET /credit-line` pide la decisión al motor en ese momento (una sola vez a la vez por cliente, con pausa si el motor acaba de fallar) | Cliente activo sin línea → 200 con el monto del motor; motor caído → 503 `CREDIT_LINE_ENGINE_UNAVAILABLE`; no activo → 404 | `jest credit-line-on-demand` PASS (3 niveles) | HECHO |
+| C1.M2 | App: 503 → error accionable con reintento (no «calculando»); 404 sigue diciendo calculando | Estados probados | `jest portada-orden` PASS | HECHO |
+| C1.M3 | Verificación real: backend + Postgres + motor simulado por contrato; cliente activo sin línea abre Inicio y ve el monto | Captura | evidencia `C1-*` (contra DOBLE del motor) | HECHO |
 
 ## C2 — Nivel por puntos
 | ID | Microtarea | CA | DoD | Estado |
 |---|---|---|---|---|
-| C2.M1 | Backend: `level`, `nextLevel`, `levelLadder` sobre los puntos; la tarjeta sigue al nivel por puntos | 0 pts → Nuevo; 2.000 → Establecido | `jest points-level credit-progress` PASS | TODO |
-| C2.M2 | App: la tarjeta de nivel muestra «N puntos» y lo que falta en puntos | Nunca «24 de 100» en el nivel | `jest progreso nivel` PASS | TODO |
+| C2.M1 | Backend: `level`, `nextLevel`, `levelLadder` sobre los puntos; la tarjeta sigue al nivel por puntos | 0 pts → Nuevo; 2.000 → Establecido | `jest points-level credit-progress` PASS | HECHO |
+| C2.M2 | App: la tarjeta de nivel muestra «N puntos» y lo que falta en puntos | Nunca «24 de 100» en el nivel | `jest progreso nivel` PASS | HECHO |
 
 ## C3 — Dos pestañas: Puntaje y Calificación
-| C3.M1 | «Tu nivel Atlas»: pestañas Puntaje (tarjeta, nivel, puntos, cómo se ganan) · Calificación (1-100, desglose, índice del motor) · Logros · Historia | Cada pestaña sólo lo suyo | `jest progreso` PASS + captura | TODO |
+| ID | Microtarea | CA | DoD | Estado |
+|---|---|---|---|---|
+| C3.M1 | «Tu nivel Atlas»: pestañas Puntaje (tarjeta, nivel, puntos, cómo se ganan) · Calificación (1-100, desglose, índice del motor) · Logros · Historia | Cada pestaña sólo lo suyo | `jest progreso` PASS + captura | HECHO |
 
 ## C4 — Bugs de la captura
-| C4.M1 | Encabezado sin cortes, «Siguiente/Anterior» como botones claros con flecha y alineados, tildes | Captura sin texto truncado | `jest image-slides` + captura | TODO |
+| ID | Microtarea | CA | DoD | Estado |
+|---|---|---|---|---|
+| C4.M1 | Encabezado sin cortes, «Siguiente/Anterior» como botones claros con flecha y alineados, tildes | Captura sin texto truncado | `jest identidad` + captura `C4-*` | HECHO |
 
 ## C5 — Pestaña de pautas del documento
-| C5.M1 | Pantalla «Pautas para tu documento» (iluminación, reflejos, enfoque, encuadre) con pares bien/mal vectoriales a ancho completo; se abre desde la captura | Render nítido a 3x | `jest pautas-documento` + capturas a 3x revisadas | TODO |
+| ID | Microtarea | CA | DoD | Estado |
+|---|---|---|---|---|
+| C5.M1 | Pantalla «Pautas para tu documento» (iluminación, reflejos, enfoque, encuadre) con pares bien/mal vectoriales a ancho completo; se abre desde la captura | Render nítido a 3x | `jest pautas-documento` + capturas a 3x revisadas | HECHO |
 
 ## C6 — «Otro/Otra» → «¿Cuál?»
-| C6.M1 | Backend: `economicActivityOther` (atributo nuevo por migración) obligatorio si el rubro es Z-OTRO | 400 sin texto; guarda con texto | `jest` + migración real up/down | TODO |
-| C6.M2 | Backend: `genderSelfDescribed` opcional en el perfil (columna nueva por migración) | Se guarda y se devuelve | `jest` + migración real | TODO |
-| C6.M3 | App: campo «¿Cuál?» en rubro, zona y género; la zona escrita viaja como zona | Aparece sólo con «Otro/Otra», se valida y se envía | `jest economia domicilio editar-perfil` PASS | TODO |
+| C6.M1 | Backend: `economicActivityOther` (atributo nuevo por migración) obligatorio si el rubro es Z-OTRO | 400 sin texto; guarda con texto | `jest` + migración real up/down | HECHO |
+| C6.M2 | Backend: `genderSelfDescribed` opcional en el perfil (columna nueva por migración) | Se guarda y se devuelve | `jest` + migración real | HECHO |
+| C6.M3 | App: campo «¿Cuál?» en rubro, zona y género; la zona escrita viaja como zona | Aparece sólo con «Otro/Otra», se valida y se envía | `jest otro-cual otro-cual-zona` PASS + capturas `C6-*` | HECHO |
 
 ## Cierre
-| X.M1 | Gates de los repos tocados + PR + CI verde + merge | | | TODO |
+| ID | Microtarea | CA | DoD | Estado |
+|---|---|---|---|---|
+| X.M1 | Gates de los repos tocados + PR + CI verde + merge a `dev` y promoción a `test` | | | EN CURSO |
