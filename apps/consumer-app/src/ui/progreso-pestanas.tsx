@@ -13,14 +13,15 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import type { CreditLine, Progress } from '../api/endpoints/credit-line';
-import { cuentaDeUnaParte, fraseDeExperiencia, fraseDelResultado } from '../features/puntaje-explicado';
 import { color, radius, space } from '../theme/tokens';
 import { Icon } from './icons';
 import { Insignia } from './insignia';
 import { Gap } from './layout';
-import { Appear, Vivo } from './motion';
+import { ExperienciaCard } from './experiencia-card';
+import { Appear } from './motion';
 import { NivelCard } from './nivel-card';
-import { AtlasText, Button, Card, CardHeader, Divider, EmptyState, ProgressBar, SectionHeader } from './primitives';
+import { AtlasText, Button, Card, Divider, EmptyState, SectionHeader } from './primitives';
+import { PuntajeDesglose } from './puntaje-desglose';
 import { ScoringPanel } from './scoring-panel';
 import { TarjetaSeccion } from './tarjeta-seccion';
 
@@ -45,28 +46,7 @@ export function PestanaResumen({ progress }: { progress: Progress }) {
         <NivelCard progress={progress} />
       </Appear>
       <Appear index={2}>
-        <Card>
-          <View style={styles.xpFila}>
-            <Vivo tipo="late" periodo={1800}>
-              <View style={styles.xpInsignia}>
-                <Icon name="chispa" size={26} tint={color.action.primary} />
-              </View>
-            </Vivo>
-            <View style={styles.texto}>
-              <AtlasText variant="overline" tone="secondary">
-                EXPERIENCIA
-              </AtlasText>
-              <AtlasText variant="amount">{`${progress.experience.xp.toLocaleString('es-BO')} XP`}</AtlasText>
-            </View>
-            <View style={styles.derecha}>
-              <AtlasText variant="bodyStrong">{`Racha ${progress.experience.currentStreak}`}</AtlasText>
-              <AtlasText variant="caption" tone="secondary">{`mejor: ${progress.experience.bestStreak}`}</AtlasText>
-            </View>
-          </View>
-          <AtlasText variant="caption" tone="secondary">
-            {fraseDeExperiencia(progress.experience.xp)}
-          </AtlasText>
-        </Card>
+        <ExperienciaCard progress={progress} />
       </Appear>
     </>
   );
@@ -77,36 +57,7 @@ export function PestanaPuntaje({ progress, creditLine }: { progress: Progress; c
   return (
     <>
       <Appear index={0}>
-        <Card testID="por-que-puntaje">
-          <CardHeader icon="grafico" title="Por qué tienes este puntaje" detail="Esta es la cuenta de tu nivel, parte por parte, con tus datos." divider={false} />
-          {progress.components.map((componente) => (
-            <View key={componente.code} style={styles.componente}>
-              {/* El nombre y la cuenta van en una fila que se PARTE si no cabe: antes la cuenta se salía de la pantalla. */}
-              <View style={styles.componenteTitulo}>
-                <AtlasText variant="bodyStrong" style={styles.componenteNombre}>
-                  {componente.label}
-                </AtlasText>
-                <AtlasText variant="caption" tone="brand">
-                  {cuentaDeUnaParte(componente)}
-                </AtlasText>
-              </View>
-              <ProgressBar value={componente.value} label={`${componente.label}: ${componente.value} de 100`} />
-              <AtlasText variant="caption" tone="secondary">
-                {componente.why}
-              </AtlasText>
-            </View>
-          ))}
-          <Divider />
-          <AtlasText variant="bodyStrong">{fraseDelResultado(progress)}</AtlasText>
-          {progress.caps.map((tope) => (
-            <View key={tope.code} style={styles.tope} accessibilityLabel={`Tope. ${tope.detail}`}>
-              <Icon name="info" size={18} tint={color.feedback.warning} />
-              <AtlasText variant="caption" tone="secondary" style={styles.texto}>
-                {tope.detail}
-              </AtlasText>
-            </View>
-          ))}
-        </Card>
+        <PuntajeDesglose progress={progress} />
       </Appear>
       <Appear index={1} style={styles.seccion}>
         <SectionHeader title="Tu puntaje Atlas de 0 a 1000" detail="El que decide cuánto puedes gastar." />
@@ -267,14 +218,7 @@ function EvolucionDeLinea({ history }: { history: Progress['history'] }) {
 const styles = StyleSheet.create({
   // El encabezado de sección y su tarjeta van en el mismo bloque: sin este `gap` la tarjeta pisaba el apunte del encabezado.
   seccion: { gap: space.sm },
-  componente: { gap: space.xs, paddingTop: space.sm },
-  xpFila: { flexDirection: 'row', alignItems: 'center', gap: space.md },
-  xpInsignia: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', backgroundColor: color.feedbackSoft.success },
   rejilla: { flexDirection: 'row', flexWrap: 'wrap' },
-  tope: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, paddingTop: space.xs },
-  // `flexWrap` y `flexShrink`: si el nombre y la cuenta no caben juntos, la cuenta baja a la línea de abajo en vez de salirse.
-  componenteTitulo: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', columnGap: space.sm, rowGap: 2 },
-  componenteNombre: { flexShrink: 1 },
   fila: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },
   texto: { flex: 1, gap: 2 },
   marca: { width: 24, height: 24, borderRadius: radius.pill, borderWidth: 1.5, borderColor: color.border.strong, alignItems: 'center', justifyContent: 'center' },

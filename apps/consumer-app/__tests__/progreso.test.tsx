@@ -299,7 +299,8 @@ describe("pestañas de «Tu nivel Atlas»", () => {
     await render(envolver(<Progreso />));
     expect(screen.getByTestId("tarjeta-seccion")).toBeTruthy();
     expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
-    expect(screen.getByText("EXPERIENCIA")).toBeTruthy();
+    expect(screen.getByTestId("experiencia-card")).toBeTruthy();
+    expect(screen.getByText(/^PUNTOS XP/)).toBeTruthy();
     expect(screen.queryByText("Por qué tienes este puntaje")).toBeNull();
     expect(screen.queryByText("Misiones")).toBeNull();
     expect(screen.queryByText("Los niveles")).toBeNull();

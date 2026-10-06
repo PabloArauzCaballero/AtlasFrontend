@@ -31,6 +31,11 @@ jest.mock("../src/session/session", () => ({
 jest.mock("../src/api/endpoints/customer", () => ({ getMe: jest.fn() }));
 jest.mock("../src/api/endpoints/onboarding", () => ({ getAnswers: jest.fn() }));
 jest.mock("../src/api/endpoints/auth", () => ({ verifyPin: jest.fn() }));
+// Los extractos tienen su propia prueba (`extractos-subidos.test.tsx`); aquí sólo importa que la pantalla los pida.
+const mockListarExtractos = jest.fn(async (..._args: unknown[]) => ({ items: [] }));
+jest.mock("../src/api/endpoints/credit-line", () => ({
+  listBankStatements: (...args: unknown[]) => mockListarExtractos(...args),
+}));
 const mockNivel: { fase: string; progress: unknown; recargar: jest.Mock } = {
   fase: "lista",
   progress: PROGRESO_DE_PRUEBA,
@@ -125,6 +130,7 @@ it("sin PIN confirmado pide el PIN y NO pide ni pinta ningún dato", async () =>
   expect(screen.getAllByText("Confirma tu PIN").length).toBeGreaterThan(0);
   expect(getMe).not.toHaveBeenCalled();
   expect(getAnswers).not.toHaveBeenCalled();
+  expect(mockListarExtractos).not.toHaveBeenCalled();
   expect(screen.queryByText("Pablo Arauz")).toBeNull();
   expect(screen.queryByText("33F148")).toBeNull();
 });
@@ -221,4 +227,12 @@ it("muestra tu nivel y la experiencia, con la explicación a un toque", async ()
 it("sin PIN confirmado el nivel tampoco se enseña", async () => {
   await montar();
   expect(screen.queryByText("NIVEL 1 DE 5")).toBeNull();
+});
+
+it("con el PIN confirmado enseña los extractos bancarios del cliente, que se piden por SU id", async () => {
+  marcarPinConfirmado();
+  await montar();
+  await waitFor(() => expect(screen.getByText("Tus extractos bancarios")).toBeTruthy());
+  expect(mockListarExtractos).toHaveBeenCalledWith("42");
+  expect(await screen.findByText("Todavía no subiste ningún extracto")).toBeTruthy();
 });
