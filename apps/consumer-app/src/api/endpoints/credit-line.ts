@@ -260,6 +260,7 @@ export type Progress = {
   hasCreditLine: boolean;
   /** Puntuación de relación 0-100, la base de la Calificación (`rating`). No es el score 0-1000 del motor. */
   score: number;
+  /** Escalón de la RELACIÓN (sobre la calificación): lo usa la capacidad de pago. El que se enseña es `level`. */
   tier: { code: TierCode; label: string; index: number; of: number; multiplier: number };
   nextTier: { code: TierCode; label: string; from: number; pointsMissing: number; multiplier: number } | null;
   ladder: { code: TierCode; label: string; from: number; multiplier: number; reached: boolean }[];
@@ -278,6 +279,14 @@ export type Progress = {
   rating?: { value: number; scale: { min: number; max: number } };
   /** **Puntaje**: los puntos ganados PAGANDO a tiempo (1 por boliviano). Los mismos que `experience.xp`. */
   points?: { value: number; currentStreak: number; bestStreak: number };
+  /**
+   * El **Nivel Atlas**, medido en PUNTOS (los que se ganan pagando a tiempo), no en la calificación. La tarjeta
+   * Normal…Black sigue a este nivel. Ausente con un backend anterior al 2026-10-06: `nivelPorPuntos` lo calcula
+   * con los mismos escalones a partir de `experience.xp`.
+   */
+  level?: { code: TierCode; label: string; index: number; of: number; points: number };
+  nextLevel?: { code: TierCode; label: string; from: number; pointsMissing: number } | null;
+  levelLadder?: { code: TierCode; label: string; from: number; reached: boolean }[];
   /** Ausente si el backend todavía no trae las tarjetas: las pantallas lo toleran y no la pintan. */
   card?: CardView;
   missions: ProgressMission[];

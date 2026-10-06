@@ -159,6 +159,8 @@ export const updateProfile = (
     lastName: string;
     birthDate: string;
     genderDeclared: 'female' | 'male' | 'other' | 'undisclosed';
+    /** El «¿cuál?» del género «Otro». El servidor sólo lo admite junto a `genderDeclared: 'other'`. */
+    genderSelfDescribed: string;
     /*
      * El servidor todavía acepta `qu` y `ay`; la app ya no los ofrece porque no tiene una sola
      * cadena traducida a ninguno de los dos. Se estrecha AQUÍ y no en el backend: el enumerado del
@@ -182,6 +184,8 @@ export type FinancialProfileInput = Partial<{
   otherMonthlyIncome: number;
   monthlyExpensesDeclared: number;
   economicActivityCode: string;
+  /** El «¿cuál?» del rubro «Otra actividad» (`Z-OTRO`). El servidor lo exige con ese rubro y lo rechaza con otro. */
+  economicActivityOther: string;
   sourceOfFunds: string;
   /** Banda del ingreso (`MONTHLY_INCOME_BAND_VALUES` del servidor): el alta no pide el monto exacto. */
   monthlyIncomeBand: string;

@@ -124,7 +124,7 @@ function FilaDeConsejo({ consejo, primera }: { consejo: Consejo; primera: boolea
   );
 }
 
-function Ficha({ dibujo, etiqueta, correcta }: { dibujo: Consejo['bien']; etiqueta: string; correcta: boolean }) {
+export function Ficha({ dibujo, etiqueta, correcta }: { dibujo: Consejo['bien']; etiqueta: string; correcta: boolean }) {
   const xml = useMemo(() => svgDe(dibujo), [dibujo]);
   const tono = correcta ? color.feedback.success : color.feedback.danger;
   return (

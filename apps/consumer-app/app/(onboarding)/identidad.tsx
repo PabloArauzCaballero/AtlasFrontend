@@ -636,13 +636,21 @@ export default function Identity() {
         un reflejo sobre la fecha, si la cara sale entera. Se enviaba a ciegas y el rechazo llegaba
         despues, cuando las fotos ya no estaban delante. Ver `ui/image-slides.tsx`.
       */}
+      {/* Las pautas con sus imágenes, en su propia pantalla de información: con el visor abierto se leen de reojo. */}
+      <Button
+        label="Ver pautas para tus fotos"
+        icon="info"
+        variant="secondary"
+        onPress={() => router.push('/(onboarding)/pautas-documento')}
+        accessibilityHint="Abre las pautas del documento y la selfie, con ejemplos de fotos bien y mal tomadas."
+      />
       <View ref={tarjetaDeCapturas} onLayout={alMedirCapturas} collapsable={false}>
         <Card>
           <CardHeader
             icon="camara"
-            title={`Tus capturas (${capturadas} de ${STEPS.length})`}
-            detail="Deslizá de lado para revisar cada foto antes de enviarla."
-            trailing={<Badge dot label={allCaptured ? 'listo' : 'pendiente'} tone={allCaptured ? 'success' : 'warning'} />}
+            title="Tus capturas"
+            detail="Desliza para revisar cada foto antes de enviarla."
+            trailing={<Badge dot label={`${capturadas} de ${STEPS.length}`} tone={allCaptured ? 'success' : 'warning'} />}
           />
           <ImageSlides slides={slides} enfocar={enfocar} ocupado={subiendo} />
           {/*

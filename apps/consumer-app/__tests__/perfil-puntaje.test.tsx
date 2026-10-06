@@ -70,7 +70,8 @@ it('SIN línea de crédito, Perfil muestra igual el nivel y los puntos', async (
   await montar();
   expect(screen.getByText('NIVEL 1 DE 5')).toBeTruthy();
   expect(screen.getByText('Nuevo')).toBeTruthy();
-  expect(screen.getByText('Te faltan 13 de calificación para «En construcción».')).toBeTruthy();
+  // Sin compras pagadas: 0 puntos, aunque la calificación sea 12. El nivel se mide en puntos.
+  expect(screen.getByText('Te faltan 500 puntos para «En construcción». Los ganas pagando tus compras a tiempo.')).toBeTruthy();
 });
 
 it('SIN línea, explica por qué falta el puntaje (no es un hueco que parezca un fallo) y ofrece el extracto', async () => {

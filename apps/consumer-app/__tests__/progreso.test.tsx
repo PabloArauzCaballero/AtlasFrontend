@@ -57,10 +57,9 @@ const PROGRESO: Progress = PROGRESO_DE_PRUEBA;
 const abrir = async (nombre: string) => {
   await fireEvent.press(screen.getByLabelText(`Pestaña ${nombre}`));
 };
-/** «Puntaje» se parte en «Mis puntos» y «Mi calificación»: la cuenta 1-100 vive en la segunda. */
+/** «Calificación» es su propia pestaña: la cuenta 1-100 vive ahí, separada de los puntos. */
 const abrirCalificacion = async () => {
-  await abrir("Puntaje");
-  await fireEvent.press(screen.getByLabelText("Subpestaña Mi calificación"));
+  await abrir("Calificación");
 };
 
 beforeEach(() => {
@@ -74,9 +73,13 @@ describe("NivelCard", () => {
     await render(envolver(<NivelCard progress={PROGRESO} />));
     expect(screen.getByText("Nuevo")).toBeTruthy();
     expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
-    expect(screen.getByText("24")).toBeTruthy();
+    // En PUNTOS (350 pagados a tiempo), nunca la calificación 24 de 100.
+    expect(screen.getByText("350")).toBeTruthy();
+    expect(screen.getByText("puntos")).toBeTruthy();
+    expect(screen.queryByText("24")).toBeNull();
+    expect(screen.queryByText("de 100")).toBeNull();
     expect(
-      screen.getByText("Te falta 1 de calificación para «En construcción»."),
+      screen.getByText("Te faltan 150 puntos para «En construcción». Los ganas pagando tus compras a tiempo."),
     ).toBeTruthy();
   });
 
@@ -84,7 +87,7 @@ describe("NivelCard", () => {
     const onPress = jest.fn();
     await render(envolver(<NivelCard progress={PROGRESO} onPress={onPress} />));
     const tarjeta = screen.getByRole("button", {
-      name: /Tu nivel Atlas: Nuevo, nivel 1 de 5, calificación 24 de 100/,
+      name: /Tu nivel Atlas: Nuevo, nivel 1 de 5, 350 puntos\. Te faltan 150 puntos/,
     });
     await fireEvent.press(tarjeta);
     expect(onPress).toHaveBeenCalledTimes(1);
@@ -122,7 +125,7 @@ describe("pantalla «Tu nivel Atlas»", () => {
     await abrir("Historia");
     expect(screen.getByText(/Nuevo · estás aquí/)).toBeTruthy();
     expect(
-      screen.getByLabelText(/Establecido, desde calificación 50\. Por alcanzar/),
+      screen.getByLabelText(/Establecido, desde 2\.000 puntos\. Por alcanzar/),
     ).toBeTruthy();
   });
 
@@ -206,7 +209,7 @@ describe("«Por qué tienes este puntaje»", () => {
     await abrirCalificacion();
     expect(
       screen.getByText(
-        "Tus partes suman 33, pero hay un tope: tu calificación queda en 24 y estás en «Nuevo».",
+        "Tus partes suman 33, pero hay un tope: tu calificación queda en 24.",
       ),
     ).toBeTruthy();
     expect(
@@ -221,7 +224,7 @@ describe("«Por qué tienes este puntaje»", () => {
     await render(envolver(<Progreso />));
     await abrirCalificacion();
     expect(
-      screen.getByText("Tu calificación es 33 de 100: estás en el nivel «Nuevo»."),
+      screen.getByText("Tu calificación es 33 de 100."),
     ).toBeTruthy();
     expect(screen.queryByLabelText(/^Tope\./)).toBeNull();
   });
@@ -286,26 +289,29 @@ describe("el índice de 0 a 1000 del motor", () => {
 });
 
 describe("pestañas de «Tu nivel Atlas»", () => {
-  it("hay cuatro pestañas y la primera, Resumen, es la que está abierta", async () => {
+  it("hay cuatro pestañas —Puntaje, Calificación, Logros, Historia— y abre en Puntaje", async () => {
     await render(envolver(<Progreso />));
-    for (const nombre of ["Resumen", "Puntaje", "Logros", "Historia"])
+    for (const nombre of ["Puntaje", "Calificación", "Logros", "Historia"])
       expect(screen.getByLabelText(`Pestaña ${nombre}`)).toBeTruthy();
+    expect(screen.queryByLabelText("Pestaña Resumen")).toBeNull();
     expect(
-      screen.getByLabelText("Pestaña Resumen").props.accessibilityState
+      screen.getByLabelText("Pestaña Puntaje").props.accessibilityState
         .selected,
     ).toBe(true);
     expect(
-      screen.getByLabelText("Pestaña Puntaje").props.accessibilityState
+      screen.getByLabelText("Pestaña Calificación").props.accessibilityState
         .selected,
     ).toBe(false);
   });
 
-  it("Resumen enseña la tarjeta, el nivel y la experiencia, y NADA de las otras pestañas", async () => {
+  it("Puntaje enseña la tarjeta, el nivel en puntos, los puntos y cómo se ganan, y NADA de la calificación", async () => {
     await render(envolver(<Progreso />));
     expect(screen.getByTestId("tarjeta-seccion")).toBeTruthy();
     expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
     expect(screen.getByTestId("experiencia-card")).toBeTruthy();
     expect(screen.getByText("TU PUNTAJE")).toBeTruthy();
+    expect(screen.getByTestId("como-se-ganan-puntos")).toBeTruthy();
+    expect(screen.queryByTestId("calificacion-card")).toBeNull();
     expect(screen.queryByText("Por qué tienes esta calificación")).toBeNull();
     expect(screen.queryByText("Misiones")).toBeNull();
     expect(screen.queryByText("Los niveles")).toBeNull();
@@ -320,12 +326,12 @@ describe("pestañas de «Tu nivel Atlas»", () => {
     expect(
       screen.getByLabelText("Pestaña Logros").props.accessibilityState.selected,
     ).toBe(true);
-    await abrir("Resumen");
+    await abrir("Puntaje");
     expect(screen.getByTestId("tarjeta-seccion")).toBeTruthy();
     expect(screen.queryByText("Misiones")).toBeNull();
   });
 
-  it("Mi calificación junta la cuenta parte por parte y el índice 0-1000 del motor", async () => {
+  it("Calificación junta la cuenta parte por parte y el índice 0-1000 del motor", async () => {
     await render(envolver(<Progreso />));
     await abrirCalificacion();
     expect(screen.getByTestId("por-que-puntaje")).toBeTruthy();
@@ -349,25 +355,25 @@ describe("pestañas de «Tu nivel Atlas»", () => {
   });
 });
 
-describe("subpestañas de Puntaje: Mis puntos y Mi calificación", () => {
-  it("Puntaje abre en «Mis puntos»: los puntos ganados pagando y cómo se ganan, sin la calificación", async () => {
+describe("Puntaje y Calificación son pestañas SEPARADAS", () => {
+  it("Puntaje: los puntos ganados pagando, sin la calificación ni subpestañas", async () => {
     await render(envolver(<Progreso />));
-    await abrir("Puntaje");
-    expect(screen.getByLabelText("Subpestaña Mis puntos").props.accessibilityState.selected).toBe(true);
     expect(screen.getByText("350 puntos")).toBeTruthy();
-    expect(screen.getByTestId("como-se-ganan-puntos")).toBeTruthy();
+    expect(screen.queryByLabelText(/^Subpestaña/)).toBeNull();
     expect(screen.queryByTestId("calificacion-card")).toBeNull();
     expect(screen.queryByTestId("por-que-puntaje")).toBeNull();
   });
 
-  it("«Mi calificación» enseña el número de 1 a 100 y su cuenta, sin los puntos", async () => {
+  it("Calificación: el número de 1 a 100 y su cuenta, sin los puntos ni la tarjeta", async () => {
     await render(envolver(<Progreso />));
     await abrirCalificacion();
-    expect(screen.getByLabelText("Subpestaña Mi calificación").props.accessibilityState.selected).toBe(true);
+    expect(screen.getByLabelText("Pestaña Calificación").props.accessibilityState.selected).toBe(true);
     expect(screen.getByTestId("calificacion-card")).toBeTruthy();
     expect(screen.getByText("de 100")).toBeTruthy();
     expect(screen.getByTestId("por-que-puntaje")).toBeTruthy();
     expect(screen.queryByTestId("como-se-ganan-puntos")).toBeNull();
+    expect(screen.queryByTestId("tarjeta-seccion")).toBeNull();
+    expect(screen.queryByText("350 puntos")).toBeNull();
   });
 
   it("la calificación nunca dice 0: la escala empieza en 1", async () => {
@@ -375,5 +381,25 @@ describe("subpestañas de Puntaje: Mis puntos y Mi calificación", () => {
     await render(envolver(<Progreso />));
     await abrirCalificacion();
     expect(screen.getByLabelText("Calificación 1 de 100")).toBeTruthy();
+  });
+
+  it("con el nivel que publica el backend, la tarjeta de nivel usa ese (en puntos)", async () => {
+    Object.assign(mockEstado, {
+      progress: {
+        ...PROGRESO_DE_PRUEBA,
+        level: { code: "ESTABLECIDO", label: "Establecido", index: 3, of: 5, points: 2400 },
+        nextLevel: { code: "CONSOLIDADO", label: "Consolidado", from: 5000, pointsMissing: 2600 },
+        levelLadder: [
+          { code: "NUEVO", label: "Nuevo", from: 0, reached: true },
+          { code: "EN_CONSTRUCCION", label: "En construcción", from: 500, reached: true },
+          { code: "ESTABLECIDO", label: "Establecido", from: 2000, reached: true },
+          { code: "CONSOLIDADO", label: "Consolidado", from: 5000, reached: false },
+          { code: "PREFERENTE", label: "Preferente", from: 10000, reached: false },
+        ],
+      },
+    });
+    await render(envolver(<Progreso />));
+    expect(screen.getByText("NIVEL 3 DE 5")).toBeTruthy();
+    expect(screen.getByText("Te faltan 2.600 puntos para «Consolidado». Los ganas pagando tus compras a tiempo.")).toBeTruthy();
   });
 });

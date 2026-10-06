@@ -1,8 +1,8 @@
 /**
  * Tu nivel Atlas: dónde estás, de dónde salen tus puntos, qué hacer para subir y cómo has evolucionado.
  *
- * Está partida en cuatro pestañas (Resumen, Puntaje, Logros, Historia) en `src/ui/progreso-pestanas.tsx`: ocho secciones en una
- * sola columna se sentían largas y cargadas.
+ * Está partida en cuatro pestañas (Puntaje, Calificación, Logros, Historia) en `src/ui/progreso-pestanas.tsx`. Puntaje (puntos por
+ * compra pagada, con la tarjeta) y Calificación (qué tan buen pagador) van SEPARADAS: son dos números distintos.
  *
  * ## La idea
  *
@@ -23,18 +23,18 @@ import { useCreditBook } from '../../src/features/use-credit-book';
 import { useProgress } from '../../src/features/use-progress';
 import { useSession } from '../../src/session/session';
 import { Screen, ScreenHeader } from '../../src/ui/layout';
-import { PestanaHistoria, PestanaLogros, PestanaPuntaje, PestanaResumen } from '../../src/ui/progreso-pestanas';
+import { PestanaCalificacion, PestanaHistoria, PestanaLogros, PestanaPuntaje } from '../../src/ui/progreso-pestanas';
 import { Chip, ChipBar, ErrorState, SkeletonLista } from '../../src/ui/primitives';
 
-type Pestana = 'resumen' | 'puntaje' | 'logros' | 'historia';
+type Pestana = 'puntaje' | 'calificacion' | 'logros' | 'historia';
 
 /**
  * Cada pestaña responde una pregunta. Sin icono a propósito: con icono los cuatro chips medían ~380 px y en un móvil de
  * 390 el cuarto caía solo a una segunda fila; sin él caben en una.
  */
 const PESTANAS: { id: Pestana; label: string }[] = [
-  { id: 'resumen', label: 'Resumen' },
   { id: 'puntaje', label: 'Puntaje' },
+  { id: 'calificacion', label: 'Calificación' },
   { id: 'logros', label: 'Logros' },
   { id: 'historia', label: 'Historia' },
 ];
@@ -43,7 +43,7 @@ export default function Progreso() {
   const session = useSession();
   const { fase, progress, recargar } = useProgress(session.customerId);
   const book = useCreditBook(session.customerId);
-  const [pestana, setPestana] = useState<Pestana>('resumen');
+  const [pestana, setPestana] = useState<Pestana>('puntaje');
 
   if (fase === 'cargando') {
     return (
@@ -74,8 +74,8 @@ export default function Progreso() {
 
       {/* `key` reinicia la entrada escalonada de cada pestaña al cambiar. */}
       <View key={pestana} style={styles.contenido}>
-        {pestana === 'resumen' ? <PestanaResumen progress={progress} /> : null}
-        {pestana === 'puntaje' ? <PestanaPuntaje progress={progress} creditLine={book.creditLine ?? null} /> : null}
+        {pestana === 'puntaje' ? <PestanaPuntaje progress={progress} /> : null}
+        {pestana === 'calificacion' ? <PestanaCalificacion progress={progress} creditLine={book.creditLine ?? null} /> : null}
         {pestana === 'logros' ? <PestanaLogros progress={progress} /> : null}
         {pestana === 'historia' ? <PestanaHistoria progress={progress} /> : null}
       </View>

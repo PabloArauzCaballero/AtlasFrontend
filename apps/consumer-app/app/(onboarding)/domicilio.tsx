@@ -15,7 +15,7 @@ import { color, space } from '../../src/theme/tokens';
 import { firstBlocker } from '../../src/ui/blocked';
 import { Icon } from '../../src/ui/icons';
 import { IconField, SelectField } from '../../src/ui/form-controls';
-import { DEPARTAMENTOS, ciudadesDe, nombreCiudad, nombreDepartamento, nombreZona, zonasDe } from '../../src/features/geografia';
+import { DEPARTAMENTOS, OTRA_ZONA, ciudadesDe, nombreCiudad, nombreDepartamento, nombreZona, zonasDe } from '../../src/features/geografia';
 import { Screen, useScrollToError } from '../../src/ui/layout';
 import { StepHeader } from '../../src/ui/step-header';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
@@ -47,6 +47,8 @@ export default function Address() {
   const [department, setDepartment] = useState<string | null>(null);
   const [city, setCity] = useState<string | null>(null);
   const [zone, setZone] = useState('');
+  // El «¿cuál?» de «Otra zona»: se guarda como la zona, con el nombre que escribió la persona.
+  const [zoneOther, setZoneOther] = useState('');
   const [addressLine, setAddressLine] = useState('');
   const [gps, setGps] = useState<{ lat: number; lng: number; accuracyMeters?: number } | null>(null);
   const [locationState, setLocationState] = useState<'idle' | 'asking' | 'denied' | 'granted'>('idle');
@@ -71,6 +73,11 @@ export default function Address() {
         setDepartment((actual) => actual ?? dep.codigo);
         if (ciudad) setCity((actual) => actual ?? ciudad.codigo);
         if (zona) setZone((actual) => actual || zona.codigo);
+        // Una zona guardada que no está en el catálogo es una «Otra zona» escrita a mano: se recupera como tal.
+        else if (ciudad && address.zone) {
+          setZone((actual) => actual || OTRA_ZONA.codigo);
+          setZoneOther((actual) => actual || address.zone!);
+        }
         if (address.addressLine) setAddressLine((actual) => actual || address.addressLine!);
         if (address.gps) setGps((actual) => actual ?? { lat: address.gps!.lat, lng: address.gps!.lng });
       })
@@ -81,13 +88,16 @@ export default function Address() {
   }, [session.customerId]);
 
   const ciudades = ciudadesDe(department);
-  const canSubmit = Boolean(department) && Boolean(city) && !busy;
+  const esOtraZona = zone === OTRA_ZONA.codigo;
+  const faltaCualZona = esOtraZona && zoneOther.trim().length < 2;
+  const canSubmit = Boolean(department) && Boolean(city) && !faltaCualZona && !busy;
 
   // La ubicacion GPS no entra aqui a proposito: es opcional, y nombrarla como pendiente la
   // convertiria en obligatoria a ojos del cliente.
   const blockedReason = firstBlocker([
     [Boolean(department), 'Falta elegir tu departamento.'],
     [Boolean(city), 'Falta elegir tu ciudad.'],
+    [!faltaCualZona, 'Falta escribir cuál es tu zona o barrio.'],
   ]);
 
   /*
@@ -216,7 +226,8 @@ export default function Address() {
           // que solo puedan ser los del catalogo.
           department: nombreDepartamento(department)!,
           city: nombreCiudad(department, city)!,
-          zone: nombreZona(city, zone) ?? undefined,
+          // «Otra zona» no es una zona: lo que viaja es el nombre que escribió la persona.
+          zone: (esOtraZona ? zoneOther.trim() : nombreZona(city, zone)) ?? undefined,
           addressLine: addressLine.trim() || undefined,
         },
         gpsObservation: gps ?? undefined,
@@ -271,6 +282,7 @@ export default function Address() {
           setCity(elegida);
           // La zona pertenece a la ciudad anterior: dejarla puesta guardaria una zona de otra ciudad.
           setZone('');
+          setZoneOther('');
         }}
         placeholder="Elige tu ciudad"
         deshabilitadoPorque={department ? null : 'Elige primero tu departamento.'}
@@ -286,13 +298,28 @@ export default function Address() {
       <SelectField
         label="Zona o barrio"
         value={zone || null}
-        onChange={setZone}
+        onChange={(elegida) => {
+          setZone(elegida);
+          if (elegida !== OTRA_ZONA.codigo) setZoneOther('');
+        }}
         ayuda="La zona o el barrio donde vives dentro de esa ciudad. Es el nivel al que decidimos dónde abrir un comercio nuevo y a dónde va la cobranza si hiciera falta."
         // sin-ayuda: las zonas y barrios son nombres propios de cada ciudad.
         opciones={zonasDe(city).map((z) => ({ valor: z.codigo, etiqueta: z.nombre }))}
         placeholder="Elige tu zona"
         deshabilitadoPorque={city ? null : 'Elige primero tu ciudad.'}
       />
+      {esOtraZona ? (
+        <IconField
+          icon="ubicacion"
+          label="¿Cuál es tu zona o barrio?"
+          value={zoneOther}
+          onChangeText={(v) => setZoneOther(v.slice(0, 120))}
+          hint="Escribe el nombre como lo conoces. Por ejemplo: Villa Primero de Mayo."
+          ayuda="Elegiste «Otra zona» porque la tuya no está en la lista: escribe su nombre. Se guarda tal cual lo escribas y lo revisa una persona del equipo."
+          required
+          error={zoneOther.length > 0 && faltaCualZona ? 'Escribe al menos dos letras.' : null}
+        />
+      ) : null}
 
       {/*
         La calle y el numero: opcional, y con el motivo delante.

@@ -13,7 +13,7 @@ import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
 import { IconField, SelectField } from '../../src/ui/form-controls';
-import { OPCIONES_ACTIVIDAD, nombreActividad } from '../../src/features/actividades';
+import { OPCIONES_ACTIVIDAD, OTRA_ACTIVIDAD, nombreActividad } from '../../src/features/actividades';
 import { Gap, Screen, useScrollToError } from '../../src/ui/layout';
 import { StepHeader } from '../../src/ui/step-header';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
@@ -74,6 +74,8 @@ export default function FinancialProfile() {
   const [incomeBand, setIncomeBand] = useState<IncomeBand | null>(null);
   const [incomeFrequency, setIncomeFrequency] = useState<IncomeFrequency | null>(null);
   const [activity, setActivity] = useState('');
+  // El «¿cuál?» de «Otra actividad»: sin él, el rubro declarado no dice a qué se dedica nadie.
+  const [activityOther, setActivityOther] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -101,6 +103,8 @@ export default function FinancialProfile() {
         if (frecuencia && FRECUENCIAS.includes(frecuencia as IncomeFrequency)) setIncomeFrequency((actual) => actual ?? (frecuencia as IncomeFrequency));
         const rubro = texto('economicActivityCode');
         if (rubro) setActivity((actual) => actual || rubro);
+        const otra = texto('economicActivityOther');
+        if (otra) setActivityOther((actual) => actual || otra);
       })
       .catch(() => undefined);
     return () => {
@@ -121,12 +125,15 @@ export default function FinancialProfile() {
   */
   const pideAntiguedad = employmentStatus === 'employee' || employmentStatus === 'self_employed' || employmentStatus === 'business_owner';
   const faltanAnios = pideAntiguedad && seniority.trim().length === 0;
+  const esOtraActividad = activity === OTRA_ACTIVIDAD;
+  const faltaCualActividad = esOtraActividad && activityOther.trim().length < 2;
   const canSubmit =
     employmentStatus !== null &&
     incomeBand !== null &&
     incomeFrequency !== null &&
     !faltanAnios &&
     activity.trim().length > 0 &&
+    !faltaCualActividad &&
     !employerRequired &&
     !busy;
 
@@ -136,7 +143,8 @@ export default function FinancialProfile() {
     [!faltanAnios, 'Faltan tus años en el trabajo actual.'],
     [incomeBand !== null, 'Falta tu rango de ingreso mensual.'],
     [incomeFrequency !== null, 'Falta cada cuánto cobras.'],
-    [activity.trim().length > 0, 'Falta a que te dedicas.'],
+    [activity.trim().length > 0, 'Falta a qué te dedicas.'],
+    [!faltaCualActividad, 'Falta escribir cuál es tu actividad.'],
   ]);
 
   const save = async () => {
@@ -154,6 +162,8 @@ export default function FinancialProfile() {
         monthlyIncomeDeclared: BANDAS.find((banda) => banda.valor === incomeBand)?.declarado,
         incomeFrequency: incomeFrequency ?? undefined,
         economicActivityCode: activity.trim(),
+        // Sólo con «Otra actividad»: con cualquier otro rubro el servidor lo rechaza, y no tendría sentido.
+        ...(esOtraActividad ? { economicActivityOther: activityOther.trim() } : {}),
       }));
       await session.refresh();
       router.replace('/(onboarding)/progreso');
@@ -258,7 +268,11 @@ export default function FinancialProfile() {
       <SelectField
         label="Rubro o industria"
         value={activity || null}
-        onChange={setActivity}
+        onChange={(next) => {
+          setActivity(next);
+          // Lo que deja de preguntarse se borra: un «¿cuál?» viejo no puede viajar con otro rubro.
+          if (next !== OTRA_ACTIVIDAD) setActivityOther('');
+        }}
         opciones={OPCIONES_ACTIVIDAD}
         placeholder="Elige tu rubro"
         hint={nombreActividad(activity) ? undefined : 'Busca por rubro: comercio, transporte, salud…'}
@@ -266,6 +280,18 @@ export default function FinancialProfile() {
         required
         buscable
       />
+      {esOtraActividad ? (
+        <IconField
+          icon="lista"
+          label="¿Cuál es tu actividad?"
+          value={activityOther}
+          onChangeText={(v) => setActivityOther(v.slice(0, 120))}
+          hint="Por ejemplo: apicultura, reparación de celulares, venta de artesanías."
+          ayuda="Elegiste «Otra actividad»: escribe en pocas palabras a qué te dedicas. Lo lee una persona del equipo; no hace falta que coincida con ningún rubro de la lista."
+          required
+          error={activityOther.length > 0 && faltaCualActividad ? 'Escribe al menos dos letras.' : null}
+        />
+      ) : null}
 
       <Gap size="sm" />
       <AtlasText variant="caption" tone="tertiary">
