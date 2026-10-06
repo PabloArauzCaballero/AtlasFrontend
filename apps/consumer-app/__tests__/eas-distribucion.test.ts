@@ -52,8 +52,11 @@ describe('perfiles de EAS', () => {
   });
 
   it('ninguna variable apunta a una red local ni a http, y ningun perfil lleva secretos', () => {
-    for (const p of Object.values(eas.build)) {
-      expect(p.env?.EXPO_PUBLIC_ATLAS_API_URL).toMatch(/^https:\/\//);
+    for (const [nombre, p] of Object.entries(eas.build)) {
+      // Unica excepcion a https: el perfil que apunta al TEST de Contabo, que sólo se publica por http y por IP.
+      // Es una URL exacta, no un patron: cualquier otro perfil con http sigue fallando.
+      if (nombre === 'testflight-test') expect(p.env?.EXPO_PUBLIC_ATLAS_API_URL).toBe('http://161.97.85.216/api/v1');
+      else expect(p.env?.EXPO_PUBLIC_ATLAS_API_URL).toMatch(/^https:\/\//);
       expect(p.env?.EXPO_PUBLIC_ATLAS_API_URL).not.toMatch(/localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.|\/\/10\./);
       for (const k of Object.keys(p.env ?? {})) expect(k).toMatch(/^EXPO_PUBLIC_ATLAS_[A-Z_]+$/);
     }
