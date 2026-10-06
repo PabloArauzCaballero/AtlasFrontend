@@ -165,6 +165,7 @@ export default function ChangeEmail() {
           </Card>
           <Field
             label="Correo nuevo"
+            ayuda="El correo que usas de verdad. Ahí te llega el código para confirmarlo y, desde ese momento, es con el que ingresas y recuperas tu contraseña. Ej.: ana.perez@gmail.com"
             value={email}
             onChangeText={(next) => {
               setEmail(next);
@@ -207,6 +208,7 @@ export default function ChangeEmail() {
           {!sent.deliveryFailed ? (
             <Field
               label="Código recibido"
+              ayuda="Los números que te enviamos al correo nuevo. Confirman que ese correo es tuyo; si no llega, revisa spam o pide otro código."
               value={code}
               onChangeText={(next) => setCode(next.replace(/\D/g, '').slice(0, 8))}
               error={fieldError('code')}
