@@ -466,6 +466,15 @@ export default function VerifyContact() {
         deshabilitadoPorque={unico ? `Ahora mismo el código solo se puede enviar por ${unico}.` : null}
       />
 
+      {channel === 'email' ? (
+        <Button
+          label="¿Escribiste mal tu correo? Cámbialo"
+          variant="ghost"
+          onPress={() => router.push('/(onboarding)/cambiar-correo')}
+          disabled={busy}
+        />
+      ) : null}
+
       {sent && !deliveryFailed ? (
         <>
           {vencido ? (
