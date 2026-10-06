@@ -163,8 +163,8 @@ describe("pantalla «Tu nivel Atlas»", () => {
     });
     await render(envolver(<Progreso />));
     await abrir("Historia");
-    expect(screen.getByText(/Pago · 31 pts de nivel/)).toBeTruthy();
-    expect(screen.getByText(/Alta · 12 pts de nivel/)).toBeTruthy();
+    expect(screen.getByText(/Pago · calificación 31/)).toBeTruthy();
+    expect(screen.getByText(/Alta · calificación 12/)).toBeTruthy();
     expect(screen.getByText(/▲/)).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: "Subir mi extracto bancario" }),
@@ -187,9 +187,9 @@ describe("«Por qué tienes este puntaje»", () => {
   it("cada parte enseña su cuenta con los números de la persona", async () => {
     await render(envolver(<Progreso />));
     await abrirCalificacion();
-    expect(screen.getByText("50 de 100 × 45 % = 22,5 pts")).toBeTruthy();
-    expect(screen.getByText("8 de 100 × 20 % = 1,6 pts")).toBeTruthy();
-    expect(screen.getByText("100 de 100 × 10 % = 10 pts")).toBeTruthy();
+    expect(screen.getByText("50 de 100 × 45 % = 22,5")).toBeTruthy();
+    expect(screen.getByText("8 de 100 × 20 % = 1,6")).toBeTruthy();
+    expect(screen.getByText("100 de 100 × 10 % = 10")).toBeTruthy();
   });
 
   it("y la razón en una frase de cada una", async () => {
@@ -345,7 +345,7 @@ describe("pestañas de «Tu nivel Atlas»", () => {
     await render(envolver(<Progreso />));
     await abrirCalificacion();
     expect(screen.getByText("Compras terminadas de pagar")).toBeTruthy();
-    expect(screen.getByText(/0 de 100 × 25 % = 0 pts/)).toBeTruthy();
+    expect(screen.getByText(/0 de 100 × 25 % = 0/)).toBeTruthy();
   });
 });
 

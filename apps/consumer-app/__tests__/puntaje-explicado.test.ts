@@ -29,7 +29,7 @@ describe("cuentaDeUnaParte", () => {
         points: 22.5,
         why: "",
       }),
-    ).toBe("50 de 100 × 45 % = 22,5 pts");
+    ).toBe("50 de 100 × 45 % = 22,5");
   });
   it("un peso de 20 % no sale como 0,2", () => {
     expect(
@@ -41,7 +41,7 @@ describe("cuentaDeUnaParte", () => {
         points: 20,
         why: "",
       }),
-    ).toBe("100 de 100 × 20 % = 20 pts");
+    ).toBe("100 de 100 × 20 % = 20");
   });
 });
 

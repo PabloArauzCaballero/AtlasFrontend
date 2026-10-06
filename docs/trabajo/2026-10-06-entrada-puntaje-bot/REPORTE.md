@@ -22,7 +22,6 @@ Ninguna.
 ## Pendiente
 | ID | Estado | Qué lo destraba |
 |---|---|---|
-| Prueba visual de Inicio y «Tu nivel Atlas» | BLOQUEADO | Requiere backend levantado y una sesión de prueba; se cubrió con pruebas de componente |
 | H1.S1.M1 artefacto del motor publica el monto | TODO | Correr contra el motor de dev |
 | H1.S1.M3 / H2.S1.M4 matriz de autorización negativa | TODO | Test de integración con base real |
 | H2.S3 AdminPortal con los mismos nombres | TODO | — |
@@ -30,6 +29,8 @@ Ninguna.
 | Push a GitHub | BLOQUEADO | La app de Claude no tiene permiso de escritura (403); el commit queda local |
 
 ## Evidencia
+Prueba visual de Inicio y «Tu nivel Atlas» HECHA después: `evidencia/10-inicio-*.png`, `11-puntaje-mis-puntos-*.png`, `12-puntaje-mi-calificacion-*.png` (backend simulado en el navegador, datos sintéticos). El resto del plan se cerró en el reporte raíz: `AtlasBackend/docs/trabajo/2026-10-06-credito-puntaje-calificacion-app/REPORTE.md`.
+
 ```text
 consumer-app $ npx jest
 Test Suites: 83 passed, 83 total

@@ -201,7 +201,7 @@ export function PestanaHistoria({ progress }: { progress: Progress }) {
                     {escalon.code === progress.tier.code ? ' · estás aquí' : ''}
                   </AtlasText>
                 </View>
-                <AtlasText variant="caption" tone="secondary">{`desde ${escalon.from} pts`}</AtlasText>
+                <AtlasText variant="caption" tone="secondary">{`desde calificación ${escalon.from}`}</AtlasText>
               </View>
             </View>
           ))}
@@ -247,7 +247,7 @@ function EvolucionDeLinea({ history }: { history: Progress['history'] }) {
               <View style={styles.texto}>
                 <AtlasText variant="bodyStrong">{fecha(version.validFrom)}</AtlasText>
                 <AtlasText variant="caption" tone="secondary">
-                  {`${MOTIVO[version.trigger] ?? version.trigger}${version.relationshipScore !== null ? ` · ${version.relationshipScore} pts de nivel` : ''}`}
+                  {`${MOTIVO[version.trigger] ?? version.trigger}${version.relationshipScore !== null ? ` · calificación ${version.relationshipScore}` : ''}`}
                 </AtlasText>
               </View>
               <View style={styles.derecha}>
