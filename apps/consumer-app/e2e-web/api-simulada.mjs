@@ -10,9 +10,11 @@
  *  - un código malo es 400 y no cambia nada;
  *  - al confirmar se revocan TODAS las sesiones: desde ese momento cualquier llamada autenticada es 401.
  */
+import { Buffer } from 'node:buffer';
 import { createServer } from 'node:http';
+import { atenderCredito } from './api-simulada-credito.mjs';
 
-export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', pinInicial = '4821', enmascarado = 'pa***@gmail.com' } = {}) {
+export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', pinInicial = '4821', enmascarado = 'pa***@gmail.com', vencido = 0 } = {}) {
   const estado = { pin: pinInicial, sesionViva: false, ultimoEnvio: 0, desafios: new Map(), bandeja: [], llamadas: [], envios: 0 };
 
   const jwt = () => {
@@ -133,6 +135,9 @@ export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', 
         estado.desafios.delete(cuerpo.challengeToken);
         return ok(res, { passwordChanged: true });
       }
+
+      // La línea, los puntos, la calificación y los extractos: datos fijos, en `api-simulada-credito.mjs`.
+      if (atenderCredito({ ruta, res, ok, fallo, vencido })) return undefined;
 
       // Lo demás (avisos, telemetría, contenido remoto…) no es lo que se prueba: responde vacío sin romper la pantalla.
       if (req.method === 'GET') return fallo(res, 404, 'NOT_FOUND', 'No simulado.');

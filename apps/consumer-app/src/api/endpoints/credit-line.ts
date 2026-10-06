@@ -153,6 +153,18 @@ export const getLatestBankStatement = (customerId: string) =>
     `/customers/${customerId}/bank-statements/latest`,
   );
 
+/** Un extracto del historial: la misma revisión, más lo que hace falta para descargar su archivo. */
+export type BankStatementArchiveItem = BankStatementReview & {
+  /** `available` es falso cuando el archivo ya no está en el almacén: se enseña, pero sin botón. */
+  file: { available: boolean; fileName: string };
+};
+
+/** Todos los extractos que subió la persona, del más reciente al más antiguo. */
+export const listBankStatements = (customerId: string) =>
+  request<{ items: BankStatementArchiveItem[] }>(
+    `/customers/${customerId}/bank-statements`,
+  );
+
 export const submitBankStatement = (customerId: string, storageKey: string) =>
   request<BankStatementReview>(`/customers/${customerId}/bank-statements`, {
     method: "POST",

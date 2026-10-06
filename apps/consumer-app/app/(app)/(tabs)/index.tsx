@@ -31,6 +31,7 @@ import {
   ProgressBar,
   SectionHeader,
   Skeleton,
+  SkeletonLista,
   Stat,
   StatRow,
 } from '../../../src/ui/primitives';
@@ -40,7 +41,9 @@ import { downloadSpendingReport } from '../../../src/features/spending-report';
 import { categoryLook, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useProgress } from '../../../src/features/use-progress';
+import { ExperienciaCard } from '../../../src/ui/experiencia-card';
 import { NivelCard } from '../../../src/ui/nivel-card';
+import { PuntajeDesglose } from '../../../src/ui/puntaje-desglose';
 import { dueLabel, statusTone, statusLabel } from '../../../src/features/payment-copy';
 import { TOUR_INICIO_KEY, TOUR_INICIO_TARGETS } from '../../../src/features/tour-inicio';
 import { useCopy, useTourInicio } from '../../../src/features/use-contenido-remoto';
@@ -152,43 +155,6 @@ export default function Home() {
 
       <SurfaceContent entries={avisosDeInicio} />
 
-      {/*
-        LO PRIMERO cuando hay mora, por encima incluso de la línea disponible.
-
-        Quien abre la app debiendo dinero vencido no entro a ver cuanto puede gastar. Ensenarle
-        primero el disponible sería invitarle a aumentar una deuda que ya no está pagando.
-      */}
-      {spending && spending.totals.overdue > 0 ? (
-        <Card tone="danger">
-          <CardHeader
-            icon="alerta"
-            iconTone="danger"
-            eyebrow="Vencido"
-            title="Tienes pagos que regularizar"
-          />
-          <AtlasText variant="amount" tone="danger">
-            {formatAmount(spending.totals.overdue, currency)}
-          </AtlasText>
-          <AtlasText variant="body" tone="secondary">
-            Mientras tengas pagos vencidos, tu puntaje baja. Regularízalos cuanto antes; la política de mora
-            explica cómo se calcula.
-          </AtlasText>
-          <Button label="Ver qué debo pagar" onPress={() => router.push('/(app)/(tabs)/pagos')} />
-          {/*
-            La salida secundaria es un enlace, no un segundo boton.
-
-            Dos botones apilados del mismo tamano dentro de un aviso rojo pesan lo mismo, y la
-            pantalla deja de decir cual de las dos cosas hay que hacer. Aqui hay una accion —pagar—
-            y una lectura.
-          */}
-          <Button
-            label="Leer términos y condiciones"
-            variant="ghost"
-            onPress={() => router.push('/(app)/politica-mora')}
-          />
-        </Card>
-      ) : null}
-
       <TourTarget id={TOUR_INICIO_TARGETS.linea}>
         <BrandPanel>
           <Overline>Disponible para comprar</Overline>
@@ -254,10 +220,61 @@ export default function Home() {
       </TourTarget>
 
       {/*
-        El nivel, justo debajo de la línea: la línea dice cuánto puedes gastar y el nivel, cómo ampliarlo. Sale de
-        la base de datos y no del motor, así que se ve igual aunque la línea aún no esté calculada.
+        La mora va PEGADA a la línea, justo debajo: lo primero de la portada es siempre cuánto crédito
+        hay habilitado (pedido de Pablo, 2026-10-05), y lo segundo, si se debe dinero vencido, eso.
+
+        Antes iba por encima de la línea para no invitar a aumentar una deuda que no se está pagando.
+        Esa protección no dependía del orden: con pagos vencidos la línea disponible ya baja, y el
+        aviso rojo sigue siendo lo primero que se lee después de la cifra.
       */}
+      {spending && spending.totals.overdue > 0 ? (
+        <Card tone="danger">
+          <CardHeader
+            icon="alerta"
+            iconTone="danger"
+            eyebrow="Vencido"
+            title="Tienes pagos que regularizar"
+          />
+          <AtlasText variant="amount" tone="danger">
+            {formatAmount(spending.totals.overdue, currency)}
+          </AtlasText>
+          <AtlasText variant="body" tone="secondary">
+            Mientras tengas pagos vencidos, tu puntaje baja. Regularízalos cuanto antes; la política de mora
+            explica cómo se calcula.
+          </AtlasText>
+          <Button label="Ver qué debo pagar" onPress={() => router.push('/(app)/(tabs)/pagos')} />
+          {/*
+            La salida secundaria es un enlace, no un segundo boton.
+
+            Dos botones apilados del mismo tamano dentro de un aviso rojo pesan lo mismo, y la
+            pantalla deja de decir cual de las dos cosas hay que hacer. Aqui hay una accion —pagar—
+            y una lectura.
+          */}
+          <Button
+            label="Leer términos y condiciones"
+            variant="ghost"
+            onPress={() => router.push('/(app)/politica-mora')}
+          />
+        </Card>
+      ) : null}
+
+      {/*
+        El orden de la portada, de arriba abajo: cuánto crédito hay habilitado, cuántos puntos XP se han ganado
+        pagando a tiempo, y la calificación con su cuenta parte por parte. Las tres salen de la base de datos y
+        no del motor (salvo la cifra de la línea), así que se ven aunque la línea aún no esté calculada.
+      */}
+      {/* Tres hijos directos de la pantalla, no un fragmento: así cada tarjeta recibe el mismo aire que las demás. */}
+      {nivel.fase === 'lista' ? (
+        <ExperienciaCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} />
+      ) : nivel.fase === 'fallo' ? (
+        <ErrorState title="No pudimos cargar tus puntos y tu calificación" detail="Revisa tu conexión y vuelve a intentar." onRetry={() => void nivel.recargar()} />
+      ) : (
+        <SkeletonLista filas={2} alto={96} />
+      )}
       {nivel.fase === 'lista' ? <NivelCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} /> : null}
+      {nivel.fase === 'lista' ? (
+        <PuntajeDesglose progress={nivel.progress} titulo="Tu calificación, parte por parte" onVerMas={() => router.push('/(app)/progreso')} />
+      ) : null}
 
       <TourTarget id={TOUR_INICIO_TARGETS.pagos}>
         {proximaCuotaReal ? (
