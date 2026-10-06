@@ -222,7 +222,7 @@ export default function Home() {
       ) : nivel.fase === 'fallo' ? (
         <ErrorState title="No pudimos cargar tu puntaje y tu calificación" detail="Revisa tu conexión y vuelve a intentar." onRetry={() => void nivel.recargar()} />
       ) : (
-        <SkeletonLista filas={2} alto={96} />
+        <SkeletonLista filas={2} alto={96} pantalla />
       )}
       {nivel.fase === 'lista' ? <CalificacionCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} /> : null}
       {nivel.fase === 'lista' ? <NivelCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} /> : null}

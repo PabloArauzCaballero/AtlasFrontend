@@ -16,9 +16,10 @@
  * - `rechazada`: la app no la subio porque sabe que el Motor no la podria leer (pequeña, o no es el
  *   carnet entero). Solo cabe repetirla.
  */
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { color, radius, space } from '../theme/tokens';
 import { AtlasText, Button, ErrorState } from './primitives';
+import { AnilloAtlas, BarraDeCarga } from './cargador-atlas';
 
 export type EstadoDeSubida =
   | { fase: 'subiendo'; que: string; lenta: boolean }
@@ -41,9 +42,10 @@ export function EstadoDeSubidaVista({
     return (
       <View style={styles.caja} accessibilityLiveRegion="polite" accessible accessibilityRole="progressbar">
         <View style={styles.fila}>
-          <ActivityIndicator color={color.action.primary} />
+          <AnilloAtlas tamano="fila" />
           <View style={styles.texto}>
             <AtlasText variant="body">Subiendo {estado.que}…</AtlasText>
+            <BarraDeCarga />
             <AtlasText variant="caption" tone="secondary">
               {estado.lenta
                 ? 'Está tardando más de lo normal. Puedes esperar o cancelar y volver a intentarlo.'
