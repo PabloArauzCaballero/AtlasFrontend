@@ -211,6 +211,20 @@ async function rawRequest<T>(
 }
 
 /**
+ * 401 que son la RESPUESTA del negocio, no una sesion vencida.
+ *
+ * Un codigo de verificacion mal escrito o vencido responde 401. Tratarlo como token vencido
+ * refrescaba y REENVIABA el mismo codigo: cada error de tipeo gastaba dos de los intentos que
+ * permite el codigo, y la persona se quedaba sin intentos con la mitad de las equivocaciones.
+ */
+const BUSINESS_AUTH_CODES = new Set(['INVALID_VERIFICATION_CODE', 'VERIFICATION_CODE_EXPIRED']);
+
+/** Si un error de la API justifica refrescar el token y reintentar. */
+export function shouldRefreshOn(error: unknown): boolean {
+  return error instanceof AtlasApiError && error.kind === 'auth' && !BUSINESS_AUTH_CODES.has(error.code);
+}
+
+/**
  * Punto unico de salida a red.
  *
  * Dos mecanismos distintos, que no se mezclan:
@@ -239,8 +253,7 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     const result = await intentar(tokens?.accessToken ?? null);
     return result.data;
   } catch (error) {
-    const isAuthError = error instanceof AtlasApiError && error.kind === 'auth';
-    if (!isAuthError || options.anonymous || !tokens?.refreshToken || !tokenStore) throw error;
+    if (!shouldRefreshOn(error) || options.anonymous || !tokens?.refreshToken || !tokenStore) throw error;
 
     let refreshed: TokenPair;
     try {

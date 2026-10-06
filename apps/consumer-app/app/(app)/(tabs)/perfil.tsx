@@ -307,10 +307,16 @@ export default function Profile() {
           queda en paralelo con la del telefono y se entiende que falta el principio porque no se
           guarda, no porque se haya roto algo.
         */}
+        {/*
+          Se pulsa para cambiarlo. Antes la fila solo lo mostraba: quien lo habia escrito mal se
+          quedaba atado a un correo ajeno, que es por donde se recupera la contraseña.
+        */}
         <ListRow
           icon="sobre"
           title="Correo"
           subtitle={me?.customer.emailDomain ? `Termina en @${me.customer.emailDomain}` : 'Sin registrar'}
+          onPress={() => router.push('/(onboarding)/cambiar-correo')}
+          accessibilityHint="Abrir para cambiar tu correo"
         />
         <Divider inset />
         <ListRow
