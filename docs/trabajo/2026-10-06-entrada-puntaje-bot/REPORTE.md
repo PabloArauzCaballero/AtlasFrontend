@@ -60,3 +60,10 @@ Capturas: `evidencia/01-primera-vez-*.png`, `02-segunda-vez-*.png` (móvil, tabl
 ## Decisiones y ambigüedades
 - A1 (supuesto, confirmar con Pablo): la Calificación 1–100 es la puntuación de relación ya existente.
 - «Botón de entrar en verde»: se interpretó como «Ingresar» siempre verde con errores por campo.
+
+## Verificación contra el backend REAL (2026-10-06, después del merge)
+- Backend de `dev` (con #198) compilado y levantado contra Postgres 16 y Redis reales locales, migraciones aplicadas y datos SINTÉTICOS de demo (`yarn db:seed:demo`, 965 filas). Cliente sintético 910001.
+- `GET /customers/910001/progress` → `rating` 68/100, `points` 6.928 (= XP), nivel ESTABLECIDO, tarjeta GOLD. Otro cliente → 403; sin token → 401.
+- Ajuste manual de tarjeta como operador interno (`POST /operations/customers/910001/card-tier`, BLACK) → el cliente la ve como MANUAL en `/progress`; fila `credit.card_tier.override_set` en `audit.operational_audit_logs`.
+- App web contra esa API: `evidencia/20-real-inicio-*.png`, `21-real-mi-calificacion-*.png`. Únicos 404: `/credit-rating` (sin crédito calificado, tolerado) y `/mobile/assist/conversation` (asistente apagado en local, 404 por diseño).
+- Encontrado ahí y corregido: el panel del motor decía «Te faltan 60 puntos» y dos avisos de mora decían que el puntaje baja. Ahora: «Te faltan 60» y «tu calificación baja». Prueba `__tests__/nombres-puntaje-calificacion.test.ts` (falla con los textos viejos).

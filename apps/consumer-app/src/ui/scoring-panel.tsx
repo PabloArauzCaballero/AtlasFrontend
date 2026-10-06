@@ -134,7 +134,7 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
         <AtlasText variant="caption" tone="secondary">
           Te faltan{" "}
           <AtlasText variant="captionStrong">
-            {next.from - scoring} puntos
+            {next.from - scoring}
           </AtlasText>{" "}
           para llegar a «{next.label}».
         </AtlasText>
