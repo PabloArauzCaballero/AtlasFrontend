@@ -158,7 +158,7 @@ export default function Privacidad() {
             <Skeleton height={44} />
           </View>
         ) : documentos.length === 0 ? (
-          <EmptyState title="Sin permisos registrados" detail="Todavia no aceptaste ningun documento." />
+          <EmptyState title="Sin permisos registrados" detail="Todavía no aceptaste ningún documento." />
         ) : (
           documentos.map((documento, indice) => (
             <View key={documento.id}>

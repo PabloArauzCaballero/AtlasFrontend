@@ -288,7 +288,7 @@ const ZONAS: Record<string, Zona[]> = {
 };
 
 /** Se ofrece siempre, en todas las ciudades. Ver la nota de arriba. */
-const OTRA_ZONA: Zona = { codigo: 'OTRA', nombre: 'Otra zona' };
+export const OTRA_ZONA: Zona = { codigo: 'OTRA', nombre: 'Otra zona' };
 
 /**
  * Las zonas de una ciudad. Vacío si no hay ciudad elegida todavía; con sólo «Otra zona» si la

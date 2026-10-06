@@ -19,13 +19,14 @@ export function formatoPuntos(valor: number): string {
 }
 
 /**
- * La frase del resultado. Sin topes: «Suma 31 puntos: estás en Nivel 2». Con tope: dice cuánto SUMABA y por qué el
+ * La frase del resultado. Sin topes: «Tu calificación es 31 de 100.». Con tope: dice cuánto SUMABA y por qué el
  * resultado es menor, para que nadie crea que la cuenta está mal.
  */
-export function fraseDelResultado(progress: Pick<Progress, 'score' | 'rawScore' | 'caps' | 'tier'>): string {
-  const { score, rawScore, caps, tier } = progress;
-  if (caps.length === 0 || rawScore === score) return `Tu calificación es ${score} de 100: estás en el nivel «${tier.label}».`;
-  return `Tus partes suman ${rawScore}, pero hay un tope: tu calificación queda en ${score} y estás en «${tier.label}».`;
+export function fraseDelResultado(progress: Pick<Progress, 'score' | 'rawScore' | 'caps'>): string {
+  // Sin nombrar el nivel: el nivel se mide en PUNTOS (otra pestaña). Mezclarlos aquí fue lo que hizo leer «24» como nivel.
+  const { score, rawScore, caps } = progress;
+  if (caps.length === 0 || rawScore === score) return `Tu calificación es ${score} de 100.`;
+  return `Tus partes suman ${rawScore}, pero hay un tope: tu calificación queda en ${score}.`;
 }
 
 /** La experiencia en una línea: lo que suma, de dónde sale y qué NO suma. */

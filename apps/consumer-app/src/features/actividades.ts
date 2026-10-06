@@ -53,6 +53,9 @@ export const ACTIVIDADES: Actividad[] = [
   { codigo: 'Z-OTRO', nombre: 'Otra actividad', detalle: 'Ninguna de las anteriores.', icono: 'lista' },
 ];
 
+/** El código de «Otra actividad»: elegirlo abre el campo «¿Cuál?» (el servidor lo exige con este código). */
+export const OTRA_ACTIVIDAD = 'Z-OTRO';
+
 /** Para el `SelectField`, que habla de `valor` y `etiqueta`. */
 export const OPCIONES_ACTIVIDAD = ACTIVIDADES.map((actividad) => ({
   valor: actividad.codigo,

@@ -7,6 +7,7 @@
  */
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
+import { formatoPuntos, nivelPorPuntos } from '../features/nivel';
 import { AVISO_SIN_LIMITE, estaDesbloqueada, fraseDeOrigen, siguienteTarjeta } from '../features/tarjeta';
 import { color, space } from '../theme/tokens';
 import { Icon } from './icons';
@@ -14,9 +15,11 @@ import { TarjetaAtlas } from './tarjeta-atlas';
 import { AtlasText, Card } from './primitives';
 
 export function TarjetaSeccion({ progress }: { progress: Progress }) {
-  const { card, tier, ladder } = progress;
+  const { card } = progress;
   if (!card) return null;
-  const siguiente = siguienteTarjeta(card, ladder);
+  // La tarjeta sigue al NIVEL POR PUNTOS (los que se ganan pagando), no a la calificación.
+  const { level, levelLadder } = nivelPorPuntos(progress);
+  const siguiente = siguienteTarjeta(card, levelLadder);
 
   return (
     <Card testID="tarjeta-seccion">
@@ -27,11 +30,11 @@ export function TarjetaSeccion({ progress }: { progress: Progress }) {
           {card.description}
         </AtlasText>
         <AtlasText variant="caption" tone="secondary" testID="tarjeta-origen">
-          {fraseDeOrigen(card, tier.label)}
+          {fraseDeOrigen(card, level.label)}
         </AtlasText>
         {siguiente ? (
           <AtlasText variant="caption" tone="brand" testID="tarjeta-siguiente">
-            {`Sigue la ${siguiente.tier.label}: se desbloquea al llegar al nivel ${siguiente.nivelLabel}.`}
+            {`Sigue la ${siguiente.tier.label}: se desbloquea al llegar al nivel ${siguiente.nivelLabel}${siguiente.desde !== null ? ` (${formatoPuntos(siguiente.desde)} puntos)` : ''}.`}
           </AtlasText>
         ) : (
           <AtlasText variant="caption" tone="brand">
