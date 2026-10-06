@@ -23,6 +23,7 @@ activa. La decisión la toma `areaFor()` con el estado que devolvió el servidor
 |---|---|---|
 | `/(onboarding)/registro` | Crear cuenta | `GET /consent-documents/active` · `POST /customer-onboarding/start` |
 | `/(onboarding)/verificar-contacto` | Código de verificación | `POST .../contact-verification/request` · `.../submit` |
+| `/(onboarding)/cambiar-correo` | Cambiar el correo (alta o cuenta activa) | `POST .../contact-methods` · `.../contact-verification/request` y `.../submit` con `contactMethodId` |
 | `/(onboarding)/progreso` | Centro del registro | `GET /customer-onboarding/:id/status` · `GET /customers/:id/me` |
 | `/(onboarding)/perfil` | Datos personales | `PATCH /customer-onboarding/:id/profile` |
 | `/(onboarding)/economia` | Situación económica | `PUT /customer-onboarding/:id/financial-profile` |

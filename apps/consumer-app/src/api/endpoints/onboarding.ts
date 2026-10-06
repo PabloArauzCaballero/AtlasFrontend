@@ -84,7 +84,7 @@ export type VerificationChannel = 'sms' | 'email' | 'whatsapp';
 
 export const requestContactVerification = (
   customerId: string,
-  body: { contactType: 'phone' | 'email'; verificationChannel: VerificationChannel },
+  body: { contactType: 'phone' | 'email'; verificationChannel: VerificationChannel; contactMethodId?: string },
 ) =>
   request<{ verificationAttemptId: string; contactType: string; deliveryStatus: string; expiresAt: string }>(
     `/customer-onboarding/${customerId}/contact-verification/request`,
@@ -93,12 +93,39 @@ export const requestContactVerification = (
 
 export const submitContactVerification = (
   customerId: string,
-  body: { contactType: 'phone' | 'email'; verificationChannel: VerificationChannel; verificationCode: string },
+  body: {
+    contactType: 'phone' | 'email';
+    verificationChannel: VerificationChannel;
+    verificationCode: string;
+    contactMethodId?: string;
+  },
 ) =>
-  request<{ customerId: string; contactType: string; verificationStatus: string; nextStep: string }>(
-    `/customer-onboarding/${customerId}/contact-verification/submit`,
-    { method: 'POST', idempotent: true, body },
-  );
+  request<{
+    customerId: string;
+    contactType: string;
+    verificationStatus: string;
+    nextStep: string;
+    /** `true` cuando el contacto verificado paso a ser el principal: desde ahi se ingresa con el. */
+    primaryContactUpdated?: boolean;
+  }>(`/customer-onboarding/${customerId}/contact-verification/submit`, { method: 'POST', idempotent: true, body });
+
+/**
+ * Declara un telefono o correo nuevo, o el correcto de uno mal escrito.
+ *
+ * Nace sin verificar y NO reemplaza al principal: lo hace al confirmar el codigo que llega a el,
+ * enviando el `contactMethodId` devuelto aqui. Declarar otra vez el mismo valor sin verificar
+ * devuelve el mismo id, asi que una correccion que quedo a medias se retoma escribiendolo de nuevo.
+ */
+export const addContactMethod = (customerId: string, body: { contactType: 'phone' | 'email'; value: string }) =>
+  request<{
+    customerId: string;
+    contactMethodId: string;
+    contactType: string;
+    status: string;
+    valueLast4: string | null;
+    emailDomain: string | null;
+    nextStep: string;
+  }>(`/customer-onboarding/${customerId}/contact-methods`, { method: 'POST', body });
 
 export const updateProfile = (
   customerId: string,
