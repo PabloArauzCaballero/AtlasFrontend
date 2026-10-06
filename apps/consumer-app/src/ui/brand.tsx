@@ -6,10 +6,11 @@
  * El degradado teal -> menta es el mismo de `AtlasLandingPage`.
  */
 import { StyleSheet, View, type ViewStyle } from 'react-native';
-import Svg, { Defs, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { color, palette, radius, space } from '../theme/tokens';
 import { AtlasText, Overline } from './primitives';
 import { webData } from '../web/estilo';
+import { DegradadosLetraA, LETRA_A } from './marca-letra';
 
 /**
  * Halo de marca: la atmosfera del fondo.
@@ -53,49 +54,7 @@ export function BrandHalo({ size, style }: { size: number; style?: ViewStyle }) 
   );
 }
 
-/**
- * La geometria de la «A», en unidades de un `viewBox` de 48 x 48. La leen la marca de aqui y la
- * secuencia de arranque (`splash.tsx`), que la dibuja por partes.
- *
- * La letra se parte por su eje en dos caras: la izquierda recibe la luz y la derecha queda en
- * sombra. Es lo que la saca del plano. Con un solo degradado era una silueta recortada en papel, y
- * junto al rotulo se leia como un icono de sistema, no como una marca.
- */
-export const LETRA_A = {
-  silueta: 'M24 5 L43 43 H34 L24 21 L14 43 H5 Z',
-  caraLuz: 'M24 5 L24 21 L14 43 H5 Z',
-  caraSombra: 'M24 5 L43 43 H34 L24 21 Z',
-  travesano: 'M17.5 31 H30.5 L34 38 H14 Z',
-  /** El filo que recibe la luz: el borde exterior de la cara izquierda. */
-  filo: 'M5 43 L24 5',
-  /** El canto superior del travesano. */
-  cantoTravesano: 'M17.5 31 H30.5',
-} as const;
-
-/**
- * Los degradados de las caras. `prefijo` hace unicos los `id`: en la web todos los SVG comparten
- * documento, y dos degradados con el mismo `id` y distinto contenido se pisan.
- */
-export function DegradadosLetraA({ prefijo }: { prefijo: string }) {
-  return (
-    <>
-      <LinearGradient id={`${prefijo}-luz`} x1="0" y1="0" x2="0" y2="1">
-        <Stop offset="0" stopColor={palette.brand300} />
-        <Stop offset="1" stopColor={palette.brand400} />
-      </LinearGradient>
-      <LinearGradient id={`${prefijo}-sombra`} x1="0" y1="0" x2="0" y2="1">
-        <Stop offset="0" stopColor={palette.brand500} />
-        <Stop offset="1" stopColor={palette.brand700} />
-      </LinearGradient>
-      {/* El travesano cruza de la luz a la sombra, como las dos caras que une. */}
-      <LinearGradient id={`${prefijo}-travesano`} x1="0" y1="0" x2="1" y2="0">
-        <Stop offset="0" stopColor={palette.brand400} />
-        <Stop offset="0.5" stopColor={palette.brand500} />
-        <Stop offset="1" stopColor={palette.brand700} />
-      </LinearGradient>
-    </>
-  );
-}
+export { DegradadosLetraA, LETRA_A } from './marca-letra';
 
 export function AtlasMark({ size = 40 }: { size?: number }) {
   return (

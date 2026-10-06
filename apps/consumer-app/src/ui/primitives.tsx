@@ -25,6 +25,7 @@ import {
 } from 'react-native';
 import Reanimated, {
   cancelAnimation,
+  Easing,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -35,6 +36,7 @@ import Reanimated, {
 import { color, palette, press, radius, shadow, space, spring, stroke, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { AnimatedPressable, PressSurface } from './motion';
+import { AnilloAtlas, BarraDeCarga } from './cargador-atlas';
 import { webData } from '../web/estilo';
 import { medirToque, useDisposicion } from '../features/bitacora/ganchos';
 
@@ -992,13 +994,65 @@ export function Skeleton({ height = 16, width = '100%', style }: { height?: numb
   }, [pulse, reduced]);
 
   const animated = useAnimatedStyle(() => ({ opacity: pulse.value }));
-  return <Reanimated.View accessibilityElementsHidden importantForAccessibility="no" style={[styles.skeleton, { height, width }, style, animated]} />;
+
+  /*
+    El brillo que recorre el esqueleto: una franja de luz en diagonal que cruza de izquierda a derecha.
+    Es la señal de «esto está llegando» que un bloque que sólo parpadea no da. Sólo `translateX`, en el
+    hilo de UI; con movimiento reducido no hay franja.
+  */
+  const [ancho, setAncho] = React.useState(0);
+  const brillo = useSharedValue(0);
+  React.useEffect(() => {
+    if (reduced || ancho === 0) return;
+    brillo.value = 0;
+    brillo.value = withRepeat(withTiming(1, { duration: 1300, easing: Easing.inOut(Easing.quad) }), -1, false);
+    return () => cancelAnimation(brillo);
+  }, [brillo, reduced, ancho]);
+  const franja = useAnimatedStyle(() => ({ transform: [{ translateX: -ancho * 0.6 + brillo.value * ancho * 1.6 }, { skewX: '-18deg' }] }));
+
+  return (
+    <Reanimated.View
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+      onLayout={(e) => setAncho(e.nativeEvent.layout.width)}
+      style={[styles.skeleton, { height, width }, style, animated]}
+    >
+      {!reduced && ancho > 0 ? (
+        <Reanimated.View style={[styles.skeletonBrillo, { width: ancho * 0.6 }, franja]} pointerEvents="none">
+          <LinearGradient
+            colors={[`${palette.brand300}00`, `${palette.brand300}40`, `${palette.white}2E`, `${palette.brand300}00`]}
+            locations={[0, 0.45, 0.55, 1]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </Reanimated.View>
+      ) : null}
+    </Reanimated.View>
+  );
 }
 
-/** Varias filas de esqueleto: la forma de una lista que todavía no llegó. */
-export function SkeletonLista({ filas = 3, alto = 56 }: { filas?: number; alto?: number }) {
+/**
+ * Varias filas de esqueleto: la forma de una lista que todavía no llegó.
+ *
+ * Arriba va la marca girando y la barra de carga: el esqueleto dice QUÉ forma tendrá lo que viene; la
+ * barra dice que está viniendo. Sin ella, una lista lenta se leía como una pantalla rota.
+ */
+export function SkeletonLista({
+  filas = 3,
+  alto = 56,
+  texto = 'Cargando…',
+  pantalla = false,
+}: {
+  filas?: number;
+  alto?: number;
+  texto?: string;
+  /** Carga de una pantalla entera: la marca grande, centrada. Dentro de una tarjeta, la versión en fila. */
+  pantalla?: boolean;
+}) {
   return (
     <View style={{ gap: space.sm }}>
+      <Cargando texto={texto} bloque={pantalla} />
       {Array.from({ length: filas }, (_, indice) => (
         <Skeleton key={indice} height={alto} />
       ))}
@@ -1023,12 +1077,30 @@ export function Cargando({ texto, bloque = false }: { texto?: string; bloque?: b
       accessibilityState={{ busy: true }}
       style={bloque ? styles.cargandoBloque : styles.cargandoFila}
     >
-      <ActivityIndicator size={bloque ? 'large' : 'small'} color={color.action.primary} />
-      {texto ? (
-        <AtlasText variant="body" tone="secondary" align={bloque ? 'center' : undefined}>
-          {texto}
-        </AtlasText>
-      ) : null}
+      {/* La «A» de Atlas con su anillo de luz y la barra de carga: ver `ui/cargador-atlas.tsx`. */}
+      {bloque ? (
+        <>
+          <AnilloAtlas tamano="bloque" />
+          {texto ? (
+            <AtlasText variant="body" tone="secondary" align="center">
+              {texto}
+            </AtlasText>
+          ) : null}
+          <BarraDeCarga ancho={200} />
+        </>
+      ) : texto ? (
+        <>
+          <AnilloAtlas tamano="fila" />
+          <View style={styles.cargandoTexto}>
+            <AtlasText variant="body" tone="secondary">
+              {texto}
+            </AtlasText>
+            <BarraDeCarga />
+          </View>
+        </>
+      ) : (
+        <AnilloAtlas tamano="compacto" />
+      )}
     </View>
   );
 }
@@ -1327,7 +1399,9 @@ const styles = StyleSheet.create({
 
   cargandoFila: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   cargandoBloque: { alignItems: 'center', justifyContent: 'center', gap: space.md, paddingVertical: space.xl },
-  skeleton: { borderRadius: radius.md, backgroundColor: color.surface.raisedStrong },
+  skeleton: { borderRadius: radius.md, backgroundColor: color.surface.raisedStrong, overflow: 'hidden' },
+  skeletonBrillo: { position: 'absolute', top: 0, bottom: 0, left: 0 },
+  cargandoTexto: { flex: 1, gap: space.xs },
 
   stateBox: {
     borderRadius: radius.xxl,
