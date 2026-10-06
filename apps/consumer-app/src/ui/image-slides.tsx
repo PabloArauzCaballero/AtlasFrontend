@@ -161,7 +161,7 @@ export function ImageSlides({
               ) : (
                 <View style={styles.vacia}>
                   <AtlasText variant="caption" tone="tertiary">
-                    Todavia no tomaste esta foto
+                    Todavía no tomaste esta foto
                   </AtlasText>
                 </View>
               )}
@@ -228,10 +228,26 @@ export function ImageSlides({
       */}
       <View style={styles.pasos}>
         {indice > 0 ? (
-          <Button label="Anterior" variant="ghost" haptic="none" onPress={() => irA(indice - 1)} />
+          <Button
+            label="Anterior"
+            icon="atras"
+            variant="secondary"
+            haptic="none"
+            onPress={() => irA(indice - 1)}
+            accessibilityLabel={`Ver la captura anterior, ${indice} de ${slides.length}`}
+            style={styles.paso}
+          />
         ) : null}
         {indice < slides.length - 1 ? (
-          <Button label="Siguiente" variant="ghost" haptic="none" onPress={() => irA(indice + 1)} />
+          <Button
+            label="Siguiente"
+            icon="adelante"
+            variant="secondary"
+            haptic="none"
+            onPress={() => irA(indice + 1)}
+            accessibilityLabel={`Ver la captura siguiente, ${indice + 2} de ${slides.length}`}
+            style={styles.paso}
+          />
         ) : null}
       </View>
     </View>
@@ -263,5 +279,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.border.strong,
   },
   puntoActivo: { width: 18, backgroundColor: color.action.primary },
-  pasos: { flexDirection: 'row', justifyContent: 'space-between', gap: space.sm },
+  // Botones de verdad, a lo ancho: el «Siguiente» fantasma y pegado a la izquierda se leía como un texto suelto.
+  pasos: { flexDirection: 'row', gap: space.sm },
+  paso: { flex: 1 },
 });

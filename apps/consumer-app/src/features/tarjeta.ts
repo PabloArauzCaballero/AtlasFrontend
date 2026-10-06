@@ -5,7 +5,7 @@
  * nivel Atlas, o la puede dar el personal. NUNCA cambia el límite de crédito, y las frases lo dicen para que nadie
  * espere dinero de un color.
  */
-import type { CardTier, CardView, Progress } from '../api/endpoints/credit-line';
+import type { CardTier, CardView } from '../api/endpoints/credit-line';
 
 export const AVISO_SIN_LIMITE = 'La tarjeta es tu estatus en Atlas: no cambia tu límite de crédito.';
 
@@ -24,11 +24,14 @@ export function fraseDeOrigen(card: CardView, nivelLabel: string): string {
 }
 
 /** La siguiente tarjeta del escalón y qué nivel la desbloquea; null en la última. */
-export function siguienteTarjeta(card: CardView, ladder: Progress['ladder']): { tier: CardTier; nivelLabel: string } | null {
+export function siguienteTarjeta(
+  card: CardView,
+  ladder: readonly { code: string; label: string; from: number }[],
+): { tier: CardTier; nivelLabel: string; desde: number | null } | null {
   const siguiente = card.catalog.find((t) => t.displayOrder > card.displayOrder);
   if (!siguiente) return null;
   const nivel = ladder.find((n) => n.code === siguiente.levelCode);
-  return { tier: siguiente, nivelLabel: nivel?.label ?? siguiente.levelCode };
+  return { tier: siguiente, nivelLabel: nivel?.label ?? siguiente.levelCode, desde: nivel?.from ?? null };
 }
 
 /** Una tarjeta del escalón está desbloqueada si su orden no pasa de la actual. */

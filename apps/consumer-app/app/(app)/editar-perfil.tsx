@@ -24,7 +24,7 @@ import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { color, radius, space } from '../../src/theme/tokens';
 import { CheckRow } from '../../src/ui/fields';
-import { type OpcionSelect, SelectField } from '../../src/ui/form-controls';
+import { IconField, type OpcionSelect, SelectField } from '../../src/ui/form-controls';
 import { Icon } from '../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Appear } from '../../src/ui/motion';
@@ -53,6 +53,8 @@ export default function EditProfile() {
 
   const [language, setLanguage] = useState<Language>('es');
   const [gender, setGender] = useState<Gender | null>(null);
+  // El «¿cuál?» de «Otro»: «Otro» a secas no describe a nadie.
+  const [genderOther, setGenderOther] = useState('');
   const [marketing, setMarketing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -66,8 +68,10 @@ export default function EditProfile() {
     if (current === 'es' || current === 'en') setLanguage(current);
   }, [me?.profile.preferredLanguage]);
 
+  const faltaCualGenero = gender === 'other' && genderOther.trim().length < 2;
+
   const save = async () => {
-    if (!session.customerId || busy) return;
+    if (!session.customerId || busy || faltaCualGenero) return;
     setBusy(true);
     setError(null);
     try {
@@ -75,6 +79,7 @@ export default function EditProfile() {
         preferredLanguage: language,
         marketingOptIn: marketing,
         ...(gender ? { genderDeclared: gender } : {}),
+        ...(gender === 'other' ? { genderSelfDescribed: genderOther.trim() } : {}),
       });
       await session.refresh();
       Alert.alert('Datos guardados', 'Tus preferencias quedaron actualizadas.');
@@ -90,7 +95,13 @@ export default function EditProfile() {
   const fullName = [me?.profile.firstName, me?.profile.lastName].filter(Boolean).join(' ') || 'Sin registrar';
 
   return (
-    <Screen footer={<Button label="Guardar cambios" onPress={save} loading={busy} />}>
+    <Screen footer={<Button
+          label="Guardar cambios"
+          onPress={save}
+          loading={busy}
+          disabled={faltaCualGenero}
+          blockedReason={faltaCualGenero ? 'Falta escribir cuál es tu género.' : null}
+        />}>
       <ScreenHeader title="Editar mis datos" subtitle="Cambia lo que quieras de tus preferencias." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
@@ -127,9 +138,24 @@ export default function EditProfile() {
             label="Género"
             opciones={GENDERS}
             value={gender}
-            onChange={setGender}
+            onChange={(next) => {
+              setGender(next);
+              if (next !== 'other') setGenderOther('');
+            }}
             ayuda="Lo declaras tú y no se toma del carnet. Sirve para dirigirnos a ti como corresponde y para informes de inclusión agregados y sin nombres; no cambia tu línea de crédito."
           />
+          {gender === 'other' ? (
+            <IconField
+              icon="perfil"
+              label="¿Cuál?"
+              value={genderOther}
+              onChangeText={(v) => setGenderOther(v.slice(0, 60))}
+              hint="Escríbelo con tus palabras."
+              ayuda="Elegiste «Otro»: escribe cómo te describes. Se guarda tal cual, no lo ve nadie fuera del equipo y no cambia tu línea de crédito."
+              required
+              error={genderOther.length > 0 && faltaCualGenero ? 'Escribe al menos dos letras.' : null}
+            />
+          ) : null}
 
           <CheckRow
             label="Quiero recibir novedades y promociones"

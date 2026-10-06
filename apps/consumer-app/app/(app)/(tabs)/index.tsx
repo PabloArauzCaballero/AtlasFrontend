@@ -162,7 +162,7 @@ export default function Home() {
         <CreditoHabilitadoCard
           creditLine={creditLine}
           ready={book.ready}
-          error={book.error}
+          error={book.creditLineError ?? book.error}
           onRetry={() => void book.reload()}
           textoSinCalcular={t.texto('inicio.calculando')}
         >
