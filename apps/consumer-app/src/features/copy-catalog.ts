@@ -100,7 +100,7 @@ export const COPY = {
   'cuota.vencida': {
     pantalla: 'Cuota',
     donde: 'En el detalle de una cuota vencida',
-    texto: 'Mientras esta cuota siga vencida, tu puntaje baja. Págala cuanto antes para que deje de afectarte.',
+    texto: 'Mientras esta cuota siga vencida, tu calificación baja. Págala cuanto antes para que deje de afectarte.',
   },
   'puntaje.tramo_alto': {
     pantalla: 'Perfil',
@@ -155,7 +155,7 @@ export const COPY = {
   'puntaje.mora': {
     pantalla: 'Perfil',
     donde: 'Encabezado del aviso de mora bajo el puntaje',
-    texto: 'La mora te está costando puntos',
+    texto: 'La mora está bajando tu calificación',
   },
 } as const satisfies Record<string, CopyEntry>;
 

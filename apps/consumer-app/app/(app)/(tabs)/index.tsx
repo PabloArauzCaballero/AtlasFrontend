@@ -192,7 +192,7 @@ export default function Home() {
             {formatAmount(spending.totals.overdue, currency)}
           </AtlasText>
           <AtlasText variant="body" tone="secondary">
-            Mientras tengas pagos vencidos, tu puntaje baja. Regularízalos cuanto antes; la política de mora
+            Mientras tengas pagos vencidos, tu calificación baja. Regularízalos cuanto antes; la política de mora
             explica cómo se calcula.
           </AtlasText>
           <Button label="Ver qué debo pagar" onPress={() => router.push('/(app)/(tabs)/pagos')} />
