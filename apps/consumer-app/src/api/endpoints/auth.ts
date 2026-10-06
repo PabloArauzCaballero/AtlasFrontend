@@ -36,8 +36,9 @@ export const requestPasswordReset = (email: string) =>
     body: { actorType: 'customer', identifier: email },
   });
 
+/** `newPassword` es, para el cliente, su PIN nuevo de 4 digitos: el servidor no acepta otra cosa. */
 export const confirmPasswordReset = (input: { email: string; code: string; newPassword: string }) =>
-  request<{ updated: boolean }>('/auth/password-reset/confirm', {
+  request<{ passwordChanged: boolean }>('/auth/password-reset/confirm', {
     method: 'POST',
     anonymous: true,
     body: { actorType: 'customer', identifier: input.email, code: input.code, newPassword: input.newPassword },

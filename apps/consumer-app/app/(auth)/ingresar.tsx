@@ -142,7 +142,7 @@ export default function SignIn() {
       />
 
       <Gap size="xs" />
-      <Button label="Olvidé mi contraseña" variant="ghost" onPress={() => router.push('/(auth)/recuperar')} />
+      <Button label="Olvidé mi PIN" variant="ghost" onPress={() => router.push('/(auth)/recuperar')} />
 
       <Gap size="base" />
       <AtlasText variant="caption" tone="tertiary">
