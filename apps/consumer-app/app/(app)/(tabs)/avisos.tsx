@@ -198,7 +198,9 @@ export default function Avisos() {
         subtitle={unread > 0 ? `Tienes ${unread} sin leer.` : 'Todo al día.'}
         action={
           <HeaderAction
-            icon="filtro"
+            // El engranaje y no el embudo: este botón abre las PREFERENCIAS, no filtra la lista. Con el embudo la
+            // gente esperaba filtrar sus avisos y acababa en otra pantalla.
+            icon="ajustes"
             label="Preferencias de avisos"
             onPress={() => router.push('/(app)/preferencias-avisos')}
           />
