@@ -54,6 +54,7 @@ import * as contentApi from '../../src/api/endpoints/app-content';
 import { AtlasText, Button } from '../../src/ui/primitives';
 import { bitacora } from '../../src/features/bitacora';
 import { PASOS_POR_DEFECTO, pasosDesdeContenido, type Paso } from '../../src/features/bienvenida-pasos';
+import { marcarPresentacionVista } from '../../src/session/primera-vez';
 import { Ilustracion } from '../../src/ui/ilustraciones-bienvenida';
 
 /**
@@ -265,6 +266,7 @@ export default function Welcome() {
             onPress={() => {
               // AQUI arranca el cronometro del alta: en el primer toque, antes de que exista cuenta.
               void bitacora.arrancar('crear_cuenta');
+              void marcarPresentacionVista();
               cortar(() => router.push('/(onboarding)/registro'));
             }}
           />
@@ -274,7 +276,10 @@ export default function Welcome() {
         <Button
           label="Ya tengo cuenta"
           variant="ghost"
-          onPress={() => cortar(() => router.push('/(auth)/ingresar'))}
+          onPress={() => {
+            void marcarPresentacionVista();
+            cortar(() => router.push('/(auth)/ingresar'));
+          }}
         />
       </View>
     </View>

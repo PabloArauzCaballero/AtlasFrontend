@@ -8,7 +8,6 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
-import { firstBlocker } from '../../src/ui/blocked';
 import { StyleSheet } from 'react-native';
 import { IconField } from '../../src/ui/form-controls';
 import { PIN_LENGTH, PinField } from '../../src/ui/pin-field';
@@ -25,13 +24,16 @@ export default function SignIn() {
   const [pin, setPin] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<unknown>(null);
-
-  const canSubmit = identifier.trim().length >= 3 && pin.length === PIN_LENGTH && !submitting;
-
-  const blockedReason = firstBlocker([
-    [identifier.trim().length >= 3, 'Escribe el correo o teléfono con el que te registraste.'],
-    [pin.length === PIN_LENGTH, pin.length === 0 ? 'Falta tu PIN.' : `Faltan ${PIN_LENGTH - pin.length} dígitos del PIN.`],
-  ]);
+  /*
+    «Ingresar» va SIEMPRE en verde (pedido de Pablo, 2026-10-06). Antes arrancaba apagado, en gris, hasta
+    tener los dos datos, y se leía como que no se podía entrar. Ahora lo que falta se dice al pulsar, en el
+    campo que falta y no en un texto suelto debajo del botón.
+  */
+  const [intentado, setIntentado] = useState(false);
+  const faltaIdentificador = identifier.trim().length < 3;
+  const errorIdentificador = intentado && faltaIdentificador ? 'Escribe el correo o teléfono con el que te registraste.' : null;
+  const errorPinFaltante =
+    intentado && pin.length !== PIN_LENGTH ? (pin.length === 0 ? 'Falta tu PIN.' : `Faltan ${PIN_LENGTH - pin.length} dígitos del PIN.`) : null;
 
   /*
     `entrante` es el PIN recién completado: `onComplete` dispara en la misma pasada que `setPin`, y el
@@ -39,7 +41,11 @@ export default function SignIn() {
   */
   const submit = async (entrante?: string) => {
     const clave = entrante ?? pin;
-    if (submitting || identifier.trim().length < 3 || clave.length !== PIN_LENGTH) return;
+    if (submitting) return;
+    if (identifier.trim().length < 3 || clave.length !== PIN_LENGTH) {
+      setIntentado(true);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -76,8 +82,8 @@ export default function SignIn() {
     <Screen
       footer={
         <>
-          <Button label="Ingresar" icon="adelante" onPress={() => submit()} loading={submitting} disabled={!canSubmit} blockedReason={blockedReason} />
-          <Button label="Crear una cuenta" icon="perfil" variant="ghost" onPress={() => router.replace('/(onboarding)/registro')} />
+          <Button label="Ingresar" icon="adelante" onPress={() => submit()} loading={submitting} testID="ingresar-enviar" />
+          <Button label="Crear una cuenta" icon="perfil" variant="secondary" onPress={() => router.replace('/(onboarding)/registro')} />
         </>
       }
     >
@@ -124,6 +130,7 @@ export default function SignIn() {
         textContentType="username"
         autoComplete="username"
         returnKeyType="next"
+        error={errorIdentificador}
         ayuda="El correo o el número de celular con el que creaste tu cuenta. El teléfono va sin el código de país. Ej.: valeria.mendez@gmail.com o 76500123."
         required
       />
@@ -140,7 +147,7 @@ export default function SignIn() {
         autoComplete="current-password"
         textContentType="password"
         onComplete={(completo) => void submit(completo)}
-        error={credentialsRejected ? 'PIN incorrecto' : null}
+        error={credentialsRejected ? 'PIN incorrecto' : errorPinFaltante}
         ayuda="Los cuatro dígitos que elegiste al registrarte. Tras cinco intentos fallidos la cuenta se bloquea un rato por seguridad; si no lo recuerdas, usa «Recuperar acceso» antes de agotarlos."
       />
 

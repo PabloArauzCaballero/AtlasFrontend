@@ -13,19 +13,33 @@
  * puede decir que no. El servidor cierra la seccion con la decision, sea cual sea.
  */
 import { Redirect } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { presentacionVista } from '../src/session/primera-vez';
 import { areaFor, useSession } from '../src/session/session';
 import { color } from '../src/theme/tokens';
 
 export default function IndexGate() {
   const session = useSession();
+  // `null` mientras se lee: decidir antes enseñaría la bienvenida un instante a quien ya la vio.
+  const [vista, setVista] = useState<boolean | null>(null);
+  useEffect(() => {
+    let vivo = true;
+    void presentacionVista().then((valor) => {
+      if (vivo) setVista(valor);
+    });
+    return () => {
+      vivo = false;
+    };
+  }, []);
 
-  if (session.status === 'restoring') {
+  if (session.status === 'restoring' || vista === null) {
     return <View style={{ flex: 1, backgroundColor: color.surface.primary }} />;
   }
 
   const area = areaFor(session);
-  if (area === 'auth') return <Redirect href="/(public)/bienvenida" />;
+  // La primera vez, qué es Atlas; después, directo a Ingresar.
+  if (area === 'auth') return <Redirect href={vista ? '/(auth)/ingresar' : '/(public)/bienvenida'} />;
   if (area === 'onboarding') return <Redirect href="/(onboarding)/progreso" />;
   return <Redirect href="/(app)/(tabs)" />;
 }

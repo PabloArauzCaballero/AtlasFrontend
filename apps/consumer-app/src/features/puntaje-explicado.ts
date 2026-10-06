@@ -23,8 +23,8 @@ export function formatoPuntos(valor: number): string {
  */
 export function fraseDelResultado(progress: Pick<Progress, 'score' | 'rawScore' | 'caps' | 'tier'>): string {
   const { score, rawScore, caps, tier } = progress;
-  if (caps.length === 0 || rawScore === score) return `Suma ${score} puntos: estás en el nivel «${tier.label}».`;
-  return `Tus partes suman ${rawScore}, pero hay un tope: tu nivel cuenta ${score} y estás en «${tier.label}».`;
+  if (caps.length === 0 || rawScore === score) return `Tu calificación es ${score} de 100: estás en el nivel «${tier.label}».`;
+  return `Tus partes suman ${rawScore}, pero hay un tope: tu calificación queda en ${score} y estás en «${tier.label}».`;
 }
 
 /** La experiencia en una línea: lo que suma, de dónde sale y qué NO suma. */

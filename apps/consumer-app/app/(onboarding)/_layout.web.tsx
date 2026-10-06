@@ -18,7 +18,7 @@ export default function OnboardingLayout() {
   if (session.status === 'restoring') return null;
 
   const isPublicStep = PUBLIC_STEPS.some((step) => pathname.endsWith(step));
-  if (session.status !== 'authenticated' && !isPublicStep) return <Redirect href="/(public)/bienvenida" />;
+  if (session.status !== 'authenticated' && !isPublicStep) return <Redirect href="/" />;
 
   const nombre = session.me?.profile?.firstName ?? session.profile?.displayName ?? null;
 

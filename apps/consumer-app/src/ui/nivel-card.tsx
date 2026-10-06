@@ -10,6 +10,7 @@
  */
 import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
+import { calificacionDe } from '../features/calificacion';
 import { fraseDeLoQueFalta, ICONO_DE_NIVEL, porcentajeDeBarra } from '../features/nivel';
 import { color, radius, space, stroke } from '../theme/tokens';
 import { Icon } from './icons';
@@ -34,13 +35,13 @@ export function NivelCard({ progress, onPress }: { progress: Progress; onPress?:
           <AtlasText variant="h2">{tier.label}</AtlasText>
         </View>
         <View style={styles.puntos}>
-          <AtlasText variant="amount">{String(score)}</AtlasText>
+          <AtlasText variant="amount">{String(calificacionDe(progress))}</AtlasText>
           <AtlasText variant="caption" tone="secondary">
-            puntos
+            de 100
           </AtlasText>
         </View>
       </View>
-      <ProgressBar value={porcentajeDeBarra(progress)} label={nextTier ? `${score} de ${nextTier.from} puntos` : 'Nivel máximo'} />
+      <ProgressBar value={porcentajeDeBarra(progress)} label={nextTier ? `Calificación ${score}; el siguiente nivel empieza en ${nextTier.from}` : 'Nivel máximo'} />
       <AtlasText variant="caption" tone="secondary">
         {fraseDeLoQueFalta(progress)}
       </AtlasText>
@@ -52,7 +53,7 @@ export function NivelCard({ progress, onPress }: { progress: Progress; onPress?:
     <PressSurface
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Tu nivel Atlas: ${tier.label}, nivel ${tier.index} de ${tier.of}, ${score} puntos. ${fraseDeLoQueFalta(progress)} Toca para ver cómo subir.`}
+      accessibilityLabel={`Tu nivel Atlas: ${tier.label}, nivel ${tier.index} de ${tier.of}, calificación ${calificacionDe(progress)} de 100. ${fraseDeLoQueFalta(progress)} Toca para ver cómo subir.`}
       style={styles.tarjeta}
       testID="nivel-card"
     >

@@ -6,11 +6,12 @@
  * y la escalera. Ahora cada pestaña responde UNA pregunta:
  *
  *  - Resumen  → «¿dónde estoy?»              tarjeta, nivel y experiencia
- *  - Puntaje  → «¿por qué tengo este puntaje?» la cuenta parte por parte y el puntaje 0-1000
+ *  - Puntaje  → dos subpestañas: «Mis puntos» (se ganan pagando) y «Mi calificación» (1-100, con su cuenta)
  *  - Logros   → «¿qué he ganado y qué sigue?» insignias y misiones
  *  - Historia → «¿cómo he cambiado?»          la escalera de niveles y la evolución de la línea
  */
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { CreditLine, Progress } from '../api/endpoints/credit-line';
 import { color, radius, space } from '../theme/tokens';
@@ -20,7 +21,8 @@ import { Gap } from './layout';
 import { ExperienciaCard } from './experiencia-card';
 import { Appear } from './motion';
 import { NivelCard } from './nivel-card';
-import { AtlasText, Button, Card, Divider, EmptyState, SectionHeader } from './primitives';
+import { AtlasText, Button, Card, Chip, ChipBar, Divider, EmptyState, SectionHeader } from './primitives';
+import { CalificacionCard } from './calificacion-card';
 import { PuntajeDesglose } from './puntaje-desglose';
 import { ScoringPanel } from './scoring-panel';
 import { TarjetaSeccion } from './tarjeta-seccion';
@@ -52,15 +54,67 @@ export function PestanaResumen({ progress }: { progress: Progress }) {
   );
 }
 
-/** ¿Por qué tengo este puntaje? La cuenta de esta persona, parte por parte, y el puntaje 0-1000 aparte. */
+type SubPestanaPuntaje = 'puntos' | 'calificacion';
+
+/**
+ * «Puntaje» se parte en dos subpestañas porque son dos números distintos (pedido de Pablo, 2026-10-06):
+ *  - Mis puntos      → los que se GANAN pagando a tiempo, 1 por boliviano. Sólo suben.
+ *  - Mi calificación → de 1 a 100, qué tan buen pagador eres, con su cuenta parte por parte.
+ * El score 0-1000 del motor va dentro de la calificación y con su nombre: no es un «puntaje» más.
+ */
 export function PestanaPuntaje({ progress, creditLine }: { progress: Progress; creditLine: CreditLine | null }) {
+  const [sub, setSub] = useState<SubPestanaPuntaje>('puntos');
+  return (
+    <>
+      <ChipBar>
+        <Chip label="Mis puntos" selected={sub === 'puntos'} onPress={() => setSub('puntos')} accessibilityLabel="Subpestaña Mis puntos" />
+        <Chip
+          label="Mi calificación"
+          selected={sub === 'calificacion'}
+          onPress={() => setSub('calificacion')}
+          accessibilityLabel="Subpestaña Mi calificación"
+        />
+      </ChipBar>
+      <View key={sub} style={styles.subContenido}>
+        {sub === 'puntos' ? <SubPuntos progress={progress} /> : <SubCalificacion progress={progress} creditLine={creditLine} />}
+      </View>
+    </>
+  );
+}
+
+function SubPuntos({ progress }: { progress: Progress }) {
   return (
     <>
       <Appear index={0}>
+        <ExperienciaCard progress={progress} />
+      </Appear>
+      <Appear index={1}>
+        <Card testID="como-se-ganan-puntos">
+          <AtlasText variant="bodyStrong">Cómo se ganan</AtlasText>
+          <AtlasText variant="body" tone="secondary">
+            Cada boliviano que pagas a tiempo suma 1 punto. Comprar no suma, y pagar tarde tampoco: los puntos premian pagar, no
+            endeudarse.
+          </AtlasText>
+          <AtlasText variant="caption" tone="secondary">
+            Tus puntos nunca bajan. Lo que sí cambia según cómo pagas es tu calificación, en la otra subpestaña.
+          </AtlasText>
+        </Card>
+      </Appear>
+    </>
+  );
+}
+
+function SubCalificacion({ progress, creditLine }: { progress: Progress; creditLine: CreditLine | null }) {
+  return (
+    <>
+      <Appear index={0}>
+        <CalificacionCard progress={progress} />
+      </Appear>
+      <Appear index={1}>
         <PuntajeDesglose progress={progress} />
       </Appear>
-      <Appear index={1} style={styles.seccion}>
-        <SectionHeader title="Tu puntaje Atlas de 0 a 1000" detail="El que decide cuánto puedes gastar." />
+      <Appear index={2} style={styles.seccion}>
+        <SectionHeader title="Lo que miró el motor para tu crédito" detail="Un índice de 0 a 1000, aparte de tu calificación." />
         {creditLine ? (
           <Card>
             <ScoringPanel line={creditLine} />
@@ -68,11 +122,8 @@ export function PestanaPuntaje({ progress, creditLine }: { progress: Progress; c
         ) : (
           <Card>
             <AtlasText variant="body" tone="secondary">
-              Es un número aparte de tu nivel: lo calcula el motor de decisión de Atlas con una política de crédito publicada, usando tus datos
-              declarados, tus pagos y, si la subes, la información de tu extracto bancario. Todavía no se calculó tu línea, por eso no aparece.
-            </AtlasText>
-            <AtlasText variant="caption" tone="secondary">
-              Cuando se calcule verás aquí tu puntaje, en qué tramo estás, qué datos pesaron y cómo subirlo.
+              Es un número aparte de tu calificación: lo calcula el motor de decisión de Atlas con una política de crédito publicada, usando tus
+              datos declarados, tus pagos y, si la subes, la información de tu extracto bancario. Todavía no se calculó tu línea, por eso no aparece.
             </AtlasText>
           </Card>
         )}
@@ -122,7 +173,7 @@ export function PestanaLogros({ progress }: { progress: Progress }) {
           ))}
         </Card>
         <AtlasText variant="caption" tone="tertiary" style={styles.nota}>
-          Pedir más crédito no suma puntos: tu nivel sube cuando cumples, no cuando te endeudas.
+          Pedir más crédito no sube tu calificación: tu nivel sube cuando cumples, no cuando te endeudas.
         </AtlasText>
       </Appear>
     </>
@@ -140,7 +191,7 @@ export function PestanaHistoria({ progress }: { progress: Progress }) {
           {[...progress.ladder].reverse().map((escalon, indice) => (
             <View key={escalon.code}>
               {indice > 0 ? <Divider inset /> : null}
-              <View style={styles.fila} accessibilityLabel={`${escalon.label}, desde ${escalon.from} puntos. ${escalon.reached ? 'Alcanzado' : 'Por alcanzar'}`}>
+              <View style={styles.fila} accessibilityLabel={`${escalon.label}, desde calificación ${escalon.from}. ${escalon.reached ? 'Alcanzado' : 'Por alcanzar'}`}>
                 <View style={[styles.marca, escalon.reached && styles.marcaHecha]}>
                   {escalon.reached ? <Icon name="check" size={16} tint={color.text.onBrand} /> : null}
                 </View>
@@ -218,6 +269,7 @@ function EvolucionDeLinea({ history }: { history: Progress['history'] }) {
 const styles = StyleSheet.create({
   // El encabezado de sección y su tarjeta van en el mismo bloque: sin este `gap` la tarjeta pisaba el apunte del encabezado.
   seccion: { gap: space.sm },
+  subContenido: { gap: space.base },
   rejilla: { flexDirection: 'row', flexWrap: 'wrap' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },
   texto: { flex: 1, gap: 2 },

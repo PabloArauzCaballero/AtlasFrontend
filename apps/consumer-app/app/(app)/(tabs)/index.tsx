@@ -17,9 +17,7 @@ import { Gap, Screen } from '../../../src/ui/layout';
 import {
   AtlasText,
   Badge,
-  BrandPanel,
   Button,
-  Cargando,
   Card,
   CardHeader,
   Divider,
@@ -27,7 +25,6 @@ import {
   ErrorState,
   IconChip,
   ListRow,
-  Overline,
   ProgressBar,
   SectionHeader,
   Skeleton,
@@ -41,6 +38,8 @@ import { downloadSpendingReport } from '../../../src/features/spending-report';
 import { categoryLook, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useProgress } from '../../../src/features/use-progress';
+import { CalificacionCard } from '../../../src/ui/calificacion-card';
+import { CreditoHabilitadoCard } from '../../../src/ui/credito-habilitado-card';
 import { ExperienciaCard } from '../../../src/ui/experiencia-card';
 import { NivelCard } from '../../../src/ui/nivel-card';
 import { PuntajeDesglose } from '../../../src/ui/puntaje-desglose';
@@ -156,67 +155,21 @@ export default function Home() {
       <SurfaceContent entries={avisosDeInicio} />
 
       <TourTarget id={TOUR_INICIO_TARGETS.linea}>
-        <BrandPanel>
-          <Overline>Disponible para comprar</Overline>
-          {/*
-            El limite sale del MOTOR, no de una constante.
-
-            Hasta ahora esta cifra era `DEFAULT_LIMIT = minor(500_000)` escrita en la app: Bs 5.000
-            para todo el mundo, decidida por nadie. Ahora la calcula la politica de suscripcion con
-            el expediente real de cada persona. Mientras el motor no la haya calculado nunca, se
-            dice —no se rellena con el numero viejo, que es lo que escondia el problema.
-          */}
-          {creditLine ? (
-            <>
-              {/*
-                La cifra mas grande de la app, y por eso el unico `amountHero`. Es la respuesta a la
-                pregunta con la que se abre la app.
-              */}
-              <AtlasText variant="amountHero">{formatAmount(creditLine.available, creditLine.currencyCode)}</AtlasText>
-              <Divider />
-              <StatRow>
-                <Stat label="Límite aprobado" value={formatAmount(creditLine.approvedLimit, creditLine.currencyCode)} />
-                <Stat
-                  label="Por pagar"
-                  value={formatAmount(creditLine.used, creditLine.currencyCode)}
-                  tone={creditLine.used > 0 ? 'primary' : 'tertiary'}
-                />
-              </StatRow>
-              {creditLine.maxAffordableInstallment !== null ? (
-                <AtlasText variant="caption" tone="secondary">
-                  Calculado sobre un ingreso disponible de{' '}
-                  {formatAmount(creditLine.disposableIncome ?? 0, creditLine.currencyCode)} al mes. Tu cuota máxima sostenible es{' '}
-                  {formatAmount(creditLine.maxAffordableInstallment, creditLine.currencyCode)}.
-                </AtlasText>
-              ) : null}
-            </>
-          ) : !book.ready ? (
-            /*
-              Todavía NO sabemos si hay línea: la petición sigue en el aire. Antes caía en la rama de
-              abajo y se leía «—» y «Todavía estamos calculando tu línea…» durante la carga, el mismo
-              texto que cuando el motor de verdad no la ha calculado: una espera pintada como un estado.
-            */
-            <>
-              <Skeleton height={40} width="62%" />
-              <Cargando texto="Consultando tu línea…" />
-            </>
-          ) : book.error ? (
-            <ErrorState title="No pudimos cargar tu línea" detail={book.error} onRetry={() => void book.reload()} />
-          ) : (
-            <>
-              <AtlasText variant="amountHero" tone="tertiary">
-                —
-              </AtlasText>
-              <AtlasText variant="caption" tone="secondary">
-                {t.texto('inicio.calculando')}
-              </AtlasText>
-            </>
-          )}
-
+        {/*
+          Cuánto crédito hay habilitado, en su propia tarjeta (pedido de Pablo, 2026-10-06). La cifra sale del
+          MOTOR, no de una constante: era `DEFAULT_LIMIT = minor(500_000)`, Bs 5.000 para todo el mundo.
+        */}
+        <CreditoHabilitadoCard
+          creditLine={creditLine}
+          ready={book.ready}
+          error={book.error}
+          onRetry={() => void book.reload()}
+          textoSinCalcular={t.texto('inicio.calculando')}
+        >
           <TourTarget id={TOUR_INICIO_TARGETS.escanear}>
             <Button label="Escanear QR del comercio" onPress={() => router.push('/(app)/(tabs)/escanear')} />
           </TourTarget>
-        </BrandPanel>
+        </CreditoHabilitadoCard>
       </TourTarget>
 
       {/*
@@ -259,18 +212,19 @@ export default function Home() {
       ) : null}
 
       {/*
-        El orden de la portada, de arriba abajo: cuánto crédito hay habilitado, cuántos puntos XP se han ganado
-        pagando a tiempo, y la calificación con su cuenta parte por parte. Las tres salen de la base de datos y
+        El orden de la portada, de arriba abajo: cuánto crédito hay habilitado, el Puntaje (puntos ganados
+        pagando a tiempo), la Calificación de 1 a 100, el nivel y la cuenta de la calificación parte por parte. Las tres salen de la base de datos y
         no del motor (salvo la cifra de la línea), así que se ven aunque la línea aún no esté calculada.
       */}
       {/* Tres hijos directos de la pantalla, no un fragmento: así cada tarjeta recibe el mismo aire que las demás. */}
       {nivel.fase === 'lista' ? (
         <ExperienciaCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} />
       ) : nivel.fase === 'fallo' ? (
-        <ErrorState title="No pudimos cargar tus puntos y tu calificación" detail="Revisa tu conexión y vuelve a intentar." onRetry={() => void nivel.recargar()} />
+        <ErrorState title="No pudimos cargar tu puntaje y tu calificación" detail="Revisa tu conexión y vuelve a intentar." onRetry={() => void nivel.recargar()} />
       ) : (
         <SkeletonLista filas={2} alto={96} />
       )}
+      {nivel.fase === 'lista' ? <CalificacionCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} /> : null}
       {nivel.fase === 'lista' ? <NivelCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} /> : null}
       {nivel.fase === 'lista' ? (
         <PuntajeDesglose progress={nivel.progress} titulo="Tu calificación, parte por parte" onVerMas={() => router.push('/(app)/progreso')} />

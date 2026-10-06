@@ -109,19 +109,21 @@ describe("Inicio · el orden de la portada", () => {
     libro();
   });
 
-  it("primero el crédito habilitado, después los puntos XP y después la calificación desglosada", async () => {
+  it("primero el crédito habilitado, después el puntaje, después la calificación 1-100 y su desglose", async () => {
     await montar();
-    const [credito, puntos, nivel, desglose, pagos] = posiciones([
-      "Disponible para comprar",
-      "PUNTOS XP",
+    const [credito, puntos, calificacion, nivel, desglose, pagos] = posiciones([
+      "Crédito habilitado",
+      "TU PUNTAJE",
+      "Tu calificación",
       "NIVEL ",
       "Tu calificación, parte por parte",
       "Tus pagos",
     ]);
-    for (const posicion of [credito, puntos, nivel, desglose, pagos])
+    for (const posicion of [credito, puntos, calificacion, nivel, desglose, pagos])
       expect(posicion).toBeGreaterThan(-1);
     expect(credito).toBeLessThan(puntos as number);
-    expect(puntos).toBeLessThan(nivel as number);
+    expect(puntos).toBeLessThan(calificacion as number);
+    expect(calificacion).toBeLessThan(nivel as number);
     expect(nivel).toBeLessThan(desglose as number);
     expect(desglose).toBeLessThan(pagos as number);
   });
@@ -143,9 +145,9 @@ describe("Inicio · el orden de la portada", () => {
     });
     await montar();
     const [credito, mora, puntos] = posiciones([
-      "Disponible para comprar",
+      "Crédito habilitado",
       "Tienes pagos que regularizar",
-      "PUNTOS XP",
+      "TU PUNTAJE",
     ]);
     expect(credito).toBeGreaterThan(-1);
     expect(credito).toBeLessThan(mora as number);
@@ -164,7 +166,7 @@ describe("Inicio · el orden de la portada", () => {
   it("sin línea calculada todavía, los puntos y la calificación se ven igual: no dependen del motor", async () => {
     libro({ creditLine: null });
     await montar();
-    expect(screen.getByText("Disponible para comprar")).toBeTruthy();
+    expect(screen.getByText("Crédito habilitado")).toBeTruthy();
     expect(screen.getByTestId("experiencia-card")).toBeTruthy();
     expect(screen.getByTestId("por-que-puntaje")).toBeTruthy();
   });
@@ -173,10 +175,50 @@ describe("Inicio · el orden de la portada", () => {
     mockNivel.fase = "fallo";
     mockNivel.progress = null;
     await montar();
-    expect(screen.getByText("Disponible para comprar")).toBeTruthy();
+    expect(screen.getByText("Crédito habilitado")).toBeTruthy();
     expect(
-      screen.getByText("No pudimos cargar tus puntos y tu calificación"),
+      screen.getByText("No pudimos cargar tu puntaje y tu calificación"),
     ).toBeTruthy();
     expect(screen.queryByTestId("experiencia-card")).toBeNull();
+  });
+});
+
+describe("Inicio · tarjeta Crédito habilitado", () => {
+  beforeEach(() => {
+    mockNivel.fase = "lista";
+    mockNivel.progress = PROGRESO_DE_PRUEBA;
+  });
+
+  it("dice que la cifra la decidió el motor cuando hay una ejecución que lo respalda", async () => {
+    libro({ creditLine: { ...LINEA, decision: { executionId: "exe-1", calculatedAt: "2026-10-01T12:00:00Z" } } });
+    await montar();
+    expect(screen.getByTestId("credito-procedencia")).toBeTruthy();
+    expect(screen.getByText(/Lo decidió el motor de decisión de Atlas/)).toBeTruthy();
+  });
+
+  it("sin ejecución del motor no afirma la procedencia", async () => {
+    libro({ creditLine: { ...LINEA, decision: { executionId: null, calculatedAt: "2026-10-01T12:00:00Z" } } });
+    await montar();
+    expect(screen.queryByTestId("credito-procedencia")).toBeNull();
+  });
+
+  it("mientras carga no muestra el «todavía calculando»", async () => {
+    libro({ ready: false, creditLine: null });
+    await montar();
+    expect(screen.getByText("Consultando tu crédito…")).toBeTruthy();
+    expect(screen.queryByText("inicio.calculando")).toBeNull();
+  });
+
+  it("si falla, lo dice y deja reintentar", async () => {
+    libro({ creditLine: null, error: "Sin conexión" });
+    await montar();
+    expect(screen.getByText("No pudimos cargar tu crédito")).toBeTruthy();
+  });
+
+  it("sin línea calculada dice que se está calculando, sin inventar una cifra", async () => {
+    libro({ creditLine: null });
+    await montar();
+    expect(screen.getByText("inicio.calculando")).toBeTruthy();
+    expect(screen.getByText("—")).toBeTruthy();
   });
 });

@@ -258,7 +258,7 @@ export type ProgressMission = { code: string; label: string; detail: string; don
 export type Progress = {
   customerId: string;
   hasCreditLine: boolean;
-  /** Puntuación de relación 0-100. No es el puntaje Atlas 0-1000 de la línea. */
+  /** Puntuación de relación 0-100, la base de la Calificación (`rating`). No es el score 0-1000 del motor. */
   score: number;
   tier: { code: TierCode; label: string; index: number; of: number; multiplier: number };
   nextTier: { code: TierCode; label: string; from: number; pointsMissing: number; multiplier: number } | null;
@@ -271,6 +271,13 @@ export type Progress = {
   rawScore: number;
   caps: { code: string; limit: number; detail: string }[];
   experience: Experience;
+  /**
+   * **Calificación** de 1 a 100: qué tan buen pagador es la persona. Ausente con un backend anterior al 2026-10-06:
+   * las pantallas caen a `score` acotado, nunca a 0.
+   */
+  rating?: { value: number; scale: { min: number; max: number } };
+  /** **Puntaje**: los puntos ganados PAGANDO a tiempo (1 por boliviano). Los mismos que `experience.xp`. */
+  points?: { value: number; currentStreak: number; bestStreak: number };
   /** Ausente si el backend todavía no trae las tarjetas: las pantallas lo toleran y no la pintan. */
   card?: CardView;
   missions: ProgressMission[];

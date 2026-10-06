@@ -19,7 +19,7 @@ import { AtlasText, Card } from './primitives';
 
 export function ExperienciaCard({ progress, onPress }: { progress: Progress; onPress?: () => void }) {
   const { xp, currentStreak, bestStreak } = progress.experience;
-  const puntos = `${xp.toLocaleString('es-BO')} XP`;
+  const puntos = `${xp.toLocaleString('es-BO')} puntos`;
   const cuerpo = (
     <>
       <View style={styles.fila}>
@@ -30,7 +30,7 @@ export function ExperienciaCard({ progress, onPress }: { progress: Progress; onP
         </Vivo>
         <View style={styles.texto}>
           <AtlasText variant="overline" tone="secondary">
-            PUNTOS XP POR TUS COMPRAS
+            TU PUNTAJE
           </AtlasText>
           <AtlasText variant="amount">{puntos}</AtlasText>
         </View>
@@ -50,7 +50,7 @@ export function ExperienciaCard({ progress, onPress }: { progress: Progress; onP
     <PressSurface
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`Tus puntos: ${puntos}. Racha de ${currentStreak} pagos a tiempo. ${fraseDeExperiencia(xp)} Toca para ver tus insignias.`}
+      accessibilityLabel={`Tu puntaje: ${puntos}. Racha de ${currentStreak} pagos a tiempo. ${fraseDeExperiencia(xp)} Toca para ver tus insignias.`}
       testID="experiencia-card"
     >
       <Card>{cuerpo}</Card>

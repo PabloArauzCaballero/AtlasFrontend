@@ -208,7 +208,7 @@ export default function Profile() {
           <Skeleton height={10} />
         </Card>
       ) : book.error ? (
-        <ErrorState title="No pudimos cargar tu puntaje" detail={book.error} onRetry={() => void book.reload()} />
+        <ErrorState title="No pudimos cargar tu índice de crédito" detail={book.error} onRetry={() => void book.reload()} />
       ) : (
         /*
           Sin línea calculada y sin error: se DICE. Un hueco sin explicación se lee como un fallo de la app.
@@ -216,9 +216,9 @@ export default function Profile() {
           existe es el nivel de arriba.
         */
         <Card>
-          <CardHeader icon="grafico" title="Tu puntaje Atlas" detail="Todavía no calculamos tu línea de crédito." divider={false} />
+          <CardHeader icon="grafico" title="Tu índice de crédito" detail="Todavía no calculamos tu línea de crédito." divider={false} />
           <AtlasText variant="body" tone="secondary">
-            Tu puntaje (de 0 a 1000) aparece aquí en cuanto se calcule tu línea. Subir tu extracto bancario ayuda a que se calcule y a que sea más alta.
+            Este índice (de 0 a 1000) lo calcula el motor de decisión y aparece aquí en cuanto se calcule tu línea. No es tu puntaje ni tu calificación. Subir tu extracto bancario ayuda a que se calcule y a que sea más alta.
           </AtlasText>
           <Button label="Subir mi extracto bancario" icon="documento" variant="secondary" onPress={() => router.push('/(app)/extracto-bancario')} />
         </Card>
@@ -241,7 +241,7 @@ export default function Profile() {
         <Card>
           <CardHeader
             icon="estrella"
-            title="Tu calificación"
+            title="Tu categoría de riesgo"
             trailing={<Badge dot label={rating.gradeLabel} tone={rating.worstDaysPastDue > 0 ? 'warning' : 'success'} />}
           />
 
@@ -262,7 +262,7 @@ export default function Profile() {
               {rating.position && rating.scaleSize ? (
                 <ProgressBar
                   value={((rating.scaleSize - rating.position + 1) / rating.scaleSize) * 100}
-                  label={'Calificación ' + rating.position + ' de ' + rating.scaleSize}
+                  label={'Categoría ' + rating.position + ' de ' + rating.scaleSize}
                 />
               ) : null}
               <AtlasText variant="caption" tone="tertiary">
