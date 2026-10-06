@@ -49,7 +49,7 @@ export default function Progreso() {
     return (
       <Screen>
         <ScreenHeader title="Tu nivel Atlas" subtitle="Cómo subir y qué te falta." onBack="auto" />
-        <SkeletonLista filas={4} alto={110} />
+        <SkeletonLista filas={4} alto={110} pantalla />
       </Screen>
     );
   }

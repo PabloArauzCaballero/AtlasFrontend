@@ -113,7 +113,7 @@ export default function MisDatos() {
     return (
       <Screen>
         <ScreenHeader title="Mis datos" subtitle="Lo que Atlas sabe de ti." onBack="auto" />
-        <SkeletonLista filas={4} alto={96} />
+        <SkeletonLista filas={4} alto={96} pantalla />
       </Screen>
     );
   }

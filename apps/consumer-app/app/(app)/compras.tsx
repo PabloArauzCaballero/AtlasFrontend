@@ -50,7 +50,7 @@ export default function Compras() {
     return (
       <Screen>
         <ScreenHeader title="Mis compras" subtitle="Todo lo que compraste con Atlas." onBack="auto" />
-        <SkeletonLista filas={5} alto={72} />
+        <SkeletonLista filas={5} alto={72} pantalla />
       </Screen>
     );
   }
