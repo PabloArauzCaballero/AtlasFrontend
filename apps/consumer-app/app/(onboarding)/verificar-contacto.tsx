@@ -128,6 +128,15 @@ export default function VerifyContact() {
         ]}
       />
 
+      {channel === 'email' ? (
+        <Button
+          label="¿Escribiste mal tu correo? Cámbialo"
+          variant="ghost"
+          onPress={() => router.push('/(onboarding)/cambiar-correo')}
+          disabled={busy}
+        />
+      ) : null}
+
       {sent && !deliveryFailed ? (
         <>
           <Card>
