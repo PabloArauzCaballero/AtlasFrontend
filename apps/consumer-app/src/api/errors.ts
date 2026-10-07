@@ -142,17 +142,31 @@ function lockedUntilOf(error: AtlasApiError): string | null {
 
 const MESSAGE_BY_KIND: Record<AtlasErrorKind, string> = {
   network: 'Sin conexión. Revisa tu internet e intenta de nuevo.',
-  timeout: 'La conexión tardó demasiado. Intenta de nuevo.',
-  server: 'Tuvimos un problema de nuestro lado. Intenta en unos minutos.',
+  timeout: 'Sin conexión. La conexión tardó demasiado: revisa tu internet e intenta de nuevo.',
+  server: 'Sin conexión. No pudimos comunicarnos con Atlas: intenta de nuevo en unos segundos.',
   auth: 'Tu sesión expiró. Vuelve a ingresar.',
   permission: 'No tienes permiso para hacer esta acción.',
   not_found: 'No encontramos lo que buscabas.',
   validation: 'Revisa los datos ingresados.',
   conflict: 'Esta operación ya fue registrada.',
   rate_limited: 'Demasiados intentos. Espera un momento antes de reintentar.',
-  unavailable: 'El servicio no está disponible ahora mismo.',
+  unavailable: 'Sin conexión. No pudimos comunicarnos con Atlas: intenta de nuevo en unos segundos.',
   unknown: 'No pudimos completar la operación.',
 };
+
+/**
+ * Que NO se pudo hablar con el servicio: no hay red, vencio el plazo, el servidor fallo (5xx) o
+ * contesto la pasarela y no el API (un redespliegue, un contenedor caido).
+ *
+ * Para la persona todos son lo mismo —«ahora no puedo usar Atlas»— y la misma salida: reintentar. Se
+ * le dice «Sin conexion», que es lo que entiende, y no «Servicio no disponible» o «un problema de
+ * nuestro lado», que la dejaban sin saber si era su internet. Un error de NEGOCIO (PIN incorrecto,
+ * datos invalidos, sesion vencida, cuenta bloqueada) NO entra aqui: ese si dice lo que paso.
+ */
+export function esFalloDeServicio(error: AtlasApiError): boolean {
+  if (MESSAGE_BY_CODE[error.code]) return false;
+  return error.fromGateway || error.kind === 'network' || error.kind === 'timeout' || error.kind === 'unavailable' || error.kind === 'server';
+}
 
 export function describeError(error: unknown): {
   title: string;
@@ -162,12 +176,13 @@ export function describeError(error: unknown): {
   recovery: ErrorRecovery[];
 } {
   if (error instanceof AtlasApiError) {
-    const base = MESSAGE_BY_CODE[error.code] ?? MESSAGE_BY_KIND[error.kind];
+    const sinServicio = esFalloDeServicio(error);
+    const base = sinServicio ? MESSAGE_BY_KIND.network : (MESSAGE_BY_CODE[error.code] ?? MESSAGE_BY_KIND[error.kind]);
     const until = error.code === 'ACCOUNT_LOCKED' ? lockedUntilOf(error) : null;
     return {
-      title: titleFor(error.kind, error.code),
+      title: sinServicio ? 'Sin conexión' : titleFor(error.kind, error.code),
       detail: until ? `${base} Podrás volver a intentarlo a las ${until}.` : base,
-      canRetry: error.kind === 'network' || error.kind === 'timeout' || error.kind === 'server' || error.kind === 'unavailable',
+      canRetry: sinServicio || error.kind === 'network' || error.kind === 'timeout' || error.kind === 'server' || error.kind === 'unavailable',
       reference: error.requestId,
       recovery: RECOVERY_BY_CODE[error.code] ?? [],
     };
