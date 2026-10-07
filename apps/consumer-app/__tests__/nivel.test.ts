@@ -2,7 +2,7 @@ import type { Progress } from '../src/api/endpoints/credit-line';
 import { formatoPuntos, fraseDeLoQueFalta, ICONO_DE_NIVEL, nivelPorPuntos, porcentajeDeBarra } from '../src/features/nivel';
 
 /**
- * El Nivel Atlas se mide en PUNTOS (pagando a tiempo), nunca en la calificación 1-100. Pablo (2026-10-06): salía «24»
+ * El Nivel Atlas se mide en PUNTOS de experiencia (1 por boliviano comprado), nunca en la calificación 1-100. Pablo (2026-10-06): salía «24»
  * cuando el nivel son puntos que se ganan con las compras.
  */
 const conPuntos = (xp: number) =>
@@ -45,7 +45,7 @@ describe('porcentajeDeBarra', () => {
 describe('fraseDeLoQueFalta', () => {
   it('habla en PUNTOS y con separador de miles, nunca en calificación', () => {
     const frase = fraseDeLoQueFalta(nivelPorPuntos(conPuntos(24)));
-    expect(frase).toBe('Te faltan 476 puntos para «En construcción». Los ganas pagando tus compras a tiempo.');
+    expect(frase).toBe('Te faltan 476 puntos para «En construcción». Sumas 1 por cada boliviano que compras.');
     expect(frase).not.toMatch(/calificación|de 100/);
   });
   it('singular con 1 punto', () => expect(fraseDeLoQueFalta(nivelPorPuntos(conPuntos(499)))).toMatch(/^Te falta 1 punto para/));

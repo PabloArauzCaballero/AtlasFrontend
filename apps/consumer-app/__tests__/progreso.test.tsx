@@ -69,28 +69,33 @@ beforeEach(() => {
 });
 
 describe("NivelCard", () => {
-  it("enseña el nivel, los puntos y cuánto falta para el siguiente", async () => {
+  it("junta el nivel, los puntos de experiencia y la racha en una tarjeta corta", async () => {
     await render(envolver(<NivelCard progress={PROGRESO} />));
     expect(screen.getByText("Nuevo")).toBeTruthy();
     expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
-    // En PUNTOS (350 pagados a tiempo), nunca la calificación 24 de 100.
+    // En PUNTOS de experiencia, nunca la calificación 24 de 100.
     expect(screen.getByText("350")).toBeTruthy();
-    expect(screen.getByText("puntos")).toBeTruthy();
+    expect(screen.getByText("puntos XP")).toBeTruthy();
+    expect(screen.getByText("Racha 3")).toBeTruthy();
     expect(screen.queryByText("24")).toBeNull();
     expect(screen.queryByText("de 100")).toBeNull();
-    expect(
-      screen.getByText("Te faltan 150 puntos para «En construcción». Los ganas pagando tus compras a tiempo."),
-    ).toBeTruthy();
+    expect(screen.getByText("Faltan 150 para «En construcción»")).toBeTruthy();
   });
 
-  it("con onPress es un botón accesible que describe el nivel entero", async () => {
-    const onPress = jest.fn();
-    await render(envolver(<NivelCard progress={PROGRESO} onPress={onPress} />));
-    const tarjeta = screen.getByRole("button", {
-      name: /Tu nivel Atlas: Nuevo, nivel 1 de 5, 350 puntos\. Te faltan 150 puntos/,
-    });
-    await fireEvent.press(tarjeta);
-    expect(onPress).toHaveBeenCalledTimes(1);
+  it("«Más info» abre cómo se ganan los puntos: 1 por boliviano comprado, con la escalera de niveles", async () => {
+    await render(envolver(<NivelCard progress={PROGRESO} />));
+    expect(screen.queryByText("Los niveles")).toBeNull();
+    await fireEvent.press(screen.getByTestId("nivel-mas-info"));
+    expect(screen.getByText(/Cada boliviano que compras con Atlas te da 1 punto de experiencia/)).toBeTruthy();
+    expect(screen.getByText("Los niveles")).toBeTruthy();
+    expect(screen.getByText("desde 500")).toBeTruthy();
+  });
+
+  it("con onVerLogros ofrece ir a los logros", async () => {
+    const onVerLogros = jest.fn();
+    await render(envolver(<NivelCard progress={PROGRESO} onVerLogros={onVerLogros} />));
+    await fireEvent.press(screen.getByTestId("nivel-logros"));
+    expect(onVerLogros).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -231,48 +236,19 @@ describe("«Por qué tienes este puntaje»", () => {
 });
 
 describe("experiencia e insignias", () => {
-  it("enseña los puntos por boliviano pagado a tiempo y la racha", async () => {
+  it("enseña los puntos de experiencia y la racha en la tarjeta del nivel", async () => {
     await render(envolver(<Progreso />));
-    expect(screen.getByText("350 puntos")).toBeTruthy();
+    expect(screen.getByText("350")).toBeTruthy();
     expect(screen.getByText("Racha 3")).toBeTruthy();
-    expect(
-      screen.getByText(
-        "350 puntos: 1 por cada boliviano que pagaste a tiempo.",
-      ),
-    ).toBeTruthy();
   });
 
-  it("sin pagos aún, dice que comprar no suma y pagar sí", async () => {
-    Object.assign(mockEstado, {
-      progress: {
-        ...PROGRESO_DE_PRUEBA,
-        experience: {
-          ...PROGRESO_DE_PRUEBA.experience,
-          xp: 0,
-          bestStreak: 0,
-          currentStreak: 0,
-        },
-      },
-    });
-    await render(envolver(<Progreso />));
-    expect(
-      screen.getByText(
-        "Cada boliviano que pagues a tiempo suma 1 punto. Comprar no suma: sólo pagar.",
-      ),
-    ).toBeTruthy();
-  });
-
-  it("las insignias ganadas se distinguen de las pendientes y las pendientes dicen su avance", async () => {
+  it("los trofeos ganados se distinguen de los pendientes, con su rango, y los pendientes dicen su avance", async () => {
     await render(envolver(<Progreso />));
     await abrir("Logros");
-    expect(screen.getByText("2 de 4 ganadas")).toBeTruthy();
-    expect(screen.getByLabelText(/Primera compra\. Ganada/)).toBeTruthy();
-    expect(
-      screen.getByLabelText(/Racha de 6\. Pendiente, 3 de 6/),
-    ).toBeTruthy();
-    expect(
-      screen.getByLabelText(/1\.000 Bs a tiempo\. Pendiente, 350 de 1\.000/),
-    ).toBeTruthy();
+    expect(screen.getByText(/2 de 4 ganados/)).toBeTruthy();
+    expect(screen.getByLabelText(/Trofeo de bronce: Primera compra\. Ganado/)).toBeTruthy();
+    expect(screen.getByLabelText(/Racha de 6\. Pendiente, 3 de 6/)).toBeTruthy();
+    expect(screen.getByLabelText(/1\.000 Bs a tiempo\. Pendiente, 350 de 1\.000/)).toBeTruthy();
   });
 });
 
@@ -304,13 +280,12 @@ describe("pestañas de «Tu nivel Atlas»", () => {
     ).toBe(false);
   });
 
-  it("Puntaje enseña la tarjeta, el nivel en puntos, los puntos y cómo se ganan, y NADA de la calificación", async () => {
+  it("Puntaje enseña la tarjeta y el nivel con sus puntos (cómo se ganan, en «Más info»), y NADA de la calificación", async () => {
     await render(envolver(<Progreso />));
     expect(screen.getByTestId("tarjeta-seccion")).toBeTruthy();
     expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
-    expect(screen.getByTestId("experiencia-card")).toBeTruthy();
-    expect(screen.getByText("TU PUNTAJE")).toBeTruthy();
-    expect(screen.getByTestId("como-se-ganan-puntos")).toBeTruthy();
+    expect(screen.getByTestId("nivel-card")).toBeTruthy();
+    expect(screen.getByTestId("nivel-mas-info")).toBeTruthy();
     expect(screen.queryByTestId("calificacion-card")).toBeNull();
     expect(screen.queryByText("Por qué tienes esta calificación")).toBeNull();
     expect(screen.queryByText("Misiones")).toBeNull();
@@ -320,7 +295,7 @@ describe("pestañas de «Tu nivel Atlas»", () => {
   it("al cambiar de pestaña desaparece lo anterior y aparece lo nuevo", async () => {
     await render(envolver(<Progreso />));
     await abrir("Logros");
-    expect(screen.getByText("Insignias")).toBeTruthy();
+    expect(screen.getByText("Tus trofeos")).toBeTruthy();
     expect(screen.getByText("Misiones")).toBeTruthy();
     expect(screen.queryByTestId("tarjeta-seccion")).toBeNull();
     expect(
@@ -356,9 +331,9 @@ describe("pestañas de «Tu nivel Atlas»", () => {
 });
 
 describe("Puntaje y Calificación son pestañas SEPARADAS", () => {
-  it("Puntaje: los puntos ganados pagando, sin la calificación ni subpestañas", async () => {
+  it("Puntaje: los puntos de experiencia, sin la calificación ni subpestañas", async () => {
     await render(envolver(<Progreso />));
-    expect(screen.getByText("350 puntos")).toBeTruthy();
+    expect(screen.getByText("350")).toBeTruthy();
     expect(screen.queryByLabelText(/^Subpestaña/)).toBeNull();
     expect(screen.queryByTestId("calificacion-card")).toBeNull();
     expect(screen.queryByTestId("por-que-puntaje")).toBeNull();
@@ -371,9 +346,8 @@ describe("Puntaje y Calificación son pestañas SEPARADAS", () => {
     expect(screen.getByTestId("calificacion-card")).toBeTruthy();
     expect(screen.getByText("de 100")).toBeTruthy();
     expect(screen.getByTestId("por-que-puntaje")).toBeTruthy();
-    expect(screen.queryByTestId("como-se-ganan-puntos")).toBeNull();
+    expect(screen.queryByTestId("nivel-card")).toBeNull();
     expect(screen.queryByTestId("tarjeta-seccion")).toBeNull();
-    expect(screen.queryByText("350 puntos")).toBeNull();
   });
 
   it("la calificación nunca dice 0: la escala empieza en 1", async () => {
@@ -400,6 +374,6 @@ describe("Puntaje y Calificación son pestañas SEPARADAS", () => {
     });
     await render(envolver(<Progreso />));
     expect(screen.getByText("NIVEL 3 DE 5")).toBeTruthy();
-    expect(screen.getByText("Te faltan 2.600 puntos para «Consolidado». Los ganas pagando tus compras a tiempo.")).toBeTruthy();
+    expect(screen.getByText("Faltan 2.600 para «Consolidado»")).toBeTruthy();
   });
 });

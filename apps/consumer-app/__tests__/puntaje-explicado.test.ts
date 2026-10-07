@@ -70,11 +70,11 @@ describe("fraseDelResultado", () => {
 });
 
 describe("fraseDeExperiencia", () => {
-  it("sin pagos dice que comprar no suma", () =>
-    expect(fraseDeExperiencia(0)).toMatch(/Comprar no suma/));
-  it("con pagos dice de dónde salen", () =>
+  it("sin compras dice cómo se ganan: 1 por boliviano comprado", () =>
+    expect(fraseDeExperiencia(0)).toMatch(/Cada boliviano que compras con Atlas suma 1 punto/));
+  it("con compras dice de dónde salen", () =>
     expect(fraseDeExperiencia(1250)).toMatch(
-      /1 por cada boliviano que pagaste a tiempo/,
+      /1 por cada boliviano que compraste con Atlas/,
     ));
 });
 

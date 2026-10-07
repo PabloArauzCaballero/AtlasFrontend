@@ -24,6 +24,7 @@ import { Appear, PressSurface } from './motion';
 import { AtlasText, Overline } from './primitives';
 import { webData } from '../web/estilo';
 import { useBitacoraDePantalla } from '../features/bitacora/ganchos';
+import { DesplazamientoContext } from './desplazamiento';
 
 /**
  * Que composicion de escritorio le toca a una ruta (ver `estilo.ts`, «rejilla»).
@@ -84,6 +85,14 @@ export function Screen({
 }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
+  // El ref propio cuando la pantalla no pasa uno: el recorrido guiado necesita mover la vista igual.
+  const refInterno = React.useRef<ScrollView>(null);
+  const refDesplazamiento = scrollRef ?? refInterno;
+  const desplazado = React.useRef(0);
+  const desplazar = React.useCallback(
+    (dy: number) => refDesplazamiento.current?.scrollTo({ y: Math.max(0, desplazado.current + dy), animated: true }),
+    [refDesplazamiento],
+  );
   // Entra/sale de la pantalla en la bitacora del alta. Solo anota si la ruta esta en su lista blanca.
   useBitacoraDePantalla(pathname);
   /*
@@ -144,6 +153,7 @@ export function Screen({
     : children;
 
   return (
+    <DesplazamientoContext.Provider value={scroll ? desplazar : null}>
     <KeyboardAvoidingView
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -160,7 +170,11 @@ export function Screen({
     >
       {scroll ? (
         <ScrollView
-          ref={scrollRef}
+          ref={refDesplazamiento}
+          onScroll={(evento) => {
+            desplazado.current = evento.nativeEvent.contentOffset.y;
+          }}
+          scrollEventThrottle={32}
           {...webData('screen', { rejilla: rejillaPara(pathname) })}
           style={styles.flex}
           contentContainerStyle={[body, { paddingBottom: space.xxl + insets.bottom }]}
@@ -224,6 +238,7 @@ export function Screen({
         </View>
       ) : null}
     </KeyboardAvoidingView>
+    </DesplazamientoContext.Provider>
   );
 }
 

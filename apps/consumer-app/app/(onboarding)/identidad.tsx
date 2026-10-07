@@ -42,6 +42,7 @@ import { DEPARTAMENTOS } from '../../src/features/geografia';
 import { Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, ErrorState } from '../../src/ui/primitives';
 import { CameraFrame } from '../../src/ui/camera-frame';
+import { PruebaDeVida, type PoseDeVida } from '../../src/ui/prueba-de-vida';
 import { ConsejosFoto } from '../../src/ui/consejos-foto';
 import { space } from '../../src/theme/tokens';
 import { BottomSheet } from '../../src/ui/help-sheet';
@@ -66,6 +67,22 @@ const STEPS: { kind: EvidenceKind; title: string; hint: string; facing: 'back' |
   { kind: 'selfie_left', title: 'Selfie: perfil izquierdo', hint: 'Gira la cabeza hacia tu IZQUIERDA hasta que se vea tu oreja derecha.', facing: 'front', que: 'la selfie de tu lado izquierdo' },
   { kind: 'selfie_right', title: 'Selfie: perfil derecho', hint: 'Gira la cabeza hacia tu DERECHA hasta que se vea tu oreja izquierda.', facing: 'front', que: 'la selfie de tu lado derecho' },
 ];
+
+/** Las tres poses de la prueba de vida, en el orden en que se piden. */
+const SELFIES = STEPS.filter((step) => step.facing === 'front');
+
+/** Cómo se dice cada pose dentro de la prueba de vida: corto, porque se lee con la cara delante de la cámara. */
+const POSE: Partial<Record<EvidenceKind, { titulo: string; instruccion: string }>> = {
+  selfie: { titulo: 'Mira de frente', instruccion: 'Pon tu cara dentro del óvalo.' },
+  selfie_left: { titulo: 'Gira a tu izquierda', instruccion: 'Despacio, hasta que se vea tu oreja derecha.' },
+  selfie_right: { titulo: 'Gira a tu derecha', instruccion: 'Despacio, hasta que se vea tu oreja izquierda.' },
+};
+
+const poseDeVida = (step: (typeof STEPS)[number]): PoseDeVida => ({
+  kind: step.kind as PoseDeVida['kind'],
+  titulo: POSE[step.kind]?.titulo ?? step.title,
+  instruccion: POSE[step.kind]?.instruccion ?? step.hint,
+});
 
 const ORDEN: readonly EvidenceKind[] = STEPS.map((step) => step.kind);
 
@@ -129,6 +146,8 @@ export default function Identity() {
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
   const [capturing, setCapturing] = useState<EvidenceKind | null>(null);
+  /** Las poses de la prueba de vida abiertas ahora (las tres selfies van juntas y solas: `ui/prueba-de-vida.tsx`). */
+  const [vida, setVida] = useState<PoseDeVida[] | null>(null);
   const [evidence, setEvidence] = useState<Partial<Record<EvidenceKind, PreparedEvidence>>>({});
   const [documentNumber, setDocumentNumber] = useState('');
   const [expiresAt, setExpiresAt] = useState('');
@@ -273,6 +292,12 @@ export default function Identity() {
       return;
     }
     bitacora.captura(que, 'abre');
+    if (step.facing === 'front') {
+      // «Repetir» una pose abre sólo esa; si no, todas las que faltan, empezando por la tocada.
+      const pendientes = evidence[step.kind] ? [step] : SELFIES.filter((s) => s.kind === step.kind || !evidence[s.kind]);
+      setVida(pendientes.map(poseDeVida));
+      return;
+    }
     if (!conEscaner) {
       setCapturing(step.kind);
       return;
@@ -324,6 +349,14 @@ export default function Identity() {
     const step = escaneoTrasElConsejo.current;
     escaneoTrasElConsejo.current = null;
     if (step) void abrirCaptura(step);
+  };
+
+  /** Una foto de la prueba de vida: se sube aparte, sin bloquear la pose siguiente. */
+  const subirFotoDeVida = async (kind: EvidenceKind, uri: string) => {
+    if (!session.customerId) throw new Error('SIN_SESION');
+    bitacora.captura(CAPTURA_DE[kind], evidence[kind] ? 'repite' : 'toma');
+    const prepared = await uploadEvidence({ customerId: session.customerId, kind, localUri: uri, captureSource: 'camera', plazo: plazoDeSubidaMs });
+    setEvidence((current) => ({ ...current, [kind]: prepared }));
   };
 
   /** Deja la camara de la app. Si habia una subida en curso, se corta. */
@@ -489,11 +522,18 @@ export default function Identity() {
 
   /* ---------------------------------------------------------------- camara */
 
-  if (activeStep) {
+  if (activeStep || vida) {
     if (!permission?.granted) {
       return (
         <Screen scrollRef={scroll} footer={<Button label="Permitir cámara" bitacora="permitir" onPress={() => requestPermission()} />}>
-          <ScreenHeader title="Necesitamos tu cámara" subtitle="Solo se usa para fotografiar tu documento." onBack={() => setCapturing(null)} />
+          <ScreenHeader
+            title="Necesitamos tu cámara"
+            subtitle={vida ? 'Solo se usa para tu prueba de vida.' : 'Solo se usa para fotografiar tu documento.'}
+            onBack={() => {
+              setCapturing(null);
+              setVida(null);
+            }}
+          />
           <Card>
             <AtlasText variant="body" tone="secondary">
               La foto se sube cifrada y queda asociada unicamente a tu expediente. No accedemos a tu galeria.
@@ -510,6 +550,16 @@ export default function Identity() {
       );
     }
 
+    if (vida) {
+      const cerrar = () => {
+        llevarALasCapturas.current = true;
+        setVida(null);
+      };
+      return <PruebaDeVida poses={vida} onFoto={subirFotoDeVida} onTerminar={cerrar} onSalir={cerrar} />;
+    }
+  }
+
+  if (activeStep) {
     return (
       <Screen
         scroll={false}

@@ -17,7 +17,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, View } from 'react-native';
 import type { AssistScreen } from '../api/endpoints/assist';
 import { PREGUNTAS_FRECUENTES, type BurbujaAssist, type useAssist } from '../features/assist';
 import { color, radius, space, stroke, touch } from '../theme/tokens';
@@ -76,6 +76,9 @@ export function AssistSheet({
   const mandar = (pregunta: string) => {
     enviar(pregunta, pantalla);
     setTexto('');
+    // Al enviar, el teclado baja: con él arriba la hoja se queda en una franja y la respuesta que
+    // llega no se ve. Quien quiera repreguntar vuelve a tocar el campo, como en cualquier chat.
+    Keyboard.dismiss();
   };
 
   // Con cada mensaje nuevo, la conversación baja sola a lo último — como cualquier chat.

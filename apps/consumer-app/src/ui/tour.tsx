@@ -25,10 +25,11 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
-import { Modal, StyleSheet, View, useWindowDimensions, type LayoutRectangle } from 'react-native';
+import { BackHandler, StyleSheet, View, useWindowDimensions, type LayoutRectangle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, radius, space, spring } from '../theme/tokens';
+import { DesplazamientoContext, type Desplazar } from './desplazamiento';
 import { ANCHO_COLUMNA } from './responsive';
 import { Icon } from './icons';
 import { Appear } from './motion';
@@ -46,7 +47,7 @@ export type TourStep = {
 type Rect = LayoutRectangle;
 
 type TourContextValue = {
-  register: (id: string, rect: Rect | null) => void;
+  register: (id: string, objetivo: Objetivo | null) => void;
   start: (steps: TourStep[], persistKey?: string) => void;
   /** Si hay un recorrido en pantalla. Lo consultan las capas flotantes que no deben taparlo. */
   activo: boolean;
@@ -115,52 +116,151 @@ function useFocoAnimado(foco: Foco | null) {
   };
 }
 
+/** Lo que registra cada objetivo: su vista (para medirla en el momento) y cómo mover su pantalla. */
+type Objetivo = { vista: React.RefObject<View | null>; desplazar: Desplazar | null };
+
+/** Cuánto se espera a que aparezca un objetivo que aún no se montó (navegación, datos que llegan). */
+const ESPERA_OBJETIVO_MS = 2500;
+/** Lo que tarda un `scrollTo` animado en asentarse antes de volver a medir. */
+const ASIENTO_DESPLAZAMIENTO_MS = 420;
+/** Alto reservado para la tarjeta del paso al decidir si cabe encima o debajo del objetivo. */
+const ALTO_TARJETA = 260;
+
+function medir(vista: View | null): Promise<Rect | null> {
+  return new Promise((resolve) => {
+    if (!vista || typeof vista.measureInWindow !== 'function') return resolve(null);
+    // Con plazo: una vista que se desmonta a medio medir no llama nunca de vuelta, y el paso se quedaría
+    // esperando con el velo puesto.
+    const plazo = setTimeout(() => resolve(null), 300);
+    vista.measureInWindow((x, y, width, height) => {
+      clearTimeout(plazo);
+      resolve(width > 0 && height > 0 ? { x, y, width, height } : null);
+    });
+  });
+}
+
+const esperar = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/*
+  ## Por qué el recorrido se rehízo (2026-10-06)
+
+  En el teléfono estaba «bugueadísimo» y la primera vez llegaba a dejar la app colgada. Tres causas:
+
+  - **El `Modal` se rehacía con cada medida.** La capa llevaba `key={paso-measureTick}` y cualquier
+    objetivo que se volviera a maquetar —la pantalla de inicio entra escalonada y carga datos— subía
+    el contador: el `Modal` se desmontaba y se volvía a presentar varias veces por segundo, con su
+    fundido. En iOS presentar y retirar un `Modal` en ráfaga, encima de otra hoja que se está yendo,
+    deja la ventana bloqueada. Ahora NO hay `Modal`: la capa se pinta sobre la navegación, igual que
+    el corte de marca, y no se rehace nunca entre pasos.
+  - **La tarjeta podía quedar fuera de la ventana.** El tercer objetivo está bajo el pliegue; la
+    tarjeta se colocaba relativa a él y caía por debajo del borde. Con el velo tapándolo todo y sin
+    «Siguiente» ni «Saltar» a la vista, la app parecía colgada. Ahora el objetivo se trae a la vista
+    desplazando su pantalla, y la tarjeta siempre se recorta dentro del área segura.
+  - **Se medía a mitad de la animación de entrada.** `onLayout` llega antes de que `Appear` termine
+    de subir el bloque, así que el recorte quedaba desplazado. Ahora se mide al ACTIVAR cada paso.
+*/
 export function TourProvider({ children }: { children: React.ReactNode }) {
-  const targets = React.useRef(new Map<string, Rect>());
+  const objetivos = React.useRef(new Map<string, Objetivo>());
   const [steps, setSteps] = React.useState<TourStep[] | null>(null);
   const [index, setIndex] = React.useState(0);
   const [persistKey, setPersistKey] = React.useState<string | null>(null);
-  // Fuerza un re-render cuando llega la medida de un objetivo que todavia no se habia medido.
-  const [measureTick, setMeasureTick] = React.useState(0);
+  /** La medida del paso activo; `undefined` mientras se busca el objetivo. */
+  const [rect, setRect] = React.useState<Rect | null | undefined>(undefined);
+  const { height: altoVentana } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
-  const register = React.useCallback((id: string, rect: Rect | null) => {
-    if (rect) targets.current.set(id, rect);
-    else targets.current.delete(id);
-    setMeasureTick((tick) => tick + 1);
+  const register = React.useCallback((id: string, objetivo: Objetivo | null) => {
+    if (objetivo) objetivos.current.set(id, objetivo);
+    else objetivos.current.delete(id);
   }, []);
 
   const start = React.useCallback((next: TourStep[], key?: string) => {
+    // Un recorrido sin pasos no se abre: dejaría el velo sin tarjeta y sin forma de salir.
+    if (next.length === 0) return;
     setSteps(next);
     setIndex(0);
+    setRect(undefined);
     setPersistKey(key ?? null);
   }, []);
 
-  const close = React.useCallback(async () => {
+  const close = React.useCallback(() => {
     // Se marca como visto tanto al terminarlo como al saltarlo: quien lo salta ya decidio que no lo
-    // quiere, y volver a lanzarselo en cada arranque es ignorar esa decision.
-    if (persistKey) await AsyncStorage.setItem(`${SEEN_PREFIX}${persistKey}`, '1').catch(() => undefined);
+    // quiere, y volver a lanzarselo en cada arranque es ignorar esa decision. Se cierra YA y se
+    // guarda después: esperar al almacenamiento dejaba el velo puesto si el disco tardaba.
+    if (persistKey) void AsyncStorage.setItem(`${SEEN_PREFIX}${persistKey}`, '1').catch(() => undefined);
     setSteps(null);
     setIndex(0);
+    setRect(undefined);
     setPersistKey(null);
   }, [persistKey]);
 
-  const value = React.useMemo<TourContextValue>(() => ({ register, start, activo: steps !== null }), [register, start, steps]);
-
   const step = steps?.[index] ?? null;
-  const rect = step ? (targets.current.get(step.target) ?? null) : null;
+
+  // Al activar un paso: esperar a su objetivo, traerlo a la vista si está fuera y medirlo ya quieto.
+  React.useEffect(() => {
+    if (!step) return;
+    let vivo = true;
+    void (async () => {
+      const limite = Date.now() + ESPERA_OBJETIVO_MS;
+      let medida: Rect | null = null;
+      while (vivo && Date.now() < limite) {
+        const objetivo = objetivos.current.get(step.target);
+        medida = await medir(objetivo?.vista.current ?? null);
+        if (medida) {
+          const arriba = insets.top + space.base;
+          // Debajo cabe la barra de pestañas; lo que quede tapado por ella no cuenta como visible.
+          const abajo = altoVentana - insets.bottom - 96;
+          const fuera = medida.y < arriba || medida.y + Math.min(medida.height, abajo - arriba) > abajo;
+          if (fuera && objetivo?.desplazar) {
+            // Se deja el objetivo a un cuarto de la ventana: queda sitio debajo para la tarjeta.
+            objetivo.desplazar(medida.y - (arriba + (abajo - arriba) * 0.25));
+            await esperar(ASIENTO_DESPLAZAMIENTO_MS);
+            medida = await medir(objetivo.vista.current);
+          } else {
+            // Un respiro para que termine la entrada escalonada antes de la medida definitiva.
+            await esperar(120);
+            medida = (await medir(objetivo?.vista.current ?? null)) ?? medida;
+          }
+          break;
+        }
+        await esperar(150);
+      }
+      // Si el objetivo no apareció, el paso se explica igual, con la tarjeta al centro.
+      if (vivo) setRect(medida);
+    })();
+    return () => {
+      vivo = false;
+    };
+  }, [step, altoVentana, insets.top, insets.bottom]);
+
+  // El botón «atrás» de Android cierra el recorrido, como cerraba el `Modal`.
+  React.useEffect(() => {
+    if (!step) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      close();
+      return true;
+    });
+    return () => sub.remove();
+  }, [step, close]);
+
+  const value = React.useMemo<TourContextValue>(() => ({ register, start, activo: steps !== null }), [register, start, steps]);
 
   return (
     <TourContext.Provider value={value}>
       {children}
       {step ? (
         <TourOverlay
-          key={`${step.target}-${measureTick}`}
           step={step}
           rect={rect}
           index={index}
           total={steps!.length}
-          onNext={() => (index + 1 < steps!.length ? setIndex(index + 1) : void close())}
-          onSkip={() => void close()}
+          onNext={() => {
+            if (index + 1 < steps!.length) {
+              setRect(undefined);
+              setIndex(index + 1);
+            } else close();
+          }}
+          onSkip={close}
         />
       ) : null}
     </TourContext.Provider>
@@ -176,28 +276,22 @@ export function useTour() {
 /**
  * Marca un elemento como objetivo de un paso del recorrido.
  *
- * Se mide con `onLayout` en coordenadas de ventana. Envolver es preferible a pedirle a cada pantalla
- * que exponga una `ref`: el objetivo se declara donde esta el elemento, y si se mueve al reordenar
- * la pantalla, la medida se mueve con el.
+ * Registra la VISTA, no una medida: la medida se toma cuando el paso se activa, que es el único
+ * momento en que importa dónde está. Medir en `onLayout` daba la posición a mitad de la animación
+ * de entrada y se quedaba vieja en cuanto la pantalla se desplazaba.
  */
 export function TourTarget({ id, children }: { id: string; children: React.ReactNode }) {
   const { register } = useTour();
+  const desplazar = React.useContext(DesplazamientoContext);
   const ref = React.useRef<View>(null);
 
-  React.useEffect(() => () => register(id, null), [id, register]);
+  React.useEffect(() => {
+    register(id, { vista: ref, desplazar });
+    return () => register(id, null);
+  }, [id, register, desplazar]);
 
   return (
-    <View
-      ref={ref}
-      collapsable={false}
-      onLayout={() => {
-        // `measureInWindow` en vez de las coordenadas de `onLayout`: estas son relativas al padre, y
-        // el recorte se dibuja sobre la ventana completa.
-        ref.current?.measureInWindow((x, y, width, height) => {
-          if (width > 0 && height > 0) register(id, { x, y, width, height });
-        });
-      }}
-    >
+    <View ref={ref} collapsable={false}>
       {children}
     </View>
   );
@@ -235,7 +329,8 @@ function TourOverlay({
   onSkip,
 }: {
   step: TourStep;
-  rect: Rect | null;
+  /** `undefined` mientras se busca el objetivo; `null` si no apareció (tarjeta al centro). */
+  rect: Rect | null | undefined;
   index: number;
   total: number;
   onNext: () => void;
@@ -254,50 +349,62 @@ function TourOverlay({
             height: rect.height + HALO * 2,
           }
         : null,
-    // Memorizado por sus numeros: el objeto se recalcula en cada render —la medida de un objetivo
-    // que llega tarde provoca uno— y sin esto el efecto que mueve el foco se relanzaria con el
-    // mismo destino, cortando el muelle a medio camino y dejandolo lento. Depender de `rect` es lo
-    // que la regla pide y lo que rompe la animacion: la excepcion es intencionada.
+    // Memorizado por sus numeros: un objeto nuevo con el mismo destino relanzaria el muelle y lo
+    // cortaria a medio camino. La excepcion a la regla es intencionada.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rect?.x, rect?.y, rect?.width, rect?.height, screenWidth],
   );
 
   const foco = useFocoAnimado(focus);
 
-  // La tarjeta va debajo del objetivo salvo que ahi no quepa, en cuyo caso va encima. Taparlo con la
-  // propia explicacion es el fallo clasico de este patron.
-  const below = focus ? focus.y + focus.height + space.base : screenHeight / 2;
-  const fitsBelow = !focus || below + 260 < screenHeight - insets.bottom;
+  /*
+    Dónde va la tarjeta: debajo del objetivo si cabe, encima si no, y si tampoco —un objetivo alto en
+    una pantalla corta— pegada al pie. NUNCA fuera del área segura: una tarjeta caída por debajo del
+    borde deja el velo puesto sin «Siguiente» ni «Saltar», y eso es una app colgada.
+  */
+  const techo = insets.top + space.base;
+  const suelo = screenHeight - insets.bottom - space.base;
+  const posicion = (() => {
+    if (!focus) return { top: Math.max(techo, screenHeight / 2 - ALTO_TARJETA / 2) };
+    const debajo = focus.y + focus.height + space.base;
+    if (debajo + ALTO_TARJETA <= suelo) return { top: debajo };
+    const encima = focus.y - space.base;
+    if (encima - ALTO_TARJETA >= techo) return { bottom: screenHeight - encima };
+    return { bottom: screenHeight - suelo };
+  })();
+
+  const buscando = rect === undefined;
 
   return (
-    <Modal transparent animationType="fade" statusBarTranslucent onRequestClose={onSkip}>
-      <View style={styles.fill} accessibilityViewIsModal accessibilityLabel={`Paso ${index + 1} de ${total}: ${step.title}`}>
-        {focus ? (
-          <>
-            {/* Cuatro paneles alrededor del hueco. El elemento senalado queda a su color real. */}
-            <Animated.View style={[styles.scrim, foco.arriba]} />
-            <Animated.View style={[styles.scrim, foco.abajo]} />
-            <Animated.View style={[styles.scrim, foco.izquierda]} />
-            <Animated.View style={[styles.scrim, foco.derecha]} />
-            <Animated.View pointerEvents="none" style={[styles.ring, foco.anillo]} />
-          </>
-        ) : (
-          <View style={[styles.scrim, StyleSheet.absoluteFill]} />
-        )}
+    <View
+      style={[StyleSheet.absoluteFill, styles.capa]}
+      accessibilityViewIsModal
+      accessibilityLabel={`Paso ${index + 1} de ${total}: ${step.title}`}
+    >
+      {focus ? (
+        <>
+          {/* Cuatro paneles alrededor del hueco. El elemento senalado queda a su color real. */}
+          <Animated.View style={[styles.scrim, foco.arriba]} />
+          <Animated.View style={[styles.scrim, foco.abajo]} />
+          <Animated.View style={[styles.scrim, foco.izquierda]} />
+          <Animated.View style={[styles.scrim, foco.derecha]} />
+          <Animated.View pointerEvents="none" style={[styles.ring, foco.anillo]} />
+        </>
+      ) : (
+        <View style={[styles.scrim, StyleSheet.absoluteFill]} />
+      )}
 
-        {/*
-          `key` por paso: la tarjeta se rehace, no se reescribe.
-
-          Sin el, entre un paso y otro cambiaban el titulo y el cuerpo sobre la misma tarjeta y sin
-          ningun movimiento, justo mientras el foco viajaba por debajo. Se leia como un fallo de
-          pintado. Rehaciendola, `Appear` vuelve a correr y el texto nuevo entra como lo que es:
-          otra explicacion.
-        */}
+      {/*
+        `key` por paso: la tarjeta se rehace, no se reescribe, y `Appear` vuelve a correr para que el
+        texto nuevo entre como lo que es: otra explicacion. Mientras se busca el objetivo no hay
+        tarjeta; sólo el velo, una fracción de segundo.
+      */}
+      {buscando ? null : (
         <Appear
           key={index}
           style={{
             ...styles.cardHolder,
-            ...(fitsBelow ? { top: below } : { bottom: screenHeight - (focus?.y ?? screenHeight) + space.base }),
+            ...posicion,
             // Sobre el elemento senalado, no sobre el centro de la ventana: con el carril lateral de
             // escritorio la columna ya no esta en el medio, y la nota tiene que caer donde cae el foco.
             ...(focus ? { left: focus.x, right: undefined, width: focus.width } : null),
@@ -314,18 +421,24 @@ function TourOverlay({
               {step.body}
             </AtlasText>
             <View style={styles.cardActions}>
-              <Button label="Saltar" variant="ghost" onPress={onSkip} style={styles.action} haptic="none" />
-              <Button label={index + 1 === total ? 'Entendido' : 'Siguiente'} onPress={onNext} style={styles.action} />
+              <Button label="Saltar" variant="ghost" onPress={onSkip} style={styles.action} haptic="none" testID="tour-saltar" />
+              <Button
+                label={index + 1 === total ? 'Entendido' : 'Siguiente'}
+                onPress={onNext}
+                style={styles.action}
+                testID="tour-siguiente"
+              />
             </View>
           </Card>
         </Appear>
-      </View>
-    </Modal>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fill: { flex: 1 },
+  // Sobre toda la navegación —barra de pestañas incluida— y por encima del botón de Assist.
+  capa: { zIndex: 1000, elevation: 1000 },
   scrim: { position: 'absolute', backgroundColor: color.overlay.scrim },
   ring: {
     position: 'absolute',

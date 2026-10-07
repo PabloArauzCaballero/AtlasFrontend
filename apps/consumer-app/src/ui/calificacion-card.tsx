@@ -5,17 +5,52 @@
  * Calificación es un juicio sobre cómo paga y puede bajar. Ponerlos en la misma tarjeta hacía que «tengo 1.200
  * puntos» y «califico 38» se leyeran como el mismo número.
  */
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
 import { calificacionDe, fraseDeCalificacion } from '../features/calificacion';
 import { space } from '../theme/tokens';
+import { InfoSheet } from './help-sheet';
 import { PressSurface } from './motion';
-import { AtlasText, Card, CardHeader, ProgressBar } from './primitives';
+import { AtlasText, Button, Card, CardHeader, ProgressBar } from './primitives';
+import { PuntajeDesglose } from './puntaje-desglose';
 
-export function CalificacionCard({ progress, onPress }: { progress: Progress; onPress?: () => void }) {
+/**
+ * Con `masInfo`, la tarjeta lleva un botón «Más info» que abre la cuenta parte por parte en una hoja. Así la portada
+ * enseña el número y su frase, y la explicación larga sólo aparece si alguien la pide (Pablo, 2026-10-06).
+ */
+export function CalificacionCard({ progress, onPress, masInfo = false }: { progress: Progress; onPress?: () => void; masInfo?: boolean }) {
+  const [info, setInfo] = useState(false);
   const valor = calificacionDe(progress);
   const frase = fraseDeCalificacion(valor);
-  const cuerpo = (
+  if (masInfo) {
+    return (
+      <Card testID="calificacion-card">
+        <Cuerpo valor={valor} frase={frase} />
+        <Button label="Más info" icon="info" variant="secondary" haptic="none" onPress={() => setInfo(true)} testID="calificacion-mas-info" />
+        <InfoSheet visible={info} titulo="Cómo se calcula tu calificación" onClose={() => setInfo(false)} testID="calificacion-info">
+          <PuntajeDesglose progress={progress} titulo="Parte por parte" plano />
+        </InfoSheet>
+      </Card>
+    );
+  }
+  const cuerpo = <Cuerpo valor={valor} frase={frase} />;
+
+  if (!onPress) return <Card testID="calificacion-card">{cuerpo}</Card>;
+  return (
+    <PressSurface
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Tu calificación: ${valor} de 100. ${frase} Toca para ver de dónde sale.`}
+      testID="calificacion-card"
+    >
+      <Card>{cuerpo}</Card>
+    </PressSurface>
+  );
+}
+
+function Cuerpo({ valor, frase }: { valor: number; frase: string }) {
+  return (
     <>
       <CardHeader icon="grafico" eyebrow="Qué tan buen pagador eres" title="Tu calificación" divider={false} />
       <View style={styles.cifra}>
@@ -29,18 +64,6 @@ export function CalificacionCard({ progress, onPress }: { progress: Progress; on
         {frase}
       </AtlasText>
     </>
-  );
-
-  if (!onPress) return <Card testID="calificacion-card">{cuerpo}</Card>;
-  return (
-    <PressSurface
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`Tu calificación: ${valor} de 100. ${frase} Toca para ver de dónde sale.`}
-      testID="calificacion-card"
-    >
-      <Card>{cuerpo}</Card>
-    </PressSurface>
   );
 }
 
