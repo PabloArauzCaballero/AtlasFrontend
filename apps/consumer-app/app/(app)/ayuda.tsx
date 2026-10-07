@@ -21,7 +21,7 @@
  * como hablar con alguien es hacerle pagar por nuestra organizacion del contenido.
  */
 import { useEffect, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { Linking, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as contentApi from '../../src/api/endpoints/app-content';
 import { ContentActionButton, ContentBullets } from '../../src/ui/content';
@@ -29,6 +29,7 @@ import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Markdown } from '../../src/ui/markdown';
 import { Accordion, AtlasText, Button, Card, CardHeader, Divider, EmptyState, SectionHeader, Skeleton } from '../../src/ui/primitives';
 import { resetTour, useTour } from '../../src/ui/tour';
+import { urlDeLaGuia } from '../../src/features/guia-pdf';
 import { TOUR_INICIO_KEY } from '../../src/features/tour-inicio';
 import { useCopy, useTourInicio } from '../../src/features/use-contenido-remoto';
 
@@ -99,6 +100,28 @@ export default function Ayuda() {
       <Card>
         <CardHeader icon="ayuda" title={t.titulo('ayuda.hablar')} detail={t.texto('ayuda.hablar')} divider={false} />
         <Button label="Ir a soporte" icon="telefono" onPress={() => router.push('/(app)/soporte' as never)} />
+      </Card>
+
+      {/*
+        La guía completa, para llevársela.
+
+        Las preguntas de abajo responden una duda; la guía enseña el camino entero —crear la cuenta,
+        comprar, pagar— con la captura de cada pantalla y el sitio exacto donde tocar. Va en PDF porque
+        quien la necesita suele querer tenerla a mano fuera de la app, o pasársela a alguien.
+      */}
+      <Card>
+        <CardHeader
+          icon="documento"
+          title="Guía paso a paso"
+          detail="Toda la app, pantalla por pantalla, con imágenes de dónde tocar."
+          divider={false}
+        />
+        <Button
+          label="Descargar la guía en PDF"
+          icon="descargar"
+          variant="secondary"
+          onPress={() => void Linking.openURL(urlDeLaGuia())}
+        />
       </Card>
 
       {help.map((entry) => (
