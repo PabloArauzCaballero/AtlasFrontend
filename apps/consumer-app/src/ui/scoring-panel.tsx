@@ -289,13 +289,17 @@ export function DelinquencyImpact({
 const styles = StyleSheet.create({
   wrapper: { gap: space.sm },
   flex: { flex: 1 },
+  // `flexWrap`: con «EN CONSTRUCCIÓN» el título y la etiqueta no caben en un teléfono y la etiqueta se
+  // salía por el borde de la tarjeta. Ahora baja a su propia línea.
   header: {
     flexDirection: "row",
+    flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: space.sm,
+    columnGap: space.sm,
+    rowGap: space.xs,
   },
-  rowCenter: { flexDirection: "row", alignItems: "center", gap: space.sm },
+  rowCenter: { flexDirection: "row", alignItems: "center", gap: space.sm, flexShrink: 1 },
   scoreRow: { flexDirection: "row", alignItems: "baseline", gap: space.xs },
   track: {
     height: 10,

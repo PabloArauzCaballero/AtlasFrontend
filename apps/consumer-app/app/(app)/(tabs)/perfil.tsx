@@ -18,10 +18,11 @@ import { describeCustomerStatus } from '../../../src/features/onboarding-map';
 import { leerVersionApp, resumenDeVersion, textoParaSoporte } from '../../../src/device/version-app';
 import { useSession } from '../../../src/session/session';
 import { TOUR_INICIO_KEY } from '../../../src/features/tour-inicio';
-import { useTourInicio } from '../../../src/features/use-contenido-remoto';
+import { useCopy, useTourInicio } from '../../../src/features/use-contenido-remoto';
 import { resetTour, useTour } from '../../../src/ui/tour';
 import { Gap, Screen } from '../../../src/ui/layout';
 import { NivelCard } from '../../../src/ui/nivel-card';
+import { CreditoHabilitadoCard } from '../../../src/ui/credito-habilitado-card';
 import { TarjetaAtlas } from '../../../src/ui/tarjeta-atlas';
 import { useProgress } from '../../../src/features/use-progress';
 import {
@@ -81,6 +82,7 @@ export default function Profile() {
   const nivel = useProgress(session.customerId);
   const rating = book.rating;
   const creditLine = book.creditLine;
+  const t = useCopy();
   // Lo vencido sale del reparto por rubro, que ya lo mide contra el calendario en el servidor.
   const overdue = book.spending?.totals.overdue ?? 0;
 
@@ -167,7 +169,19 @@ export default function Profile() {
       </View>
 
       {/*
-        EL PUNTAJE ATLAS, primero.
+        EL SALDO DE CRÉDITO, lo primero (Pablo, 2026-10-06): es lo que la persona viene a mirar. La misma tarjeta
+        que en Inicio, sin el botón de escanear: aquí no se compra.
+      */}
+      <CreditoHabilitadoCard
+        creditLine={creditLine}
+        ready={book.ready}
+        error={book.creditLineError ?? book.error}
+        onRetry={() => void book.reload()}
+        textoSinCalcular={t.texto('inicio.calculando')}
+      />
+
+      {/*
+        EL PUNTAJE ATLAS.
 
         Es el que decide cuanto puede gastar, sale del motor y lo puede mover la persona pagando.
         Va por encima de la calificacion de deuda —que es como se clasifica su cartera para la
@@ -183,7 +197,7 @@ export default function Profile() {
         <>
           {/* La tarjeta Atlas (Normal … Black): el estatus que se ve de un vistazo; toca para ver la escalera. */}
           {nivel.progress.card ? <TarjetaAtlas tier={nivel.progress.card} titular={[me?.profile.firstName, me?.profile.lastName].filter(Boolean).join(' ')} onPress={() => router.push('/(app)/progreso')} testID="perfil-tarjeta" /> : null}
-          <NivelCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} />
+          <NivelCard progress={nivel.progress} onVerLogros={() => router.push('/(app)/progreso')} />
         </>
       ) : nivel.fase === 'cargando' ? (
         <Card>

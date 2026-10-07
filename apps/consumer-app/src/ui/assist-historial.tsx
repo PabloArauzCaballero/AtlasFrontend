@@ -42,7 +42,7 @@ export function AssistHistorial({
   onVolver: () => void;
 }) {
   return (
-    <View style={styles.cuerpo} {...webData('asistente-historial-vista')}>
+    <View style={styles.cuerpo} {...webData('asistente-historial-vista')} testID="asistente-historial-vista">
       <View style={styles.cabecera}>
         <Pressable
           onPress={onVolver}
@@ -193,7 +193,12 @@ function Fila({
 }
 
 const styles = StyleSheet.create({
-  cuerpo: { flexShrink: 1 },
+  /*
+    `flex: 1`, no `flexShrink`: la lista de abajo es un ScrollView con `flex: 1`, y dentro de un
+    padre sin alto propio un `flex: 1` mide CERO. Con `flexShrink` el historial salía en blanco —ni
+    la lista, ni el «cargando», ni el vacío—, sólo la cabecera con «Volver al chat».
+  */
+  cuerpo: { flex: 1 },
   cabecera: {
     paddingHorizontal: space.lg,
     paddingBottom: space.xs,

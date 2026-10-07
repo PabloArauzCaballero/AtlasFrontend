@@ -40,9 +40,7 @@ import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useProgress } from '../../../src/features/use-progress';
 import { CalificacionCard } from '../../../src/ui/calificacion-card';
 import { CreditoHabilitadoCard } from '../../../src/ui/credito-habilitado-card';
-import { ExperienciaCard } from '../../../src/ui/experiencia-card';
 import { NivelCard } from '../../../src/ui/nivel-card';
-import { PuntajeDesglose } from '../../../src/ui/puntaje-desglose';
 import { dueLabel, statusTone, statusLabel } from '../../../src/features/payment-copy';
 import { TOUR_INICIO_KEY, TOUR_INICIO_TARGETS } from '../../../src/features/tour-inicio';
 import { useCopy, useTourInicio } from '../../../src/features/use-contenido-remoto';
@@ -212,23 +210,19 @@ export default function Home() {
       ) : null}
 
       {/*
-        El orden de la portada, de arriba abajo: cuánto crédito hay habilitado, el Puntaje (puntos ganados
-        pagando a tiempo), la Calificación de 1 a 100, el nivel y la cuenta de la calificación parte por parte. Las tres salen de la base de datos y
-        no del motor (salvo la cifra de la línea), así que se ven aunque la línea aún no esté calculada.
+        El orden de la portada, de arriba abajo: cuánto crédito hay habilitado, el nivel con sus puntos de experiencia
+        (1 por boliviano comprado) y la calificación de 1 a 100. Pablo (2026-10-06): eran cuatro tarjetas que repetían
+        el mismo «0 puntos» con un párrafo cada una; ahora son dos, y cómo se calcula cada cosa está en su «Más info».
+        Salen de la base de datos y no del motor, así que se ven aunque la línea aún no esté calculada.
       */}
-      {/* Tres hijos directos de la pantalla, no un fragmento: así cada tarjeta recibe el mismo aire que las demás. */}
       {nivel.fase === 'lista' ? (
-        <ExperienciaCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} />
+        <NivelCard progress={nivel.progress} onVerLogros={() => router.push('/(app)/progreso')} />
       ) : nivel.fase === 'fallo' ? (
-        <ErrorState title="No pudimos cargar tu puntaje y tu calificación" detail="Revisa tu conexión y vuelve a intentar." onRetry={() => void nivel.recargar()} />
+        <ErrorState title="No pudimos cargar tu nivel y tu calificación" detail="Revisa tu conexión y vuelve a intentar." onRetry={() => void nivel.recargar()} />
       ) : (
         <SkeletonLista filas={2} alto={96} pantalla />
       )}
-      {nivel.fase === 'lista' ? <CalificacionCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} /> : null}
-      {nivel.fase === 'lista' ? <NivelCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} /> : null}
-      {nivel.fase === 'lista' ? (
-        <PuntajeDesglose progress={nivel.progress} titulo="Tu calificación, parte por parte" onVerMas={() => router.push('/(app)/progreso')} />
-      ) : null}
+      {nivel.fase === 'lista' ? <CalificacionCard progress={nivel.progress} masInfo /> : null}
 
       <TourTarget id={TOUR_INICIO_TARGETS.pagos}>
         {proximaCuotaReal ? (

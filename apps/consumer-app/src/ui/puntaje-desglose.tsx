@@ -18,14 +18,18 @@ export function PuntajeDesglose({
   progress,
   titulo = 'Por qué tienes esta calificación',
   onVerMas,
+  plano = false,
 }: {
   progress: Progress;
   titulo?: string;
+  /** Sin tarjeta alrededor: para pintarlo dentro de una hoja de «Más info», que ya es la superficie. */
+  plano?: boolean;
   /** Sólo donde hay más que ver: en «Tu nivel Atlas» ya se está ahí y no se pinta el botón. */
   onVerMas?: () => void;
 }) {
+  const Envoltura = plano ? View : Card;
   return (
-    <Card testID="por-que-puntaje">
+    <Envoltura testID="por-que-puntaje" style={plano ? styles.plano : undefined}>
       <CardHeader icon="grafico" title={titulo} detail="La cuenta de tu calificación de 1 a 100, parte por parte, con tus datos." divider={false} />
       {progress.components.map((componente) => (
         <View key={componente.code} style={styles.componente}>
@@ -55,11 +59,12 @@ export function PuntajeDesglose({
         </View>
       ))}
       {onVerMas ? <Button label="Ver cómo subir de nivel" variant="ghost" onPress={onVerMas} /> : null}
-    </Card>
+    </Envoltura>
   );
 }
 
 const styles = StyleSheet.create({
+  plano: { gap: space.sm },
   componente: { gap: space.xs, paddingTop: space.sm },
   // `flexWrap` y `flexShrink`: si el nombre y la cuenta no caben juntos, la cuenta baja a la línea de abajo en vez de salirse.
   titulo: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'baseline', columnGap: space.sm, rowGap: 2 },

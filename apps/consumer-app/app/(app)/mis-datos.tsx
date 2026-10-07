@@ -24,7 +24,6 @@ import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { useCreditBook } from '../../src/features/use-credit-book';
 import { useProgress } from '../../src/features/use-progress';
 import { contactoLegible, estadoDeCuenta, etiquetaEconomia, fechaLarga, oSinRegistrar, valorEconomia } from '../../src/features/mis-datos-formato';
-import { fraseDeExperiencia } from '../../src/features/puntaje-explicado';
 import { NivelCard } from '../../src/ui/nivel-card';
 import { marcarPinConfirmado, pinConfirmadoReciente } from '../../src/features/pin-verificado';
 import { useSession } from '../../src/session/session';
@@ -143,12 +142,7 @@ export default function MisDatos() {
         explicación a un toque (la cuenta parte por parte vive en «Tu nivel Atlas»).
       */}
       {nivel.fase === 'lista' ? (
-        <>
-          <NivelCard progress={nivel.progress} onPress={() => router.push('/(app)/progreso')} />
-          <AtlasText variant="caption" tone="secondary">
-            {`${fraseDeExperiencia(nivel.progress.experience.xp)} Toca la tarjeta para ver por qué tienes este puntaje.`}
-          </AtlasText>
-        </>
+        <NivelCard progress={nivel.progress} onVerLogros={() => router.push('/(app)/progreso')} />
       ) : nivel.fase === 'cargando' ? (
         <SkeletonLista filas={1} alto={110} />
       ) : null}

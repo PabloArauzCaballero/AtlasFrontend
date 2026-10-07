@@ -212,16 +212,13 @@ it("si los datos no cargan, lo dice y deja reintentar (no se ve vacío)", async 
   expect(screen.queryByText("Todavía no registraste tu domicilio.")).toBeNull();
 });
 
-it("muestra tu nivel y la experiencia, con la explicación a un toque", async () => {
+it("muestra tu nivel con sus puntos de experiencia y la explicación tras «Más info»", async () => {
   marcarPinConfirmado();
   await montar();
   await waitFor(() => expect(screen.getByText("Pablo Arauz")).toBeTruthy());
   expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
-  expect(
-    screen.getByText(
-      /350 puntos: 1 por cada boliviano que pagaste a tiempo\. Toca la tarjeta para ver por qué tienes este puntaje\./,
-    ),
-  ).toBeTruthy();
+  expect(screen.getByText("350")).toBeTruthy();
+  expect(screen.getByTestId("nivel-mas-info")).toBeTruthy();
 });
 
 it("sin PIN confirmado el nivel tampoco se enseña", async () => {

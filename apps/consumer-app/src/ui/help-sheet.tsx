@@ -24,7 +24,7 @@
  * declara el contenedor de la hoja, no el `Modal`, porque es la vista que debe atrapar el foco.
  */
 import { useEffect, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { ANCHO_COLUMNA, useTramo } from './responsive';
 import { color, radius, shadow, space, stroke, touch } from '../theme/tokens';
 import { toqueWeb } from './hit-slop';
@@ -281,6 +281,7 @@ export function FieldFoot({ error, hint }: { error?: string | null; hint?: strin
 }
 
 const styles = StyleSheet.create({
+  infoContenido: { gap: space.sm, paddingHorizontal: space.lg, paddingBottom: space.xl },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   labelSpacer: { flex: 1 },
   helpTarget: { padding: 4, alignItems: 'center', justifyContent: 'center' },
@@ -342,3 +343,33 @@ const styles = StyleSheet.create({
   cuerpo: { maxHeight: 320, flexShrink: 1 },
   cuerpoContenido: { padding: space.lg, paddingBottom: space.xl },
 });
+
+/**
+ * «Más info»: una hoja de lectura con contenido largo que se desplaza.
+ *
+ * Las explicaciones de cómo se calcula algo (puntos, nivel, calificación) estaban escritas dentro de
+ * las tarjetas de la portada y la llenaban de párrafos. Aquí se leen sólo cuando alguien las pide.
+ * El desplazamiento se limita al 75 % del alto: una hoja de lectura nunca tapa la pantalla entera.
+ */
+export function InfoSheet({
+  visible,
+  titulo,
+  onClose,
+  children,
+  testID,
+}: {
+  visible: boolean;
+  titulo: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  testID?: string;
+}) {
+  const { height } = useWindowDimensions();
+  return (
+    <BottomSheet visible={visible} titulo={titulo} onClose={onClose} cierre="Cerrar">
+      <ScrollView style={{ maxHeight: height * 0.75 }} contentContainerStyle={styles.infoContenido} testID={testID}>
+        {children}
+      </ScrollView>
+    </BottomSheet>
+  );
+}

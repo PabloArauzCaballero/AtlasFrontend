@@ -29,10 +29,10 @@ export function fraseDelResultado(progress: Pick<Progress, 'score' | 'rawScore' 
   return `Tus partes suman ${rawScore}, pero hay un tope: tu calificación queda en ${score}.`;
 }
 
-/** La experiencia en una línea: lo que suma, de dónde sale y qué NO suma. */
+/** La experiencia en una línea: lo que suma y de dónde sale. */
 export function fraseDeExperiencia(xp: number): string {
-  if (xp === 0) return 'Cada boliviano que pagues a tiempo suma 1 punto. Comprar no suma: sólo pagar.';
-  return `${xp.toLocaleString('es-BO')} puntos: 1 por cada boliviano que pagaste a tiempo.`;
+  if (xp === 0) return 'Cada boliviano que compras con Atlas suma 1 punto de experiencia.';
+  return `${xp.toLocaleString('es-BO')} puntos: 1 por cada boliviano que compraste con Atlas.`;
 }
 
 /** Cuánto falta para una insignia, en texto. */

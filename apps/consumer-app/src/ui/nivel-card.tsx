@@ -1,26 +1,38 @@
 /**
- * La tarjeta del nivel Atlas: el escalón en el que está la persona y su barra de experiencia.
+ * La tarjeta del nivel Atlas: el escalón, los puntos de experiencia que lo dan y la racha, en UNA pieza.
  *
- * Es la versión compacta, para Perfil e Inicio; toca para abrir «Tu nivel Atlas». Se mide en PUNTOS (los que se
- * ganan pagando a tiempo), no en la calificación 1-100: «Nivel 2 de 5 · 1.200 puntos · te faltan 800 para
- * Establecido» dice qué hacer y cuánto falta.
+ * Pablo (2026-10-06): la portada repetía lo mismo en tres tarjetas —«Tu puntaje 0 puntos», «Nivel 1 de 5 · 0 puntos»
+ * y la cuenta— con un párrafo de explicación en cada una. Los puntos de experiencia SON lo que da el nivel, así que
+ * van juntos; la explicación de cómo se calcula vive en «Más info», una hoja que se abre cuando alguien la pide.
  *
- * No habla de dinero ni de deuda: el nivel se gana con conducta (pagar a tiempo, verificarse, antigüedad), y
- * esta tarjeta nunca invita a pedir más crédito.
+ * Los puntos de experiencia salen de lo COMPRADO: 1 por cada boliviano. Qué tan buen pagador es la persona es otra
+ * cosa —la Calificación de 1 a 100— y tiene su propia tarjeta.
  */
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
 import { formatoPuntos, fraseDeLoQueFalta, ICONO_DE_NIVEL, nivelPorPuntos, porcentajeDeBarra } from '../features/nivel';
 import { color, radius, space, stroke } from '../theme/tokens';
+import { InfoSheet } from './help-sheet';
 import { Icon } from './icons';
-import { PressSurface, Vivo } from './motion';
-import { AtlasText, ProgressBar } from './primitives';
+import { Vivo } from './motion';
+import { AtlasText, Button, Divider, ProgressBar } from './primitives';
 
-export function NivelCard({ progress, onPress }: { progress: Progress; onPress?: () => void }) {
+export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVerLogros?: () => void }) {
+  const [info, setInfo] = useState(false);
   const nivel = nivelPorPuntos(progress);
   const { level, nextLevel } = nivel;
-  const cuerpo = (
-    <>
+  // Tolerante a un backend que aún no publica la experiencia: sin ella no hay racha, pero el nivel se pinta igual.
+  const currentStreak = progress.experience?.currentStreak ?? 0;
+  const bestStreak = progress.experience?.bestStreak ?? 0;
+  const puntos = level.points === 1 ? 'punto' : 'puntos';
+
+  return (
+    <View
+      style={styles.tarjeta}
+      accessibilityLabel={`Tu nivel Atlas: ${level.label}, nivel ${level.index} de ${level.of}, ${formatoPuntos(level.points)} ${puntos} de experiencia. ${fraseDeLoQueFalta(nivel)}`}
+      testID="nivel-card"
+    >
       <View style={styles.cabecera}>
         {/* La insignia del nivel respira: es lo que se ha ganado y lo primero que se mira. */}
         <Vivo tipo="flota" periodo={3200}>
@@ -32,12 +44,16 @@ export function NivelCard({ progress, onPress }: { progress: Progress; onPress?:
           <AtlasText variant="overline" tone="secondary">
             {`NIVEL ${level.index} DE ${level.of}`}
           </AtlasText>
-          <AtlasText variant="h2">{level.label}</AtlasText>
+          <AtlasText variant="h2" numberOfLines={1}>
+            {level.label}
+          </AtlasText>
         </View>
         <View style={styles.puntos}>
-          <AtlasText variant="amount">{formatoPuntos(level.points)}</AtlasText>
+          <AtlasText variant="amount" numberOfLines={1}>
+            {formatoPuntos(level.points)}
+          </AtlasText>
           <AtlasText variant="caption" tone="secondary">
-            {level.points === 1 ? 'punto' : 'puntos'}
+            {`${puntos} XP`}
           </AtlasText>
         </View>
       </View>
@@ -45,23 +61,53 @@ export function NivelCard({ progress, onPress }: { progress: Progress; onPress?:
         value={porcentajeDeBarra(nivel)}
         label={nextLevel ? `${formatoPuntos(level.points)} puntos; ${nextLevel.label} empieza en ${formatoPuntos(nextLevel.from)}` : 'Nivel máximo'}
       />
-      <AtlasText variant="caption" tone="secondary">
-        {fraseDeLoQueFalta(nivel)}
-      </AtlasText>
-    </>
-  );
+      <View style={styles.pie}>
+        <AtlasText variant="caption" tone="secondary" style={styles.falta}>
+          {nextLevel ? `Faltan ${formatoPuntos(nextLevel.pointsMissing)} para «${nextLevel.label}»` : 'Nivel máximo'}
+        </AtlasText>
+        {currentStreak > 0 ? (
+          <AtlasText variant="captionStrong" tone="brand">
+            {`Racha ${currentStreak}`}
+          </AtlasText>
+        ) : null}
+      </View>
+      <View style={styles.acciones}>
+        <Button label="Más info" icon="info" variant="secondary" haptic="none" onPress={() => setInfo(true)} style={styles.accion} testID="nivel-mas-info" />
+        {onVerLogros ? <Button label="Mis logros" icon="estrella" variant="secondary" onPress={onVerLogros} style={styles.accion} testID="nivel-logros" /> : null}
+      </View>
 
-  if (!onPress) return <View style={styles.tarjeta}>{cuerpo}</View>;
-  return (
-    <PressSurface
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel={`Tu nivel Atlas: ${level.label}, nivel ${level.index} de ${level.of}, ${formatoPuntos(level.points)} puntos. ${fraseDeLoQueFalta(nivel)} Toca para ver cómo subir.`}
-      style={styles.tarjeta}
-      testID="nivel-card"
-    >
-      {cuerpo}
-    </PressSurface>
+      <InfoSheet visible={info} titulo="Tus puntos y tu nivel" onClose={() => setInfo(false)} testID="nivel-info">
+          <AtlasText variant="bodyStrong">Cómo se ganan</AtlasText>
+          <AtlasText variant="body" tone="secondary">
+            Cada boliviano que compras con Atlas te da 1 punto de experiencia. Tus puntos nunca bajan, y con ellos subes de
+            nivel y de tarjeta.
+          </AtlasText>
+          <Divider />
+          <AtlasText variant="bodyStrong">Los niveles</AtlasText>
+          {nivel.levelLadder.map((escalon) => (
+            <View key={escalon.code} style={styles.escalon}>
+              <Icon name={escalon.reached ? 'check' : ICONO_DE_NIVEL[escalon.code]} size={18} tint={escalon.reached ? color.action.primary : color.text.tertiary} />
+              <AtlasText variant="body" tone={escalon.code === level.code ? 'brand' : escalon.reached ? 'primary' : 'secondary'} style={styles.falta}>
+                {escalon.label}
+              </AtlasText>
+              <AtlasText variant="caption" tone="secondary">
+                {`desde ${formatoPuntos(escalon.from)}`}
+              </AtlasText>
+            </View>
+          ))}
+          <Divider />
+          <AtlasText variant="bodyStrong">La racha</AtlasText>
+          <AtlasText variant="body" tone="secondary">
+            {`Cuotas seguidas pagadas a tiempo. Ahora llevas ${currentStreak}; tu mejor racha es ${bestStreak}.`}
+          </AtlasText>
+          <Divider />
+          <AtlasText variant="bodyStrong">Puntos no es lo mismo que calificación</AtlasText>
+          <AtlasText variant="body" tone="secondary">
+            Los puntos miden cuánto usas Atlas. Qué tan buen pagador eres lo dice tu calificación de 1 a 100, que sube pagando a
+            tiempo y es la que cuenta para tu crédito.
+          </AtlasText>
+      </InfoSheet>
+    </View>
   );
 }
 
@@ -87,4 +133,9 @@ const styles = StyleSheet.create({
   },
   titulos: { flex: 1 },
   puntos: { alignItems: 'flex-end' },
+  pie: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
+  falta: { flex: 1 },
+  acciones: { flexDirection: 'row', gap: space.sm, marginTop: space.xs },
+  accion: { flex: 1 },
+  escalon: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
 });

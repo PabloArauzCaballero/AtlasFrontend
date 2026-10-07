@@ -15,6 +15,7 @@ import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-c
 import { AtlasApiError } from '../src/api/errors';
 import * as assistApi from '../src/api/endpoints/assist';
 import { fechaRelativa, useAssist } from '../src/features/assist';
+import { Keyboard, StyleSheet } from 'react-native';
 import { AssistSheet } from '../src/ui/assist-sheet';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -205,6 +206,27 @@ function Hoja() {
     </SafeAreaProvider>
   );
 }
+
+describe('AssistSheet · lo que se veía mal en el teléfono (2026-10-06)', () => {
+  it('el historial ocupa el alto de la hoja: con `flexShrink` la lista medía cero y salía en blanco', async () => {
+    await render(<Hoja />);
+    await waitFor(() => expect(screen.getByText('respuesta 1')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('asistente-historial'));
+    const vista = await screen.findByTestId('asistente-historial-vista');
+    expect(StyleSheet.flatten(vista.props.style).flex).toBe(1);
+    await waitFor(() => expect(screen.getByTestId('asistente-historial-fila-0')).toBeTruthy());
+  });
+
+  it('enviar baja el teclado, para que la respuesta se vea', async () => {
+    const bajar = jest.spyOn(Keyboard, 'dismiss');
+    await render(<Hoja />);
+    await waitFor(() => expect(screen.getByText('respuesta 1')).toBeTruthy());
+    await fireEvent.changeText(screen.getByTestId('asistente-entrada'), '¿Cómo pago?');
+    await fireEvent.press(screen.getByTestId('asistente-enviar'));
+    expect(bajar).toHaveBeenCalled();
+    bajar.mockRestore();
+  });
+});
 
 describe('AssistSheet · acciones', () => {
   it('«Nueva conversación» está apagada con razón si el hilo está vacío y activa si hay mensajes', async () => {

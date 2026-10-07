@@ -1,7 +1,7 @@
 /**
  * Puntaje y Calificación, separados (pedido de Pablo, 2026-10-06):
  *
- *  - **Puntaje**: los puntos que se ganan PAGANDO a tiempo, 1 por boliviano. Sólo suben.
+ *  - **Puntaje**: los puntos de experiencia, 1 por boliviano COMPRADO. Dan el nivel y sólo suben.
  *  - **Calificación**: de 1 a 100, qué tan buen pagador eres.
  *
  * El backend los publica con su nombre (`points`, `rating`); con uno anterior, se derivan de los campos de siempre

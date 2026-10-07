@@ -71,7 +71,7 @@ it('SIN línea de crédito, Perfil muestra igual el nivel y los puntos', async (
   expect(screen.getByText('NIVEL 1 DE 5')).toBeTruthy();
   expect(screen.getByText('Nuevo')).toBeTruthy();
   // Sin compras pagadas: 0 puntos, aunque la calificación sea 12. El nivel se mide en puntos.
-  expect(screen.getByText('Te faltan 500 puntos para «En construcción». Los ganas pagando tus compras a tiempo.')).toBeTruthy();
+  expect(screen.getByText('Faltan 500 para «En construcción»')).toBeTruthy();
 });
 
 it('SIN línea, explica por qué falta el puntaje (no es un hueco que parezca un fallo) y ofrece el extracto', async () => {
@@ -82,9 +82,9 @@ it('SIN línea, explica por qué falta el puntaje (no es un hueco que parezca un
   expect(mockPush).toHaveBeenCalledWith('/(app)/extracto-bancario');
 });
 
-it('tocar la tarjeta del nivel abre «Tu nivel Atlas»', async () => {
+it('«Mis logros» en la tarjeta del nivel abre «Tu nivel Atlas»', async () => {
   await montar();
-  await fireEvent.press(screen.getByTestId('nivel-card'));
+  await fireEvent.press(screen.getByTestId('nivel-logros'));
   expect(mockPush).toHaveBeenCalledWith('/(app)/progreso');
 });
 
@@ -106,4 +106,13 @@ it('si el libro de créditos falla, el nivel se sigue viendo y el fallo del punt
   await montar();
   expect(screen.getByText('NIVEL 1 DE 5')).toBeTruthy();
   expect(screen.getByText('No pudimos cargar tu índice de crédito')).toBeTruthy();
+});
+
+it('lo primero de Perfil es el saldo de crédito, antes de la tarjeta y del nivel', async () => {
+  await montar();
+  const textos = screen.getAllByText(/\S/).map((nodo) => [nodo.props.children].flat().join(''));
+  const credito = textos.findIndex((t) => t.includes('Crédito habilitado'));
+  const nivel = textos.findIndex((t) => t.includes('NIVEL 1 DE 5'));
+  expect(credito).toBeGreaterThan(-1);
+  expect(credito).toBeLessThan(nivel);
 });

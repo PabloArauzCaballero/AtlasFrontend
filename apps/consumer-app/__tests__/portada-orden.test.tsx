@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 import {
   SafeAreaProvider,
   initialWindowMetrics,
@@ -109,23 +109,20 @@ describe("Inicio · el orden de la portada", () => {
     libro();
   });
 
-  it("primero el crédito habilitado, después el puntaje, después la calificación 1-100 y su desglose", async () => {
+  it("primero el crédito habilitado, después el nivel con sus puntos y después la calificación 1-100", async () => {
     await montar();
-    const [credito, puntos, calificacion, nivel, desglose, pagos] = posiciones([
-      "Crédito habilitado",
-      "TU PUNTAJE",
-      "Tu calificación",
-      "NIVEL ",
-      "Tu calificación, parte por parte",
-      "Tus pagos",
-    ]);
-    for (const posicion of [credito, puntos, calificacion, nivel, desglose, pagos])
-      expect(posicion).toBeGreaterThan(-1);
-    expect(credito).toBeLessThan(puntos as number);
-    expect(puntos).toBeLessThan(calificacion as number);
-    expect(calificacion).toBeLessThan(nivel as number);
-    expect(nivel).toBeLessThan(desglose as number);
-    expect(desglose).toBeLessThan(pagos as number);
+    const [credito, nivel, calificacion, pagos] = posiciones(["Crédito habilitado", "NIVEL ", "Tu calificación", "Tus pagos"]);
+    for (const posicion of [credito, nivel, calificacion, pagos]) expect(posicion).toBeGreaterThan(-1);
+    expect(credito).toBeLessThan(nivel as number);
+    expect(nivel).toBeLessThan(calificacion as number);
+    expect(calificacion).toBeLessThan(pagos as number);
+  });
+
+  it("no repite: una sola tarjeta de puntos (la del nivel) y las explicaciones quedan tras «Más info»", async () => {
+    await montar();
+    expect(screen.queryByText("TU PUNTAJE")).toBeNull();
+    expect(screen.queryByTestId("por-que-puntaje")).toBeNull();
+    expect(screen.getAllByText("Más info")).toHaveLength(2);
   });
 
   it("enseña el disponible como la cifra de la tarjeta principal, con el límite y lo que falta por pagar", async () => {
@@ -147,15 +144,16 @@ describe("Inicio · el orden de la portada", () => {
     const [credito, mora, puntos] = posiciones([
       "Crédito habilitado",
       "Tienes pagos que regularizar",
-      "TU PUNTAJE",
+      "NIVEL ",
     ]);
     expect(credito).toBeGreaterThan(-1);
     expect(credito).toBeLessThan(mora as number);
     expect(mora).toBeLessThan(puntos as number);
   });
 
-  it("la calificación trae cada parte con su razón, no sólo el número", async () => {
+  it("«Más info» de la calificación trae cada parte con su razón, no sólo el número", async () => {
     await montar();
+    await fireEvent.press(screen.getByTestId("calificacion-mas-info"));
     const progreso = PROGRESO_DE_PRUEBA;
     for (const parte of progreso.components) {
       expect(screen.getByText(parte.label)).toBeTruthy();
@@ -167,8 +165,8 @@ describe("Inicio · el orden de la portada", () => {
     libro({ creditLine: null });
     await montar();
     expect(screen.getByText("Crédito habilitado")).toBeTruthy();
-    expect(screen.getByTestId("experiencia-card")).toBeTruthy();
-    expect(screen.getByTestId("por-que-puntaje")).toBeTruthy();
+    expect(screen.getByTestId("nivel-card")).toBeTruthy();
+    expect(screen.getByTestId("calificacion-card")).toBeTruthy();
   });
 
   it("si los puntos no cargan se dice y se puede reintentar; la línea no desaparece", async () => {
@@ -177,9 +175,9 @@ describe("Inicio · el orden de la portada", () => {
     await montar();
     expect(screen.getByText("Crédito habilitado")).toBeTruthy();
     expect(
-      screen.getByText("No pudimos cargar tu puntaje y tu calificación"),
+      screen.getByText("No pudimos cargar tu nivel y tu calificación"),
     ).toBeTruthy();
-    expect(screen.queryByTestId("experiencia-card")).toBeNull();
+    expect(screen.queryByTestId("nivel-card")).toBeNull();
   });
 });
 

@@ -10,11 +10,10 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import type { CreditLine, Progress } from '../api/endpoints/credit-line';
-import { color, radius, space } from '../theme/tokens';
+import { color, palette, radius, space } from '../theme/tokens';
 import { Icon } from './icons';
 import { Insignia } from './insignia';
 import { Gap } from './layout';
-import { ExperienciaCard } from './experiencia-card';
 import { formatoPuntos, nivelPorPuntos } from '../features/nivel';
 import { Appear } from './motion';
 import { NivelCard } from './nivel-card';
@@ -46,22 +45,6 @@ export function PestanaPuntaje({ progress }: { progress: Progress }) {
       </Appear>
       <Appear index={1}>
         <NivelCard progress={progress} />
-      </Appear>
-      <Appear index={2}>
-        <ExperienciaCard progress={progress} />
-      </Appear>
-      <Appear index={3}>
-        <Card testID="como-se-ganan-puntos">
-          <AtlasText variant="bodyStrong">Cómo se ganan</AtlasText>
-          <AtlasText variant="body" tone="secondary">
-            Cada compra que pagas a tiempo te da 1 punto por cada boliviano pagado. Comprar sin pagar no suma, y pagar tarde
-            tampoco: los puntos premian pagar, no endeudarse.
-          </AtlasText>
-          <AtlasText variant="caption" tone="secondary">
-            Tus puntos nunca bajan y con ellos subes de nivel y de tarjeta. Qué tan buen pagador eres se mide aparte, en la
-            pestaña Calificación.
-          </AtlasText>
-        </Card>
       </Appear>
     </>
   );
@@ -105,8 +88,9 @@ export function PestanaLogros({ progress }: { progress: Progress }) {
   return (
     <>
       <Appear index={0} style={styles.seccion}>
-        <SectionHeader title="Insignias" detail={`${ganadas} de ${progress.experience.badges.length} ganadas`} />
-        <Card>
+        <SectionHeader title="Tus trofeos" detail={`${ganadas} de ${progress.experience.badges.length} ganados · bronce, plata, oro y platino`} />
+        {/* La vitrina: un fondo más hondo que el de las tarjetas, para que el metal de los trofeos brille. */}
+        <Card style={styles.vitrina}>
           <View style={styles.rejilla} testID="insignias">
             {progress.experience.badges.map((insignia, indice) => (
               <Insignia key={insignia.code} insignia={insignia} indice={indice} />
@@ -241,6 +225,7 @@ const styles = StyleSheet.create({
   // El encabezado de sección y su tarjeta van en el mismo bloque: sin este `gap` la tarjeta pisaba el apunte del encabezado.
   seccion: { gap: space.sm },
   rejilla: { flexDirection: 'row', flexWrap: 'wrap' },
+  vitrina: { backgroundColor: palette.bg, borderColor: color.feedbackBorder.brand },
   fila: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },
   texto: { flex: 1, gap: 2 },
   marca: { width: 24, height: 24, borderRadius: radius.pill, borderWidth: 1.5, borderColor: color.border.strong, alignItems: 'center', justifyContent: 'center' },

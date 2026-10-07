@@ -13,10 +13,11 @@ describe("Insignia", () => {
     await render(<Insignia insignia={ganada} />);
     expect(
       screen.getByLabelText(
-        /Primera compra\. Ganada\. Hiciste tu primera compra/,
+        /Trofeo de bronce: Primera compra\. Ganado\. Hiciste tu primera compra/,
       ),
     ).toBeTruthy();
-    expect(screen.getByText("Ganada")).toBeTruthy();
+    // El rango del trofeo, en su placa.
+    expect(screen.getByText("BRONCE")).toBeTruthy();
   });
 
   it("una pendiente dice cuánto avanzó y cuánto falta", async () => {
