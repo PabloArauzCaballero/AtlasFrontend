@@ -13,6 +13,7 @@ import type { CreditLine, Progress } from '../api/endpoints/credit-line';
 import { space } from '../theme/tokens';
 import { VitrinaDeLogros } from './vitrina-de-logros';
 import { Gap } from './layout';
+import { LineaDeNiveles } from './linea-de-niveles';
 import { ListaDePasos } from './lista-de-pasos';
 import { formatoPuntos, idDeEscalon, nivelPorPuntos } from '../features/nivel';
 import { Appear } from './motion';
@@ -119,10 +120,8 @@ export function PestanaHistoria({ progress }: { progress: Progress }) {
     <>
       <Appear index={0} style={styles.seccion}>
         <SectionHeader title="Los niveles" detail="Se suben con los puntos que ganas pagando a tiempo." />
-        <ListaDePasos
+        <LineaDeNiveles
           testID="niveles"
-          ascender
-          porPagina={4}
           pasos={[...levelLadder].reverse().map((e) => {
             const actual = idDeEscalon(e) === idDeEscalon(level);
             return {
