@@ -53,10 +53,18 @@ describe('perfiles de EAS', () => {
 
   it('ninguna variable apunta a una red local ni a http, y ningun perfil lleva secretos', () => {
     for (const [nombre, p] of Object.entries(eas.build)) {
-      // Unica excepcion a https: el perfil que apunta al TEST de Contabo, que sólo se publica por http y por IP.
-      // Es una URL exacta, no un patron: cualquier otro perfil con http sigue fallando.
-      if (nombre === 'testflight-test') expect(p.env?.EXPO_PUBLIC_ATLAS_API_URL).toBe('http://161.97.85.216/api/v1');
-      else expect(p.env?.EXPO_PUBLIC_ATLAS_API_URL).toMatch(/^https:\/\//);
+      /*
+       * SIN excepciones: ningun perfil de EAS puede apuntar a `http://`.
+       *
+       * iOS bloquea el http plano (App Transport Security) y este proyecto sólo habilita el cleartext
+       * en ANDROID (`plugins/with-cleartext-when-http.js`). Un build de iPhone con la API en http no
+       * llega al servidor: la app arranca, muestra el logo, y luego se queda en negro, o en «Sin
+       * conexión» / «No pudimos cargar tu registro» en cada pantalla, con el servidor perfectamente
+       * sano. Pasó el 2026-10-07 con el perfil `testflight-test` (http://161.97.85.216): el build 25
+       * quedó inservible en el iPhone de Pablo. TEST se sirve por https en
+       * atlas.consumerweb.test.arauzsoftware.com; la IP en bruto es para navegadores, no para la app.
+       */
+      expect(p.env?.EXPO_PUBLIC_ATLAS_API_URL).toMatch(/^https:\/\//);
       expect(p.env?.EXPO_PUBLIC_ATLAS_API_URL).not.toMatch(/localhost|127\.0\.0\.1|10\.0\.2\.2|192\.168\.|\/\/10\./);
       for (const k of Object.keys(p.env ?? {})) expect(k).toMatch(/^EXPO_PUBLIC_ATLAS_[A-Z_]+$/);
     }
