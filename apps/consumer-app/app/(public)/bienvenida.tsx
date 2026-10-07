@@ -29,63 +29,99 @@
  */
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Dimensions, type NativeScrollEvent, type NativeSyntheticEvent, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, type ScrollView, StyleSheet, View } from 'react-native';
+import { HeroBienvenida } from '../../src/web/HeroBienvenida';
 import Animated, {
   Easing,
   Extrapolation,
   interpolate,
+  interpolateColor,
+  runOnJS,
   type SharedValue,
+  useAnimatedScrollHandler,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AtlasMark } from '../../src/ui/brand';
+import { AtlasMark, BrandHalo } from '../../src/ui/brand';
+import { useBrandCut } from '../../src/ui/brand-cut';
+import { toqueWeb } from '../../src/ui/hit-slop';
+import { useAnchoDeColumna, useTramo } from '../../src/ui/responsive';
 import { color, radius, space } from '../../src/theme/tokens';
-import { Icon, type IconName } from '../../src/ui/icons';
+import * as contentApi from '../../src/api/endpoints/app-content';
 import { AtlasText, Button } from '../../src/ui/primitives';
+import { bitacora } from '../../src/features/bitacora';
+import { PASOS_POR_DEFECTO, pasosDesdeContenido, type Paso } from '../../src/features/bienvenida-pasos';
+import { marcarPresentacionVista } from '../../src/session/primera-vez';
+import { Ilustracion } from '../../src/ui/ilustraciones-bienvenida';
 
 /**
- * El eslogan.
+ * El eslogan y los pasos, POR DEFECTO.
+ *
+ * ## Por que sigue habiendo texto aqui
+ *
+ * Porque esta es la primerisima pantalla y se abre sin sesion, a veces sin red y siempre antes de
+ * que nadie haya cargado nada. Una bienvenida en blanco mientras se espera al servidor es la peor
+ * primera impresion posible, y una que falla porque el servidor no contesto es todavia peor.
+ *
+ * Esto es el suelo, no la fuente. Lo que se ensena cuando hay respuesta viene del catalogo de
+ * contenidos del servidor (`surface: 'onboarding'`), donde negocio lo edita sin publicar una version
+ * de la app. Si el catalogo trae algo, gana el catalogo.
+ *
+ * ## Sobre el eslogan
  *
  * «Compra hoy, paga despues» describe el mecanismo; no dice por que importa. Lo que hace distinto a
  * Atlas en Santa Cruz no es el plazo: es que da credito a quien ningun banco se lo da, sin tarjeta y
  * sin tramite. El eslogan tiene que decir ESO.
  */
 const ESLOGAN = 'Tu primer crédito no debería depender de un banco.';
+const ESLOGAN_PIE = 'Crédito para comprar en los comercios de Santa Cruz.';
 
-type Paso = { icon: IconName; titulo: string; cuerpo: string };
 
-const PASOS: Paso[] = [
-  {
-    icon: 'escanear',
-    titulo: 'Escaneas y listo',
-    cuerpo:
-      'En la caja del comercio escaneas su QR y escribes el monto. Sin tarjeta, sin papeleo y sin esperar una respuesta que llega en tres días.',
-  },
-  {
-    icon: 'billetera',
-    titulo: 'Pagas 60% hoy',
-    cuerpo:
-      'El resto se divide en 3 cuotas cada 14 días. Antes de confirmar nada te mostramos cuánto pagas hoy y cómo quedan tus cuotas.',
-  },
-  {
-    icon: 'tendencia',
-    titulo: 'Construyes tu historial',
-    cuerpo:
-      'Cada cuota que pagas a tiempo sube tu puntaje Atlas y tu línea. El historial que ningún buró tiene todavía, lo empiezas aquí.',
-  },
-];
+/*
+  El ancho de cada página del carrusel se lee en cada render y no una vez al cargar el módulo.
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+  `Dimensions.get('window')` al cargar valía para un teléfono, donde la ventana no cambia. En el
+  navegador la misma app se abre a 1.400 px, se redimensiona y se gira; con un ancho fijo el
+  carrusel medía la ventana entera y la página desbordaba la columna de lectura hacia la derecha.
+  Ahora cada página mide la columna (o la ventana si es más estrecha), y el carrusel entero se
+  centra con ese mismo ancho: ver `ui/responsive.ts`.
+*/
 
 export default function Welcome() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const SCREEN_WIDTH = useAnchoDeColumna();
+  const tramo = useTramo();
   const scroll = useRef<ScrollView>(null);
   const [pagina, setPagina] = useState(0);
   const reduced = useReducedMotion();
+  const cortar = useBrandCut();
+
+  /*
+   * El contenido del servidor SUSTITUYE al de por defecto cuando llega, y no antes. Arrancar en
+   * blanco a la espera de la red convertiria la primera impresion en una pantalla vacia; y como la
+   * carga es casi siempre mas rapida que la animacion de entrada, en la practica no se ve el cambio.
+   */
+  const [eslogan, setEslogan] = useState({ titulo: ESLOGAN, pie: ESLOGAN_PIE });
+  const [pasos, setPasos] = useState<Paso[]>(PASOS_POR_DEFECTO);
+
+  useEffect(() => {
+    let cancelled = false;
+    void contentApi.getContent('onboarding').then((entries) => {
+      if (cancelled || entries.length === 0) return;
+      const cabecera = entries.find((entry) => entry.contentKey === 'eslogan');
+      if (cabecera?.subtitle) setEslogan({ titulo: cabecera.subtitle, pie: cabecera.body ?? ESLOGAN_PIE });
+
+      // Siempre «Qué es Atlas» primero, con o sin contenido del portal (ver `features/bienvenida-pasos.ts`).
+      setPasos(pasosDesdeContenido(entries));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   /*
    * La entrada de la marca: escala 1.3 -> 1 y opacidad 0 -> 1.
@@ -115,15 +151,36 @@ export default function Welcome() {
     transform: [{ translateY: interpolate(entrada.value, [0.35, 1], [14, 0], Extrapolation.CLAMP) }],
   }));
 
-  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const x = event.nativeEvent.contentOffset.x;
-    progreso.value = x / SCREEN_WIDTH;
-    const next = Math.round(x / SCREEN_WIDTH);
-    if (next !== pagina) setPagina(next);
-  };
+  /*
+    El progreso se calcula en el hilo de UI, no en el de JS.
+
+    Con `onScroll` normal, cada fotograma del paralaje dependia de que el hilo de JS estuviera libre
+    para leer el evento y escribir el valor compartido. En el arranque de la app —fuentes, sesion,
+    primera peticion— no lo esta, y el deslizamiento se veia a tirones justo en la primera pantalla
+    que ve un cliente. `useAnimatedScrollHandler` corre en el hilo de UI y el paralaje ya no depende
+    de nada de eso.
+
+    Lo unico que vuelve a JS es el numero de pagina, y solo cuando CAMBIA: es estado de React —de el
+    dependen los botones del pie— y ahi si hace falta un re-render, pero uno cada pagina y no uno
+    por fotograma.
+  */
+  const onScroll = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      progreso.value = event.contentOffset.x / SCREEN_WIDTH;
+      const next = Math.round(event.contentOffset.x / SCREEN_WIDTH);
+      if (next !== pagina) runOnJS(setPagina)(next);
+    },
+  });
 
   const irA = (indice: number) => scroll.current?.scrollTo({ x: indice * SCREEN_WIDTH, animated: true });
-  const ultima = pagina === PASOS.length;
+  const ultima = pagina === pasos.length;
+
+  /*
+    En el navegador, desde 1024 px, la bienvenida es el hero de la landing con la app dentro de un
+    telefono (ver `web/HeroBienvenida.tsx`). Por debajo —y dentro de ese telefono, que mide 390—
+    es esta misma pantalla. Va despues de todos los hooks para no alterar su orden.
+  */
+  if (Platform.OS === 'web' && tramo === 'escritorio') return <HeroBienvenida pasos={pasos} />;
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -133,18 +190,22 @@ export default function Welcome() {
         Un degradado plano se ve como un fondo; dos focos descentrados dan profundidad y hacen que el
         contenido parezca estar POR ENCIMA de algo. Es lo que separa una pantalla oscura de una
         pantalla con atmosfera.
-      */}
-      <View pointerEvents="none" style={[styles.halo, styles.haloTop]} />
-      <View pointerEvents="none" style={[styles.halo, styles.haloBottom]} />
 
-      <ScrollView
+        Son `BrandHalo` —degradado radial— y no vistas redondeadas: ver el porque en `ui/brand.tsx`.
+        En corto: un circulo de color plano al 16 % sigue teniendo un borde, y aqui se veian los dos.
+      */}
+      <BrandHalo size={560} style={styles.haloTop} />
+      <BrandHalo size={620} style={styles.haloBottom} />
+
+      <Animated.ScrollView
         ref={scroll}
         horizontal
         pagingEnabled
+        contentContainerStyle={{ width: SCREEN_WIDTH * (pasos.length + 1) }}
         showsHorizontalScrollIndicator={false}
         onScroll={onScroll}
         scrollEventThrottle={16}
-        style={styles.flex}
+        style={[styles.flex, { width: SCREEN_WIDTH, alignSelf: 'center' }]}
       >
         {/* Pagina 0: la marca sola. Nada mas, a proposito. */}
         <View style={[styles.page, { width: SCREEN_WIDTH }]}>
@@ -155,42 +216,71 @@ export default function Welcome() {
             </AtlasText>
           </Animated.View>
           <Animated.View style={esloganStyle}>
-            <AtlasText variant="h2" style={styles.eslogan}>
-              {ESLOGAN}
+            <AtlasText variant="h1" style={styles.eslogan}>
+              {eslogan.titulo}
             </AtlasText>
             <AtlasText variant="body" tone="secondary" style={styles.esloganPie}>
-              Crédito al instante en los comercios de Santa Cruz.
+              {eslogan.pie}
             </AtlasText>
           </Animated.View>
         </View>
 
-        {PASOS.map((paso, indice) => (
+        {pasos.map((paso, indice) => (
           <PasoView key={paso.titulo} paso={paso} indice={indice} progreso={progreso} reduced={reduced} />
         ))}
-      </ScrollView>
+      </Animated.ScrollView>
 
       {/* Los puntos: donde estoy y cuanto queda. Tocables, porque verlos invita a tocarlos. */}
       <View style={styles.dots}>
-        {Array.from({ length: PASOS.length + 1 }, (_, indice) => (
-          <Pressable
+        {/*
+          Las dos cosas a la vez: el punto animado —se estira con el dedo en vez de saltar al
+          soltar— y la lista de pasos que ahora llega del servidor. `pasos.length` y no `PASOS`:
+          el numero de paginas ya no lo decide el bundle.
+        */}
+        {Array.from({ length: pasos.length + 1 }, (_, indice) => (
+          <Punto
             key={indice}
+            indice={indice}
+            total={pasos.length + 1}
+            progreso={progreso}
+            reduced={reduced}
+            activo={pagina === indice}
             onPress={() => irA(indice)}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel={`Ir a la pantalla ${indice + 1} de ${PASOS.length + 1}`}
-          >
-            <View style={[styles.dot, pagina === indice && styles.dotActive]} />
-          </Pressable>
+          />
         ))}
       </View>
 
       <View style={[styles.footer, { paddingBottom: Math.max(space.lg, insets.bottom) }]}>
+        {/*
+          Salir de la bienvenida pasa por el corte de marca; pasar de pagina, no.
+
+          «Siguiente» no sale de esta pantalla: mueve el carrusel. Atravesar la marca para volver a
+          la misma pantalla contaria un viaje que no ocurrio, y ademas taparia el unico movimiento
+          que ahi importa —el paralaje de la pagina que entra—. El corte marca un LIMITE, y usarlo
+          en cada toque lo convertiria en un peaje de medio segundo repetido cuatro veces.
+        */}
         {ultima ? (
-          <Button label="Crear mi cuenta" onPress={() => router.push('/(onboarding)/registro')} />
+          <Button
+            label="Crear mi cuenta"
+            bitacora="crear_cuenta"
+            onPress={() => {
+              // AQUI arranca el cronometro del alta: en el primer toque, antes de que exista cuenta.
+              void bitacora.arrancar('crear_cuenta');
+              void marcarPresentacionVista();
+              cortar(() => router.push('/(onboarding)/registro'));
+            }}
+          />
         ) : (
           <Button label="Siguiente" onPress={() => irA(pagina + 1)} />
         )}
-        <Button label="Ya tengo cuenta" variant="ghost" onPress={() => router.push('/(auth)/ingresar')} />
+        <Button
+          label="Ya tengo cuenta"
+          variant="ghost"
+          onPress={() => {
+            void marcarPresentacionVista();
+            cortar(() => router.push('/(auth)/ingresar'));
+          }}
+        />
       </View>
     </View>
   );
@@ -214,6 +304,7 @@ function PasoView({
   progreso: SharedValue<number>;
   reduced: boolean;
 }) {
+  const SCREEN_WIDTH = useAnchoDeColumna();
   const pagina = indice + 1;
 
   const contenidoStyle = useAnimatedStyle(() => {
@@ -234,8 +325,13 @@ function PasoView({
   return (
     <View style={[styles.page, { width: SCREEN_WIDTH }]}>
       <Animated.View style={[styles.pasoContenido, contenidoStyle]}>
-        <Animated.View style={[styles.pasoIcono, iconoStyle]}>
-          <Icon name={paso.icon} size={40} tint={color.action.primary} />
+        {/*
+          La ilustración, grande y encima del título: es lo primero que se ve de cada paso y cuenta lo mismo
+          que el texto. Es vectorial (SVG), así que se dibuja con la resolución de la pantalla. Decorativa para
+          el lector de pantalla: el título de debajo ya dice lo mismo.
+        */}
+        <Animated.View style={iconoStyle}>
+          <Ilustracion nombre={paso.ilustracion} ancho={Math.min(SCREEN_WIDTH - space.xl * 2, 360)} decorativa />
         </Animated.View>
         <AtlasText variant="hero" style={styles.pasoTitulo}>
           {paso.titulo}
@@ -248,14 +344,89 @@ function PasoView({
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: color.surface.primary },
-  flex: { flex: 1 },
-  page: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.xl, gap: space.lg },
+/**
+ * Un punto del indicador.
+ *
+ * ## Por que se estira con el dedo y no al llegar
+ *
+ * El punto activo mide 22 px y los demas 8. Cuando ese cambio ocurria al soltar —cuando `pagina` ya
+ * habia cambiado— el indicador iba un paso por detras del contenido: la pagina nueva ya estaba a
+ * medio entrar y abajo seguia marcado el punto de la anterior, hasta que de golpe saltaba. Es el
+ * detalle que hace que un carrusel se sienta «de plantilla».
+ *
+ * Atado a `progreso`, el punto que se deja se encoge y el que llega se alarga **a la vez que el
+ * dedo**, y a mitad de camino los dos estan a medias. Ademas eso informa de algo que el salto no
+ * decia: que el gesto se puede cancelar volviendo atras.
+ *
+ * Con movimiento reducido no se interpola nada: el punto activo se pinta ancho y ya.
+ */
+function Punto({
+  indice,
+  total,
+  progreso,
+  reduced,
+  activo,
+  onPress,
+}: {
+  indice: number;
+  total: number;
+  progreso: SharedValue<number>;
+  reduced: boolean;
+  activo: boolean;
+  onPress: () => void;
+}) {
+  const animado = useAnimatedStyle(() => {
+    if (reduced) return {};
+    const cercania = interpolate(Math.abs(progreso.value - indice), [0, 1], [1, 0], Extrapolation.CLAMP);
+    return {
+      width: interpolate(cercania, [0, 1], [8, 22]),
+      // `interpolateColor` y no un umbral: con `cercania > 0.5` el ancho viajaba y el color saltaba
+      // en mitad del recorrido, que es peor que si saltaran los dos a la vez.
+      backgroundColor: interpolateColor(cercania, [0, 1], [color.border.subtle, color.action.primary]),
+    };
+  });
 
-  halo: { position: 'absolute', width: 460, height: 460, borderRadius: 230, opacity: 0.16 },
-  haloTop: { top: -190, right: -150, backgroundColor: color.action.primary },
-  haloBottom: { bottom: -220, left: -170, backgroundColor: color.action.primary, opacity: 0.1 },
+  return (
+    <Pressable
+      onPress={onPress}
+      hitSlop={10}
+      {...toqueWeb(10)}
+      accessibilityRole="button"
+      accessibilityLabel={`Ir a la pantalla ${indice + 1} de ${total}`}
+    >
+      <Animated.View style={[styles.dot, reduced && activo && styles.dotActive, animado]} />
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  /*
+    `overflow: hidden` en la raiz: los dos halos salen 200 px por la derecha y por la izquierda a
+    proposito, y en el telefono la pantalla los recorta sola. En el navegador el documento no
+    recorta nada: crecia 200 px y aparecia una barra horizontal en todos los anchos hasta 1.023 px.
+  */
+  root: { flex: 1, backgroundColor: color.surface.primary, overflow: 'hidden' },
+  flex: { flex: 1 },
+  /*
+    `overflow: hidden` recorta cada pagina a su propio ancho.
+
+    Sin el, el paralaje del contenido —que se desplaza 0.35 del recorrido— sacaba el titular y el
+    cuerpo de la pagina vecina FUERA de su pagina, y se leian a media opacidad sobre la que estaba
+    en pantalla. En la bienvenida se veia el «Escaneas y listo» de la pagina 2 flotando junto al
+    logotipo. El paralaje solo funciona si cada capa esta contenida en su marco: lo que le da el
+    efecto de profundidad es que asome menos, no que se salga.
+  */
+  page: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: space.xl,
+    gap: space.lg,
+    overflow: 'hidden',
+  },
+
+  haloTop: { position: 'absolute', top: -240, right: -200 },
+  haloBottom: { position: 'absolute', bottom: -280, left: -220, opacity: 0.7 },
 
   marcaWrap: { alignItems: 'center', gap: space.md },
   marcaTexto: { letterSpacing: 6, textAlign: 'center' },
@@ -263,15 +434,6 @@ const styles = StyleSheet.create({
   esloganPie: { textAlign: 'center', marginTop: space.sm },
 
   pasoContenido: { alignItems: 'center', gap: space.base },
-  pasoIcono: {
-    width: 92,
-    height: 92,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.surface.raised,
-    marginBottom: space.md,
-  },
   pasoTitulo: { textAlign: 'center' },
   pasoCuerpo: { textAlign: 'center' },
 
@@ -279,5 +441,7 @@ const styles = StyleSheet.create({
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: color.border.subtle },
   dotActive: { width: 22, backgroundColor: color.action.primary },
 
-  footer: { paddingHorizontal: space.lg, gap: space.sm },
+  // El mismo ancho maximo que el resto de la app (`ui/layout.tsx`): en una tableta, dos botones
+  // estirados a 1.000 px dejan de leerse como botones.
+  footer: { paddingHorizontal: space.lg, gap: space.sm, width: '100%', maxWidth: 560, alignSelf: 'center' },
 });

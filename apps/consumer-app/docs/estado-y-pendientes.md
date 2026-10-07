@@ -298,16 +298,27 @@ tanto el flujo de compra corre en el motor local de `src/sandbox` —que **se de
 
 ### TODO-5 · Pruebas que faltan `[medio]`
 
-1. **E2E móvil** sobre app instalada (Maestro o Detox) para los flujos P0.
+1. ~~**E2E móvil** sobre app instalada~~ `[PARCIAL]` — hay tres flujos de Maestro en `e2e/`,
+   corriendo sobre la app instalada y contra el backend real: bienvenida, alta completa e ingreso.
+   El alta se detiene donde el servidor manda el código al correo, que no se puede automatizar sin
+   un sumidero de correo; fingirlo probaría un recorrido que ningún cliente hace. Falta cubrir la
+   compra y el pago.
 2. **Mutación de cliente**: interceptar el tráfico y alterar `organizationId`, `posId`,
    `financedAmount`, `decisionId`. Hoy la app no los envía; falta demostrarlo contra el servidor.
 3. **Concurrencia**: dos compras simultáneas que juntas exceden la línea; solo una debe confirmar.
 4. **Regresión visual** por pantalla.
 5. **Accesibilidad** con TalkBack y VoiceOver reales, y escala de fuente al máximo.
 
-### TODO-6 · iOS `[bloqueado por plataforma]`
+### TODO-6 · ~~iOS~~ `[HECHO]`
 
-Nada ejecutado: exige macOS con Xcode. El código no usa ninguna API exclusiva de Android.
+Ejecutado el 2026-08-22 en el simulador de iPhone 17 Pro (iOS 26.5), con binario nativo propio y
+contra el stack real. La evidencia está en `docs/evidence/2026-08-22-movimiento-ios/`: 44 capturas y
+dos vídeos, el alta completa de un cliente nuevo, el acceso, y el carnet decidido por el motor.
+
+Y sirvió para lo que sirve probar en la otra plataforma: **dos defectos que solo se ven en iOS**. La
+cabecera se metía debajo del reloj en las veinte pantallas que usan `Screen` —faltaba el área segura
+superior, que en Android no se nota porque la ventana ya empieza bajo la barra de estado— y el hueco
+del teclado quedaba 59 px más alto que el teclado. Los dos corregidos.
 
 ### TODO-7 · Higiene de credenciales de desarrollo `[bajo]`
 
@@ -317,8 +328,8 @@ Nada ejecutado: exige macOS con Xcode. El código no usa ninguna API exclusiva d
 - En el motor se crearon dos credenciales de integración (`dev-qa-analyst`, `dev-risk-approver`)
   **insertándolas directamente en la base**, porque el motor exige separación de funciones y no
   expone endpoint para darlas de alta. Conviene un camino soportado para crearlas.
-- En `AtlasBackend` quedan **15 archivos locales sin commitear** anteriores a esta sesión (seeders,
-  `tenant.model.ts`, `tools/`, `envelope-encryption.util.ts`). No se tocaron.
+- ~~En `AtlasBackend` quedan **15 archivos locales sin commitear**~~ `[RESUELTO]` — el árbol de
+  `AtlasBackend` está limpio y en `dev`.
 
 ---
 

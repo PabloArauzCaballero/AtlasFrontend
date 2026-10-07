@@ -43,6 +43,41 @@ export const confirmPasswordReset = (input: { email: string; code: string; newPa
     body: { actorType: 'customer', identifier: input.email, code: input.code, newPassword: input.newPassword },
   });
 
-/** MFA opt-in del cliente. */
+/**
+ * MFA opt-in del cliente. El backend responde `{ mfaEnabled }` (no `enabled`); con MFA activo el
+ * próximo login pide el PIN por correo. Activarlo exige correo configurado en el servidor (503 si no).
+ */
 export const setMfaPreference = (enabled: boolean) =>
-  request<{ enabled: boolean }>('/auth/mfa', { method: 'POST', body: { enabled } });
+  request<{ mfaEnabled: boolean }>('/auth/mfa', { method: 'POST', body: { enabled } });
+
+/**
+ * Cambio de PIN con la sesión abierta: dos pasos, igual que el login.
+ *
+ * El backend valida el PIN actual en el primer paso y manda un código de 6 dígitos al correo de la
+ * cuenta; el segundo paso lo canjea por el PIN nuevo. Quién cambia se toma del access token: no hay
+ * forma de cambiar el PIN de otra persona por aquí.
+ */
+export const requestPinChange = (currentPassword: string) =>
+  request<{
+    pinChallengeRequired: boolean;
+    challengeToken: string;
+    expiresInMinutes: number;
+    /** A qué correo se mandó el código, ENMASCARADO (`pa***@gmail.com`). Ausente en un backend que aún no lo manda. */
+    deliveredTo?: string | null;
+  }>('/auth/password/change/request', {
+    method: 'POST',
+    body: { currentPassword },
+  });
+
+export const confirmPinChange = (input: { challengeToken: string; code: string; newPassword: string }) =>
+  request<{ updated: boolean }>('/auth/password/change/confirm', { method: 'POST', body: input });
+
+/**
+ * Volver a pedir el PIN con la sesión abierta (antes de enseñar datos personales).
+ *
+ * No crea sesión ni manda correo. Un PIN incorrecto es un 400 `PIN_INCORRECT` —no un 401— para que el
+ * cliente HTTP no lo lea como «sesión caducada» y expulse a la persona al login por un dedo torpe. Sin
+ * contador de intentos en el servidor: lo frena un límite de 5 por minuto (429).
+ */
+export const verifyPin = (pin: string) =>
+  request<{ verified: true; verifiedAt: string }>('/auth/pin/verify', { method: 'POST', body: { pin } });

@@ -14,8 +14,11 @@
  */
 import { useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { color, radius, space, touch } from '../theme/tokens';
+import { color, radius, space, stroke, touch } from '../theme/tokens';
+import { toqueWeb } from './hit-slop';
 import { Icon } from './icons';
+import { ANCHO_COLUMNA } from './responsive';
+import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
 
 export type ConsentRowProps = {
@@ -64,7 +67,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
         casilla, así que quien iba a leer terminaba aceptando sin querer — el error que más caro sale
         en una pantalla de consentimiento.
       */}
-      <Pressable
+      <PressSurface
         onPress={() => onToggle(!checked)}
         accessibilityRole="checkbox"
         accessibilityState={{ checked }}
@@ -75,12 +78,19 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
         <View style={[styles.box, checked && styles.boxChecked]}>
           {checked ? <Icon name="check" size={14} tint={color.surface.primary} /> : null}
         </View>
-      </Pressable>
+      </PressSurface>
 
       <View style={styles.text}>
-        <AtlasText variant="bodyStrong">
+        {/* El asterisco en color de marca y con su nombre para el lector de pantalla: gris y pegado
+            al final de la frase no se ve, y sin leyenda no significa nada. Misma regla que
+            `ui/fields.tsx`. */}
+        <AtlasText variant="title">
           {title}
-          {required ? ' *' : ''}
+          {required ? (
+            <AtlasText variant="title" tone="brand" accessibilityLabel="obligatorio">
+              {' *'}
+            </AtlasText>
+          ) : null}
         </AtlasText>
         {summary ? (
           <AtlasText variant="caption" tone="secondary">
@@ -94,9 +104,10 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
           accessibilityRole="button"
           accessibilityLabel={`Leer ${title}`}
           hitSlop={6}
+          {...toqueWeb(6)}
           style={styles.readTarget}
         >
-          <AtlasText variant="caption" style={{ color: readable ? color.action.primary : color.text.tertiary }}>
+          <AtlasText variant="captionStrong" tone={readable ? 'brand' : 'tertiary'}>
             {readable ? 'Leer el documento' : 'Documento no disponible'}
           </AtlasText>
           {readable ? <Icon name="adelante" size={12} tint={color.action.primary} /> : null}
@@ -105,7 +116,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
 
       <Modal visible={reading} animationType="slide" onRequestClose={() => setReading(false)}>
         <View style={styles.sheet}>
-          <View style={styles.sheetHead}>
+          <View style={[styles.sheetHead, styles.lectura]}>
             <View style={styles.sheetTitle}>
               <AtlasText variant="h3">{title}</AtlasText>
               {versionCode ? (
@@ -114,20 +125,20 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
                 </AtlasText>
               ) : null}
             </View>
-            <Pressable onPress={() => setReading(false)} accessibilityRole="button" accessibilityLabel="Cerrar" hitSlop={8}>
-              <AtlasText variant="bodyStrong" style={{ color: color.action.primary }}>
+            <Pressable onPress={() => setReading(false)} accessibilityRole="button" accessibilityLabel="Cerrar" hitSlop={8} {...toqueWeb(8)}>
+              <AtlasText variant="bodyStrong" tone="brand">
                 Cerrar
               </AtlasText>
             </Pressable>
           </View>
 
-          <ScrollView contentContainerStyle={styles.sheetBody}>{renderBody(bodyMarkdown ?? '')}</ScrollView>
+          <ScrollView contentContainerStyle={[styles.sheetBody, styles.lectura]}>{renderBody(bodyMarkdown ?? '')}</ScrollView>
 
           {/*
             Aceptar desde el propio documento. Quien acaba de leerlo está en el momento exacto de
             decidir; obligarle a cerrar y buscar la casilla es perder esa decision por el camino.
           */}
-          <View style={styles.sheetFoot}>
+          <View style={[styles.sheetFoot, styles.lectura]}>
             <Pressable
               onPress={() => {
                 onToggle(true);
@@ -137,7 +148,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
               accessibilityLabel={`Aceptar ${title}`}
               style={styles.acceptButton}
             >
-              <AtlasText variant="bodyStrong" style={{ color: color.surface.primary }}>
+              <AtlasText variant="bodyStrong" tone="onBrand">
                 {checked ? 'Ya lo aceptaste' : 'Acepto'}
               </AtlasText>
             </Pressable>
@@ -147,6 +158,9 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
     </View>
   );
 }
+
+/** La columna de lectura del documento: la de la app mas el aire de una tarjeta a cada lado. */
+const ANCHO_LECTURA = ANCHO_COLUMNA + space.xxl * 2;
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: space.md, alignItems: 'flex-start', paddingVertical: space.sm },
@@ -164,6 +178,12 @@ const styles = StyleSheet.create({
   text: { flex: 1, gap: space.xxs },
   readTarget: { flexDirection: 'row', alignItems: 'center', gap: space.xxs, paddingVertical: space.xxs },
   sheet: { flex: 1, backgroundColor: color.surface.primary },
+  /*
+    El documento se lee en una columna, no a lo ancho de la ventana. A pantalla completa en un
+    monitor de 1.920 px una linea de terminos medía trescientos caracteres; en el teléfono el tope
+    no llega a actuar porque la ventana es mas estrecha.
+  */
+  lectura: { width: '100%', maxWidth: ANCHO_LECTURA, alignSelf: 'center' },
   sheetHead: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -171,14 +191,14 @@ const styles = StyleSheet.create({
     gap: space.md,
     padding: space.lg,
     paddingTop: space.xxl,
-    borderBottomWidth: 1,
-    borderBottomColor: color.border.subtle,
+    borderBottomWidth: stroke.hairline,
+    borderBottomColor: color.border.hairline,
   },
   sheetTitle: { flex: 1, gap: space.xxs },
   sheetBody: { padding: space.lg, paddingBottom: space.xxl },
   bodyHeading: { marginTop: space.md },
   bodyParagraph: { marginTop: space.xs },
-  sheetFoot: { padding: space.lg, borderTopWidth: 1, borderTopColor: color.border.subtle },
+  sheetFoot: { padding: space.lg, borderTopWidth: stroke.hairline, borderTopColor: color.border.hairline },
   acceptButton: {
     minHeight: touch.minSize,
     borderRadius: radius.pill,

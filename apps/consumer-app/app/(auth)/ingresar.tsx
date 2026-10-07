@@ -8,12 +8,12 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
-import { firstBlocker } from '../../src/ui/blocked';
-import { Pressable } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { IconField } from '../../src/ui/form-controls';
-import { Icon } from '../../src/ui/icons';
-import { color } from '../../src/theme/tokens';
+import { PIN_LENGTH, PinField } from '../../src/ui/pin-field';
+import { space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
+import { AtlasLogo } from '../../src/ui/brand';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
 
 export default function SignIn() {
@@ -21,29 +21,40 @@ export default function SignIn() {
   const session = useSession();
 
   const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  const [pin, setPin] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  // El mismo interruptor que el registro: quien se equivoca al teclear aqui vuelve a la pantalla
-  // de recuperar contrasena, que es el camino mas caro de todos.
-  const [showPassword, setShowPassword] = useState(false);
+  /*
+    «Ingresar» va SIEMPRE en verde (pedido de Pablo, 2026-10-06). Antes arrancaba apagado, en gris, hasta
+    tener los dos datos, y se leía como que no se podía entrar. Ahora lo que falta se dice al pulsar, en el
+    campo que falta y no en un texto suelto debajo del botón.
+  */
+  const [intentado, setIntentado] = useState(false);
+  const faltaIdentificador = identifier.trim().length < 3;
+  const errorIdentificador = intentado && faltaIdentificador ? 'Escribe el correo o teléfono con el que te registraste.' : null;
+  const errorPinFaltante =
+    intentado && pin.length !== PIN_LENGTH ? (pin.length === 0 ? 'Falta tu PIN.' : `Faltan ${PIN_LENGTH - pin.length} dígitos del PIN.`) : null;
 
-  const canSubmit = identifier.trim().length >= 3 && password.length >= 1 && !submitting;
-
-  const blockedReason = firstBlocker([
-    [identifier.trim().length >= 3, 'Escribe el correo o teléfono con el que te registraste.'],
-    [password.length >= 1, 'Falta tu PIN.'],
-  ]);
-
-  const submit = async () => {
-    if (!canSubmit) return;
+  /*
+    `entrante` es el PIN recién completado: `onComplete` dispara en la misma pasada que `setPin`, y el
+    `pin` del cierre todavía es el de tres dígitos. Sin pasarlo, el cuarto dígito no enviaba nada.
+  */
+  const submit = async (entrante?: string) => {
+    const clave = entrante ?? pin;
+    if (submitting) return;
+    if (identifier.trim().length < 3 || clave.length !== PIN_LENGTH) {
+      setIntentado(true);
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
-      await session.signIn(identifier.trim(), password);
+      await session.signIn(identifier.trim(), clave);
       router.replace('/');
     } catch (caught) {
       setError(caught);
+      // Casillas vacías para reescribir: con las cuatro llenas el cuarto dígito no dispararía otro intento.
+      setPin('');
     } finally {
       setSubmitting(false);
     }
@@ -59,7 +70,7 @@ export default function SignIn() {
    * el texto cuando el error NO trae un codigo de negocio propio que decir.
    */
   const credentialsRejected = error instanceof AtlasApiError && error.status === 401 && error.code === 'UNAUTHORIZED';
-  const detail = credentialsRejected ? 'Correo, teléfono o contraseña incorrectos.' : (described?.detail ?? '');
+  const detail = credentialsRejected ? 'Correo, teléfono o PIN incorrectos.' : (described?.detail ?? '');
   /*
    * «Sesion expirada» sobre la pantalla de INGRESAR no significa nada: aqui todavia no hay sesion
    * que expirar. El titulo salia de la familia del error —todo 401 es `auth`— y se leia como si la
@@ -71,11 +82,19 @@ export default function SignIn() {
     <Screen
       footer={
         <>
-          <Button label="Ingresar" onPress={submit} loading={submitting} disabled={!canSubmit} blockedReason={blockedReason} />
-          <Button label="Crear una cuenta" variant="ghost" onPress={() => router.replace('/(onboarding)/registro')} />
+          <Button label="Ingresar" icon="adelante" onPress={() => submit()} loading={submitting} testID="ingresar-enviar" />
+          <Button label="Crear una cuenta" icon="perfil" variant="secondary" onPress={() => router.replace('/(onboarding)/registro')} />
         </>
       }
     >
+      {/*
+        La marca, antes del titulo.
+
+        Una pantalla de acceso sin logotipo es un formulario de dos campos que podria ser el de
+        cualquiera, y es justo la pantalla donde la persona teclea su PIN: reconocer donde se esta
+        entrando no es adorno, es lo primero que se comprueba antes de escribir una credencial.
+      */}
+      <AtlasLogo size={36} style={styles.marca} />
       <ScreenHeader title="Ingresar" subtitle="Usa el correo o teléfono con el que te registraste." onBack="auto" />
 
       {described ? (
@@ -111,38 +130,29 @@ export default function SignIn() {
         textContentType="username"
         autoComplete="username"
         returnKeyType="next"
+        error={errorIdentificador}
+        ayuda="El correo o el número de celular con el que creaste tu cuenta. El teléfono va sin el código de país. Ej.: valeria.mendez@gmail.com o 76500123."
         required
       />
 
-      <IconField
+      {/*
+        El PIN son CUATRO casillas grandes y nada más: es lo único que se teclea aquí. El ojo sigue
+        (lo trae `PinField`) para verlo como números normales; con el cuarto dígito, entra solo.
+      */}
+      <PinField
         label="PIN"
-        icon="candado"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry={!showPassword}
-        textContentType="password"
+        value={pin}
+        onChangeText={setPin}
+        tamano="grande"
         autoComplete="current-password"
-        returnKeyType="go"
-        onSubmitEditing={submit}
-        required
-        trailing={
-          <Pressable
-            onPress={() => setShowPassword(!showPassword)}
-            accessibilityRole="button"
-            accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-            hitSlop={10}
-          >
-            <Icon
-              name={showPassword ? 'ojo-tachado' : 'ojo'}
-              size={20}
-              tint={showPassword ? color.action.primary : color.text.tertiary}
-            />
-          </Pressable>
-        }
+        textContentType="password"
+        onComplete={(completo) => void submit(completo)}
+        error={credentialsRejected ? 'PIN incorrecto' : errorPinFaltante}
+        ayuda="Los cuatro dígitos que elegiste al registrarte. Tras cinco intentos fallidos la cuenta se bloquea un rato por seguridad; si no lo recuerdas, usa «Recuperar acceso» antes de agotarlos."
       />
 
       <Gap size="xs" />
-      <Button label="Olvidé mi contraseña" variant="ghost" onPress={() => router.push('/(auth)/recuperar')} />
+      <Button label="Olvidé mi PIN" icon="candado" variant="ghost" onPress={() => router.push('/(auth)/recuperar')} />
 
       <Gap size="base" />
       <AtlasText variant="caption" tone="tertiary">
@@ -151,3 +161,7 @@ export default function SignIn() {
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  marca: { marginBottom: space.sm },
+});

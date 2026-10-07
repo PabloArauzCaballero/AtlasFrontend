@@ -23,27 +23,27 @@ import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { color, radius, space } from '../../src/theme/tokens';
-import { CheckRow, OptionGroup } from '../../src/ui/fields';
+import { CheckRow } from '../../src/ui/fields';
+import { IconField, type OpcionSelect, SelectField } from '../../src/ui/form-controls';
 import { Icon } from '../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Appear } from '../../src/ui/motion';
-import { AtlasText, Button, Card, Divider, ErrorState } from '../../src/ui/primitives';
+import { AtlasText, Button, Card, CardHeader, ErrorState, Overline } from '../../src/ui/primitives';
 
-type Language = 'es' | 'en' | 'qu' | 'ay';
+type Language = 'es' | 'en';
 type Gender = 'female' | 'male' | 'other' | 'undisclosed';
 
-const LANGUAGES: Array<{ value: Language; label: string; detail?: string }> = [
-  { value: 'es', label: 'Español' },
-  { value: 'en', label: 'Inglés' },
-  { value: 'qu', label: 'Quechua' },
-  { value: 'ay', label: 'Aymara' },
+/** Solo los idiomas en los que la app existe. Ver la nota en `(onboarding)/perfil.tsx`. */
+const LANGUAGES: OpcionSelect<Language>[] = [
+  { valor: 'es', etiqueta: 'Español', detalle: 'Te escribimos en español, como ahora.' },
+  { valor: 'en', etiqueta: 'Inglés', detalle: 'Te escribimos en inglés cuando esté disponible.' },
 ];
 
-const GENDERS: Array<{ value: Gender; label: string }> = [
-  { value: 'female', label: 'Mujer' },
-  { value: 'male', label: 'Hombre' },
-  { value: 'other', label: 'Otro' },
-  { value: 'undisclosed', label: 'Prefiero no decirlo' },
+const GENDERS: OpcionSelect<Gender>[] = [
+  { valor: 'female', etiqueta: 'Mujer', detalle: 'Te reconoces como mujer.' },
+  { valor: 'male', etiqueta: 'Hombre', detalle: 'Te reconoces como hombre.' },
+  { valor: 'other', etiqueta: 'Otro', detalle: 'Ninguna de las dos anteriores te describe.' },
+  { valor: 'undisclosed', etiqueta: 'Prefiero no decirlo', detalle: 'No queda registrado ningún género.' },
 ];
 
 export default function EditProfile() {
@@ -53,6 +53,8 @@ export default function EditProfile() {
 
   const [language, setLanguage] = useState<Language>('es');
   const [gender, setGender] = useState<Gender | null>(null);
+  // El «¿cuál?» de «Otro»: «Otro» a secas no describe a nadie.
+  const [genderOther, setGenderOther] = useState('');
   const [marketing, setMarketing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
@@ -63,11 +65,13 @@ export default function EditProfile() {
    */
   useEffect(() => {
     const current = me?.profile.preferredLanguage;
-    if (current === 'es' || current === 'en' || current === 'qu' || current === 'ay') setLanguage(current);
+    if (current === 'es' || current === 'en') setLanguage(current);
   }, [me?.profile.preferredLanguage]);
 
+  const faltaCualGenero = gender === 'other' && genderOther.trim().length < 2;
+
   const save = async () => {
-    if (!session.customerId || busy) return;
+    if (!session.customerId || busy || faltaCualGenero) return;
     setBusy(true);
     setError(null);
     try {
@@ -75,6 +79,7 @@ export default function EditProfile() {
         preferredLanguage: language,
         marketingOptIn: marketing,
         ...(gender ? { genderDeclared: gender } : {}),
+        ...(gender === 'other' ? { genderSelfDescribed: genderOther.trim() } : {}),
       });
       await session.refresh();
       Alert.alert('Datos guardados', 'Tus preferencias quedaron actualizadas.');
@@ -90,18 +95,20 @@ export default function EditProfile() {
   const fullName = [me?.profile.firstName, me?.profile.lastName].filter(Boolean).join(' ') || 'Sin registrar';
 
   return (
-    <Screen footer={<Button label="Guardar cambios" onPress={save} loading={busy} />}>
+    <Screen footer={<Button
+          label="Guardar cambios"
+          onPress={save}
+          loading={busy}
+          disabled={faltaCualGenero}
+          blockedReason={faltaCualGenero ? 'Falta escribir cuál es tu género.' : null}
+        />}>
       <ScreenHeader title="Editar mis datos" subtitle="Cambia lo que quieras de tus preferencias." onBack="auto" />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
       <Appear index={0}>
         <Card>
-          <View style={styles.rowCenter}>
-            <Icon name="candado" size={18} tint={color.text.tertiary} />
-            <AtlasText variant="h3">Verificado con tu carnet</AtlasText>
-          </View>
-          <Divider />
+          <CardHeader icon="candado" iconTone="neutral" title="Verificado con tu carnet" />
 
           <LockedField label="Nombre y apellido" value={fullName} />
           <LockedField
@@ -118,18 +125,42 @@ export default function EditProfile() {
 
       <Appear index={1}>
         <Card>
-          <View style={styles.rowCenter}>
-            <Icon name="editar" size={18} tint={color.action.primary} />
-            <AtlasText variant="h3">Tus preferencias</AtlasText>
-          </View>
-          <Divider />
+          <CardHeader icon="editar" title="Tus preferencias" />
 
-          <OptionGroup label="Idioma" options={LANGUAGES} value={language} onChange={setLanguage} />
-          <OptionGroup label="Género" options={GENDERS} value={gender} onChange={setGender} />
+          <SelectField<Language>
+            label="Idioma"
+            opciones={LANGUAGES}
+            value={language}
+            onChange={setLanguage}
+            ayuda="Se guarda en tu perfil. Hoy los avisos y los correos salen en español: cambiarlo todavía no cambia el idioma en que te escribimos. Tampoco toca tu contrato, que queda en el idioma en que lo firmaste."
+          />
+          <SelectField<Gender>
+            label="Género"
+            opciones={GENDERS}
+            value={gender}
+            onChange={(next) => {
+              setGender(next);
+              if (next !== 'other') setGenderOther('');
+            }}
+            ayuda="Lo declaras tú y no se toma del carnet. Sirve para dirigirnos a ti como corresponde y para informes de inclusión agregados y sin nombres; no cambia tu línea de crédito."
+          />
+          {gender === 'other' ? (
+            <IconField
+              icon="perfil"
+              label="¿Cuál?"
+              value={genderOther}
+              onChangeText={(v) => setGenderOther(v.slice(0, 60))}
+              hint="Escríbelo con tus palabras."
+              ayuda="Elegiste «Otro»: escribe cómo te describes. Se guarda tal cual, no lo ve nadie fuera del equipo y no cambia tu línea de crédito."
+              required
+              error={genderOther.length > 0 && faltaCualGenero ? 'Escribe al menos dos letras.' : null}
+            />
+          ) : null}
 
           <CheckRow
             label="Quiero recibir novedades y promociones"
             detail="Puedes desactivarlo cuando quieras. No afecta a los avisos de tus pagos."
+            ayuda="Marcarlo autoriza que te escribamos sobre comercios nuevos, descuentos y cambios del producto. Desmarcarlo no afecta a tu crédito: los avisos de tus pagos siguen llegando porque no son publicidad."
             checked={marketing}
             onToggle={setMarketing}
           />
@@ -146,10 +177,8 @@ function LockedField({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.locked}>
       <View style={styles.lockedText}>
-        <AtlasText variant="caption" tone="tertiary">
-          {label}
-        </AtlasText>
-        <AtlasText variant="bodyStrong">{value}</AtlasText>
+        <Overline>{label}</Overline>
+        <AtlasText variant="title">{value}</AtlasText>
       </View>
       <Icon name="candado" size={16} tint={color.text.tertiary} />
     </View>
@@ -157,15 +186,23 @@ function LockedField({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  /*
+    Un dato bloqueado se dibuja como el HUECO de un campo, no como una tarjeta dentro de otra.
+
+    Es la misma superficie hundida y el mismo contorno que un campo editable, porque eso es lo que
+    la persona ha venido a buscar: la fila donde estaria su nombre si se pudiera cambiar. Sin el
+    contorno, el bloque se leia como un parrafo con fondo y no como un campo cerrado.
+  */
   locked: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
-    paddingVertical: space.sm,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
+    paddingVertical: space.md,
+    paddingHorizontal: space.base,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
     backgroundColor: color.surface.sunken,
   },
-  lockedText: { flex: 1, gap: 2 },
+  lockedText: { flex: 1, gap: space.xxs },
 });

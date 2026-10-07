@@ -11,7 +11,7 @@
  * privado de la app y se entrega al selector del sistema. Desde ahi la persona elige guardarlo,
  * enviarlo o abrirlo, que es lo que se espera de un informe.
  */
-import { Directory, File, Paths } from 'expo-file-system';
+import { descargarConSesion, guardarEnNavegador } from '../device/archivos';
 import * as Sharing from 'expo-sharing';
 import { apiConfig } from '../api/config';
 import { readAccessToken } from '../api/client';
@@ -37,20 +37,23 @@ export async function downloadSpendingReport(customerId: string, now = new Date(
      * En la cache y no en documentos: es un documento DERIVADO, se puede volver a pedir en un
      * segundo y no tiene sentido que ocupe espacio permanente en el telefono de nadie.
      */
-    const destination = new File(new Directory(Paths.cache), fileNameFor(now));
-    const file = await File.downloadFileAsync(`${apiConfig.baseUrl}/customers/${customerId}/spending-report.pdf`, destination, {
+    const nombre = fileNameFor(now);
+    const uri = await descargarConSesion({
+      url: `${apiConfig.baseUrl}/customers/${customerId}/spending-report.pdf`,
       headers: { authorization: `Bearer ${token}`, 'x-tenant-id': apiConfig.tenantId },
-      // Pedir el informe dos veces el mismo dia no puede fallar por un archivo que ya esta ahi.
-      idempotent: true,
+      nombre,
     });
+
+    // En el navegador no hay hoja de compartir: el informe se guarda como descarga.
+    if (guardarEnNavegador(uri, nombre)) return { ok: true };
 
     if (!(await Sharing.isAvailableAsync())) {
       return { ok: false, reason: 'Este dispositivo no puede abrir el informe.' };
     }
 
-    await Sharing.shareAsync(file.uri, { mimeType: 'application/pdf', dialogTitle: 'Informe de gastos Atlas' });
+    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Informe de gastos Atlas' });
     return { ok: true };
   } catch {
-    return { ok: false, reason: 'No pudimos generar tu informe. Intentalo de nuevo.' };
+    return { ok: false, reason: 'No pudimos generar tu informe. Inténtalo de nuevo.' };
   }
 }

@@ -26,11 +26,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
 import { Modal, StyleSheet, View, useWindowDimensions, type LayoutRectangle } from 'react-native';
+import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { color, radius, space } from '../theme/tokens';
+import { color, radius, space, spring } from '../theme/tokens';
+import { ANCHO_COLUMNA } from './responsive';
 import { Icon } from './icons';
 import { Appear } from './motion';
-import { AtlasText, Button, Card } from './primitives';
+import { AtlasText, Button, Card, IconChip, Overline } from './primitives';
 
 export type TourStep = {
   /** Identificador del objetivo. Debe coincidir con el `id` de un `<TourTarget>` montado. */
@@ -46,6 +48,8 @@ type Rect = LayoutRectangle;
 type TourContextValue = {
   register: (id: string, rect: Rect | null) => void;
   start: (steps: TourStep[], persistKey?: string) => void;
+  /** Si hay un recorrido en pantalla. Lo consultan las capas flotantes que no deben taparlo. */
+  activo: boolean;
 };
 
 const TourContext = React.createContext<TourContextValue | null>(null);
@@ -54,6 +58,62 @@ const SEEN_PREFIX = 'atlas.tour.seen.';
 
 /** Margen entre el recorte y el elemento resaltado. Sin el, el foco parece un error de alineacion. */
 const HALO = 8;
+
+type Foco = { x: number; y: number; width: number; height: number };
+
+/**
+ * El foco VIAJA de un paso al siguiente; no reaparece en otro sitio.
+ *
+ * Es la diferencia entre un recorrido guiado y una serie de laminas. Cuando el recorte salta, cada
+ * paso obliga a buscar otra vez donde esta ahora el hueco —y la app entera cambia de aspecto en un
+ * fotograma, porque lo que se mueve es el 90 % de la pantalla oscurecida—. Cuando se desplaza, el
+ * ojo lo sigue sin decidir nada y llega al elemento nuevo ya mirandolo.
+ *
+ * Va con `spring.glide` —el muelle mas conducido de los tres— y no con una curva, porque es un
+ * recorrido largo y de distancia variable: entre dos pestanas vecinas viaja unos pixeles y entre la
+ * cabecera y la barra inferior cruza la pantalla. Un muelle reparte la energia segun la distancia;
+ * una duracion fija hace que el trayecto corto parezca lento y el largo, disparado.
+ *
+ * **La primera colocacion no se anima.** Ahi no hay «de donde»: el foco no venia de ningun sitio, y
+ * arrancarlo desde la esquina seria inventar un recorrido que no ocurrio.
+ */
+function useFocoAnimado(foco: Foco | null) {
+  const reduced = useReducedMotion();
+  const x = useSharedValue(foco?.x ?? 0);
+  const y = useSharedValue(foco?.y ?? 0);
+  const ancho = useSharedValue(foco?.width ?? 0);
+  const alto = useSharedValue(foco?.height ?? 0);
+  const yaColocado = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!foco) return;
+    const instantaneo = !yaColocado.current || reduced;
+    yaColocado.current = true;
+    const llevar = (valor: { value: number }, destino: number) => {
+      valor.value = instantaneo ? destino : withSpring(destino, spring.glide);
+    };
+    llevar(x, foco.x);
+    llevar(y, foco.y);
+    llevar(ancho, foco.width);
+    llevar(alto, foco.height);
+  }, [foco, reduced, x, y, ancho, alto]);
+
+  /*
+    Se animan `top`/`left`/`width`/`height` y no una transformacion.
+
+    Un `scale` sobre el recorte deformaria el borde del anillo —2 px que pasarian a 3 en un paso y a
+    1 en el siguiente— y, sobre todo, aqui no hay UN elemento que mover: el hueco lo forman cuatro
+    paneles que tienen que seguir cerrando entre ellos en cada fotograma intermedio. Con
+    transformaciones se abririan rendijas por las que se veria la pantalla sin oscurecer.
+  */
+  return {
+    arriba: useAnimatedStyle(() => ({ top: 0, left: 0, right: 0, height: y.value })),
+    abajo: useAnimatedStyle(() => ({ top: y.value + alto.value, left: 0, right: 0, bottom: 0 })),
+    izquierda: useAnimatedStyle(() => ({ top: y.value, left: 0, width: x.value, height: alto.value })),
+    derecha: useAnimatedStyle(() => ({ top: y.value, left: x.value + ancho.value, right: 0, height: alto.value })),
+    anillo: useAnimatedStyle(() => ({ top: y.value, left: x.value, width: ancho.value, height: alto.value })),
+  };
+}
 
 export function TourProvider({ children }: { children: React.ReactNode }) {
   const targets = React.useRef(new Map<string, Rect>());
@@ -84,7 +144,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     setPersistKey(null);
   }, [persistKey]);
 
-  const value = React.useMemo<TourContextValue>(() => ({ register, start }), [register, start]);
+  const value = React.useMemo<TourContextValue>(() => ({ register, start, activo: steps !== null }), [register, start, steps]);
 
   const step = steps?.[index] ?? null;
   const rect = step ? (targets.current.get(step.target) ?? null) : null;
@@ -184,14 +244,25 @@ function TourOverlay({
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
-  const focus = rect
-    ? {
-        x: Math.max(0, rect.x - HALO),
-        y: Math.max(0, rect.y - HALO),
-        width: Math.min(screenWidth, rect.width + HALO * 2),
-        height: rect.height + HALO * 2,
-      }
-    : null;
+  const focus = React.useMemo(
+    () =>
+      rect
+        ? {
+            x: Math.max(0, rect.x - HALO),
+            y: Math.max(0, rect.y - HALO),
+            width: Math.min(screenWidth, rect.width + HALO * 2),
+            height: rect.height + HALO * 2,
+          }
+        : null,
+    // Memorizado por sus numeros: el objeto se recalcula en cada render —la medida de un objetivo
+    // que llega tarde provoca uno— y sin esto el efecto que mueve el foco se relanzaria con el
+    // mismo destino, cortando el muelle a medio camino y dejandolo lento. Depender de `rect` es lo
+    // que la regla pide y lo que rompe la animacion: la excepcion es intencionada.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rect?.x, rect?.y, rect?.width, rect?.height, screenWidth],
+  );
+
+  const foco = useFocoAnimado(focus);
 
   // La tarjeta va debajo del objetivo salvo que ahi no quepa, en cuyo caso va encima. Taparlo con la
   // propia explicacion es el fallo clasico de este patron.
@@ -204,33 +275,41 @@ function TourOverlay({
         {focus ? (
           <>
             {/* Cuatro paneles alrededor del hueco. El elemento senalado queda a su color real. */}
-            <View style={[styles.scrim, { top: 0, left: 0, right: 0, height: focus.y }]} />
-            <View style={[styles.scrim, { top: focus.y + focus.height, left: 0, right: 0, bottom: 0 }]} />
-            <View style={[styles.scrim, { top: focus.y, left: 0, width: focus.x, height: focus.height }]} />
-            <View style={[styles.scrim, { top: focus.y, left: focus.x + focus.width, right: 0, height: focus.height }]} />
-            <View
-              pointerEvents="none"
-              style={[styles.ring, { top: focus.y, left: focus.x, width: focus.width, height: focus.height }]}
-            />
+            <Animated.View style={[styles.scrim, foco.arriba]} />
+            <Animated.View style={[styles.scrim, foco.abajo]} />
+            <Animated.View style={[styles.scrim, foco.izquierda]} />
+            <Animated.View style={[styles.scrim, foco.derecha]} />
+            <Animated.View pointerEvents="none" style={[styles.ring, foco.anillo]} />
           </>
         ) : (
           <View style={[styles.scrim, StyleSheet.absoluteFill]} />
         )}
 
+        {/*
+          `key` por paso: la tarjeta se rehace, no se reescribe.
+
+          Sin el, entre un paso y otro cambiaban el titulo y el cuerpo sobre la misma tarjeta y sin
+          ningun movimiento, justo mientras el foco viajaba por debajo. Se leia como un fallo de
+          pintado. Rehaciendola, `Appear` vuelve a correr y el texto nuevo entra como lo que es:
+          otra explicacion.
+        */}
         <Appear
+          key={index}
           style={{
             ...styles.cardHolder,
             ...(fitsBelow ? { top: below } : { bottom: screenHeight - (focus?.y ?? screenHeight) + space.base }),
+            // Sobre el elemento senalado, no sobre el centro de la ventana: con el carril lateral de
+            // escritorio la columna ya no esta en el medio, y la nota tiene que caer donde cae el foco.
+            ...(focus ? { left: focus.x, right: undefined, width: focus.width } : null),
           }}
         >
           <Card style={styles.card}>
             <View style={styles.cardHead}>
-              {step.icon ? <Icon name={step.icon} size={20} tint={color.action.primary} /> : null}
-              <AtlasText variant="micro" tone="brand">
-                {`PASO ${index + 1} DE ${total}`}
-              </AtlasText>
+              {step.icon ? <IconChip name={step.icon} size="sm" /> : null}
+              {/* Las versalitas las pone `Overline`, no un literal en mayusculas: ver `primitives.tsx`. */}
+              <Overline tone="brand">{`Paso ${index + 1} de ${total}`}</Overline>
             </View>
-            <AtlasText variant="h3">{step.title}</AtlasText>
+            <AtlasText variant="h2">{step.title}</AtlasText>
             <AtlasText variant="body" tone="secondary">
               {step.body}
             </AtlasText>
@@ -254,8 +333,13 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: color.action.primary,
   },
-  cardHolder: { position: 'absolute', left: space.lg, right: space.lg },
-  card: { backgroundColor: color.surface.sheet },
+  /*
+    La tarjeta del paso no se estira con la ventana: en escritorio una tarjeta de 1.400 px de ancho
+    con dos frases dentro deja de leerse como una nota y se lee como una franja. Se centra y se
+    limita a la columna de lectura, que es lo que senala.
+  */
+  cardHolder: { position: 'absolute', left: space.lg, right: space.lg, alignItems: 'center' },
+  card: { backgroundColor: color.surface.sheet, width: '100%', maxWidth: ANCHO_COLUMNA - space.lg * 2 },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   cardActions: { flexDirection: 'row', gap: space.sm, marginTop: space.xs },
   action: { flex: 1 },

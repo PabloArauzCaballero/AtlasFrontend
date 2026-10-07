@@ -28,16 +28,47 @@ const CATEGORIES: Record<string, CategoryLook> = {
   supermercado: { label: 'Supermercado', icon: 'supermercado' },
   transporte: { label: 'Transporte', icon: 'transporte' },
   servicios: { label: 'Servicios', icon: 'servicios' },
+  retail: { label: 'Tienda', icon: 'comercio' },
   sin_rubro: { label: 'Sin rubro declarado', icon: 'comercio' },
   sin_comercio: { label: 'Sin comercio registrado', icon: 'etiqueta' },
 };
 
+/**
+ * La clave del expediente, normalizada antes de buscarla.
+ *
+ * El expediente del partner guarda el rubro en MAYUSCULAS —`EDUCACION`, `RETAIL`— y este mapa esta
+ * indexado en minuscula, asi que la busqueda fallaba SIEMPRE y todo caia al respaldo. El resultado
+ * en la pantalla de pagos era que el cliente leia «EDUCACION · 1 credito» y «RETAIL · 1 credito»:
+ * la clave de la base de datos, en versalitas y sin tilde, en la lista de lo que debe.
+ *
+ * El icono se perdia con ella, que es lo que mas se nota sin saber por que: los dos comercios
+ * llevaban la misma tienda generica en vez del birrete de educacion, asi que la columna de iconos
+ * dejaba de distinguir nada y pasaba a ser decoracion repetida.
+ *
+ * Se normaliza aqui y no en cada pantalla porque el formato de la clave es un detalle del
+ * expediente, no del sitio donde se pinta. Si mañana llega `Educacion` o `educación`, tambien entra.
+ */
+const normalizeKey = (category: string) =>
+  category
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    // Quita las tildes de la CLAVE, no de la etiqueta: `educación` y `educacion` son el mismo rubro.
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\s-]+/g, '_');
+
 export function categoryLook(category: string): CategoryLook {
-  const found = CATEGORIES[category];
+  const found = CATEGORIES[normalizeKey(category)];
   if (found) return found;
-  // Un rubro que el expediente traiga y aqui no este: se capitaliza y lleva la tienda generica.
-  const label = category.charAt(0).toUpperCase() + category.slice(1).replace(/_/g, ' ');
-  return { label, icon: 'comercio' };
+  /*
+    Un rubro que el expediente traiga y aqui no este: se escribe legible y lleva la tienda generica.
+
+    `toLowerCase` primero, y no solo capitalizar la inicial: la clave llega en mayusculas, asi que
+    capitalizarla tal cual dejaba «EDUCACION» intacto y el respaldo no arreglaba nada. Ahora al menos
+    se lee «Educacion» —sin tilde, porque la clave no la trae— en vez de un grito.
+  */
+  const legible = normalizeKey(category).replace(/_/g, ' ');
+  return { label: legible.charAt(0).toUpperCase() + legible.slice(1), icon: 'comercio' };
 }
 
 /**
@@ -49,7 +80,9 @@ export function categoryLook(category: string): CategoryLook {
  */
 export function formatAmount(amount: number, currency = 'BOB'): string {
   const text = amount.toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return currency === 'BOB' ? `Bs ${text}` : `${currency} ${text}`;
+  // Espacio duro entre moneda y cifra, igual que en `domain/money.formatMoney`: un importe no se
+  // puede partir en dos renglones, y esta funcion pinta las mismas cifras en las mismas filas.
+  return currency === 'BOB' ? `Bs\u00A0${text}` : `${currency}\u00A0${text}`;
 }
 
 /**

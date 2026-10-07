@@ -25,6 +25,16 @@ export class AtlasApiError extends Error {
   readonly status: number | null;
   readonly requestId: string | null;
   readonly details: unknown;
+  /**
+   * La respuesta HTTP no la produjo AtlasBackend sino lo que tiene delante: el proxy de Next del
+   * portal o Traefik.
+   *
+   * Se distingue por el cuerpo. El backend contesta SIEMPRE con su sobre JSON —hasta un 404 de una
+   * ruta que no existe trae `requestId`—; el proxy de Next responde `Internal Server Error` en texto
+   * plano cuando no encuentra el API, y Traefik `404 page not found` cuando no hay contenedor detrás.
+   * Es lo que permite saber que una petición no llegó, y por tanto que repetirla no duplica nada.
+   */
+  readonly fromGateway: boolean;
 
   constructor(input: {
     kind: AtlasErrorKind;
@@ -33,6 +43,7 @@ export class AtlasApiError extends Error {
     status?: number | null;
     requestId?: string | null;
     details?: unknown;
+    fromGateway?: boolean;
   }) {
     super(input.message);
     this.name = 'AtlasApiError';
@@ -41,6 +52,7 @@ export class AtlasApiError extends Error {
     this.status = input.status ?? null;
     this.requestId = input.requestId ?? null;
     this.details = input.details;
+    this.fromGateway = input.fromGateway ?? false;
   }
 }
 
@@ -70,7 +82,7 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   IDENTITY_ALREADY_VERIFIED: 'Tu identidad ya fue verificada.',
   DOCUMENT_NUMBER_MISMATCH: 'El número de documento no coincide con el que registraste.',
   IDENTITY_PACKAGE_REQUIRED: 'Primero debes subir tu documento de identidad.',
-  INVALID_CREDENTIALS: 'Correo o contraseña incorrectos.',
+  INVALID_CREDENTIALS: 'Correo, teléfono o PIN incorrectos.',
   ACCOUNT_LOCKED: 'Tu cuenta está bloqueada temporalmente por varios intentos fallidos.',
 
   /*
@@ -102,13 +114,13 @@ export type ErrorRecovery = { label: string; href: string };
 const RECOVERY_BY_CODE: Record<string, ErrorRecovery[]> = {
   CUSTOMER_ALREADY_EXISTS: [
     { label: 'Ingresar con mi cuenta', href: '/(auth)/ingresar' },
-    { label: 'Olvidé mi contraseña', href: '/(auth)/recuperar' },
+    { label: 'Olvidé mi PIN', href: '/(auth)/recuperar' },
   ],
   CONTACT_ALREADY_REGISTERED: [
     { label: 'Ingresar con mi cuenta', href: '/(auth)/ingresar' },
-    { label: 'Olvidé mi contraseña', href: '/(auth)/recuperar' },
+    { label: 'Olvidé mi PIN', href: '/(auth)/recuperar' },
   ],
-  ACCOUNT_LOCKED: [{ label: 'Olvidé mi contraseña', href: '/(auth)/recuperar' }],
+  ACCOUNT_LOCKED: [{ label: 'Olvidé mi PIN', href: '/(auth)/recuperar' }],
 };
 
 /**
@@ -129,17 +141,17 @@ function lockedUntilOf(error: AtlasApiError): string | null {
 }
 
 const MESSAGE_BY_KIND: Record<AtlasErrorKind, string> = {
-  network: 'Sin conexion. Revisa tu internet e intenta de nuevo.',
-  timeout: 'La conexion tardo demasiado. Intenta de nuevo.',
+  network: 'Sin conexión. Revisa tu internet e intenta de nuevo.',
+  timeout: 'La conexión tardó demasiado. Intenta de nuevo.',
   server: 'Tuvimos un problema de nuestro lado. Intenta en unos minutos.',
   auth: 'Tu sesión expiró. Vuelve a ingresar.',
-  permission: 'No tienes permiso para hacer esta accion.',
+  permission: 'No tienes permiso para hacer esta acción.',
   not_found: 'No encontramos lo que buscabas.',
   validation: 'Revisa los datos ingresados.',
-  conflict: 'Esta operacion ya fue registrada.',
+  conflict: 'Esta operación ya fue registrada.',
   rate_limited: 'Demasiados intentos. Espera un momento antes de reintentar.',
   unavailable: 'El servicio no está disponible ahora mismo.',
-  unknown: 'No pudimos completar la operacion.',
+  unknown: 'No pudimos completar la operación.',
 };
 
 export function describeError(error: unknown): {

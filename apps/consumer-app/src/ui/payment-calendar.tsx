@@ -24,20 +24,43 @@
  * castellano son justo «me pasé» y «voy bien».
  */
 import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { CalendarEntry, PaymentCalendar } from '../api/endpoints/loans';
 import { formatAmount } from '../features/spending-copy';
-import { color, radius, space } from '../theme/tokens';
+import { color, press, radius, space } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
-import { AtlasText, Divider } from './primitives';
+import { PressSurface } from './motion';
+import { AtlasText, Divider, IconChip, Overline } from './primitives';
 
 type EntryState = CalendarEntry['state'];
 
-const STATE_LOOK: Record<EntryState, { label: string; tint: string; icon: IconName }> = {
-  overdue: { label: 'Vencida', tint: color.feedback.danger, icon: 'alerta' },
-  upcoming: { label: 'Por vencer', tint: color.feedback.warning, icon: 'reloj' },
-  paid: { label: 'Pagada', tint: color.feedback.success, icon: 'check' },
-  written_off: { label: 'Castigada', tint: color.text.tertiary, icon: 'documento' },
+/*
+ * Cada estado trae su color CRUDO y sus dos nombres de tono, y los tres se usan en sitios distintos.
+ *
+ * `tint` es para los puntos —el de la rejilla y el de la leyenda—, que son manchas de color pleno y
+ * no tienen componente al que pedirle un tono. `chip` y `texto` son nombres del sistema, para el
+ * chip del icono y para el importe.
+ *
+ * La fila fabricaba su fondo concatenando la alfa al hexadecimal (`look.tint + '22'`): un color
+ * literal escrito fuera de los tokens, y con un 13 % fijo que pesa distinto según el color de
+ * partida —el chip rojo y el ámbar no destacaban igual aunque el código dijera que sí—. Es la misma
+ * corrección que ya se hizo en la bandeja de avisos y en los puntos del contenido del servidor;
+ * ésta se quedó atrás porque el patrón estaba escrito con otra forma.
+ */
+const STATE_LOOK: Record<
+  EntryState,
+  {
+    label: string;
+    tint: string;
+    chip: React.ComponentProps<typeof IconChip>['tone'];
+    texto: 'danger' | 'warning' | 'success' | 'tertiary';
+    icon: IconName;
+  }
+> = {
+  overdue: { label: 'Vencida', tint: color.feedback.danger, chip: 'danger', texto: 'danger', icon: 'alerta' },
+  upcoming: { label: 'Por vencer', tint: color.feedback.warning, chip: 'warning', texto: 'warning', icon: 'reloj' },
+  paid: { label: 'Pagada', tint: color.feedback.success, chip: 'success', texto: 'success', icon: 'check' },
+  written_off: { label: 'Castigada', tint: color.text.tertiary, chip: 'neutral', texto: 'tertiary', icon: 'documento' },
 };
 
 const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -123,7 +146,7 @@ export function PaymentCalendarView({
 
   const daysInMonth = new Date(cursor.year, cursor.month + 1, 0).getDate();
   const blanks = leadingBlanks(cursor.year, cursor.month);
-  const cells: Array<{ key: string; day: number | null }> = [
+  const cells: { key: string; day: number | null }[] = [
     ...Array.from({ length: blanks }, (_, index) => ({ key: `blank-${index}`, day: null })),
     ...Array.from({ length: daysInMonth }, (_, index) => ({ key: `day-${index + 1}`, day: index + 1 })),
   ];
@@ -137,11 +160,11 @@ export function PaymentCalendarView({
   return (
     <View style={styles.wrapper}>
       <View style={styles.monthBar}>
-        <Pressable onPress={() => shift(-1)} style={styles.navButton} accessibilityRole="button" accessibilityLabel="Mes anterior">
+        <PressSurface onPress={() => shift(-1)} style={styles.navButton} accessibilityRole="button" accessibilityLabel="Mes anterior">
           <Icon name="atras" size={18} tint={color.text.primary} />
-        </Pressable>
+        </PressSurface>
         <View style={styles.monthLabel}>
-          <AtlasText variant="bodyStrong">
+          <AtlasText variant="h3">
             {monthName(cursor.month)} {cursor.year}
           </AtlasText>
           <AtlasText variant="caption" tone="tertiary">
@@ -150,16 +173,16 @@ export function PaymentCalendarView({
               : `${monthEntries.length} ${monthEntries.length === 1 ? 'cuota' : 'cuotas'}`}
           </AtlasText>
         </View>
-        <Pressable onPress={() => shift(1)} style={styles.navButton} accessibilityRole="button" accessibilityLabel="Mes siguiente">
+        <PressSurface onPress={() => shift(1)} style={styles.navButton} accessibilityRole="button" accessibilityLabel="Mes siguiente">
           <Icon name="adelante" size={18} tint={color.text.primary} />
-        </Pressable>
+        </PressSurface>
       </View>
 
       <View style={styles.weekdays}>
         {WEEKDAYS.map((label, index) => (
-          <AtlasText key={`${label}-${index}`} variant="caption" tone="tertiary" style={styles.weekday}>
+          <Overline key={`${label}-${index}`} style={styles.weekday}>
             {label}
-          </AtlasText>
+          </Overline>
         ))}
       </View>
 
@@ -174,7 +197,15 @@ export function PaymentCalendarView({
           const look = entries.length > 0 ? STATE_LOOK[dominantState(entries)] : null;
 
           return (
-            <Pressable
+            /*
+              La celda entera se hunde al tocarla.
+
+              Un dia con cuotas y uno sin ellas se ven casi igual —cambia un punto de color de seis
+              pixeles—, asi que sin realimentacion no habia forma de saber cual de los dos se acaba
+              de tocar: el que no tiene cuotas esta `disabled` y no pasa nada, y el que si las tiene
+              cambiaba la lista de MAS ABAJO, fuera de donde estaba mirando el dedo.
+            */
+            <PressSurface
               key={cell.key}
               style={[styles.cell, isSelected && styles.cellSelected]}
               onPress={() => setSelected(entries.length > 0 && !isSelected ? iso : null)}
@@ -187,15 +218,20 @@ export function PaymentCalendarView({
               }
             >
               <View style={[styles.dayNumber, isToday && styles.today]}>
+                {/*
+                  El numero del dia en cifras TABULARES: en una rejilla, el «1» mas estrecho que el
+                  «8» descoloca la columna entera y las semanas dejan de leerse alineadas. Es
+                  exactamente el caso para el que existen.
+                */}
                 <AtlasText
-                  variant="caption"
-                  style={{ color: isToday ? color.surface.primary : entries.length > 0 ? color.text.primary : color.text.tertiary }}
+                  variant="amountMicro"
+                  style={{ color: isToday ? color.text.onBrand : entries.length > 0 ? color.text.primary : color.text.tertiary }}
                 >
                   {cell.day}
                 </AtlasText>
               </View>
               {look ? <View style={[styles.dot, { backgroundColor: look.tint }]} /> : <View style={styles.dotPlaceholder} />}
-            </Pressable>
+            </PressSurface>
           );
         })}
       </View>
@@ -221,11 +257,14 @@ export function PaymentCalendarView({
       */}
       {(selected ? selectedEntries : monthEntries).length > 0 ? (
         <View style={styles.list}>
-          <AtlasText variant="caption" tone="tertiary">
-            {selected
-              ? `${parts(selected).day} DE ${monthName(cursor.month).toUpperCase()}`
-              : `TODO ${monthName(cursor.month).toUpperCase()}`}
-          </AtlasText>
+          {/*
+            Las versalitas las pone `Overline` con `textTransform`, no el literal: con el texto ya en
+            mayusculas el lector de pantalla deletrea el mes letra a letra, y el interletraje se
+            queda sin corregir.
+          */}
+          <Overline>
+            {selected ? `${parts(selected).day} de ${monthName(cursor.month)}` : `Todo ${monthName(cursor.month)}`}
+          </Overline>
           {(selected ? selectedEntries : monthEntries).map((entry) => (
             <CalendarRow
               key={`${entry.loanId}-${entry.installmentNumber}`}
@@ -254,18 +293,17 @@ export function CalendarRow({
   const at = parts(entry.dueDate);
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.row, pressed && onPress ? styles.rowPressed : null]}
+    <PressSurface
+      style={styles.row}
+      scaleTo={press.scaleSubtle}
       onPress={onPress}
       disabled={!onPress}
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={`Cuota ${entry.installmentNumber} de ${entry.merchant.displayName}, ${look.label.toLowerCase()}`}
     >
-      <View style={[styles.rowIcon, { backgroundColor: look.tint + '22' }]}>
-        <Icon name={look.icon} size={16} tint={look.tint} />
-      </View>
+      <IconChip name={look.icon} tone={look.chip} size="sm" />
       <View style={styles.rowText}>
-        <AtlasText variant="bodyStrong" numberOfLines={1}>
+        <AtlasText variant="title" numberOfLines={1}>
           {entry.merchant.displayName}
         </AtlasText>
         <AtlasText variant="caption" tone="tertiary">
@@ -274,11 +312,13 @@ export function CalendarRow({
           {entry.state === 'overdue' ? ` · ${entry.daysPastDue} ${entry.daysPastDue === 1 ? 'día' : 'días'} de atraso` : ''}
         </AtlasText>
       </View>
-      <AtlasText variant="bodyStrong" style={{ color: entry.state === 'paid' ? color.text.tertiary : look.tint }}>
+      {/* El importe en cifras tabulares, como en el resto de las listas de dinero de la app: una
+          columna de cuotas se recorre de arriba abajo comparando, y con cifras proporcionales baila. */}
+      <AtlasText variant="amountMicro" tone={entry.state === 'paid' ? 'tertiary' : look.texto}>
         {formatAmount(entry.state === 'paid' ? entry.totalAmount : entry.pendingAmount, entry.currencyCode)}
       </AtlasText>
       {onPress ? <Icon name="adelante" size={16} tint={color.text.tertiary} /> : null}
-    </Pressable>
+    </PressSurface>
   );
 }
 
@@ -307,7 +347,5 @@ const styles = StyleSheet.create({
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: space.xxs },
   list: { gap: space.sm },
   row: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.xs },
-  rowPressed: { opacity: 0.6 },
-  rowIcon: { width: 32, height: 32, borderRadius: radius.sm, alignItems: 'center', justifyContent: 'center' },
   rowText: { flex: 1, gap: 2 },
 });

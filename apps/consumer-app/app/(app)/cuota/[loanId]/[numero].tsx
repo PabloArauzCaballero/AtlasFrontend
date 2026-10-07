@@ -22,20 +22,39 @@
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
 import * as loansApi from '../../../../src/api/endpoints/loans';
 import { categoryLook, dueCopy, formatAmount } from '../../../../src/features/spending-copy';
-import { color, radius, space } from '../../../../src/theme/tokens';
-import { Icon, type IconName } from '../../../../src/ui/icons';
+import type { IconName } from '../../../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, ErrorState, ListRow, Skeleton } from '../../../../src/ui/primitives';
+import { useCopy } from '../../../../src/features/use-contenido-remoto';
+import {
+  AtlasText,
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  Divider,
+  ErrorState,
+  IconChip,
+  KeyValue,
+  ListRow,
+  Skeleton,
+} from '../../../../src/ui/primitives';
 
 type State = 'paid' | 'overdue' | 'upcoming';
 
-const LOOK: Record<State, { label: string; tone: 'success' | 'danger' | 'warning'; tint: string; icon: IconName }> = {
-  paid: { label: 'Pagada', tone: 'success', tint: color.feedback.success, icon: 'check' },
-  overdue: { label: 'Vencida', tone: 'danger', tint: color.feedback.danger, icon: 'alerta' },
-  upcoming: { label: 'Por vencer', tone: 'warning', tint: color.feedback.warning, icon: 'reloj' },
+/*
+ * El tono es un NOMBRE, no un color suelto.
+ *
+ * `tint` guardaba el hexadecimal del estado y la cabecera lo concatenaba con `'22'` para fabricarse
+ * un fondo: un color literal escrito en una pantalla, que es justo lo que el sistema de tokens
+ * existe para impedir. Con el nombre, la insignia, el chip del icono y el importe leen los tres el
+ * mismo estado sin que ninguno tenga que conocer un hexadecimal.
+ */
+const LOOK: Record<State, { label: string; tone: 'success' | 'danger' | 'warning'; icon: IconName }> = {
+  paid: { label: 'Pagada', tone: 'success', icon: 'check' },
+  overdue: { label: 'Vencida', tone: 'danger', icon: 'alerta' },
+  upcoming: { label: 'Por vencer', tone: 'warning', icon: 'reloj' },
 };
 
 function amountOf(value: string | null | undefined): number {
@@ -44,6 +63,7 @@ function amountOf(value: string | null | undefined): number {
 }
 
 export default function InstallmentDetail() {
+  const t = useCopy();
   const router = useRouter();
   const params = useLocalSearchParams<{ loanId: string; numero: string }>();
   const [loan, setLoan] = useState<loansApi.LoanDetail | null>(null);
@@ -79,8 +99,10 @@ export default function InstallmentDetail() {
       <Screen>
         <ScreenHeader title="Cuota" onBack="auto" />
         <Card>
-          <Skeleton height={18} width="40%" />
-          <Skeleton height={32} width="60%" />
+          <Skeleton height={11} width="30%" />
+          <Skeleton height={38} width="60%" />
+          <Skeleton height={1} />
+          <Skeleton height={19} />
         </Card>
       </Screen>
     );
@@ -120,16 +142,12 @@ export default function InstallmentDetail() {
         title={`Cuota ${installment.installmentNumber}`}
         subtitle={`${loan.merchant?.displayName ?? 'Compra sin comercio'} · ${merchantLook.label}`}
         onBack="auto"
-        leading={
-          <View style={[styles.icon, { backgroundColor: look.tint + '22' }]}>
-            <Icon name={look.icon} size={24} tint={look.tint} />
-          </View>
-        }
+        leading={<IconChip name={look.icon} tone={look.tone} size="lg" />}
       />
 
-      <Card>
-        <Badge label={look.label} tone={look.tone} />
-        <AtlasText variant="amount" style={{ color: state === 'paid' ? color.text.primary : look.tint }}>
+      <Card tone={state === 'overdue' ? 'danger' : 'default'}>
+        <Badge dot label={look.label} tone={look.tone} />
+        <AtlasText variant="amount" tone={state === 'paid' ? 'primary' : look.tone === 'danger' ? 'danger' : 'warning'}>
           {formatAmount(state === 'paid' ? owed : pending, loan.currencyCode)}
         </AtlasText>
         <AtlasText variant="body" tone="secondary">
@@ -137,7 +155,7 @@ export default function InstallmentDetail() {
         </AtlasText>
         {state === 'overdue' ? (
           <AtlasText variant="caption" tone="secondary">
-            El interés penal corre solo sobre el capital de esta cuota, nunca sobre el saldo total de tu crédito.
+            {t.texto('cuota.vencida')}
           </AtlasText>
         ) : null}
       </Card>
@@ -147,38 +165,57 @@ export default function InstallmentDetail() {
         de al lado. Un unico total obliga a creerselo.
       */}
       <Card>
-        <View style={styles.rowCenter}>
-          <Icon name="lista" size={18} tint={color.text.secondary} />
-          <AtlasText variant="h3">De qué se compone</AtlasText>
-        </View>
-        <Divider />
-        <Breakdown label="Capital" value={amountOf(installment.principalAmount)} currency={loan.currencyCode} />
-        <Breakdown label="Interés" value={amountOf(installment.interestAmount)} currency={loan.currencyCode} />
+        <CardHeader icon="lista" iconTone="neutral" title="De qué se compone" />
+        <KeyValue label="Capital" numeric value={formatAmount(amountOf(installment.principalAmount), loan.currencyCode)} />
+        <KeyValue label="Interés" numeric value={formatAmount(amountOf(installment.interestAmount), loan.currencyCode)} />
         {amountOf(installment.lateFeeAmount) > 0 ? (
-          <Breakdown
-            label="Interés penal por mora"
-            value={amountOf(installment.lateFeeAmount)}
-            currency={loan.currencyCode}
-            tint={color.feedback.danger}
+          <KeyValue
+            label="Recargo por mora"
+            numeric
+            tone="danger"
+            value={formatAmount(amountOf(installment.lateFeeAmount), loan.currencyCode)}
           />
         ) : null}
         <Divider />
-        <Breakdown label="Total de la cuota" value={owed} currency={loan.currencyCode} strong />
-        {paid > 0 ? <Breakdown label="Ya pagado" value={-paid} currency={loan.currencyCode} tint={color.feedback.success} /> : null}
-        {pending > 0 ? <Breakdown label="Te falta pagar" value={pending} currency={loan.currencyCode} strong tint={look.tint} /> : null}
+        {/*
+          El total y lo que falta van en el tamano de importe, no en el de las lineas que suman.
+
+          Un desglose donde las cinco lineas se dibujan igual obliga a leerlo entero para saber cual
+          es el resultado. La ultima linea es la unica que contesta «cuanto tengo que pagar»; el
+          resto explica de donde sale.
+        */}
+        <KeyValue label="Total de la cuota">
+          <AtlasText variant="amountSmall">{formatAmount(owed, loan.currencyCode)}</AtlasText>
+        </KeyValue>
+        {paid > 0 ? (
+          <KeyValue label="Ya pagado" numeric tone="success" value={formatAmount(-paid, loan.currencyCode)} />
+        ) : null}
+        {pending > 0 ? (
+          <KeyValue label="Te falta pagar">
+            <AtlasText variant="amountSmall" tone={state === 'overdue' ? 'danger' : 'warning'}>
+              {formatAmount(pending, loan.currencyCode)}
+            </AtlasText>
+          </KeyValue>
+        ) : null}
       </Card>
 
       {state !== 'paid' ? (
         <Card>
-          <View style={styles.rowCenter}>
-            <Icon name="ayuda" size={18} tint={color.action.primary} />
-            <AtlasText variant="h3">¿Dónde la pago?</AtlasText>
-          </View>
-          <Divider />
+          <CardHeader icon="ayuda" title="¿Dónde la pago?" />
           <AtlasText variant="body" tone="secondary">
             Al QR bancario de {loan.merchant?.displayName ?? 'el comercio donde compraste'}. Atlas nunca recibe tu dinero: cada
             cuota se paga al comercio, y él nos confirma el pago.
           </AtlasText>
+          {/*
+            El boton que faltaba. Esta pantalla DECIA donde se paga y no ensenaba el QR: la
+            instruccion no se podia seguir. Ahora lleva a la pantalla que trae el QR real del
+            comercio y deja avisar del pago con el id de ESTA cuota.
+          */}
+          <Button
+            label="Pagar esta cuota"
+            onPress={() => router.push(`/(app)/pagar/${installment.installmentId}`)}
+            accessibilityHint="Ver el QR del comercio y avisar de tu pago"
+          />
           {loan.merchant ? (
             <Button
               label="Ver este comercio"
@@ -189,12 +226,8 @@ export default function InstallmentDetail() {
         </Card>
       ) : null}
 
-      <Card>
-        <View style={styles.rowCenter}>
-          <Icon name="pagos" size={18} tint={color.text.secondary} />
-          <AtlasText variant="h3">El crédito completo</AtlasText>
-        </View>
-        <Divider />
+      <Card padding="tight">
+        <CardHeader icon="pagos" iconTone="neutral" title="El crédito completo" />
         <ListRow
           title={formatAmount(amountOf(loan.principalAmount), loan.currencyCode)}
           subtitle={`${loan.schedule.length} ${loan.schedule.length === 1 ? 'cuota' : 'cuotas'} · ${loan.loanCode}`}
@@ -209,41 +242,4 @@ export default function InstallmentDetail() {
   );
 }
 
-/** Una linea del desglose. Los importes se alinean a la derecha porque se leen comparandolos. */
-function Breakdown({
-  label,
-  value,
-  currency,
-  strong = false,
-  tint,
-}: {
-  label: string;
-  value: number;
-  currency: string;
-  strong?: boolean;
-  tint?: string;
-}) {
-  return (
-    <View style={styles.breakdown}>
-      <AtlasText variant={strong ? 'bodyStrong' : 'body'} tone={strong ? 'primary' : 'secondary'} style={styles.flex}>
-        {label}
-      </AtlasText>
-      <AtlasText variant={strong ? 'bodyStrong' : 'body'} style={tint ? { color: tint } : undefined}>
-        {formatAmount(value, currency)}
-      </AtlasText>
-    </View>
-  );
-}
 
-const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  breakdown: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.xs },
-  icon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

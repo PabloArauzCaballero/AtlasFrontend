@@ -39,6 +39,8 @@ const PUBLIC_KEYS = [
   'EXPO_PUBLIC_ATLAS_TIMEOUT_MS',
   'EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE',
   'EXPO_PUBLIC_ATLAS_DECISION_SOURCE',
+  'EXPO_PUBLIC_WEB_BASE_URL',
+  'EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO',
 ];
 
 function parseEnvFile(file) {
@@ -78,8 +80,62 @@ module.exports = ({ config }) => {
   const env = resolvePublicEnv(__dirname);
   const apiUrl = env.EXPO_PUBLIC_ATLAS_API_URL;
 
+  /*
+   * La clave del mapa de Android, si la hay.
+   *
+   * `expo-maps` usa Apple Maps en iOS —que no pide clave— y Google Maps en Android, que SÍ la pide:
+   * sin ella el mapa se monta y se queda en gris, sin error y sin nada que explique por qué. Se lee
+   * del entorno y no se versiona: una clave de Maps se restringe por paquete y huella SHA-1, pero
+   * dejarla en el repositorio la convierte igualmente en algo que rotar el día que se filtre.
+   *
+   * Si no está definida, el bloque no se añade y la compilación de Android sigue siendo válida: lo
+   * único que no funcionará es el mapa del domicilio, que es opcional.
+   */
+  const androidMapsKey = process.env.ANDROID_MAPS_API_KEY;
+
+  /*
+   * El fichero de Firebase, si esta.
+   *
+   * `expo-notifications` en Android entrega por FCM, y FCM necesita el `google-services.json` del
+   * proyecto de Firebase con el paquete `bo.atlas.consumer` dentro. Sin el, la app compila e
+   * instala igual, pero `getDevicePushTokenAsync()` lanza y `push.ts` lo degrada a
+   * `no-disponible`: los avisos se pueden configurar y no llega ninguno.
+   *
+   * Se declara SOLO si el fichero existe. Ponerlo fijo en `app.json` rompe la compilacion de
+   * cualquiera que no lo tenga —el plugin aborta con «file not found»— y ese es un precio alto por
+   * una funcion opcional. Asi, el dia que se deje el fichero al lado de este, el siguiente build lo
+   * recoge sin tocar configuracion.
+   *
+   * No se versiona: identifica el proyecto de Firebase y se regenera desde su consola.
+   */
+  const googleServices = path.join(__dirname, 'google-services.json');
+  const hayFirebase = fs.existsSync(googleServices);
+
+  /*
+   * La web bajo un subcamino (sólo web).
+   *
+   * En el H310 no hay IP pública: la web sale por Tailscale Funnel, que ya reparte el dominio por
+   * caminos (`/api/v1`, `/legal`…). Con `EXPO_PUBLIC_WEB_BASE_URL=/app` el bundle referencia sus
+   * archivos y sus rutas bajo `/app`, y el proxy le quita el prefijo antes de llegar a nginx. Sin la
+   * variable (Contabo, local) la web vive en la raíz y no cambia nada. `experiments.baseUrl` no
+   * afecta a iOS ni Android.
+   */
+  const webBaseUrl = env.EXPO_PUBLIC_WEB_BASE_URL;
+
   const withExtra = {
     ...config,
+    ...(webBaseUrl ? { experiments: { ...config.experiments, baseUrl: webBaseUrl } } : {}),
+    ...(androidMapsKey || hayFirebase
+      ? {
+          android: {
+            ...config.android,
+            ...(hayFirebase ? { googleServicesFile: './google-services.json' } : {}),
+            ...(androidMapsKey
+              ? { config: { ...config.android?.config, googleMaps: { apiKey: androidMapsKey } } }
+              : {}),
+          },
+        }
+      : {}),
     extra: {
       ...config.extra,
       /*
@@ -93,6 +149,11 @@ module.exports = ({ config }) => {
         timeoutMs: env.EXPO_PUBLIC_ATLAS_TIMEOUT_MS,
         purchaseSource: env.EXPO_PUBLIC_ATLAS_PURCHASE_SOURCE,
         decisionSource: env.EXPO_PUBLIC_ATLAS_DECISION_SOURCE,
+        /*
+          El escaner de documentos del sistema para el carnet (VisionKit / ML Kit). Apagado salvo
+          que valga exactamente «true»: ver `escanerDocumentoActivado` en `src/api/config.ts`.
+        */
+        escanerDocumento: env.EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO,
       },
     },
   };

@@ -23,15 +23,18 @@ import {
   evaluateOrder,
   isExpired,
   issueInstruction,
+  issueUploadedQrInstruction,
   nextDueItem,
+  openResolvedScanSession,
   openScanSession,
   outstandingAmount,
 } from './engine';
-import type { PaymentInstruction, PaymentSchedule, PurchaseOrder, SandboxState, ScanSession, ScheduleItem } from './types';
-import type { CreditDecision } from './types';
+import type { PaymentInstruction, PaymentSchedule, PurchaseOrder, SandboxState, ScanSession, ScheduleItem , CreditDecision } from './types';
 import { isBackendDecision } from '../api/config';
 import { useSession } from '../session/session';
 import { requestLiveDecision } from '../features/credit-evaluation';
+import { listCreditApplications } from '../api/endpoints/credit';
+import type { UploadedPaymentQr } from '../api/endpoints/loans';
 
 /**
  * De donde salio la decision que se esta mostrando.
@@ -50,6 +53,8 @@ const DEFAULT_LIMIT: Minor = minor(500_000);
 
 /** Latencia simulada del comercio al revisar la orden en su portal. */
 const MERCHANT_REVIEW_MS = 4_500;
+/** Cada cuanto se le pregunta al backend si el comercio ya acepto la venta. */
+const MERCHANT_ACCEPTANCE_POLL_MS = 4_000;
 
 type SandboxContextValue = {
   ready: boolean;
@@ -58,6 +63,17 @@ type SandboxContextValue = {
   outstanding: Minor;
   nextDue: { schedule: PaymentSchedule; item: ScheduleItem } | null;
   scan(token: string): { ok: true; sessionId: string } | { ok: false; rejection: ScanRejection };
+  /**
+   * Abre la sesion con el comercio que ya resolvio el backend, sin pasar por las fixtures.
+   * Es el camino de un QR real; `scan` queda para los codigos de demostracion.
+   */
+  scanResolved(resolved: {
+    partnerProfileId: string;
+    branchId: string;
+    posTerminalId: string;
+    displayName: string;
+    businessCategory: string | null;
+  }): { sessionId: string };
   submitAmount(sessionId: string, grossAmount: Minor): { ok: true; orderId: string } | { ok: false; code: string };
   /** Pide la decision. En modo `live` la resuelve AtlasBackend contra el motor de decision. */
   evaluate(orderId: string): Promise<void>;
@@ -71,6 +87,7 @@ type SandboxContextValue = {
   instructionFor(itemId: string): PaymentInstruction | null;
   /** Emite la instruccion de una cuota la primera vez que se abre su pantalla de pago. */
   ensureInstruction(itemId: string): void;
+  ensureUploadedQrInstruction(itemId: string, qr: UploadedPaymentQr): void;
   claimPayment(input: { instructionId: string; reference: string | null; proofUri: string | null }): void;
   /** Confirmacion del comercio: unica fuente que resuelve un pago como pagado en el sandbox. */
   confirmMerchantReceipt(itemId: string): void;
@@ -108,9 +125,14 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
         setReady(true);
       })
       .catch(() => setReady(true));
+    /*
+     * La ref se copia AQUI y no se lee en la limpieza: para cuando el efecto se desmonta,
+     * `timers.current` puede apuntar ya a otro objeto y se quedarian temporizadores vivos.
+     */
+    const pendientes = timers.current;
     return () => {
       active = false;
-      Object.values(timers.current).forEach(clearTimeout);
+      Object.values(pendientes).forEach(clearTimeout);
     };
   }, []);
 
@@ -124,6 +146,12 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
     if ('code' in result) return { ok: false, rejection: result };
     setState((current) => ({ ...current, scanSessions: [result.session, ...current.scanSessions].slice(0, 30) }));
     return { ok: true, sessionId: result.session.id };
+  }, []);
+
+  const scanResolved = useCallback<SandboxContextValue['scanResolved']>((resolved) => {
+    const { session } = openResolvedScanSession(resolved, Date.now());
+    setState((current) => ({ ...current, scanSessions: [session, ...current.scanSessions].slice(0, 30) }));
+    return { sessionId: session.id };
   }, []);
 
   const submitAmount = useCallback<SandboxContextValue['submitAmount']>((sessionId, grossAmount) => {
@@ -149,7 +177,7 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
    * reglas venga la decision de donde venga (R48/R49). Que decide es una cosa; que hace el estado
    * con lo decidido es otra, y mezclarlas era lo que ataba las pantallas al motor local.
    */
-  const applyDecision = useCallback((orderId: string, decision: CreditDecision) => {
+  const applyDecision = useCallback((orderId: string, decision: CreditDecision, backendApplicationId: string | null = null) => {
     setState((current) => {
       const order = current.orders.find((item) => item.id === orderId);
       if (!order || order.decision) return current;
@@ -161,7 +189,9 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
       return {
         ...current,
         orders: current.orders.map((item) =>
-          item.id === orderId ? { ...item, decision, status, rowVersion: item.rowVersion + 1 } : item,
+          item.id === orderId
+            ? { ...item, decision, status, backendApplicationId, rowVersion: item.rowVersion + 1 }
+            : item,
         ),
         creditLine: approved
           ? {
@@ -232,6 +262,13 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
         decisionSeq: 1,
         now,
         ttlMs: DECISION_TTL_MS,
+        // El comercio viaja en el contexto de la orden desde que se resolvio el QR. Es lo que hace
+        // que la solicitud aparezca en el portal del negocio para que la acepte: sin esto la compra
+        // se decidia de verdad pero el comercio no la veia nunca.
+        partnerProfileId: order.context.organizationId,
+        // Y la caja: en el flujo real `posId` ES el id del terminal resuelto, del que cuelga la
+        // sucursal que el comercio necesita ver.
+        posTerminalId: order.context.posId,
       });
 
       if (result.kind === 'unavailable') {
@@ -245,7 +282,9 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
         executionId: result.application.executionId ?? null,
         decisionMode: result.application.decisionMode ?? null,
       });
-      applyDecision(orderId, result.decision);
+      // Se guarda el id de la solicitud REAL: es a ella a la que despues se le pregunta si el
+      // comercio ya acepto. Sin esto, la orden aprobada por Atlas no tendria como esperar al negocio.
+      applyDecision(orderId, result.decision, result.application.applicationId);
     },
     [applyDecision, customerId],
   );
@@ -328,6 +367,24 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
         ...current,
         instructions: [issueInstruction({ item, posQr, currency: order.currency, now: Date.now() }), ...current.instructions],
       };
+    });
+  }, []);
+
+  const ensureUploadedQrInstruction = useCallback<SandboxContextValue['ensureUploadedQrInstruction']>((itemId, qr) => {
+    setState((current) => {
+      if (current.instructions.some((entry) => entry.scheduleItemId === itemId)) return current;
+      const schedule = current.schedules.find((entry) => entry.items.some((entryItem) => entryItem.id === itemId));
+      const item = schedule?.items.find((entry) => entry.id === itemId);
+      const order = current.orders.find((entry) => entry.id === schedule?.purchaseOrderId);
+      if (!schedule || !item || !order) return current;
+      const instruction = issueUploadedQrInstruction({
+        item,
+        qr,
+        beneficiaryName: order.context.tradeName,
+        currency: order.currency,
+        now: Date.now(),
+      });
+      return { ...current, instructions: [instruction, ...current.instructions] };
     });
   }, []);
 
@@ -415,13 +472,26 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * El comercio revisa la orden en su portal y responde. En produccion esto llega por push; aqui se
-   * dispara solo, con la misma latencia perceptible, para que el estado de espera sea real y no un
-   * adorno.
+   * El comercio revisa la orden en su portal y responde.
+   *
+   * En una compra REAL esto NO se simula: la respuesta la da el negocio de verdad desde su ERP, y el
+   * telefono la espera preguntandole al backend por la solicitud (ver el efecto de sondeo mas abajo).
+   * Auto-aceptarla aqui seria pagar el inicial antes de que el comercio confirme la venta —el orden
+   * correcto es Atlas aprueba el credito, LUEGO el comercio acepta, y recien entonces se habilita el
+   * pago—.
+   *
+   * El disparo automatico queda SOLO para las compras de demostracion (sin solicitud real detras),
+   * para poder recorrer el flujo sin un comercio del otro lado.
    */
   useEffect(() => {
     state.orders
-      .filter((order) => order.status === 'PENDING_MERCHANT_ACCEPTANCE' && !order.acceptance && !timers.current[order.id])
+      .filter(
+        (order) =>
+          order.status === 'PENDING_MERCHANT_ACCEPTANCE' &&
+          !order.acceptance &&
+          !order.backendApplicationId &&
+          !timers.current[order.id],
+      )
       .forEach((order) => {
         timers.current[order.id] = setTimeout(() => {
           delete timers.current[order.id];
@@ -429,6 +499,51 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
         }, MERCHANT_REVIEW_MS);
       });
   }, [merchantAccept, state.orders]);
+
+  /**
+   * Espera la aceptacion REAL del comercio, preguntandole al backend por la solicitud.
+   *
+   * Solo para ordenes con una solicitud real detras y todavia esperando respuesta. Mientras el
+   * comercio no acepte, la orden se queda en «esperando comercio» y el pago del inicial sigue
+   * bloqueado —que es justo lo que pedia el flujo—. Cuando el negocio acepta, la orden avanza; si
+   * rechaza, se marca rechazada y no se cobra nada.
+   */
+  useEffect(() => {
+    if (!isBackendDecision || !customerId) return;
+    const pendientes = state.orders.filter(
+      (order) => order.status === 'PENDING_MERCHANT_ACCEPTANCE' && !order.acceptance && order.backendApplicationId,
+    );
+    if (pendientes.length === 0) return;
+
+    let cancelado = false;
+    const intervalo = setInterval(async () => {
+      let resumen;
+      try {
+        // Sondeo periodico de un proveedor global: no es de ninguna pantalla.
+        resumen = await listCreditApplications(customerId, { sinPantalla: true });
+      } catch {
+        // Una lectura fallida no cambia nada: se reintenta al siguiente tick. La orden sigue en
+        // espera, que es el estado seguro —nunca se habilita el pago por no haber podido preguntar—.
+        return;
+      }
+      if (cancelado) return;
+      const porId = new Map(resumen.applications.map((app) => [app.applicationId, app]));
+      for (const order of pendientes) {
+        const app = porId.get(order.backendApplicationId!);
+        if (!app) continue;
+        if (app.businessAcceptance === 'accepted') {
+          merchantAccept(order.id);
+        } else if (app.businessAcceptance === 'declined') {
+          merchantReject(order.id);
+        }
+      }
+    }, MERCHANT_ACCEPTANCE_POLL_MS);
+
+    return () => {
+      cancelado = true;
+      clearInterval(intervalo);
+    };
+  }, [customerId, merchantReject, merchantAccept, state.orders]);
 
   /** Expira sesiones y ordenes vencidas: el TTL debe verse, no solo existir en el modelo. */
   useEffect(() => {
@@ -465,6 +580,7 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
       outstanding: outstandingAmount(state.schedules),
       nextDue: nextDueItem(state.schedules),
       scan,
+      scanResolved,
       submitAmount,
       evaluate,
       decisionOrigin,
@@ -474,6 +590,7 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
       cancelOrder,
       instructionFor: (itemId) => state.instructions.find((item) => item.scheduleItemId === itemId) ?? null,
       ensureInstruction,
+      ensureUploadedQrInstruction,
       claimPayment,
       confirmMerchantReceipt,
       openDispute,
@@ -493,12 +610,14 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
       confirmMerchantReceipt,
       decisionOrigin,
       ensureInstruction,
+      ensureUploadedQrInstruction,
       evaluate,
       merchantAccept,
       merchantReject,
       openDispute,
       ready,
       scan,
+      scanResolved,
       state,
       submitAmount,
     ],

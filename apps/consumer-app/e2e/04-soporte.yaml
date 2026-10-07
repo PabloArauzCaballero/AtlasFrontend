@@ -1,0 +1,121 @@
+# El soporte del cliente: buscar una respuesta y hablar con una persona.
+#
+#   maestro test -e CORREO=… -e PIN=… e2e/04-soporte.yaml
+#
+# Recorre lo que ninguna prueba unitaria puede: que la pantalla llegue desde el perfil, que el
+# buscador devuelva algo del servidor, que el motivo se pueda elegir y que abrir la conversación deje
+# un chat con el aviso de seguridad que escribe el sistema — la prueba de que el canal se creó de
+# verdad.
+#
+# `clearState` a propósito, igual que en el ingreso: entrar con una sesión guardada probaría otra
+# cosa.
+appId: bo.atlas.consumer
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil: { visible: 'Ya tengo cuenta', timeout: 30000 }
+- tapOn: 'Ya tengo cuenta'
+- tapOn:
+    below:
+      text: 'Correo o teléfono *'
+- inputText: "${CORREO}"
+# El teclado tapa el campo del PIN: sin bajarlo, «tocar debajo de PIN» cae sobre el teclado y el
+# foco se queda en el correo — el PIN acababa escrito al final del correo. `hideKeyboard` no
+# funciona en esta app, así que se toca el subtítulo, que no es interactivo.
+- tapOn: 'Usa el correo o teléfono con el que te registraste.'
+- tapOn:
+    id: 'pin-field'
+- inputText: "${PIN}"
+- tapOn: 'Usa el correo o teléfono con el que te registraste.'
+# Con el cuarto dígito el ingreso se envía solo: no hay botón que tocar.
+# No se afirma una pantalla concreta: según el avance del registro, entrar deja al cliente en el
+# progreso o en el inicio. Lo que importa aquí es que la sesión existe, y eso lo prueba el perfil.
+# Tras entrar pueden interponerse dos cosas, y ninguna es segura que aparezca.
+#
+# **«¿Guardar contraseña?»** lo pinta iOS, no la app. Es modal y pertenece a OTRO proceso, así que
+# Maestro no lo ve en el árbol: `visible: 'Ahora no'` da falso aunque el botón esté delante. Lo que
+# sí se puede comprobar es lo contrario — si la pantalla de inicio NO se ve, es que algo la tapa— y
+# entonces se pulsa por posición. Es la única forma de descartarlo sin apagar el autorrelleno del
+# simulador entero.
+#
+# **El tour de bienvenida** sí es de la app y se comprueba por texto; sale siempre con `clearState`.
+- waitForAnimationToEnd: { timeout: 8000 }
+- runFlow:
+    when:
+      notVisible: 'Tu línea Atlas'
+    commands:
+      - tapOn:
+          point: '31%,64%'
+- extendedWaitUntil: { visible: 'Tu línea Atlas', timeout: 40000 }
+- waitForAnimationToEnd: { timeout: 8000 }
+- runFlow:
+    when:
+      visible: 'Saltar'
+    commands:
+      - tapOn: 'Saltar'
+
+# Desde el perfil hasta la ayuda, que es el camino real: nadie llega al soporte por una URL.
+- tapOn: 'Perfil'
+- extendedWaitUntil: { visible: 'Ayuda', timeout: 20000 }
+- takeScreenshot: soporte-01-perfil
+- tapOn: 'Preguntas frecuentes'
+- extendedWaitUntil: { visible: 'Ir a soporte', timeout: 20000 }
+- takeScreenshot: soporte-02-ayuda
+
+- tapOn: 'Ir a soporte'
+- extendedWaitUntil: { visible: 'Hablar con soporte', timeout: 30000 }
+- takeScreenshot: soporte-03-centro
+
+# El buscador contra el servidor: se escribe como escribe la gente, sin tildes.
+- tapOn:
+    below:
+      text: 'Buscar en la ayuda'
+- inputText: 'no me llega el codigo'
+- extendedWaitUntil: { visible: 'Resultados', timeout: 20000 }
+- takeScreenshot: soporte-04-busqueda
+
+# Abrir la conversación, pasando por el motivo.
+#
+# Desde 2026-09-09 «Hablar con soporte» no abre el chat: abre el paso del motivo, que es lo que
+# decide a qué cola entra la conversación y con qué plazo se mide. El paso es CONDICIONAL en esta
+# prueba a propósito: si el catálogo de la base contra la que se corre está vacío, la app se lo salta
+# y habla directamente — y esta prueba debe medir el recorrido real, no fallar por un dato que falta.
+#
+# Se toca la PRIMERA fila de la lista en vez de un motivo por su nombre: el catálogo lo administra
+# soporte y puede reorganizarlo sin avisar a nadie. Una prueba atada a «Pagos y cuotas» se pondría
+# roja el día que alguien renombre esa etiqueta, y ese rojo no diría nada sobre el producto.
+#
+# Se repite la condición porque el árbol tiene dos niveles: si la primera fila tiene submotivos, se
+# baja un nivel y hay que elegir otra vez.
+- tapOn: 'Hablar con soporte'
+- waitForAnimationToEnd: { timeout: 5000 }
+- runFlow:
+    when:
+      visible: '¿Sobre qué es?'
+    commands:
+      - takeScreenshot: soporte-05-motivo
+      - tapOn:
+          below:
+            text: '¿Sobre qué es?'
+      - waitForAnimationToEnd: { timeout: 5000 }
+- runFlow:
+    when:
+      visible: '¿Sobre qué es?'
+    commands:
+      - takeScreenshot: soporte-06-submotivo
+      - tapOn:
+          below:
+            text: '¿Sobre qué es?'
+
+# El aviso de seguridad lo escribe el SISTEMA al crear el canal, así que su presencia prueba que el
+# backend lo creó y que la transcripción llegó a la pantalla.
+- extendedWaitUntil: { visible: 'nunca te pedirá', timeout: 40000 }
+- takeScreenshot: soporte-07-chat
+
+- tapOn:
+    id: 'compositor-campo'
+- inputText: 'Hola, tengo una duda con mi cuota de septiembre.'
+- tapOn:
+    id: 'compositor-enviar'
+- extendedWaitUntil: { visible: 'duda con mi cuota', timeout: 30000 }
+- takeScreenshot: soporte-08-mensaje-enviado

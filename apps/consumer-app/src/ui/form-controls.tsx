@@ -15,11 +15,15 @@
  * ficha; esa sensacion es exactamente lo que separa un formulario que parece nativo de uno que
  * parece una pagina web encogida.
  */
-import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import DateTimePicker, { type DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { forwardRef, useMemo, useState } from 'react';
-import { Modal, Platform, Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
-import { color, radius, space, touch, type } from '../theme/tokens';
+import { Platform, Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
+import { color, inputChrome, press, radius, space, stroke, touch, type } from '../theme/tokens';
+import { webData } from '../web/estilo';
+import { ganchosDeCampo } from '../features/bitacora/ganchos';
+import { BottomSheet, FieldFoot, FieldLabel } from './help-sheet';
 import { Icon, type IconName } from './icons';
+import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
 
 const CONTROL_HEIGHT = 56;
@@ -29,27 +33,33 @@ const CONTROL_HEIGHT = 56;
 export type IconFieldProps = TextInputProps & {
   label: string;
   icon: IconName;
+  /**
+   * Pie corto y SIEMPRE visible. Es la pista que se lee sin pedirla («Alquiler, servicios,
+   * deudas»); la explicacion completa vive en `ayuda`, detras del ⓘ, y las dos conviven.
+   */
   hint?: string;
+  /** Que poner aqui y por que importa, con ejemplo si el formato no es obvio. Abre en la hoja del ⓘ. */
+  ayuda?: string;
   error?: string | null;
   required?: boolean;
   /** Accion a la derecha del campo: mostrar la contrasena, limpiar, lo que el campo necesite. */
   trailing?: React.ReactNode;
+  /** Codigo del campo en la bitacora del alta. Solo se anotan foco, duracion, correcciones y pegado; nunca el texto. */
+  bitacora?: string;
 };
 
 export const IconField = forwardRef<TextInput, IconFieldProps>(function IconField(
-  { label, icon, hint, error, required, trailing, style, ...rest },
+  { label, icon, hint, ayuda, error, required, trailing, bitacora, style, ...rest },
   ref,
 ) {
   const [focused, setFocused] = useState(false);
+  const anotar = ganchosDeCampo(bitacora, () => (typeof rest.value === 'string' ? rest.value.length : 0));
 
   return (
     <View style={styles.block}>
-      <AtlasText variant="caption" tone="secondary">
-        {label}
-        {required ? ' *' : ''}
-      </AtlasText>
+      <FieldLabel label={label} required={required} ayuda={ayuda} />
 
-      <View style={[styles.control, focused && styles.controlFocused, error ? styles.controlError : null]}>
+      <View {...webData('campo')} style={[styles.control, focused && styles.controlFocused, error ? styles.controlError : null]}>
         {/*
           El icono va DENTRO del borde y con el tono del texto secundario: es una pista de que dato
           se pide, no un boton. Pintarlo del color de marca lo convertiria en algo que invita a
@@ -58,16 +68,23 @@ export const IconField = forwardRef<TextInput, IconFieldProps>(function IconFiel
         <Icon name={icon} size={20} tint={focused ? color.action.primary : color.text.tertiary} />
         <TextInput
           ref={ref}
+          {...inputChrome}
           {...rest}
           accessibilityLabel={rest.accessibilityLabel ?? label}
           placeholderTextColor={color.text.placeholder}
           onFocus={(event) => {
             setFocused(true);
+            anotar.onFocus(event);
             rest.onFocus?.(event);
           }}
           onBlur={(event) => {
             setFocused(false);
+            anotar.onBlur(event);
             rest.onBlur?.(event);
+          }}
+          onChangeText={(next) => {
+            anotar.onChangeLength(next.length);
+            rest.onChangeText?.(next);
           }}
           style={[styles.input, style]}
         />
@@ -114,6 +131,8 @@ export type DateFieldProps = {
   value: string;
   onChange: (iso: string) => void;
   hint?: string;
+  /** Que fecha se pide y por que importa. Abre en la hoja del ⓘ. */
+  ayuda?: string;
   error?: string | null;
   required?: boolean;
   placeholder?: string;
@@ -138,6 +157,7 @@ export function DateField({
   value,
   onChange,
   hint,
+  ayuda,
   error,
   required,
   placeholder = 'Elige tu fecha',
@@ -156,35 +176,85 @@ export function DateField({
   }, [value, initialDate]);
 
   /*
+   * `onValueChange` + `onDismiss`, no `onChange`.
+   *
+   * `onChange` esta deprecado en esta version del selector y lo avisa por consola en cada apertura
+   * —se veia en la corrida del simulador—. No es solo el aviso: `onChange` mezclaba dos sucesos
+   * distintos en una firma, «eligio una fecha» y «cerro sin elegir», y obligaba a mirar
+   * `event.type` para saber cual habia ocurrido. Separados, cada uno hace una cosa.
+   *
    * En Android el dialogo es del sistema y se cierra solo; en iOS el selector se queda montado y
    * necesita su propia hoja con un boton de cierre. Se distingue aqui y no en la pantalla porque es
    * un detalle del control, no del formulario.
    */
-  const handleChange = (event: DateTimePickerEvent, picked?: Date) => {
+  const handleValueChange = (_event: DateTimePickerChangeEvent, picked: Date) => {
     if (Platform.OS !== 'ios') setOpen(false);
-    if (event.type === 'dismissed' || !picked) return;
+    if (!picked) return;
     onChange(toIsoDate(picked));
   };
 
+  const handleDismiss = () => setOpen(false);
+
+  /*
+    En el navegador, el selector del navegador.
+
+    `@react-native-community/datetimepicker` no tiene implementacion web: el boton se pulsaba y no
+    pasaba nada, y la fecha de nacimiento era el unico campo del alta que no se podia rellenar.
+    Un `<input type="date">` da el calendario del sistema —el mismo que la persona ya usa en
+    cualquier web—, respeta `min`/`max` (mayoria de edad) y devuelve la fecha ya en ISO, que es el
+    formato del campo. Se viste con el mismo hueco, icono y tipografia que el control nativo.
+  */
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.block}>
+        <FieldLabel label={label} required={required} ayuda={ayuda} />
+        {/* `campo` también aquí: la caja entera enfoca y lleva el anillo de foco, como los demás campos. */}
+        <View {...webData('campo')} style={[styles.control, error ? styles.controlError : null]}>
+          <Icon name="pagos" size={20} tint={color.text.tertiary} />
+          <input
+            type="date"
+            aria-label={label}
+            value={value ?? ''}
+            min={minimumDate ? toIsoDate(minimumDate) : undefined}
+            max={maximumDate ? toIsoDate(maximumDate) : undefined}
+            onChange={(event) => onChange(event.target.value)}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+              color: value ? color.text.primary : color.text.placeholder,
+              font: 'inherit',
+              fontFamily: type.body.fontFamily,
+              fontSize: type.body.fontSize,
+              colorScheme: 'dark',
+              padding: 0,
+            }}
+          />
+        </View>
+        <FieldFoot error={error} hint={hint} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.block}>
-      <AtlasText variant="caption" tone="secondary">
-        {label}
-        {required ? ' *' : ''}
-      </AtlasText>
+      <FieldLabel label={label} required={required} ayuda={ayuda} />
 
-      <Pressable
+      <PressSurface
         onPress={() => setOpen(true)}
         accessibilityRole="button"
         accessibilityLabel={value ? `${label}: ${readableDate(value)}. Tocar para cambiar` : `${label}. Tocar para elegir`}
         style={[styles.control, error ? styles.controlError : null]}
+        scaleTo={press.scaleSubtle}
       >
         <Icon name="pagos" size={20} tint={color.text.tertiary} />
         <AtlasText variant="body" style={[styles.controlText, !value && { color: color.text.placeholder }]}>
           {value ? readableDate(value) : placeholder}
         </AtlasText>
         <Icon name="adelante" size={16} tint={color.text.tertiary} />
-      </Pressable>
+      </PressSurface>
 
       <FieldFoot error={error} hint={hint} />
 
@@ -193,35 +263,26 @@ export function DateField({
           value={current}
           mode="date"
           display="spinner"
-          onChange={handleChange}
+          onValueChange={handleValueChange}
+          onDismiss={handleDismiss}
           minimumDate={minimumDate}
           maximumDate={maximumDate}
         />
       ) : null}
 
       {Platform.OS === 'ios' ? (
-        <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
-          <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
-          <View style={styles.sheet}>
-            <View style={styles.sheetHead}>
-              <AtlasText variant="bodyStrong">{label}</AtlasText>
-              <Pressable onPress={() => setOpen(false)} accessibilityRole="button" accessibilityLabel="Listo">
-                <AtlasText variant="bodyStrong" style={{ color: color.action.primary }}>
-                  Listo
-                </AtlasText>
-              </Pressable>
-            </View>
-            <DateTimePicker
-              value={current}
-              mode="date"
-              display="spinner"
-              onChange={handleChange}
-              minimumDate={minimumDate}
-              maximumDate={maximumDate}
-              themeVariant="dark"
-            />
-          </View>
-        </Modal>
+        <BottomSheet visible={open} titulo={label} onClose={() => setOpen(false)}>
+          <DateTimePicker
+            value={current}
+            mode="date"
+            display="spinner"
+            onValueChange={handleValueChange}
+            onDismiss={handleDismiss}
+            minimumDate={minimumDate}
+            maximumDate={maximumDate}
+            themeVariant="dark"
+          />
+        </BottomSheet>
       ) : null}
     </View>
   );
@@ -272,8 +333,12 @@ export type PhoneFieldProps = {
   country: Country;
   onChangeCountry: (country: Country) => void;
   hint?: string;
+  /** Para que se pide el numero y como se escribe. Abre en la hoja del ⓘ. */
+  ayuda?: string;
   error?: string | null;
   required?: boolean;
+  /** Codigo del campo en la bitacora del alta; solo tiempos y cuentas, nunca el numero. */
+  bitacora?: string;
 };
 
 /**
@@ -284,19 +349,237 @@ export type PhoneFieldProps = {
  * Separarlos hace imposible ese error —el prefijo ya no es texto editable— y de paso permite
  * teclear el numero como se dicta, sin el codigo delante.
  */
-export function PhoneField({ label, value, onChangeText, country, onChangeCountry, hint, error, required }: PhoneFieldProps) {
-  const [focused, setFocused] = useState(false);
-  const [picking, setPicking] = useState(false);
+/* ------------------------------------------------------------- seleccion */
+
+/**
+ * `detalle` es la linea de apoyo de una opcion —«A tu numero registrado.»—. Vive en la hoja, bajo
+ * la etiqueta, y se repite bajo el control cuando esa opcion queda elegida: si el matiz solo se ve
+ * mientras la hoja esta abierta, se pierde justo cuando hay que decidir si la eleccion fue la
+ * correcta.
+ */
+export type OpcionSelect<T extends string = string> = { valor: T; etiqueta: string; detalle?: string };
+
+/**
+ * Elegir UNO de una lista larga, en una hoja.
+ *
+ * ## Por que no es `OptionGroup`
+ *
+ * `OptionGroup` pinta todas las opciones como filas tocables, y eso funciona hasta cuatro o cinco:
+ * a partir de ahi la pantalla se convierte en una lista donde el formulario desaparece. Nueve
+ * departamentos —o las diez ciudades de Santa Cruz— pertenecen a una hoja que se abre, se elige y
+ * se cierra.
+ *
+ * ## Por que no es un campo de texto
+ *
+ * Porque lo que se escribe a mano no se puede agrupar despues. «Santa Cruz de la Sierra», «santa
+ * cruz» y «SCZ» son la misma ciudad para una persona y tres para una consulta, y una cartera de
+ * credito que no puede contar por ciudad no puede decidir donde abrir el siguiente comercio.
+ *
+ * ## El estado vacio importa
+ *
+ * `deshabilitadoPorque` existe para la ciudad: sin departamento elegido no hay lista que ofrecer, y
+ * un control que no responde sin decir por que se lee como roto. Dice lo que falta, en su sitio.
+ */
+/** Sin tildes y en minúsculas: quien busca «Cochabamba» escribe «cochabamba», y quien busca
+ *  «Aroma» no debería fallar por escribir «aroma» con o sin acento. */
+function normalizar(texto: string): string {
+  return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+export function SelectField<T extends string = string>({
+  label,
+  value,
+  opciones,
+  onChange,
+  placeholder = 'Elige una opción',
+  hint,
+  ayuda,
+  error,
+  required,
+  deshabilitadoPorque,
+  buscable,
+}: {
+  label: string;
+  value: T | null;
+  opciones: OpcionSelect<T>[];
+  onChange: (valor: T) => void;
+  placeholder?: string;
+  hint?: string;
+  /** Que se elige aqui y por que importa. Abre en la hoja del ⓘ, junto a la etiqueta. */
+  ayuda?: string;
+  error?: string | null;
+  required?: boolean;
+  deshabilitadoPorque?: string | null;
+  /** Fuerza o suprime el buscador. Sin pasarlo, aparece cuando hay más de ocho opciones. */
+  buscable?: boolean;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const elegida = opciones.find((opcion) => opcion.valor === value) ?? null;
+  const bloqueado = Boolean(deshabilitadoPorque);
+
+  /*
+    El buscador aparece solo cuando la lista deja de caber de un vistazo.
+
+    Con seis opciones, un campo de texto encima es una barrera antes de una lista que ya se lee
+    entera; con cuarenta rubros o las zonas de una ciudad, sin buscador la hoja obliga a arrastrar a
+    ciegas. El umbral es el de la propia hoja: `maxHeight` deja ver unas ocho filas.
+  */
+  const conBuscador = buscable ?? opciones.length > 8;
+
+  const visibles = useMemo(() => {
+    const aguja = normalizar(busqueda);
+    if (!aguja) return opciones;
+    return opciones.filter(
+      (opcion) => normalizar(opcion.etiqueta).includes(aguja) || normalizar(opcion.detalle ?? '').includes(aguja),
+    );
+  }, [opciones, busqueda]);
+
+  const cerrar = () => {
+    setAbierto(false);
+    // La búsqueda se descarta al cerrar: reabrir y encontrar el filtro anterior puesto se lee como
+    // que faltan opciones, y el motivo —tres letras escritas hace un minuto— no está a la vista.
+    setBusqueda('');
+  };
 
   return (
     <View style={styles.block}>
-      <AtlasText variant="caption" tone="secondary">
-        {label}
-        {required ? ' *' : ''}
-      </AtlasText>
+      <FieldLabel label={label} required={required} ayuda={ayuda} />
 
-      <View style={[styles.control, styles.phoneControl, focused && styles.controlFocused, error ? styles.controlError : null]}>
-        <Pressable
+      <PressSurface
+        onPress={() => setAbierto(true)}
+        disabled={bloqueado}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: bloqueado }}
+        accessibilityLabel={
+          bloqueado
+            ? `${label}. ${deshabilitadoPorque}`
+            : elegida
+              ? `${label}: ${elegida.etiqueta}.${elegida.detalle ? ` ${elegida.detalle}` : ''} Tocar para cambiar`
+              : `${label}. Tocar para elegir`
+        }
+        style={[styles.control, error ? styles.controlError : null, bloqueado ? styles.controlBloqueado : null]}
+        scaleTo={press.scaleSubtle}
+      >
+        <Icon name="lista" size={20} tint={color.text.tertiary} />
+        <AtlasText variant="body" style={[styles.controlText, !elegida && { color: color.text.placeholder }]}>
+          {elegida?.etiqueta ?? placeholder}
+        </AtlasText>
+        <Icon name="adelante" size={16} tint={color.text.tertiary} />
+      </PressSurface>
+
+      <FieldFoot
+        error={error}
+        hint={bloqueado ? (deshabilitadoPorque ?? undefined) : (hint ?? elegida?.detalle)}
+      />
+
+      <BottomSheet visible={abierto} titulo={label} onClose={cerrar}>
+        {/*
+          La ayuda del campo, tambien DENTRO de la hoja.
+
+          Quien abre la lista esta mirando siete rotulos que no conocia y el ⓘ se quedo detras del
+          velo: repetirla aqui es la diferencia entre elegir y adivinar. Va antes del buscador
+          porque es lo que explica por que se pregunta esto.
+        */}
+        {ayuda ? (
+          <View style={styles.ayudaEnHoja}>
+            <Icon name="info" size={16} tint={color.text.tertiary} />
+            <AtlasText variant="caption" tone="secondary" style={styles.ayudaTexto}>
+              {ayuda}
+            </AtlasText>
+          </View>
+        ) : null}
+
+        {conBuscador ? (
+          <View style={styles.buscador}>
+            <Icon name="lista" size={18} tint={color.text.tertiary} />
+            <TextInput
+              {...inputChrome}
+              value={busqueda}
+              onChangeText={setBusqueda}
+              placeholder="Buscar"
+              placeholderTextColor={color.text.placeholder}
+              autoCorrect={false}
+              autoCapitalize="none"
+              accessibilityLabel={`Buscar en ${label}`}
+              style={styles.buscadorInput}
+            />
+            {busqueda ? (
+              <Pressable onPress={() => setBusqueda('')} accessibilityRole="button" accessibilityLabel="Borrar la búsqueda">
+                <AtlasText variant="caption" tone="secondary">
+                  Borrar
+                </AtlasText>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        <ScrollView style={styles.sheetList} keyboardShouldPersistTaps="handled">
+          {/*
+            Sin resultados se DICE, no se deja la hoja en blanco: una lista vacía y sin explicación
+            se lee como que el catálogo no cargó.
+          */}
+          {visibles.length === 0 ? (
+            <View style={styles.sinResultados}>
+              <AtlasText variant="body" tone="secondary">
+                Nada coincide con «{busqueda}».
+              </AtlasText>
+            </View>
+          ) : null}
+          {visibles.map((opcion) => {
+            const seleccionada = opcion.valor === value;
+            return (
+              <PressSurface
+                key={opcion.valor}
+                onPress={() => {
+                  onChange(opcion.valor);
+                  cerrar();
+                }}
+                style={[styles.countryRow, seleccionada && styles.countryRowSelected]}
+                scaleTo={press.scaleSubtle}
+                accessibilityRole="button"
+                accessibilityState={{ selected: seleccionada }}
+                /*
+                  El detalle va DENTRO del nombre accesible de la fila.
+
+                  `PressSurface` lleva `accessibilityLabel`, y eso esconde el texto de sus hijos:
+                  quien usa VoiceOver oia «Salario» y nunca «de un trabajo con sueldo fijo», que
+                  es justo lo que distingue esa opcion de la de al lado. Con el detalle dentro, la
+                  fila se anuncia igual que se ve.
+                */
+                accessibilityLabel={opcion.detalle ? `${opcion.etiqueta}. ${opcion.detalle}` : opcion.etiqueta}
+              >
+                <View style={styles.countryName}>
+                  <AtlasText variant="body">{opcion.etiqueta}</AtlasText>
+                  {opcion.detalle ? (
+                    <AtlasText variant="caption" tone="tertiary">
+                      {opcion.detalle}
+                    </AtlasText>
+                  ) : null}
+                </View>
+                {seleccionada ? <Icon name="check" size={18} tint={color.action.primary} /> : null}
+              </PressSurface>
+            );
+          })}
+        </ScrollView>
+      </BottomSheet>
+    </View>
+  );
+}
+
+/* ------------------------------------------------------------- telefono */
+
+export function PhoneField({ label, value, onChangeText, country, onChangeCountry, hint, ayuda, error, required, bitacora }: PhoneFieldProps) {
+  const [focused, setFocused] = useState(false);
+  const [picking, setPicking] = useState(false);
+  const anotar = ganchosDeCampo(bitacora, () => value.length);
+
+  return (
+    <View style={styles.block}>
+      <FieldLabel label={label} required={required} ayuda={ayuda} />
+
+      <View {...webData('campo')} style={[styles.control, styles.phoneControl, focused && styles.controlFocused, error ? styles.controlError : null]}>
+        <PressSurface
           onPress={() => setPicking(true)}
           style={styles.dial}
           accessibilityRole="button"
@@ -305,16 +588,21 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
           <AtlasText variant="body" style={styles.flag}>
             {country.flag}
           </AtlasText>
-          <AtlasText variant="bodyStrong">{country.dial}</AtlasText>
+          <AtlasText variant="title">{country.dial}</AtlasText>
           <Icon name="adelante" size={14} tint={color.text.tertiary} />
-        </Pressable>
+        </PressSurface>
 
         <View style={styles.dialSeparator} />
 
         <TextInput
+          {...inputChrome}
           value={value}
           // Solo digitos: pegar un numero con espacios o guiones no puede romper el formato.
-          onChangeText={(next) => onChangeText(next.replace(/[^0-9]/g, ''))}
+          onChangeText={(next) => {
+            const digitos = next.replace(/[^0-9]/g, '');
+            anotar.onChangeLength(digitos.length);
+            onChangeText(digitos);
+          }}
           keyboardType="phone-pad"
           textContentType="telephoneNumber"
           autoComplete="tel"
@@ -322,78 +610,54 @@ export function PhoneField({ label, value, onChangeText, country, onChangeCountr
           maxLength={15}
           accessibilityLabel={label}
           placeholderTextColor={color.text.placeholder}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={() => {
+            setFocused(true);
+            anotar.onFocus();
+          }}
+          onBlur={() => {
+            setFocused(false);
+            anotar.onBlur();
+          }}
           style={styles.input}
         />
       </View>
 
       <FieldFoot error={error} hint={hint} />
 
-      <Modal visible={picking} transparent animationType="slide" onRequestClose={() => setPicking(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setPicking(false)} />
-        <View style={styles.sheet}>
-          <View style={styles.sheetHead}>
-            <AtlasText variant="bodyStrong">Código de país</AtlasText>
-            <Pressable onPress={() => setPicking(false)} accessibilityRole="button" accessibilityLabel="Cerrar">
-              <AtlasText variant="bodyStrong" style={{ color: color.action.primary }}>
-                Listo
+      <BottomSheet visible={picking} titulo="Código de país" onClose={() => setPicking(false)}>
+        <ScrollView style={styles.sheetList}>
+        {COUNTRIES.map((item) => {
+          const selected = item.code === country.code;
+          return (
+            <PressSurface
+              key={item.code}
+              onPress={() => {
+                onChangeCountry(item);
+                setPicking(false);
+              }}
+              style={[styles.countryRow, selected && styles.countryRowSelected]}
+              scaleTo={press.scaleSubtle}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`${item.name} ${item.dial}`}
+            >
+              <AtlasText variant="body" style={styles.flag}>
+                {item.flag}
               </AtlasText>
-            </Pressable>
-          </View>
-          <ScrollView style={styles.sheetList}>
-            {COUNTRIES.map((item) => {
-              const selected = item.code === country.code;
-              return (
-                <Pressable
-                  key={item.code}
-                  onPress={() => {
-                    onChangeCountry(item);
-                    setPicking(false);
-                  }}
-                  style={[styles.countryRow, selected && styles.countryRowSelected]}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  accessibilityLabel={`${item.name} ${item.dial}`}
-                >
-                  <AtlasText variant="body" style={styles.flag}>
-                    {item.flag}
-                  </AtlasText>
-                  <AtlasText variant="body" style={styles.countryName}>
-                    {item.name}
-                  </AtlasText>
-                  <AtlasText variant="body" tone="secondary">
-                    {item.dial}
-                  </AtlasText>
-                  {selected ? <Icon name="check" size={18} tint={color.action.primary} /> : null}
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-      </Modal>
+              <AtlasText variant="body" style={styles.countryName}>
+                {item.name}
+              </AtlasText>
+              <AtlasText variant="body" tone="secondary">
+                {item.dial}
+              </AtlasText>
+          {selected ? <Icon name="check" size={18} tint={color.action.primary} /> : null}
+        </PressSurface>
+      );
+    })}
+        </ScrollView>
+      </BottomSheet>
     </View>
   );
-}
-
-/* ------------------------------------------------------------------ comun */
-
-function FieldFoot({ error, hint }: { error?: string | null; hint?: string }) {
-  if (error) {
-    return (
-      <AtlasText variant="caption" tone="danger">
-        {error}
-      </AtlasText>
-    );
-  }
-  if (hint) {
-    return (
-      <AtlasText variant="caption" tone="tertiary">
-        {hint}
-      </AtlasText>
-    );
-  }
-  return null;
 }
 
 const styles = StyleSheet.create({
@@ -406,11 +670,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.base,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: color.border.subtle,
+    borderColor: color.border.field,
     // Hundido, no elevado: un campo es un hueco donde se escribe, no una tarjeta que se pulsa.
     backgroundColor: color.surface.sunken,
   },
-  controlFocused: { borderColor: color.border.focus },
+  // El mismo grosor de foco que `fields.tsx`: con un solo pixel de color, en una pantalla oscura,
+  // no se distingue cual de seis campos tiene el cursor.
+  controlFocused: { borderColor: color.border.focus, borderWidth: 1.5 },
+  // Bloqueado: se apaga, no se esconde. Un control que desaparece hasta que rellenas otro campo
+  // hace que la pantalla cambie de forma mientras la lees.
+  controlBloqueado: { opacity: 0.5 },
   controlError: { borderColor: color.feedback.danger },
   controlText: { flex: 1 },
   input: {
@@ -418,27 +687,40 @@ const styles = StyleSheet.create({
     padding: 0,
     color: color.text.primary,
     ...(type.body as object),
+    // Ver `ui/fields`: sin esto Android suma su propio relleno vertical dentro de la caja y lo
+    // tecleado se dibuja por encima del centro del control.
+    includeFontPadding: false,
+    textAlignVertical: 'center',
   },
   phoneControl: { paddingLeft: space.sm },
   dial: { flexDirection: 'row', alignItems: 'center', gap: space.xxs, paddingHorizontal: space.xs, minHeight: touch.minSize },
-  dialSeparator: { width: 1, height: 24, backgroundColor: color.border.subtle },
+  dialSeparator: { width: stroke.hairline, height: 24, backgroundColor: color.border.hairline },
   flag: { fontSize: 20 },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)' },
-  sheet: {
-    backgroundColor: color.surface.sheet,
-    borderTopLeftRadius: radius.xxl,
-    borderTopRightRadius: radius.xxl,
-    paddingBottom: space.xl,
+  // El velo, la hoja, el tirador y su cabecera vivian aqui en TRES copias (pais, opciones,
+  // calendario de iOS). Ahora son `BottomSheet` en `ui/help-sheet.tsx`, una sola vez.
+  ayudaEnHoja: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: space.sm,
+    paddingHorizontal: space.lg,
+    paddingTop: space.md,
   },
-  sheetHead: {
+  ayudaTexto: { flex: 1 },
+  // `flexShrink`: la lista cede cuando la hoja toca su tope (ver `BottomSheet`), en vez de empujarla fuera.
+  sheetList: { maxHeight: 380, flexShrink: 1 },
+  buscador: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: space.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: color.border.subtle,
+    gap: space.md,
+    marginHorizontal: space.lg,
+    marginTop: space.md,
+    paddingHorizontal: space.md,
+    height: 44,
+    borderRadius: radius.md,
+    backgroundColor: color.surface.sunken,
   },
-  sheetList: { maxHeight: 380 },
+  buscadorInput: { flex: 1, color: color.text.primary, ...type.body, includeFontPadding: false, textAlignVertical: 'center' },
+  sinResultados: { paddingHorizontal: space.lg, paddingVertical: space.lg },
   countryRow: {
     flexDirection: 'row',
     alignItems: 'center',

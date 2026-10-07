@@ -103,6 +103,55 @@ export function openScanSession(token: string, now: number): { session: ScanSess
   };
 }
 
+/**
+ * Abre la sesion de compra con el comercio que resolvio EL SERVIDOR.
+ *
+ * `openScanSession` solo sabe de los QR de demostracion que viven en `fixtures`, asi que un codigo
+ * real —el serial de un POS dado de alta en el expediente— resolvia bien contra el backend y
+ * moria una linea despues con `QR_NOT_RECOGNIZED`. El comercio existia; el que no lo conocia era
+ * el motor local.
+ *
+ * Aqui la sesion se construye con la respuesta del servidor y no se consulta ninguna fixture. El
+ * motor local sigue llevando la sesion de compra —el dominio no existe todavia en el backend—,
+ * pero los datos del comercio son los del expediente, que es lo unico que el telefono no puede
+ * inventarse.
+ */
+export function openResolvedScanSession(
+  resolved: {
+    partnerProfileId: string;
+    branchId: string;
+    posTerminalId: string;
+    displayName: string;
+    businessCategory: string | null;
+  },
+  now: number,
+): { session: ScanSession } {
+  return {
+    session: {
+      id: id('scan'),
+      posQrId: resolved.posTerminalId,
+      context: {
+        organizationId: resolved.partnerProfileId,
+        tradeName: resolved.displayName,
+        branchId: resolved.branchId,
+        // El backend todavia no publica el nombre de la sucursal ni la ciudad en esta respuesta.
+        // Se deja vacio en vez de rellenarlo con un placeholder: un nombre inventado en la
+        // pantalla de confirmacion es peor que un campo que no se muestra.
+        branchName: '',
+        posId: resolved.posTerminalId,
+        posName: '',
+        city: '',
+        industry: resolved.businessCategory ?? '',
+        verified: true,
+      },
+      status: 'OPEN',
+      openedAt: new Date(now).toISOString(),
+      expiresAt: new Date(now + SCAN_SESSION_TTL_MS).toISOString(),
+      consumedAt: null,
+    },
+  };
+}
+
 export const isExpired = (isoDate: string, now: number): boolean => new Date(isoDate).getTime() <= now;
 
 /** Disponible = limite - consumido - reservado. No se confia en un contador mutable (R51). */
@@ -163,6 +212,7 @@ export function createOrder(input: {
     decision: null,
     acceptance: null,
     commitmentId: null,
+    backendApplicationId: null,
   };
 
   return { order, session: { ...input.session, status: 'CONSUMED', consumedAt: new Date(input.now).toISOString() } };
@@ -304,6 +354,29 @@ export function issueInstruction(input: {
     beneficiaryNameSnapshot: input.posQr.bankQr.beneficiaryName,
     paymentEndpointMaskedSnapshot: input.posQr.bankQr.endpointMasked,
     qrPayloadSnapshot: input.posQr.bankQr.payload,
+    amount: input.item.amount,
+    currency: input.currency,
+    status: 'ISSUED',
+    issuedAt: new Date(input.now).toISOString(),
+    expiresAt: new Date(input.now + 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
+/** Conserva la imagen que subió el partner; no inventa un payload bancario a partir de ella. */
+export function issueUploadedQrInstruction(input: {
+  item: ScheduleItem;
+  qr: { qrId: string; imageDataUrl: string; bankInstitutionCode: string | null; accountNumberMasked: string | null };
+  beneficiaryName: string;
+  currency: PaymentInstruction['currency'];
+  now: number;
+}): PaymentInstruction {
+  return {
+    id: id('ins'),
+    scheduleItemId: input.item.id,
+    beneficiaryNameSnapshot: input.beneficiaryName,
+    paymentEndpointMaskedSnapshot: input.qr.accountNumberMasked ?? input.qr.bankInstitutionCode ?? '—',
+    qrPayloadSnapshot: '',
+    qrImageDataUrlSnapshot: input.qr.imageDataUrl,
     amount: input.item.amount,
     currency: input.currency,
     status: 'ISSUED',

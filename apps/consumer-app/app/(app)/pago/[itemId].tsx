@@ -14,27 +14,38 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { isSandboxPurchase } from '../../../src/api/config';
+import { getPaymentQrForPos } from '../../../src/api/endpoints/loans';
 import { formatMoney } from '../../../src/domain/money';
 import { dueLabel, formatTime, itemTitle, statusLabel, statusTone } from '../../../src/features/payment-copy';
 import { useSandbox } from '../../../src/sandbox/store';
+import { POS_QRS } from '../../../src/sandbox/fixtures';
+import { useSession } from '../../../src/session/session';
+import { requestProofTicket, submitPaymentClaim, uploadProof } from '../../../src/api/endpoints/payment-claims';
 import { color, palette, radius, space } from '../../../src/theme/tokens';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, EmptyState, ErrorState } from '../../../src/ui/primitives';
+import { AtlasText, Badge, Button, Cargando, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, Overline, Skeleton } from '../../../src/ui/primitives';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
 
 export default function PaymentScreen() {
+  const t = useCopy();
   const router = useRouter();
   const sandbox = useSandbox();
+  const session = useSession();
+  const [enviando, setEnviando] = useState(false);
+  const [fallo, setFallo] = useState<string | null>(null);
   const { itemId } = useLocalSearchParams<{ itemId: string }>();
 
   const [reference, setReference] = useState('');
   const [proofUri, setProofUri] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [reported, setReported] = useState(false);
+  const [qrError, setQrError] = useState<string | null>(null);
+  const [qrRetry, setQrRetry] = useState(0);
 
   useEffect(() => {
     if (itemId) sandbox.ensureInstruction(itemId);
@@ -45,12 +56,44 @@ export default function PaymentScreen() {
   const instruction = itemId ? sandbox.instructionFor(itemId) : null;
   const order = sandbox.state.orders.find((entry) => entry.id === schedule?.purchaseOrderId);
   const claim = sandbox.state.claims.find((entry) => entry.instructionId === instruction?.id);
+  const realPos = Boolean(order && !POS_QRS.some((entry) => entry.context.posId === order.context.posId));
+  const partnerId = order?.context.organizationId;
+  const posId = order?.context.posId;
+  const ensureUploadedQrInstruction = sandbox.ensureUploadedQrInstruction;
+
+  useEffect(() => {
+    if (!realPos || !partnerId || !posId || !itemId || instruction) return;
+    let cancelled = false;
+    void getPaymentQrForPos(partnerId, posId)
+      .then((qr) => {
+        if (cancelled) return;
+        if (!qr) {
+          setQrError('El comercio todavía no tiene un QR bancario aprobado para recibir este pago.');
+          return;
+        }
+        setQrError(null);
+        ensureUploadedQrInstruction(itemId, qr);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setQrError(error instanceof Error ? error.message : 'No se pudo obtener el QR bancario del comercio.');
+      });
+    return () => { cancelled = true; };
+  }, [itemId, instruction, partnerId, posId, realPos, qrRetry, ensureUploadedQrInstruction]);
+
+  if (!sandbox.ready) {
+    return (
+      <Screen>
+        <ScreenHeader title="Pago" onBack="auto" />
+        <Cargando bloque texto="Buscando tu pago…" />
+      </Screen>
+    );
+  }
 
   if (!item || !order) {
     return (
       <Screen>
         <ScreenHeader title="Pago" onBack="auto" />
-        <EmptyState title="No encontramos este pago" detail="Vuelve a la lista de pagos y abre la cuota otra vez." />
+        <EmptyState icon="pagos" title="No encontramos este pago" detail="Vuelve a la lista de pagos y abre la cuota otra vez." />
       </Screen>
     );
   }
@@ -59,9 +102,11 @@ export default function PaymentScreen() {
     return (
       <Screen footer={<Button label="Volver" onPress={() => router.back()} />}>
         <ScreenHeader title={itemTitle(item)} subtitle={order.context.tradeName} onBack="auto" />
-        <Card>
-          <Badge label="pagada" tone="success" />
-          <AtlasText variant="amount">{formatMoney(item.amount)}</AtlasText>
+        <Card tone="success">
+          <Badge dot label="pagada" tone="success" />
+          <AtlasText variant="amount" tone="success">
+            {formatMoney(item.amount)}
+          </AtlasText>
           <AtlasText variant="body" tone="secondary">
             {dueLabel(item)}
           </AtlasText>
@@ -71,7 +116,7 @@ export default function PaymentScreen() {
   }
 
   const copyEndpoint = async () => {
-    if (!instruction) return;
+    if (!instruction?.qrPayloadSnapshot) return;
     await Clipboard.setStringAsync(instruction.qrPayloadSnapshot);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setCopied(true);
@@ -85,11 +130,66 @@ export default function PaymentScreen() {
     if (!picked.canceled && picked.assets[0]) setProofUri(picked.assets[0].uri);
   };
 
-  const reportPayment = () => {
+  /**
+   * El aviso de pago sale de verdad hacia el backend.
+   *
+   * Antes esto llamaba al sandbox: el comprobante se quedaba en el telefono, el cliente creia haber
+   * avisado y el comercio nunca se enteraba. Ahora el comprobante sube al almacen con una URL
+   * firmada y el aviso queda esperando a que el comercio lo confirme.
+   *
+   * Si el envio falla NO se marca como avisado: decirle a alguien que su pago esta reportado cuando
+   * no salio de su telefono es la unica forma de que deje de intentarlo.
+   */
+  const reportPayment = async () => {
     if (!instruction) return;
-    sandbox.claimPayment({ instructionId: instruction.id, reference: reference.trim() || null, proofUri });
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setReported(true);
+
+    if (realPos && !isSandboxPurchase) {
+      setFallo('El pago inicial de esta compra aún no admite avisos reales. Conserva el comprobante y contacta al comercio.');
+      return;
+    }
+
+    /*
+     * En una compra de DEMOSTRACIÓN el aviso no sale del teléfono, y se dice: antes esto marcaba
+     * «reportado» con vibración de éxito y el cliente creía haber avisado a un comercio que nunca
+     * se enteró. Los pagos reales se avisan desde Pagos › la cuota, que sí llega al backend.
+     */
+    if (isSandboxPurchase || !session.customerId) {
+      sandbox.claimPayment({ instructionId: instruction.id, reference: reference.trim() || null, proofUri });
+      setFallo(t.texto('demo.compra'));
+      return;
+    }
+
+    setEnviando(true);
+    setFallo(null);
+    try {
+      const contentType = 'image/jpeg';
+      let storageKey: string | null = null;
+
+      if (proofUri) {
+        const blob = await (await fetch(proofUri)).blob();
+        const ticket = await requestProofTicket(session.customerId, { contentType, sizeBytes: blob.size });
+        await uploadProof(ticket, proofUri, contentType);
+        storageKey = ticket.storageKey;
+      }
+      if (!storageKey) {
+        setFallo(t.texto('pago.comprobante_falta'));
+        return;
+      }
+
+      await submitPaymentClaim(session.customerId, {
+        installmentId: String(item.id),
+        amount: String(item.amount),
+        payerReference: reference.trim() || undefined,
+        storageKey,
+        contentType,
+      });
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setReported(true);
+    } catch (error) {
+      setFallo(error instanceof Error ? error.message : 'No pudimos enviar tu aviso. Intenta de nuevo.');
+    } finally {
+      setEnviando(false);
+    }
   };
 
   return (
@@ -99,9 +199,9 @@ export default function PaymentScreen() {
           <Button label="Entendido" onPress={() => router.back()} />
         ) : (
           <Button
-            label="Ya realice el pago"
-            onPress={reportPayment}
-            disabled={!instruction}
+            label={enviando ? 'Enviando tu aviso…' : 'Ya realicé el pago'}
+            onPress={() => reportPayment()}
+            disabled={!instruction || enviando}
             blockedReason={instruction ? null : 'Estamos preparando las instrucciones de pago.'}
             haptic="success"
           />
@@ -112,12 +212,10 @@ export default function PaymentScreen() {
 
       <Card>
         <View style={styles.rowBetween}>
-          <AtlasText variant="caption" tone="secondary">
-            Monto a pagar
-          </AtlasText>
-          <Badge label={statusLabel(item.status)} tone={statusTone(item.status)} />
+          <Overline>Monto a pagar</Overline>
+          <Badge dot label={statusLabel(item.status)} tone={statusTone(item.status)} />
         </View>
-        <AtlasText variant="amount">{formatMoney(item.amount)}</AtlasText>
+        <AtlasText variant="amountHero">{formatMoney(item.amount)}</AtlasText>
         <AtlasText variant="body" tone="secondary">
           {dueLabel(item)}
         </AtlasText>
@@ -125,96 +223,129 @@ export default function PaymentScreen() {
 
       {instruction ? (
         <Card>
-          <AtlasText variant="h3">Paga con el QR del comercio</AtlasText>
-          <AtlasText variant="caption" tone="secondary">
-            Abre la app de tu banco, escanea este código y paga el monto exacto.
-          </AtlasText>
+          <CardHeader
+            icon="escanear"
+            title="Paga con el QR del comercio"
+            detail={t.texto('pago.qr_instruccion')}
+            divider={false}
+          />
 
           <View style={styles.qrBox}>
-            <QRCode value={instruction.qrPayloadSnapshot} size={196} backgroundColor={palette.white} color={palette.bg} />
+            {instruction.qrImageDataUrlSnapshot ? (
+              <Image source={{ uri: instruction.qrImageDataUrlSnapshot }} style={{ width: 196, height: 196 }} resizeMode="contain" accessibilityLabel={`QR bancario de ${instruction.beneficiaryNameSnapshot}`} />
+            ) : (
+              <QRCode value={instruction.qrPayloadSnapshot} size={196} backgroundColor={palette.white} color={palette.bg} />
+            )}
           </View>
 
           <Divider />
-          <View style={styles.rowBetween}>
-            <AtlasText variant="body" tone="secondary">
-              Beneficiario
-            </AtlasText>
-            <AtlasText variant="bodyStrong">{instruction.beneficiaryNameSnapshot}</AtlasText>
-          </View>
-          <View style={styles.rowBetween}>
-            <AtlasText variant="body" tone="secondary">
-              Cuenta
-            </AtlasText>
-            <AtlasText variant="bodyStrong">{instruction.paymentEndpointMaskedSnapshot}</AtlasText>
-          </View>
-          <View style={styles.rowBetween}>
-            <AtlasText variant="body" tone="secondary">
-              Vigente hasta
-            </AtlasText>
-            <AtlasText variant="bodyStrong">{formatTime(instruction.expiresAt)}</AtlasText>
-          </View>
+          <KeyValue label="Beneficiario" value={instruction.beneficiaryNameSnapshot} />
+          <KeyValue label="Cuenta" numeric value={instruction.paymentEndpointMaskedSnapshot} />
+          <KeyValue label="Vigente hasta" numeric value={formatTime(instruction.expiresAt)} />
 
-          <Button label={copied ? 'Código copiado' : 'Copiar código de pago'} variant="secondary" onPress={copyEndpoint} />
+          {instruction.qrPayloadSnapshot ? <Button label={copied ? 'Código copiado' : 'Copiar código de pago'} variant="secondary" onPress={copyEndpoint} /> : null}
+        </Card>
+      ) : !qrError ? (
+        /*
+          Sin error todavía NO es un fallo: es el QR del comercio que aún viene. Se pintaba un
+          «Sin instrucción de pago» con botón de reintentar durante toda la espera, y parecía roto.
+        */
+        <Card>
+          <Skeleton height={220} />
+          <Cargando texto="Preparando el QR de pago del comercio…" />
         </Card>
       ) : (
         <ErrorState
-          title="Sin instruccion de pago"
-          detail="No pudimos preparar el destino de cobro de esta cuota. Intenta de nuevo en un momento."
-          onRetry={() => itemId && sandbox.ensureInstruction(itemId)}
+          title="No pudimos preparar el pago"
+          detail={qrError}
+          onRetry={() => {
+            if (!itemId) return;
+            if (realPos) {
+              setQrError(null);
+              setQrRetry((current) => current + 1);
+            } else {
+              sandbox.ensureInstruction(itemId);
+            }
+          }}
         />
       )}
 
       {reported || claim ? (
-        <Card>
-          <Badge label="en verificación" tone="info" />
-          <AtlasText variant="bodyStrong">Recibimos tu reporte</AtlasText>
+        <Card tone="brand">
+          <CardHeader
+            icon="reloj"
+            title="Recibimos tu reporte"
+            trailing={<Badge dot label="en verificación" tone="info" />}
+          />
           <AtlasText variant="body" tone="secondary">
-            Tu comprobante es evidencia, no confirma el pago por si solo. Lo damos por pagado cuando el comercio confirma
-            que recibio el dinero. Te avisamos apenas ocurra.
+            {t.texto('pago.comprobante_evidencia')}
           </AtlasText>
         </Card>
       ) : (
         <Card>
-          <AtlasText variant="h3">Ya pagaste</AtlasText>
-          <AtlasText variant="caption" tone="secondary">
-            Cuentanos los datos del pago para acelerar la verificación. Es opcional.
-          </AtlasText>
+          <CardHeader
+            icon="documento"
+            title="Ya pagaste"
+            detail="Cuéntanos los datos del pago para acelerar la verificación. Es opcional."
+            divider={false}
+          />
           <Field
             label="Número de transacción"
             value={reference}
             onChangeText={setReference}
             autoCapitalize="characters"
             placeholder="Ej. 4839201"
+            ayuda="El número de operación que muestra el comprobante de tu banco o billetera, tal como aparece. Ej.: 4839201. Con él el comercio encuentra tu pago en su extracto y lo confirma antes."
           />
           <Button label={proofUri ? 'Comprobante adjunto' : 'Adjuntar comprobante'} variant="secondary" onPress={attachProof} />
+          {fallo ? (
+            <>
+              <Gap size="sm" />
+              <AtlasText variant="body" tone="danger">{fallo}</AtlasText>
+            </>
+          ) : null}
         </Card>
       )}
 
       <Card>
-        <AtlasText variant="bodyStrong">Algo no cuadra</AtlasText>
-        <AtlasText variant="caption" tone="secondary">
-          Si pagaste y sigue apareciendo pendiente, abre una revisión. No se borra el vencimiento mientras la revisamos.
-        </AtlasText>
+        <CardHeader
+          icon="alerta"
+          iconTone="warning"
+          title="Algo no cuadra"
+          detail="Si pagaste y sigue apareciendo pendiente, abre una revisión. No se borra el vencimiento mientras la revisamos."
+          divider={false}
+        />
+        {/*
+          Antes esto abría una «disputa» en el motor local y volvía atrás sin decir nada, en cualquier
+          modo: la queja no salía del teléfono. Con una compra real, el camino que sí llega a alguien es
+          Ayuda; con una simulada, se dice que es simulada.
+        */}
         <Button
-          label="Reportar un problema con este pago"
+          label={isSandboxPurchase ? 'Reportar un problema (demostración)' : 'Pedir ayuda con este pago'}
           variant="ghost"
           onPress={() => {
-            sandbox.openDispute(item.id, 'CONSUMER_CLAIMS_PAID');
-            router.back();
+            if (isSandboxPurchase || !session.customerId) {
+              sandbox.openDispute(item.id, 'CONSUMER_CLAIMS_PAID');
+              setFallo(t.texto('demo.compra'));
+              return;
+            }
+            router.push('/(app)/soporte');
           }}
         />
       </Card>
 
       {isSandboxPurchase ? (
         <Card>
-          <DataSourceBadge label="Solo en sandbox" />
-          <AtlasText variant="bodyStrong">Simular la confirmacion del comercio</AtlasText>
-          <AtlasText variant="caption" tone="secondary">
-            En produccion esta confirmacion llega desde el portal del comercio y es la unica que resuelve la cuota como
-            pagada. Aquí se dispara a mano para poder recorrer el ciclo completo.
-          </AtlasText>
+          <CardHeader
+            icon="chispa"
+            iconTone="neutral"
+            title="Simular la confirmación del comercio"
+            detail="En producción esta confirmación llega desde el portal del comercio y es la única que resuelve la cuota como pagada. Aquí se dispara a mano para poder recorrer el ciclo completo."
+            trailing={<DataSourceBadge label="Solo en sandbox" />}
+            divider={false}
+          />
           <Button
-            label="El comercio confirma que recibio el pago"
+            label="El comercio confirma que recibió el pago"
             variant="secondary"
             onPress={() => {
               sandbox.confirmMerchantReceipt(item.id);
@@ -234,10 +365,20 @@ export default function PaymentScreen() {
 
 const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
+  /*
+    El QR sobre blanco, con aire alrededor y su propio filo.
+
+    La zona tranquila —el margen blanco de al menos cuatro modulos— no es estetica: sin ella muchos
+    lectores no enganchan el codigo, y esta es la pantalla donde un fallo de lectura significa que
+    alguien no puede pagar su cuota. El contorno separa el blanco del papel navy para que la tarjeta
+    no parezca tener un agujero.
+  */
   qrBox: {
     alignSelf: 'center',
-    padding: space.base,
+    padding: space.lg,
     borderRadius: radius.xl,
     backgroundColor: color.surface.inverse,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
   },
 });

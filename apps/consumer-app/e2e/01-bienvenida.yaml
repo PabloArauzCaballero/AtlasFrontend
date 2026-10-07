@@ -1,0 +1,31 @@
+# Recorrido de la bienvenida: el carrusel y la salida hacia el alta.
+#
+# No comprueba el MOVIMIENTO —eso no se afirma con aserciones, se mira en vídeo— sino que cada
+# página llega y que las dos salidas funcionan. Es la pantalla que ve alguien que no tiene cuenta,
+# así que un fallo aquí no cuesta una funcionalidad: cuesta el cliente entero.
+appId: bo.atlas.consumer
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil:
+    visible: 'Ya tengo cuenta'
+    timeout: 30000
+- assertVisible: 'ATLAS'
+- takeScreenshot: bienvenida-marca
+
+# La marca y cuatro pasos (Qué es Atlas, Escaneas, Pagas, Construyes): cuatro deslizamientos hasta la última.
+- swipe: { direction: LEFT, duration: 600 }
+- assertVisible: 'Qué es Atlas'
+- takeScreenshot: bienvenida-que-es-atlas
+- swipe: { direction: LEFT, duration: 600 }
+- swipe: { direction: LEFT, duration: 600 }
+- swipe: { direction: LEFT, duration: 600 }
+- takeScreenshot: bienvenida-ultima
+
+# «Crear mi cuenta» atraviesa el corte de marca antes de llegar al registro: por eso la espera es
+# generosa, no porque el registro tarde.
+- tapOn: 'Crear mi cuenta'
+- extendedWaitUntil:
+    visible: 'Necesitamos estos datos para abrir tu expediente.'
+    timeout: 15000
+- takeScreenshot: registro

@@ -1,0 +1,88 @@
+# Alta de un cliente NUEVO, tecleada como la teclea una persona.
+#
+# ## Hasta dónde llega, y por qué no más
+#
+# Termina donde el servidor manda un código de verificación al correo. Ese código no se puede
+# automatizar sin un sumidero de correo, y fingirlo —leerlo de la base, saltarse el paso— probaría
+# un flujo que ningún cliente recorre. El paso siguiente se hace a mano con el código real.
+#
+# ## Los datos
+#
+# Se pasan por parámetro para no dejar un correo fijo en el repositorio: dos ejecuciones con el
+# mismo correo chocan contra la unicidad del backend y el fallo se lee como un defecto de la app.
+#
+#   maestro test -e CORREO=alguien+$(date +%s)@gmail.com -e TELEFONO=76500123 e2e/02-alta.yaml
+appId: bo.atlas.consumer
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil: { visible: 'Ya tengo cuenta', timeout: 30000 }
+- swipe: { direction: LEFT, duration: 500 }
+- swipe: { direction: LEFT, duration: 500 }
+- swipe: { direction: LEFT, duration: 500 }
+- tapOn: 'Crear mi cuenta'
+- extendedWaitUntil: { visible: 'Necesitamos estos datos para abrir tu expediente.', timeout: 15000 }
+
+- tapOn: 'Valeria'
+- inputText: 'Pablo'
+- tapOn:
+    below:
+      text: 'Apellido *'
+- inputText: 'Arauz'
+
+# El teclado tapa el resto del formulario; el propio desplazamiento lo cierra
+# (`keyboardDismissMode: on-drag` en `Screen`).
+- swipe:
+    start: 50%, 40%
+    end: 50%, 25%
+    duration: 500
+
+# La fecha se elige por su etiqueta de accesibilidad, no por el texto del control: con una fecha ya
+# escogida ese texto cambia, y el flujo dejaría de encontrarlo.
+- tapOn: 'Fecha de nacimiento. Tocar para elegir'
+- swipe:
+    start: 50%, 84%
+    end: 50%, 76%
+    duration: 600
+- tapOn: 'Listo'
+
+- tapOn: '70000000'
+- inputText: "${TELEFONO}"
+- swipe:
+    start: 50%, 40%
+    end: 50%, 30%
+    duration: 500
+- tapOn: 'tu@correo.com'
+- inputText: "${CORREO}"
+- swipe:
+    start: 50%, 40%
+    end: 50%, 28%
+    duration: 500
+- takeScreenshot: alta-datos
+
+# El PIN son cuatro casillas dibujadas sobre un campo oculto: se toca por su identificador, que
+# existe justamente para esto (y de paso le dio nombre para los lectores de pantalla).
+- scrollUntilVisible:
+    element:
+      id: 'pin-field'
+    direction: DOWN
+- tapOn:
+    id: 'pin-field'
+- inputText: '8407'
+
+# Las tres autorizaciones. Se busca UNA vez y luego se tocan las tres seguidas: intercalar
+# búsquedas entre toque y toque movía la lista y el siguiente toque caía sobre la anterior,
+# desmarcándola. El síntoma era el peor posible —el flujo «pasaba» hasta el final y el alta se
+# rechazaba por falta de autorizaciones— así que abajo se comprueba que las tres quedaron marcadas.
+- scrollUntilVisible:
+    element: 'Términos y condiciones'
+    direction: DOWN
+- tapOn: 'Consulta de tu historial crediticio'
+- tapOn: 'Política de privacidad'
+- tapOn: 'Términos y condiciones'
+- assertNotVisible: 'Falta aceptar las autorizaciones obligatorias.'
+- takeScreenshot: alta-autorizaciones
+
+- tapOn: 'Crear mi cuenta'
+- extendedWaitUntil: { visible: 'Verifica tu contacto', timeout: 30000 }
+- takeScreenshot: alta-verificacion

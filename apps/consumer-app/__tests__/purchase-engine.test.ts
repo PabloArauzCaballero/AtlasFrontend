@@ -12,6 +12,8 @@ import {
   createOrder,
   emptyState,
   evaluateOrder,
+  issueUploadedQrInstruction,
+  openResolvedScanSession,
   openScanSession,
 } from '../src/sandbox/engine';
 import type { CreditLine, PurchaseOrder, ScanSession } from '../src/sandbox/types';
@@ -59,6 +61,15 @@ function orderReadyToCommit(input?: { limit?: number; gross?: number }): { order
 }
 
 describe('escaneo del QR interno (R15)', () => {
+  it('conserva sucursal y caja exactas que resolvió el backend', () => {
+    const { session } = openResolvedScanSession({
+      partnerProfileId: '7', branchId: '3', posTerminalId: '9',
+      displayName: 'Comercio Andino', businessCategory: 'ALIMENTOS',
+    }, NOW);
+    expect(session.posQrId).toBe('9');
+    expect(session.context).toMatchObject({ organizationId: '7', branchId: '3', posId: '9', tradeName: 'Comercio Andino', verified: true });
+  });
+
   it('abre sesion con un QR activo y resuelve el contexto en el servidor', () => {
     const result = openScanSession(DEMO_TOKEN, NOW);
     expect('session' in result).toBe(true);
@@ -75,6 +86,19 @@ describe('escaneo del QR interno (R15)', () => {
   it('rechaza un token desconocido', () => {
     expect(openScanSession('atlas://pos/inventado', NOW)).toEqual({ code: 'QR_NOT_RECOGNIZED' });
   });
+});
+
+it('el primer pago de una caja real conserva la imagen bancaria aprobada y el importe del 60 %', () => {
+  const instruction = issueUploadedQrInstruction({
+    item: { id: 'initial-1', sequenceNo: 0, itemType: 'INITIAL', dueAt: new Date(NOW).toISOString(), amount: minor(60_000), status: 'PENDING', resolvedPaidAt: null },
+    qr: { qrId: '8', imageDataUrl: 'data:image/png;base64,UE5H', bankInstitutionCode: 'BNB', accountNumberMasked: '****1234' },
+    beneficiaryName: 'Comercio Andino',
+    currency: 'BOB',
+    now: NOW,
+  });
+  expect(instruction.qrImageDataUrlSnapshot).toBe('data:image/png;base64,UE5H');
+  expect(instruction.amount).toBe(60_000);
+  expect(instruction.paymentEndpointMaskedSnapshot).toBe('****1234');
 });
 
 describe('creacion de la orden', () => {

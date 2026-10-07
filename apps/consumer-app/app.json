@@ -3,10 +3,10 @@
     "name": "Atlas",
     "slug": "atlas-consumer-app",
     "scheme": "atlas",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -20,12 +20,14 @@
       "supportsTablet": false,
       "bundleIdentifier": "bo.atlas.consumer",
       "infoPlist": {
-        "NSCameraUsageDescription": "Atlas usa la camara para escanear el QR del comercio e iniciar tu compra.",
+        "NSCameraUsageDescription": "Atlas usa la cámara para escanear el QR del comercio, fotografiar tu carnet y tomar tu selfie.",
         "NSPhotoLibraryUsageDescription": "Atlas usa tus fotos para adjuntar el comprobante de un pago.",
-        "NSLocationWhenInUseUsageDescription": "Atlas usa tu ubicacion solo al declarar tu domicilio durante la verificacion.",
+        "NSLocationWhenInUseUsageDescription": "Atlas registra tu ubicación mientras usas la app para verificar tu domicilio y detectar usos indebidos de tu cuenta.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Con «Siempre», Atlas también registra tu ubicación con la app cerrada. Sirve para verificar tu domicilio y detectar fraude; nunca se comparte con los comercios ni se usa para publicidad.",
         "NSDocumentsFolderUsageDescription": "Atlas accede a tus archivos solo para que elijas el extracto bancario que quieres subir.",
         "NSFaceIDUsageDescription": "Atlas usa Face ID para que entres con tu rostro en lugar de escribir tu PIN.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSContactsUsageDescription": "Atlas usa tus contactos para verificar tus referencias y detectar solicitudes coordinadas. Si lo autorizas, guardamos tu agenda cifrada; no escribimos a tus contactos ni vendemos su información. Puedes retirarlo desde «Privacidad»."
       }
     },
     "android": {
@@ -40,7 +42,12 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION"
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.READ_CONTACTS",
+        "android.permission.POST_NOTIFICATIONS"
       ],
       "intentFilters": [
         {
@@ -62,7 +69,8 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single"
     },
     "plugins": [
       "expo-router",
@@ -72,7 +80,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Atlas usa la camara para escanear el QR del comercio."
+          "cameraPermission": "Atlas usa la cámara para escanear el QR del comercio, fotografiar tu carnet y tomar tu selfie."
         }
       ],
       [
@@ -84,9 +92,28 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Atlas usa tu ubicacion solo al declarar tu domicilio."
+          "locationWhenInUsePermission": "Atlas registra tu ubicación mientras usas la app para verificar tu domicilio y detectar usos indebidos de tu cuenta.",
+          "locationAlwaysAndWhenInUsePermission": "Con «Siempre», Atlas también registra tu ubicación con la app cerrada. Sirve para verificar tu domicilio y detectar fraude.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "isIosBackgroundLocationEnabled": true
         }
       ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Atlas usa tus contactos para verificar tus referencias y detectar solicitudes coordinadas. Si lo autorizas, guardamos tu agenda cifrada."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#2BE0A8",
+          "defaultChannel": "default"
+        }
+      ],
+      "expo-task-manager",
       [
         "expo-splash-screen",
         {
@@ -95,10 +122,25 @@
           "imageWidth": 160
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-asset",
+      "expo-maps"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "c595e4fa-99a4-4ec6-b4aa-a36a9459dbf5"
+      }
+    },
+    "owner": "pablo28809",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c595e4fa-99a4-4ec6-b4aa-a36a9459dbf5"
     }
   }
 }

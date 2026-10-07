@@ -82,6 +82,15 @@ export type PurchaseOrder = {
   decision: CreditDecision | null;
   acceptance: { acceptedAt: string; orderContentHash: string; memberRole: string } | null;
   commitmentId: string | null;
+  /**
+   * La solicitud de credito REAL que abrio esta orden en el backend, cuando la decidio Atlas.
+   *
+   * Es lo que ata la orden local con la aceptacion del comercio, que vive en el backend y no en el
+   * telefono: sin este id, la app no sabria a que solicitud preguntarle «¿ya la acepto el negocio?»
+   * y no tendria mas remedio que adivinar. `null` en las compras de demostracion, que no crean nada
+   * en el backend y siguen usando el comercio simulado.
+   */
+  backendApplicationId: string | null;
 };
 
 export type ScheduleItem = {
@@ -106,6 +115,8 @@ export type PaymentInstruction = {
   beneficiaryNameSnapshot: string;
   paymentEndpointMaskedSnapshot: string;
   qrPayloadSnapshot: string;
+  /** Imagen original aprobada del banco, cuando la caja pertenece a un partner real. */
+  qrImageDataUrlSnapshot?: string;
   amount: Minor;
   currency: Currency;
   status: 'ISSUED' | 'EXPIRED' | 'FULFILLED';

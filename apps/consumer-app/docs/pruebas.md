@@ -57,6 +57,14 @@ Emulador Android con la aplicación **instalada** (no Expo Go): compilación nat
 
 ---
 
+## 3 bis. La web en el navegador — `e2e-web/`
+
+`humo.mjs` (42 rutas, errores de página), `flujos.mjs` (alta, ingreso, soporte contra el backend) y
+`responsive.mjs` (matriz de 13 anchos, estados abiertos y apaisado; desborde, áreas táctiles, texto
+pequeño). Qué mide cada uno y con qué umbral: [`RESPONSIVE_TEST_MATRIX.md`](RESPONSIVE_TEST_MATRIX.md);
+la última pasada, con cifras: [`RESPONSIVE_IMPLEMENTATION_REPORT.md`](RESPONSIVE_IMPLEMENTATION_REPORT.md).
+Los tramos y `hitSlopStyle` tienen prueba unitaria en `__tests__/responsive.test.ts`.
+
 ## 4. Matriz por plataforma
 
 | Caso | Android | iOS |

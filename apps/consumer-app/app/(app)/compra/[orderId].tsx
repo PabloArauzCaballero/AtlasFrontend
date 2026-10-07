@@ -16,7 +16,10 @@ import { dueLabel, itemTitle, orderStatusCopy, reasonCopy, statusLabel, statusTo
 import { useSandbox } from '../../../src/sandbox/store';
 import { space } from '../../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, ErrorState, ListRow, Skeleton } from '../../../src/ui/primitives';
+import { ROTULO_SIMULACION } from '../../../src/features/demo-copy';
+import { DataSourceBadge } from '../../../src/ui/brand';
+import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, KeyValue, ListRow, Overline, Skeleton } from '../../../src/ui/primitives';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
 
 const COMMIT_FAILURE_COPY: Record<string, string> = {
   ORDER_EXPIRED: 'La compra expiró antes de confirmarse. Pide al comercio iniciar una nueva.',
@@ -30,6 +33,7 @@ const COMMIT_FAILURE_COPY: Record<string, string> = {
 };
 
 export default function PurchaseDetail() {
+  const t = useCopy();
   const router = useRouter();
   const sandbox = useSandbox();
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
@@ -52,8 +56,10 @@ export default function PurchaseDetail() {
       <Screen>
         <ScreenHeader title="Compra" onBack="auto" />
         <Card>
-          <Skeleton height={20} width="60%" />
-          <Skeleton height={48} />
+          <Skeleton height={11} width="45%" />
+          <Skeleton height={38} width="60%" />
+          <Skeleton height={1} />
+          <Skeleton height={19} />
         </Card>
       </Screen>
     );
@@ -77,13 +83,12 @@ export default function PurchaseDetail() {
       }
     >
       <ScreenHeader title={order.context.tradeName} subtitle={`${order.context.branchName} · ${order.orderCode}`} onBack="auto" />
+      <DataSourceBadge label={ROTULO_SIMULACION} />
 
-      <Card>
+      <Card tone={copy.tone === 'danger' ? 'danger' : 'default'}>
         <View style={styles.rowBetween}>
-          <AtlasText variant="caption" tone="secondary">
-            Estado de la compra
-          </AtlasText>
-          <Badge label={copy.label} tone={copy.tone} />
+          <Overline>Estado de la compra</Overline>
+          <Badge dot label={copy.label} tone={copy.tone} />
         </View>
         <AtlasText variant="amount">{formatMoney(order.grossAmount)}</AtlasText>
         <AtlasText variant="body" tone="secondary">
@@ -101,31 +106,29 @@ export default function PurchaseDetail() {
       {commitError ? (
         <ErrorState
           title="No pudimos confirmar la compra"
-          detail={COMMIT_FAILURE_COPY[commitError] ?? 'Algo cambio antes de confirmar. Pide al comercio iniciar la compra otra vez.'}
+          detail={COMMIT_FAILURE_COPY[commitError] ?? 'Algo cambió antes de confirmar. Pide al comercio iniciar la compra otra vez.'}
         />
       ) : null}
 
       <Card>
-        <AtlasText variant="h3">¿Cómo se divide?</AtlasText>
+        <CardHeader icon="lista" iconTone="neutral" title="¿Cómo se divide?" trailing={<DataSourceBadge label={ROTULO_SIMULACION} />} />
+        <KeyValue label="Pago inicial (60 %)">
+          <AtlasText variant="amountSmall">{formatMoney(order.initialPaymentAmount)}</AtlasText>
+        </KeyValue>
+        <KeyValue label="Financiado (40 %)">
+          <AtlasText variant="amountSmall" tone="brand">
+            {formatMoney(order.financedAmount)}
+          </AtlasText>
+        </KeyValue>
         <Divider />
-        <View style={styles.rowBetween}>
-          <AtlasText variant="body" tone="secondary">
-            Pago inicial (60%)
-          </AtlasText>
-          <AtlasText variant="bodyStrong">{formatMoney(order.initialPaymentAmount)}</AtlasText>
-        </View>
-        <View style={styles.rowBetween}>
-          <AtlasText variant="body" tone="secondary">
-            Financiado (40%)
-          </AtlasText>
-          <AtlasText variant="bodyStrong">{formatMoney(order.financedAmount)}</AtlasText>
-        </View>
+        <AtlasText variant="caption" tone="tertiary">
+          {t.texto('demo.plan_simulado')}
+        </AtlasText>
       </Card>
 
       {order.decision ? (
         <Card>
-          <AtlasText variant="h3">Evaluación</AtlasText>
-          <Divider />
+          <CardHeader icon="escudo" title="Evaluación" />
           <ListRow
             title={decisionTitle(order.decision.decision)}
             subtitle={order.decision.reasonCodes.map(reasonCopy).join(' ')}
@@ -158,21 +161,21 @@ export default function PurchaseDetail() {
       {!order.decision && origin?.source === 'backend-unavailable' ? (
         <ErrorState
           title="No pudimos evaluar tu compra"
-          detail={`El servicio de decision no respondio (${origin.code}). Tu compra sigue abierta y nadie la rechazo. Vuelve a intentarlo en un momento.`}
+          detail={`El servicio de decisión no respondió (${origin.code}). Tu compra sigue abierta y nadie la rechazó. Vuelve a intentarlo en un momento.`}
         />
       ) : null}
 
       {schedule ? (
-        <Card>
-          <AtlasText variant="h3">Tu calendario</AtlasText>
-          <Divider />
+        <Card padding="tight">
+          <CardHeader icon="pagos" iconTone="neutral" title="Tu calendario" />
           {schedule.items.map((item, index) => (
             <View key={item.id}>
-              {index > 0 ? <Divider /> : null}
+              {index > 0 ? <Divider inset /> : null}
               <ListRow
+                icon={item.status === 'PAID' ? 'check' : 'reloj'}
                 title={itemTitle(item)}
                 subtitle={`${formatMoney(item.amount)} · ${dueLabel(item)}`}
-                right={<Badge label={statusLabel(item.status)} tone={statusTone(item.status)} />}
+                right={<Badge dot label={statusLabel(item.status)} tone={statusTone(item.status)} />}
                 onPress={item.status === 'PAID' ? undefined : () => router.push(`/(app)/pago/${item.id}`)}
               />
             </View>

@@ -48,18 +48,34 @@ export const markAllRead = (customerId: string) =>
   request<unknown>(`/customers/${customerId}/notifications/read-all`, { method: 'POST' });
 
 /**
- * Una preferencia por tipo de aviso y canal.
+ * Un aviso del catalogo, con lo que el cliente eligio encima.
  *
- * `required` marca las que NO se pueden apagar: vencimientos, mora y cambios en la linea. No es
- * una limitacion tecnica sino una decision —son las que protegen a la persona de enterarse tarde
- * de una deuda suya, y apagarlas seria dejar de avisarle de lo unico que no puede ignorar.
+ * ## Por que la etiqueta viaja desde el servidor
+ *
+ * Porque antes vivia aqui, en un diccionario de codigos a frases. Un aviso nuevo salia en la pantalla
+ * como `loan.installment.due_soon` hasta que alguien publicara una version de la app con su
+ * traduccion, y corregir una explicacion que se entendia mal costaba lo mismo. Ahora el texto lo
+ * escribe quien tiene que escribirlo y llega a todo el mundo a la vez.
+ *
+ * ## `isMandatory` y su motivo
+ *
+ * Marca los que NO se pueden apagar, y viene con el porque. Antes el flag lo mandaba la propia app en
+ * la peticion —bastaba enviarlo en `false` para poder silenciar el aviso de mora—; ahora lo declara
+ * el servidor. El motivo no es adorno: un interruptor bloqueado sin explicacion se lee como abuso.
  */
 export type NotificationPreference = {
-  id: string;
   eventCode: string;
   channel: string;
+  label: string;
+  description: string | null;
+  category: string;
+  icon: string | null;
+  isMandatory: boolean;
+  mandatoryReason: string | null;
   isEnabled: boolean;
-  isRequired: boolean;
+  /** `true` solo si la persona lo eligio. Distingue «lo dejaste asi» de «viene asi». */
+  isExplicit: boolean;
+  displayOrder: number;
 };
 
 export const getPreferences = async (customerId: string): Promise<NotificationPreference[]> => {
@@ -67,7 +83,14 @@ export const getPreferences = async (customerId: string): Promise<NotificationPr
   return Array.isArray(envelope) ? envelope : (envelope?.data ?? []);
 };
 
-export type PreferenceUpdate = { eventCode: string; channel: string; isEnabled: boolean; isRequired: boolean };
+/**
+ * `isRequired` ya no viaja.
+ *
+ * El servidor dejo de leerlo justamente porque permitia que la app declarara su propia
+ * obligatoriedad. Mandarlo igualmente no romperia nada —se ignora—, pero dejarlo en el tipo invitaria
+ * a volver a construir la pantalla alrededor de un campo que no decide nada.
+ */
+export type PreferenceUpdate = { eventCode: string; channel: string; isEnabled: boolean };
 
 export const updatePreferences = async (customerId: string, preferences: PreferenceUpdate[]): Promise<NotificationPreference[]> => {
   const envelope = await request<Envuelto<NotificationPreference[]>>(`/customers/${customerId}/notification-preferences`, {

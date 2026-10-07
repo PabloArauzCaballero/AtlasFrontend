@@ -23,6 +23,7 @@ type AtlasExtra = {
   timeoutMs?: string;
   purchaseSource?: string;
   decisionSource?: string;
+  escanerDocumento?: string;
 };
 
 const extra = (Constants.expoConfig?.extra?.atlas ?? {}) as AtlasExtra;
@@ -86,3 +87,24 @@ export const decisionSource: DecisionSource =
   (fromEnv('EXPO_PUBLIC_ATLAS_DECISION_SOURCE', extra.decisionSource) as DecisionSource | undefined) ?? 'backend';
 
 export const isBackendDecision = decisionSource === 'backend';
+
+/**
+ * Si el carnet se captura con el escaner de documentos DEL SISTEMA (VisionKit en iPhone, ML Kit en
+ * Android) en lugar de la camara de la app. Ver `src/device/escaner-documento.ts`.
+ *
+ * ## Por que apagado por omision, y por que solo «true» lo enciende
+ *
+ * Con la bandera encendida la app manda al backend el origen de la captura (`captureSource`,
+ * `documentCaptureSource`). Los esquemas de esas rutas son `.strict()`: un backend que todavia no
+ * conozca el campo contesta 400 y el alta se corta en el carnet. Por eso el orden es backend
+ * primero y bandera despues, y por eso lo que no sea exactamente `true` (o `1`) cuenta como apagado:
+ * una bandera que se enciende con cualquier texto —incluido «false»— ya paso una vez en Atlas.
+ *
+ * Viene por el mismo camino que las demas: el entorno al empaquetar y, en el binario, `extra.atlas`
+ * (EAS no sube el `.env`: el valor de cada perfil vive en `eas.json`).
+ */
+const ESCANER_ENCENDIDO = new Set(['true', '1']);
+
+export const escanerDocumentoActivado: boolean = ESCANER_ENCENDIDO.has(
+  (fromEnv('EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO', extra.escanerDocumento) ?? '').trim().toLowerCase(),
+);

@@ -5,7 +5,8 @@
  * controlador: dos versiones de la app mostrarian avances distintos con los mismos datos. La app
  * los pinta; no los deduce.
  */
-import { request } from '../client';
+import type { OrigenCaptura } from '../../features/origen-de-captura';
+import { request, type RequestOptions } from '../client';
 
 export type OnboardingSectionCode =
   | 'contact_verification'
@@ -13,7 +14,11 @@ export type OnboardingSectionCode =
   | 'financial_profile'
   | 'address'
   | 'identity_documents'
-  | 'reference_contacts';
+  | 'reference_contacts'
+  // Las dos secciones nuevas de las cuatro fases (2026-09-18): los permisos del telefono se
+  // cierran con una decision —tambien «no»— y la encuesta de habitos con sus seis preguntas.
+  | 'device_permissions'
+  | 'consumer_survey';
 
 export type OnboardingSection = {
   code: OnboardingSectionCode;
@@ -73,7 +78,31 @@ export const startOnboarding = (body: StartOnboardingInput) =>
     body,
   });
 
-export const getStatus = (customerId: string) => request<OnboardingStatus>(`/customer-onboarding/${customerId}/status`);
+export const getStatus = (customerId: string, origen: Pick<RequestOptions, 'sinPantalla'> = {}) =>
+  request<OnboardingStatus>(`/customer-onboarding/${customerId}/status`, origen);
+
+/**
+ * Lo que la persona YA contestó en el alta. Espeja `GET /customer-onboarding/:id/answers`.
+ *
+ * Existe para que volver a un paso enseñe lo escrito: sin esta lectura, cada vuelta atrás era un
+ * formulario vacío y había que teclearlo todo otra vez.
+ */
+export type OnboardingAnswers = {
+  customerId: string;
+  personalData: { firstName: string | null; lastName: string | null; birthDate: string | null } | null;
+  financialProfile: Partial<Record<keyof FinancialProfileInput, string | number>>;
+  address: {
+    countryCode: string | null;
+    department: string | null;
+    city: string | null;
+    zone: string | null;
+    addressLine: string | null;
+    gps: { lat: number; lng: number; accuracyMeters: number | null } | null;
+  } | null;
+};
+
+export const getAnswers = (customerId: string) =>
+  request<OnboardingAnswers>(`/customer-onboarding/${customerId}/answers`, { sinPantalla: true });
 
 export const listObservations = (customerId: string) =>
   request<{ observations: { code: string; detail?: string }[]; blockers: Blocker[] }>(
@@ -82,11 +111,34 @@ export const listObservations = (customerId: string) =>
 
 export type VerificationChannel = 'sms' | 'email' | 'whatsapp';
 
+export type CanalDeVerificacion = { channel: VerificationChannel; available: boolean };
+
+/**
+ * Que canales puede entregar el servidor, en su orden de preferencia.
+ *
+ * Anonimo porque se pide durante el alta, antes de tener credenciales. Devuelve los TRES con su
+ * disponibilidad: la pantalla necesita distinguir «apagado» de «no existe» para poder explicarlo,
+ * y el ORDEN lo decide el servidor —la app toma el primero disponible, asi que cambiar la
+ * preferencia no obliga a publicar una version nueva—.
+ */
+export const listVerificationChannels = () =>
+  request<{ channels: CanalDeVerificacion[] }>('/customer-onboarding/verification-channels', {
+    anonymous: true,
+    sinPantalla: true,
+  });
+
 export const requestContactVerification = (
   customerId: string,
   body: { contactType: 'phone' | 'email'; verificationChannel: VerificationChannel; contactMethodId?: string },
 ) =>
-  request<{ verificationAttemptId: string; contactType: string; deliveryStatus: string; expiresAt: string }>(
+  request<{
+    verificationAttemptId: string;
+    contactType: string;
+    deliveryStatus: string;
+    /** Canal por el que SALIO de verdad: puede no ser el pedido (reserva por correo del backend). */
+    deliveredChannel?: string;
+    expiresAt: string;
+  }>(
     `/customer-onboarding/${customerId}/contact-verification/request`,
     { method: 'POST', idempotent: true, body },
   );
@@ -134,7 +186,15 @@ export const updateProfile = (
     lastName: string;
     birthDate: string;
     genderDeclared: 'female' | 'male' | 'other' | 'undisclosed';
-    preferredLanguage: 'es' | 'en' | 'qu' | 'ay';
+    /** El «¿cuál?» del género «Otro». El servidor sólo lo admite junto a `genderDeclared: 'other'`. */
+    genderSelfDescribed: string;
+    /*
+     * El servidor todavía acepta `qu` y `ay`; la app ya no los ofrece porque no tiene una sola
+     * cadena traducida a ninguno de los dos. Se estrecha AQUÍ y no en el backend: el enumerado del
+     * servidor es contrato con otros clientes, y recortarlo por una decisión de esta app rompería a
+     * cualquiera que ya guarde esos valores.
+     */
+    preferredLanguage: 'es' | 'en';
     marketingOptIn: boolean;
   }>,
 ) =>
@@ -151,7 +211,13 @@ export type FinancialProfileInput = Partial<{
   otherMonthlyIncome: number;
   monthlyExpensesDeclared: number;
   economicActivityCode: string;
+  /** El «¿cuál?» del rubro «Otra actividad» (`Z-OTRO`). El servidor lo exige con ese rubro y lo rechaza con otro. */
+  economicActivityOther: string;
   sourceOfFunds: string;
+  /** Banda del ingreso (`MONTHLY_INCOME_BAND_VALUES` del servidor): el alta no pide el monto exacto. */
+  monthlyIncomeBand: string;
+  /** `monthly` | `biweekly` | `weekly` | `irregular`: para alinear las cuotas con el día de cobro. */
+  incomeFrequency: string;
 }>;
 
 export const updateFinancialProfile = (customerId: string, body: FinancialProfileInput) =>
@@ -163,7 +229,18 @@ export const updateFinancialProfile = (customerId: string, body: FinancialProfil
 export const saveAddressPackage = (
   customerId: string,
   body: {
-    address: { countryCode: string; department: string; city: string; zone?: string };
+    address: {
+      countryCode: string;
+      department: string;
+      city: string;
+      zone?: string;
+      /**
+       * Calle y numero. Viaja EN CLARO por TLS y el servidor la cifra antes de guardarla, igual que
+       * el telefono y el correo. Cifrarla aqui exigiria repartir una llave a cada telefono, que es
+       * justo lo que la convertiria en no-llave.
+       */
+      addressLine?: string;
+    };
     gpsObservation?: { lat: number; lng: number; accuracyMeters?: number };
   },
 ) =>
@@ -188,6 +265,36 @@ export const addReferences = (customerId: string, references: ReferenceContact[]
     { method: 'POST', body: { references } },
   );
 
+/**
+ * El snapshot AGREGADO de la agenda del telefono.
+ *
+ * Espeja `POST /customer-onboarding/:id/contacts-snapshot`. Lo que viaja son cuentas y
+ * proporciones calculadas en el dispositivo (`device/contacts.ts`) mas una lista de hashes de un
+ * solo uso que el servidor cruza y descarta. **Nunca un nombre ni un telefono.**
+ *
+ * El servidor NO devuelve analisis, y es deliberado: quien sube el snapshot es el telefono de la
+ * persona analizada, y devolverle su puntaje de riesgo le enseña que mover para que salga mejor la
+ * proxima vez.
+ */
+export type ContactsSnapshotInput = {
+  granted: boolean;
+  algorithmVersion: string;
+  computedAt: string;
+  totalContacts: number;
+  contactsWithPhone: number;
+  uniquePhoneCount: number;
+  bolivianPhoneCount: number;
+  referencesFoundInAddressBook: number;
+  referencesDeclared: number;
+  phoneHashes?: string[];
+};
+
+export const submitContactsSnapshot = (customerId: string, body: ContactsSnapshotInput) =>
+  request<{ customerId: string; computationRunId: string; granted: boolean; receivedAt: string }>(
+    `/customer-onboarding/${customerId}/contacts-snapshot`,
+    { method: 'POST', body },
+  );
+
 export type UploadTicket = {
   storageKey: string;
   uploadUrl: string;
@@ -200,21 +307,99 @@ export type UploadTicket = {
  * El cliente declara QUE va a subir; el servidor decide DONDE. `storageKey` no se envia: mientras
  * lo eligiera el cliente, la ruta del objeto era una decision suya y no del sistema que la custodia.
  */
+export type UploadDocumentType =
+  | 'identity_front'
+  | 'identity_back'
+  | 'selfie'
+  | 'selfie_left'
+  | 'selfie_right'
+  | 'proof_of_address'
+  | 'bank_statement'
+  | 'bank_qr_proof'
+  | 'occupation_audio'
+  | 'other';
+
 export const createUploadUrl = (
   customerId: string,
   body: {
-    documentType: 'identity_front' | 'identity_back' | 'selfie' | 'proof_of_address' | 'other';
+    documentType: UploadDocumentType;
     contentType: string;
     sizeBytes: number;
+    /**
+     * De donde salio la captura. Opcional y SOLO con la bandera del escaner encendida: el esquema
+     * del backend es `.strict()`. Ver `features/origen-de-captura.ts`.
+     */
+    captureSource?: OrigenCaptura;
   },
-) => request<UploadTicket>(`/customer-onboarding/${customerId}/documents/upload-url`, { method: 'POST', body });
+  opciones: { signal?: AbortSignal } = {},
+) =>
+  request<UploadTicket>(`/customer-onboarding/${customerId}/documents/upload-url`, {
+    method: 'POST',
+    body,
+    ...(opciones.signal ? { signal: opciones.signal } : {}),
+  });
+
+/**
+ * Las evidencias de apoyo de la fase 3, fuera de cualquier paquete: el QR de cobro sin monto (prueba
+ * de acceso bancario), la factura o preaviso de un servicio (prueba de domicilio) y el audio corto
+ * de ocupacion. Ninguna decide sola; las tres van a revision humana. Con el QR no se cobra nada.
+ */
+export type SupportingEvidenceType = 'bank_qr_proof' | 'proof_of_address' | 'occupation_audio';
+
+export const registerSupportingEvidence = (
+  customerId: string,
+  body: {
+    evidenceType: SupportingEvidenceType;
+    storageKey: string;
+    mimeType: string;
+    sha256Hash: string;
+    fileSizeBytes?: string;
+    note?: string;
+  },
+) =>
+  request<{ evidenceId: string; evidenceType: string; status: 'pending_review'; uploadedAt: string }>(
+    `/customer-onboarding/${customerId}/supporting-evidence`,
+    { method: 'POST', body },
+  );
+
+/* ------------------------------------------------------------- encuesta de habitos */
+
+export type PreguntaDeHabitos = {
+  code: string;
+  prompt: string;
+  type: 'opcion' | 'monto';
+  options?: { code: string; label: string }[];
+  min?: number;
+  max?: number;
+};
+
+export type CatalogoDeHabitos = { surveyVersion: string; questions: PreguntaDeHabitos[] };
+
+export type EstadoDeHabitos = {
+  surveyVersion: string;
+  answered: { questionCode: string; answerCode: string | null; answerValue: number | null; answeredInMs: number; answeredAt: string }[];
+  missing: string[];
+  complete: boolean;
+  answeredWithoutReading: string[];
+};
+
+export type RespuestaDeHabitos = { questionCode: string; answerCode?: string; answerValue?: number; answeredInMs: number };
+
+export const getConsumerSurveyCatalog = () => request<CatalogoDeHabitos>('/customer-onboarding/consumer-survey/catalog');
+
+export const getConsumerSurvey = (customerId: string) => request<EstadoDeHabitos>(`/customer-onboarding/${customerId}/consumer-survey`);
+
+export const saveConsumerSurvey = (customerId: string, body: { surveyVersion: string; answers: RespuestaDeHabitos[] }) =>
+  request<EstadoDeHabitos>(`/customer-onboarding/${customerId}/consumer-survey`, { method: 'PUT', body });
 
 export type IdentityEvidence = {
-  evidenceType: 'identity_front' | 'identity_back' | 'selfie' | 'proof_of_address' | 'other';
+  evidenceType: 'identity_front' | 'identity_back' | 'selfie' | 'selfie_left' | 'selfie_right' | 'proof_of_address' | 'other';
   storageKey: string;
   mimeType: 'image/jpeg' | 'image/png' | 'application/pdf';
   sha256Hash: string;
   fileSizeBytes?: string;
+  /** Opcional y SOLO con la bandera del escaner encendida. Ver `features/origen-de-captura.ts`. */
+  captureSource?: OrigenCaptura;
 };
 
 export const submitIdentityPackage = (

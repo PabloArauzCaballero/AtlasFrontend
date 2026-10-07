@@ -15,10 +15,9 @@ import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useDelinquencyPolicy } from '../../src/features/use-credit-book';
 import { color, radius, space } from '../../src/theme/tokens';
-import { Icon } from '../../src/ui/icons';
 import { Appear } from '../../src/ui/motion';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
-import { AtlasText, Badge, Card, ErrorState, Skeleton } from '../../src/ui/primitives';
+import { AtlasText, Badge, Card, CardHeader, ErrorState, Overline, Skeleton } from '../../src/ui/primitives';
 
 type PolicySection = { heading: string; paragraphs: string[] };
 
@@ -92,9 +91,10 @@ export default function DelinquencyPolicyScreen() {
       <Screen>
         <ScreenHeader title="Política de mora" onBack="auto" />
         <Card>
-          <Skeleton height={20} width="60%" />
-          <Skeleton height={14} />
-          <Skeleton height={14} width="90%" />
+          <Skeleton height={23} width="60%" />
+          <Skeleton height={1} />
+          <Skeleton height={19} />
+          <Skeleton height={19} width="90%" />
         </Card>
       </Screen>
     );
@@ -111,8 +111,13 @@ export default function DelinquencyPolicyScreen() {
         Vigente desde {new Date(`${policy.effectiveFrom}T00:00:00`).toLocaleDateString('es-BO')}
       </AtlasText>
 
-      <Card>
-        <AtlasText variant="bodyStrong">{policy.summary}</AtlasText>
+      {/*
+        El resumen es la respuesta corta, y por eso lleva el degradado de la tarjeta destacada y no
+        el navy plano: quien abre esta pantalla asustado tiene que poder quedarse solo con estas dos
+        lineas y salir sabiendo lo que pasa.
+      */}
+      <Card tone="brand">
+        <AtlasText variant="h3">{policy.summary}</AtlasText>
       </Card>
 
       {/*
@@ -141,13 +146,13 @@ export default function DelinquencyPolicyScreen() {
       ))}
 
       <Card>
-        <View style={styles.rowCenter}>
-          <Icon name="reloj" size={18} tint={color.text.secondary} />
-          <AtlasText variant="h3">Qué pasa según los días de atraso</AtlasText>
-        </View>
-        <AtlasText variant="caption" tone="tertiary">
-          De arriba abajo, según pasan los días sin pagar.
-        </AtlasText>
+        <CardHeader
+          icon="reloj"
+          iconTone="neutral"
+          title="Qué pasa según los días de atraso"
+          detail="De arriba abajo, según pasan los días sin pagar."
+          divider={false}
+        />
 
         {/*
           Una ESCALERA, no una lista.
@@ -170,10 +175,13 @@ export default function DelinquencyPolicyScreen() {
                 </View>
 
                 <View style={styles.stageBody}>
-                  <AtlasText variant="caption" style={{ color: tone, letterSpacing: 0.8 }}>
-                    {stageRange(stage.fromDay, stage.toDay).toUpperCase()}
-                  </AtlasText>
-                  <AtlasText variant="bodyStrong">{stage.label}</AtlasText>
+                  {/*
+                    El rango en versalitas lo pone el componente, no el literal: escribirlo con
+                    `.toUpperCase()` deja al lector de pantalla deletreando «D-I-A-S» y pierde el
+                    interletraje que una versalita necesita para no verse apretada.
+                  */}
+                  <Overline style={{ color: tone }}>{stageRange(stage.fromDay, stage.toDay)}</Overline>
+                  <AtlasText variant="title">{stage.label}</AtlasText>
                   <AtlasText variant="caption" tone="secondary">
                     {stage.detail}
                   </AtlasText>
@@ -186,9 +194,7 @@ export default function DelinquencyPolicyScreen() {
 
       {policy.source.reference ? (
         <View style={styles.sourceBox}>
-          <AtlasText variant="caption" tone="tertiary">
-            Fuente
-          </AtlasText>
+          <Overline>Fuente</Overline>
           <AtlasText variant="caption" tone="secondary">
             {policy.source.reference}
           </AtlasText>
@@ -201,29 +207,38 @@ export default function DelinquencyPolicyScreen() {
 }
 
 const styles = StyleSheet.create({
-  metaRow: { flexDirection: 'row', gap: space.xs, marginTop: space.xs },
-  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  metaRow: { flexDirection: 'row', gap: space.sm, marginTop: space.xs, flexWrap: 'wrap' },
+  /*
+    Cada tema es una superficie con su contorno y su filo iluminado, como cualquier otra tarjeta de
+    la app. Sin contorno, ocho bloques de texto sobre el fondo se leen como un unico muro con
+    saltos, que es exactamente lo que esta pantalla trata de no ser.
+  */
   section: {
     flexDirection: 'row',
-    gap: space.md,
+    gap: space.base,
     padding: space.lg,
-    borderRadius: radius.lg,
+    borderRadius: radius.xxl,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
+    borderTopColor: color.surface.edge,
     backgroundColor: color.surface.raised,
   },
   // La barra hereda el color de marca: marca el tema sin pintar el bloque entero.
   sectionAccent: { width: 3, borderRadius: 2, backgroundColor: color.action.primary },
-  sectionBody: { flex: 1, gap: space.xs },
+  sectionBody: { flex: 1, gap: space.sm },
   paragraph: { lineHeight: 22 },
   timeline: { marginTop: space.xs },
   stageRow: { flexDirection: 'row', gap: space.md },
   rail: { width: 14, alignItems: 'center' },
   dot: { width: 10, height: 10, borderRadius: 5, borderWidth: 2, marginTop: 6 },
   railLine: { flex: 1, width: 2, backgroundColor: color.border.subtle, marginTop: 2 },
-  stageBody: { flex: 1, gap: 2, paddingBottom: space.lg },
+  stageBody: { flex: 1, gap: space.xxs, paddingBottom: space.lg },
   sourceBox: {
-    gap: space.xxs,
-    padding: space.md,
-    borderRadius: radius.md,
-    backgroundColor: color.surface.raisedStrong,
+    gap: space.xs,
+    padding: space.base,
+    borderRadius: radius.lg,
+    backgroundColor: color.surface.sunken,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
   },
 });

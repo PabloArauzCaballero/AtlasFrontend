@@ -13,17 +13,21 @@ import { useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { formatMoney, type Minor } from '../../../src/domain/money';
 import { STANDARD_POLICY_V1, buildBreakdown, describeAmountRejection, validateGrossAmount } from '../../../src/domain/policy';
+import { ROTULO_SIMULACION } from '../../../src/features/demo-copy';
 import { formatDate } from '../../../src/features/payment-copy';
 import { useSandbox, useScanSession } from '../../../src/sandbox/store';
 import { space } from '../../../src/theme/tokens';
 import { firstBlocker } from '../../../src/ui/blocked';
+import { DataSourceBadge } from '../../../src/ui/brand';
 import { AmountField } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, ErrorState } from '../../../src/ui/primitives';
+import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, IconChip, KeyValue, Overline } from '../../../src/ui/primitives';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export default function PurchaseAmount() {
+  const t = useCopy();
   const router = useRouter();
   const sandbox = useSandbox();
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
@@ -87,7 +91,7 @@ export default function PurchaseAmount() {
             [Boolean(amount), 'Escribe el monto total que te indica el comercio.'],
             [
               !rejection,
-              rejection ? describeAmountRejection(rejection, STANDARD_POLICY_V1) : 'El monto esta fuera de rango.',
+              rejection ? describeAmountRejection(rejection, STANDARD_POLICY_V1) : 'El monto está fuera de rango.',
             ],
             // El detalle exacto ya esta arriba, en su propio aviso con las dos cifras. Repetirlo
             // aqui obligaria a leer dos veces lo mismo.
@@ -98,16 +102,24 @@ export default function PurchaseAmount() {
       }
     >
       <ScreenHeader title="Tu compra" subtitle="Escribe el monto total que te indica el comercio." onBack="auto" />
+      <DataSourceBadge label={ROTULO_SIMULACION} />
 
-      <Card>
+      {/*
+        El comercio es el CONTEXTO de la compra, no un bloque mas de la pantalla.
+
+        Va con su chip a la izquierda y su antetitulo encima: quien acaba de escanear necesita
+        confirmar en un vistazo que esta comprando donde cree que esta comprando, antes de teclear
+        ningun importe. Sin el antetitulo, el nombre del comercio se leia como el titulo de la
+        tarjeta y competia con el de la pantalla.
+      */}
+      <Card padding="tight">
         <View style={styles.merchantRow}>
+          <IconChip name="comercio" />
           <View style={styles.merchantText}>
+            <Overline>Comprando en</Overline>
             <AtlasText variant="h3">{session.context.tradeName}</AtlasText>
             <AtlasText variant="caption" tone="secondary">
-              {session.context.branchName} · {session.context.posName}
-            </AtlasText>
-            <AtlasText variant="caption" tone="tertiary">
-              {session.context.city}
+              {session.context.branchName} · {session.context.posName} · {session.context.city}
             </AtlasText>
           </View>
           {session.context.verified ? <Badge label="verificado" tone="success" /> : null}
@@ -116,6 +128,7 @@ export default function PurchaseAmount() {
 
       <AmountField
         value={raw}
+        ayuda="El precio total que te dice el comercio, en bolivianos y con centavos si los hay. Ej.: 1250,50. Con este monto se calcula la simulación de tu pago inicial y tus cuotas; si supera tu disponible, la app te lo dice antes de seguir."
         autoFocus
         onChangeAmount={(next, parsed) => {
           setRaw(next);
@@ -147,37 +160,32 @@ export default function PurchaseAmount() {
 
       {breakdown && !exceedsAvailable ? (
         <Card>
-          <AtlasText variant="h3">Así quedaría tu plan</AtlasText>
-          <Divider />
+          <CardHeader icon="lista" title="Así quedaría tu plan" trailing={<DataSourceBadge label={ROTULO_SIMULACION} />} />
 
-          <View style={styles.row}>
-            <AtlasText variant="body" tone="secondary">
-              Pagas hoy al comercio (60%)
+          <KeyValue label="Pagas hoy al comercio (60 %)">
+            <AtlasText variant="amountSmall">{formatMoney(breakdown.initialPaymentAmount)}</AtlasText>
+          </KeyValue>
+          <KeyValue label="Financias con Atlas (40 %)">
+            <AtlasText variant="amountSmall" tone="brand">
+              {formatMoney(breakdown.financedAmount)}
             </AtlasText>
-            <AtlasText variant="bodyStrong">{formatMoney(breakdown.initialPaymentAmount)}</AtlasText>
-          </View>
-
-          <View style={styles.row}>
-            <AtlasText variant="body" tone="secondary">
-              Financias con Atlas (40%)
-            </AtlasText>
-            <AtlasText variant="bodyStrong">{formatMoney(breakdown.financedAmount)}</AtlasText>
-          </View>
+          </KeyValue>
 
           <Divider />
+          <Overline>Tus cuotas</Overline>
 
           {breakdown.installments.map((installment) => (
-            <View key={installment.sequenceNo} style={styles.row}>
-              <AtlasText variant="body" tone="secondary">
-                Cuota {installment.sequenceNo} · {formatDate(new Date(Date.now() + installment.dueInDays * DAY_MS).toISOString())}
-              </AtlasText>
-              <AtlasText variant="bodyStrong">{formatMoney(installment.amount)}</AtlasText>
-            </View>
+            <KeyValue
+              key={installment.sequenceNo}
+              label={`Cuota ${installment.sequenceNo} · ${formatDate(new Date(Date.now() + installment.dueInDays * DAY_MS).toISOString())}`}
+              numeric
+              value={formatMoney(installment.amount)}
+            />
           ))}
 
           <Divider />
           <AtlasText variant="caption" tone="tertiary">
-            Sin intereses. Las tres cuotas suman exactamente el 40% financiado.
+            {t.texto('demo.plan_simulado')}
           </AtlasText>
         </Card>
       ) : null}
@@ -193,5 +201,4 @@ export default function PurchaseAmount() {
 const styles = StyleSheet.create({
   merchantRow: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
   merchantText: { flex: 1, gap: space.xxs },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
 });

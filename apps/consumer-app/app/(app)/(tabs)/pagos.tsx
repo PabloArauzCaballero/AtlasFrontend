@@ -15,18 +15,34 @@
  * rubro y lo vencido llegan ya calculados del servidor.
  */
 import { useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import type { LoanSummary, PaymentCalendar, SpendingByCategory } from '../../../src/api/endpoints/loans';
 import { amountTone, categoryLook, dueCopy, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useSession } from '../../../src/session/session';
 import { color, radius, space } from '../../../src/theme/tokens';
-import { Icon, type IconName } from '../../../src/ui/icons';
+import type { IconName } from '../../../src/ui/icons';
 import { Appear, PressSurface } from '../../../src/ui/motion';
 import { PaymentCalendarView } from '../../../src/ui/payment-calendar';
-import { Gap, Screen } from '../../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, EmptyState, ErrorState, ListRow, Skeleton } from '../../../src/ui/primitives';
+import { Gap, HeaderAction, Screen, ScreenHeader } from '../../../src/ui/layout';
+import { useCopy } from '../../../src/features/use-contenido-remoto';
+import {
+  AtlasText,
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  Chip,
+  ChipBar,
+  Divider,
+  EmptyState,
+  ErrorState,
+  IconChip,
+  ListRow,
+  Skeleton,
+  Stat,
+} from '../../../src/ui/primitives';
 
 type Filter = 'todos' | 'mora' | 'proximos' | 'pagados';
 type Layout = 'lista' | 'cuadricula' | 'calendario';
@@ -55,7 +71,7 @@ type MerchantGroup = {
   overdueAmount: number;
 };
 
-const FILTERS: Array<{ key: Filter; label: string; icon: IconName }> = [
+const FILTERS: { key: Filter; label: string; icon: IconName }[] = [
   { key: 'todos', label: 'Todos', icon: 'lista' },
   { key: 'mora', label: 'En mora', icon: 'alerta' },
   { key: 'proximos', label: 'Próximos', icon: 'reloj' },
@@ -166,6 +182,7 @@ function groupByMerchant(loans: readonly LoanSummary[], overdueOfLoan: Map<strin
 }
 
 export default function Payments() {
+  const t = useCopy();
   const router = useRouter();
   const session = useSession();
   const book = useCreditBook(session.customerId);
@@ -178,37 +195,66 @@ export default function Payments() {
   const overdue = useMemo(() => overdueByPartner(spending), [spending]);
   const upcomingLoans = useMemo(() => loansWithUpcomingOnly(calendar), [calendar]);
 
-  const visible = useMemo(() => {
-    const active = book.loans;
-    /*
-     * El filtro de mora se resuelve por COMERCIO y no por prestamo: lo vencido llega agregado por
-     * comercio, que es el nivel al que esta pantalla agrupa. Un comercio con algo vencido muestra
-     * todos sus creditos, porque para regularizar hay que verlos juntos.
-     */
-    if (filter === 'mora') {
-      return active.filter((loan) => (overdue.get(loan.merchant?.partnerProfileId ?? 'sin_comercio') ?? 0) > 0);
+  /*
+   * El predicado de cada filtro, en un solo sitio.
+   *
+   * Estaba escrito como una cadena de `if` dentro del `useMemo` que calcula lo visible, asi que la
+   * cifra que ahora lleva cada chip no tenia de donde salir sin duplicar las reglas — y una cuenta
+   * duplicada es una cuenta que algun dia dice «3» encima de una lista de dos.
+   *
+   * El filtro de mora se resuelve por COMERCIO y no por prestamo: lo vencido llega agregado por
+   * comercio, que es el nivel al que esta pantalla agrupa. Un comercio con algo vencido muestra
+   * todos sus creditos, porque para regularizar hay que verlos juntos.
+   */
+  const matches = useCallback(
+    (loan: LoanSummary, key: Filter) => {
+      if (key === 'mora') return (overdue.get(loan.merchant?.partnerProfileId ?? 'sin_comercio') ?? 0) > 0;
+      if (key === 'proximos') return upcomingLoans.has(loan.loanId);
+      if (key === 'pagados') return loan.status === 'paid_off';
+      return true;
+    },
+    [overdue, upcomingLoans],
+  );
+
+  const visible = useMemo(() => book.loans.filter((loan) => matches(loan, filter)), [book.loans, filter, matches]);
+
+  /*
+   * Cuantos hay detras de cada filtro. Sin la cifra, elegir un filtro es una apuesta: se toca «En
+   * mora», la lista se vacia, y no queda claro si es que no hay mora o si la pantalla ha fallado.
+   */
+  const counts = useMemo(() => {
+    const tally = { todos: 0, mora: 0, proximos: 0, pagados: 0 } as Record<Filter, number>;
+    for (const loan of book.loans) {
+      for (const key of ['todos', 'mora', 'proximos', 'pagados'] as Filter[]) {
+        if (matches(loan, key)) tally[key] += 1;
+      }
     }
-    if (filter === 'proximos') return active.filter((loan) => upcomingLoans.has(loan.loanId));
-    if (filter === 'pagados') return active.filter((loan) => loan.status === 'paid_off');
-    return active;
-  }, [book.loans, filter, overdue, upcomingLoans]);
+    return tally;
+  }, [book.loans, matches]);
 
   const overdueOfLoan = useMemo(() => overdueByLoan(calendar), [calendar]);
   const groups = useMemo(() => groupByMerchant(visible, overdueOfLoan), [visible, overdueOfLoan]);
   const currency = spending?.currencyCode ?? 'BOB';
+  /*
+    La vista que viene despues de la actual. El boton de la cabecera enseña a DONDE lleva, no donde
+    se esta: un control que dibuja el estado actual y ademas lo cambia al tocarlo se lee al reves la
+    mitad de las veces.
+  */
+  const siguienteVista = LAYOUT_ORDER[(LAYOUT_ORDER.indexOf(layout) + 1) % LAYOUT_ORDER.length] ?? 'lista';
 
   if (!book.ready) {
     return (
       <Screen>
         <Gap size="lg" />
         <Card>
-          <Skeleton height={14} width="40%" />
-          <Skeleton height={32} width="60%" />
+          <Skeleton height={11} width="35%" />
+          <Skeleton height={23} width="55%" />
         </Card>
         <Card>
-          <Skeleton height={14} width="50%" />
-          <Skeleton height={14} />
-          <Skeleton height={14} width="80%" />
+          <Skeleton height={17} width="45%" />
+          <Skeleton height={1} />
+          <Skeleton height={40} />
+          <Skeleton height={40} />
         </Card>
       </Screen>
     );
@@ -219,7 +265,7 @@ export default function Payments() {
       <Screen>
         <Gap size="lg" />
         <ErrorState title="No pudimos cargar tus pagos" detail={book.error} />
-        <Button label="Reintentar" variant="secondary" onPress={() => void book.reload()} />
+        <Button label="Reintentar" icon="refrescar" variant="secondary" onPress={() => book.reload()} />
       </Screen>
     );
   }
@@ -227,41 +273,34 @@ export default function Payments() {
   return (
     <Screen>
       <Gap size="sm" />
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <AtlasText variant="h1">Tus pagos</AtlasText>
-          <AtlasText variant="body" tone="secondary">
-            Agrupados por el comercio donde compraste.
-          </AtlasText>
-        </View>
-        <Pressable
-          onPress={() => setLayout(LAYOUT_ORDER[(LAYOUT_ORDER.indexOf(layout) + 1) % LAYOUT_ORDER.length] ?? 'lista')}
-          style={styles.layoutToggle}
-          accessibilityRole="button"
-          accessibilityLabel={LAYOUT_LABEL[LAYOUT_ORDER[(LAYOUT_ORDER.indexOf(layout) + 1) % LAYOUT_ORDER.length] ?? 'lista']}
-        >
-          <Icon
-            name={LAYOUT_ICON[LAYOUT_ORDER[(LAYOUT_ORDER.indexOf(layout) + 1) % LAYOUT_ORDER.length] ?? 'lista']}
-            size={20}
-            tint={color.text.primary}
-          />
-        </Pressable>
-      </View>
+      <ScreenHeader
+        title="Tus pagos"
+        subtitle={t.texto('pagos.subtitulo')}
+        action={
+          <View style={{ flexDirection: 'row', gap: space.sm }}>
+            {/* El historial: lo que ya se pagó o se canceló no aparece en esta pantalla, vive ahí. */}
+            <HeaderAction icon="reloj" label="Mis compras" onPress={() => router.push('/(app)/compras')} />
+            <HeaderAction
+              icon={LAYOUT_ICON[siguienteVista]}
+              label={LAYOUT_LABEL[siguienteVista]}
+              onPress={() => setLayout(siguienteVista)}
+            />
+          </View>
+        }
+      />
 
       {/* 1. LO VENCIDO. Va primero y solo, para que no compita con nada. */}
       {spending && spending.totals.overdue > 0 ? (
         <Appear index={0}>
-        <Card style={styles.overdueCard}>
-          <View style={styles.rowCenter}>
-            <Icon name="alerta" size={22} tint={color.feedback.danger} />
-            <View style={styles.flex}>
-              <AtlasText variant="bodyStrong">Tienes pagos en mora</AtlasText>
-              <AtlasText variant="caption" tone="secondary">
-                {spending.totals.overdueLoanCount} {spending.totals.overdueLoanCount === 1 ? 'crédito' : 'créditos'} con cuotas vencidas
-              </AtlasText>
-            </View>
-          </View>
-          <AtlasText variant="amountSmall" style={{ color: color.feedback.danger }}>
+        <Card tone="danger">
+          <CardHeader
+            icon="alerta"
+            iconTone="danger"
+            eyebrow="En mora"
+            title="Tienes pagos vencidos"
+            detail={`${spending.totals.overdueLoanCount} ${spending.totals.overdueLoanCount === 1 ? 'crédito' : 'créditos'} con cuotas vencidas`}
+          />
+          <AtlasText variant="amount" tone="danger">
             {formatAmount(spending.totals.overdue, currency)}
           </AtlasText>
           <Button label="Ver qué debo regularizar" onPress={() => setFilter('mora')} />
@@ -271,18 +310,11 @@ export default function Payments() {
 
       {/* 2. LO QUE VENCE PRONTO. Ambar: exige atencion, no alarma. */}
       {spending && spending.totals.upcoming > 0 ? (
-        <Card>
+        <Card padding="tight">
           <View style={styles.rowCenter}>
-            <Icon name="reloj" size={20} tint={color.feedback.warning} />
-            <View style={styles.flex}>
-              <AtlasText variant="caption" tone="tertiary">
-                POR PAGAR
-              </AtlasText>
-              <AtlasText variant="amountSmall" style={{ color: color.feedback.warning }}>
-                {formatAmount(spending.totals.upcoming, currency)}
-              </AtlasText>
-            </View>
-            {spending.nextDueDate ? <Badge label={dueCopy(spending.nextDueDate)} tone="warning" /> : null}
+            <IconChip name="reloj" tone="warning" size="sm" />
+            <Stat label="Por pagar" value={formatAmount(spending.totals.upcoming, currency)} tone="warning" style={styles.flex} />
+            {spending.nextDueDate ? <Badge dot label={dueCopy(spending.nextDueDate)} tone="warning" /> : null}
           </View>
         </Card>
       ) : null}
@@ -302,8 +334,9 @@ export default function Payments() {
           </Card>
         ) : (
           <EmptyState
-            title="Todavía no hay cuotas que mostrar"
-            detail="Cuando compres con Atlas, aquí verás en qué día te toca cada pago."
+            icon="pagos"
+            title={t.titulo('pagos.vacio')}
+            detail={t.texto('pagos.vacio')}
             action={<Button label="Ver en lista" variant="secondary" onPress={() => setLayout('lista')} />}
           />
         )
@@ -311,31 +344,25 @@ export default function Payments() {
 
       {/* 4. Filtros. */}
       {layout !== 'calendario' ? (
-      <View style={styles.filters}>
-        {FILTERS.map((option) => {
-          const active = filter === option.key;
-          return (
-            <Pressable
-              key={option.key}
-              onPress={() => setFilter(option.key)}
-              style={[styles.chip, active && styles.chipActive]}
-              accessibilityRole="button"
-              accessibilityState={{ selected: active }}
-              accessibilityLabel={`Filtrar por ${option.label}`}
-            >
-              <Icon name={option.icon} size={15} tint={active ? color.surface.primary : color.text.secondary} />
-              <AtlasText variant="caption" style={{ color: active ? color.surface.primary : color.text.secondary }}>
-                {option.label}
-              </AtlasText>
-            </Pressable>
-          );
-        })}
-      </View>
+      <ChipBar>
+        {FILTERS.map((option) => (
+          <Chip
+            key={option.key}
+            label={option.label}
+            icon={option.icon}
+            count={counts[option.key]}
+            selected={filter === option.key}
+            onPress={() => setFilter(option.key)}
+            accessibilityLabel={`Filtrar por ${option.label}: ${counts[option.key]}`}
+          />
+        ))}
+      </ChipBar>
       ) : null}
 
       {/* 5. Los comercios. */}
       {layout === 'calendario' ? null : groups.length === 0 ? (
         <EmptyState
+          icon={filter === 'todos' ? 'billetera' : 'filtro'}
           title={filter === 'todos' ? 'Todavía no tienes créditos' : 'Nada en este filtro'}
           detail={
             filter === 'todos'
@@ -362,16 +389,16 @@ export default function Payments() {
                 accessibilityRole="button"
                 accessibilityLabel={`Ver créditos de ${group.displayName}`}
               >
-                <View style={styles.gridIcon}>
-                  <Icon name={look.icon} size={22} tint={group.overdueAmount > 0 ? color.feedback.danger : color.action.primary} />
+                <IconChip name={look.icon} tone={group.overdueAmount > 0 ? 'danger' : 'brand'} />
+                <View style={styles.gridText}>
+                  <AtlasText variant="title" numberOfLines={2}>
+                    {group.displayName}
+                  </AtlasText>
+                  <AtlasText variant="caption" tone="tertiary">
+                    {look.label}
+                  </AtlasText>
                 </View>
-                <AtlasText variant="bodyStrong" numberOfLines={2}>
-                  {group.displayName}
-                </AtlasText>
-                <AtlasText variant="caption" tone="tertiary">
-                  {look.label}
-                </AtlasText>
-                <AtlasText variant="bodyStrong" style={{ color: group.overdueAmount > 0 ? color.feedback.danger : color.text.primary }}>
+                <AtlasText variant="amountSmall" tone={group.overdueAmount > 0 ? 'danger' : 'primary'}>
                   {formatAmount(group.outstanding, currency)}
                 </AtlasText>
               </PressSurface>
@@ -379,12 +406,12 @@ export default function Payments() {
           })}
         </View>
       ) : (
-        <Card>
+        <Card padding="tight">
           {groups.map((group, index) => {
             const look = categoryLook(group.category);
             return (
               <View key={group.key}>
-                {index > 0 ? <Divider /> : null}
+                {index > 0 ? <Divider inset /> : null}
                 <ListRow
                   title={group.displayName}
                   subtitle={`${look.label} · ${group.loans.length} ${group.loans.length === 1 ? 'crédito' : 'créditos'}`}
@@ -393,7 +420,7 @@ export default function Payments() {
                     group.overdueAmount > 0 ? (
                       <Badge label={formatAmount(group.overdueAmount, currency) + ' en mora'} tone="danger" />
                     ) : (
-                      <AtlasText variant="bodyStrong">{formatAmount(group.outstanding, currency)}</AtlasText>
+                      <AtlasText variant="amountMicro">{formatAmount(group.outstanding, currency)}</AtlasText>
                     )
                   }
                   onPress={() => router.push(`/(app)/comercio/${group.key}`)}
@@ -407,29 +434,20 @@ export default function Payments() {
 
       {/* 6. El resumen por rubro, AL FINAL: es informativo, no accionable. */}
       {spending && spending.categories.length > 0 ? (
-        <Card>
-          <View style={styles.rowCenter}>
-            <Icon name="grafico" size={18} tint={color.text.secondary} />
-            <AtlasText variant="h3">Resumen por rubro</AtlasText>
-          </View>
+        <Card padding="tight">
+          <CardHeader icon="grafico" iconTone="neutral" title="Resumen por rubro" />
           {spending.categories.map((item, index) => {
             const look = categoryLook(item.category);
             const tone = amountTone(item);
             return (
               <View key={item.category}>
-                {index > 0 ? <Divider /> : null}
+                {index > 0 ? <Divider inset /> : null}
                 <ListRow
                   title={look.label}
                   subtitle={`${item.share.toFixed(0)} % de lo financiado · ${item.loanCount} ${item.loanCount === 1 ? 'compra' : 'compras'}`}
                   icon={look.icon}
                   right={
-                    <AtlasText
-                      variant="bodyStrong"
-                      style={{
-                        color:
-                          tone === 'danger' ? color.feedback.danger : tone === 'warning' ? color.feedback.warning : color.text.primary,
-                      }}
-                    >
+                    <AtlasText variant="amountMicro" tone={tone === 'danger' ? 'danger' : tone === 'warning' ? 'warning' : 'primary'}>
                       {formatAmount(item.outstanding, currency)}
                     </AtlasText>
                   }
@@ -446,38 +464,27 @@ export default function Payments() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
-  headerText: { flex: 1, gap: space.xxs },
-  flex: { flex: 1, gap: space.xxs },
-  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  layoutToggle: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.surface.raised,
-  },
-  overdueCard: { borderColor: color.feedback.danger, borderWidth: 1, gap: space.sm },
-  filters: { flexDirection: 'row', gap: space.xs, flexWrap: 'wrap' },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.xxs,
-    paddingHorizontal: space.sm,
-    paddingVertical: space.xs,
-    borderRadius: radius.pill,
-    backgroundColor: color.surface.raised,
-  },
-  chipActive: { backgroundColor: color.action.primary },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  flex: { flex: 1 },
+  rowCenter: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
+  /*
+    La celda de la cuadricula es una TARJETA, con su contorno y su filo iluminado, no un rectangulo
+    de color un poco mas claro. Sin contorno, ocho celdas sobre el fondo se leen como ocho manchas y
+    la cuadricula pierde justo lo que la hace util: que cada comercio sea un objeto separado.
+
+    `flexBasis: 46%` con `gap` de 12 deja dos columnas en un telefono y tres en cuanto hay ancho,
+    sin tener que medir la ventana.
+  */
   gridCell: {
     flexGrow: 1,
     flexBasis: '46%',
-    gap: space.xxs,
-    padding: space.md,
-    borderRadius: radius.lg,
+    gap: space.sm,
+    padding: space.base,
+    borderRadius: radius.xxl,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
+    borderTopColor: color.surface.edge,
     backgroundColor: color.surface.raised,
   },
-  gridIcon: { marginBottom: space.xxs },
+  gridText: { gap: space.xxs },
 });

@@ -17,7 +17,11 @@ Es la regla del playbook («un solo sistema») portada a React Native. Se puede 
 grep -rnE "#[0-9a-fA-F]{6}|rgba\(" src app --include=*.tsx | grep -v theme/tokens
 ```
 
-Debe devolver **cero líneas**. Si devuelve una, o falta un token o alguien se lo saltó.
+Debe devolver **cero líneas**, con una única excepción documentada: `WHATSAPP_INK` en
+`src/ui/content.tsx`. Es el verde de una marca ajena —quien busca ayuda no lee, busca el verde— y
+está fuera de los tokens precisamente para que no pueda usarse para ninguna otra cosa.
+
+Cualquier otra línea significa que falta un token o que alguien se lo saltó.
 
 ---
 
@@ -51,6 +55,59 @@ que no había llegado al producto.
 (`Sora_700Bold`, `Manrope_500Medium`…). En Android `fontWeight` no interpola sobre una fuente
 cargada: o existe el archivo de ese grosor, o el sistema finge la negrita engordando los trazos, y
 ese engorde es exactamente lo que hace que una app se vea barata al lado de su propia web.
+
+### Lo que seguía sin llegar, y por qué la app aún «no se sentía profesional»
+
+Las familias estaban cargadas desde hacía tiempo y aun así la tipografía se leía de plantilla. Eran
+tres cosas concretas, y ninguna era la elección de las fuentes.
+
+**1. El grosor de titular no era el de la marca.** La identidad publicada dibuja todos sus titulares
+con `--display` a `font-weight: 800`; la app se había quedado en `Sora_700Bold`, que en Sora es un
+paso claramente más ligero. Los títulos de las veinte pantallas iban medio peldaño por debajo de los
+de la web. Ahora existe `font.displayBlack` (`Sora_800ExtraBold`) y lo usan `display`, `hero`, `h1`,
+`amountHero` y `amount`.
+
+**2. El interletraje era el mismo número de píxeles en toda la escala.** Es la corrección que más
+cambia la sensación. El interletraje se percibe **en proporción al tamaño**: `-0.5` sobre 26 px es un
+−1,9 %, y sobre 11 px sería un −4,5 %. Escribir el mismo número en todos los tamaños deja los
+titulares SUELTOS —que es exactamente el aspecto de una fuente puesta por defecto— y las versalitas
+apretadas. La escala se calcula ahora desde el porcentaje con el ayudante `track(size, percent)`:
+−4,5 % en los titulares grandes (el mismo de la web), −2,5 % en los de tarjeta, +14 % en las
+versalitas.
+
+**3. Los títulos de sección iban en la fuente del cuerpo.** `h3` es el estilo más usado de la app
+después del cuerpo —titula casi todas las tarjetas— y era **Manrope Bold a 17 px**: la fuente del
+párrafo un punto más grande y en negrita. Un título que solo se distingue de su texto por el grosor
+no crea jerarquía, crea texto en negrita. Ahora `h3` es Sora, y lo que antes hacía en una fila de
+lista —nombrar una fila, no encabezar una sección— tiene su propio estilo, `title`, que sigue en
+Manrope porque una fila no encabeza nada.
+
+### Y lo que se dibujaba con la fuente del sistema
+
+`ui/fields.tsx` declaraba en el `TextInput` el **tamaño** pero no la **familia**. Es decir: la
+etiqueta de encima y la ayuda de debajo iban en Manrope, y lo que la persona escribía se dibujaba con
+la fuente del sistema. En el alta hay más de treinta campos: era, con diferencia, el sitio donde más
+texto de la app se pintaba con una tipografía que no es la de la marca — y justo el texto que se mira
+mientras se teclea.
+
+En la misma línea, la marca de verificación de `CheckRow` era el carácter «✓», que Manrope no trae:
+lo dibujaba la fuente del sistema con un trazo y unos remates que no eran los de ningún otro símbolo
+de la app, y además cambiaba de forma entre iOS y Android. Ahora es el icono `check` del set.
+
+### Las versalitas las pone el componente, no el contenido
+
+Había `«FINANCIADO»`, `«POR PAGAR»`, `«CON QUÉ SE CALCULÓ»` y `.toUpperCase()` repartidos por seis
+pantallas. Escribir mayúsculas en el contenido tiene tres costes que no se ven en una captura: el
+lector de pantalla las deletrea, la traducción hereda unas mayúsculas que en otro idioma pueden no
+corresponder, y el interletraje se queda sin corregir —que es lo que hace que una versalita se lea
+apretada y sucia—. El componente `Overline` aplica `textTransform` y el token `type.overline` pone el
++14 %. Se comprueba:
+
+```bash
+grep -rn "toUpperCase()" src app --include=*.tsx
+```
+
+Solo puede quedar el de `Avatar`, que saca iniciales de un nombre propio.
 
 ### Cifras tabulares
 
@@ -138,6 +195,55 @@ las cifras tabulares. Es el número más importante de la app.
 
 ---
 
+## 4 bis. Las piezas que faltaban, y por qué las pantallas se veían «básicas»
+
+Los tokens estaban bien y los primitivos también. Lo que no existía era el **escalón intermedio**:
+las piezas que se repiten en veinte pantallas y que, al no existir, cada pantalla se inventaba en su
+propia hoja de estilos. El resultado era que dos pantallas de la misma app no empezaban a la misma
+altura, y que la jerarquía tenía dos niveles —tarjeta y no tarjeta— para contenido que tiene cuatro.
+
+| Pieza | Qué recoge | Qué pasaba sin ella |
+|---|---|---|
+| `Overline` | La etiqueta en versalitas que dice de qué es el bloque | Mayúsculas escritas en el contenido, con seis interletrajes distintos |
+| `CardHeader` | Chip + título + apunte + una cosa a la derecha + línea | Una fila `space-between` escrita a mano en casi todas las tarjetas |
+| `SectionHeader` | El título que va ENTRE tarjetas | Un `h3` suelto, idéntico al título de la tarjeta de debajo: dos niveles dibujados igual |
+| `IconChip` | El cuadrado redondeado del icono | Copiado en cinco pantallas con cinco medidas y dos radios |
+| `Stat` / `StatRow` | Una cifra con su etiqueta encima, y varias con filo entre ellas | Etiqueta grande y dato pequeño, es decir, la jerarquía al revés |
+| `KeyValue` | Etiqueta izquierda / valor derecha | Un `Breakdown` local en una pantalla y filas `space-between` en otras cuatro |
+| `Chip` / `ChipBar` | Los filtros | Rellenos de menta plena (competían con el botón principal) y 27 px de alto |
+| `Accordion` | Una pregunta que se abre | Seis respuestas completas apiladas: un documento, no un índice |
+| `Avatar` | Las iniciales de quien usa la app | Perfil no decía por ningún sitio que hablaba de una persona |
+| `HeaderAction` | La acción en icono de una cabecera | Un cuadrado de 40 px sin contorno, copiado en cuatro pantallas |
+| `StepHeader` | «Paso N de 6» + barra, en el alta | Seis pantallas de formulario sin decir en cuál estabas ni cuántas faltaban |
+| `CameraFrame` | La mira de cuatro esquinas | Un marco cerrado en el escáner y nada en la captura del carnet |
+
+Además, `Card` acepta ahora `tone` —el aviso de mora se ve igual en Inicio que en Pagos, que antes no
+pasaba: cada pantalla elegía su propia opacidad de borde— y `padding`, para que una tarjeta que solo
+contiene filas no las separe con el aire de una tarjeta de contenido. `Divider` acepta `inset`, que
+es la convención de ambos sistemas y dice algo cierto: una línea que empieza donde empieza el texto
+separa dos filas de la misma lista; una que va de borde a borde separa dos bloques.
+
+### Tres cosas que no eran de estilo
+
+- **El escáner enseñaba los botones de demostración en producción.** La tarjeta «Códigos de prueba»
+  se pintaba siempre, con un rótulo que decía —encima— que solo están disponibles en sandbox. Ahora
+  está tras la misma condición (`isSandboxPurchase`) que ya gobierna que esos tokens se acepten.
+- **Los filtros de Pagos medían 27 px de alto**, muy por debajo del mínimo de 48 que la propia app
+  declara en `touch.minSize`. Se paga con `hitSlop` y no con relleno, para que la fila de filtros no
+  crezca hasta parecer una barra de pestañas. Lo mismo en las filas de canal de las preferencias.
+- **Dos pantallas fabricaban colores concatenando la alfa al hexadecimal** (`look.tint + '22'`,
+  `${tint}1F`). Además de ser un literal fuera de los tokens, ese porcentaje fijo pesa distinto según
+  el color de partida: el chip rojo y el ámbar no destacaban igual aunque el código dijera que sí.
+
+### El ancho máximo
+
+`Screen` limita el contenido a 560 px y lo centra. En una tableta o un plegable abierto, una pantalla
+pensada para 390 px se estiraba hasta 1.000 y cada tarjeta se convertía en una franja con dos
+palabras en el centro; además la línea de texto pasaba de las ~70 letras que se leen cómodas a más
+del doble, y el ojo pierde el renglón al volver.
+
+---
+
 ## 5. La marca en el sistema operativo
 
 El icono del lanzador y la pantalla de arranque eran **los marcadores de posición de Expo**: la «A»
@@ -161,19 +267,181 @@ pasar.
 
 ---
 
-## 6. Qué NO se hizo, a propósito
+## 6. Movimiento
 
-- **No se movió la jerarquía de ninguna pantalla.** Los cambios de §4 son de superficie, tipografía
-  y profundidad: viven en los tokens y en los primitivos, así que llegan a las veinte pantallas sin
-  reordenar ninguna. Ninguna pantalla cambió de contenido ni de orden de lectura.
-- **No se añadió movimiento nuevo.** El playbook pide degradar con gracia y respetar «menos
-  movimiento»; añadir animación sin ese respeto instalado es deuda, no pulido.
+Durante un tiempo este documento decía, en §6, que **no se había añadido movimiento nuevo** a
+propósito: el playbook pide degradar con gracia y respetar «menos movimiento», y animar sin ese
+respeto instalado es deuda. El respeto ya está instalado —`useReducedMotion` se consulta en cada
+componente que anima— así que el movimiento entró, y entró como sistema, no como adornos sueltos.
+
+### Dos temperamentos, y cuándo va cada uno
+
+| | Se usa para | Token |
+|---|---|---|
+| **Curva** | Lo que ocurre solo: aparecer, cubrir, descubrir | `motion.*` + `easing.*` |
+| **Muelle** | Lo que responde al dedo: hundirse, asentarse, viajar | `spring.*` |
+
+La diferencia no es decorativa. Una duración fija reparte el mismo tiempo para un recorrido de 4 px
+y para uno que cruza la pantalla, y por eso el corto parece lento y el largo, disparado. Un muelle
+reparte la energía según la distancia. A cambio, un muelle no sirve para nada que tenga que estar
+tapando la pantalla en un instante exacto —ahí manda la curva—.
+
+**Los tres muelles están sobreamortiguados a propósito** (`press`, `settle`, `glide`): llegan y se
+quedan, sin rebasar el destino. Lo que hace que una app parezca un juguete es el rebote, no el
+muelle; ésta es una app donde la gente mira cuánto debe. Lo que se gana es que la desaceleración
+deje de ser una rampa.
+
+### La pulsación: un solo comportamiento en toda la app
+
+`PressSurface` (`src/ui/motion.tsx`) anima **el propio pulsable**, no una vista interior, con un
+valor compartido en el hilo de UI. Dos consecuencias que importan:
+
+- El estado `pressed` de `Pressable` es estado de React: entra y sale de golpe, sin fotogramas
+  intermedios, y **se pierde si algo re-renderiza en mitad del toque** —justo lo que pasa cuando el
+  control dispara una petición—.
+- Como el elemento animado es el que lleva los estilos, un ancho en porcentaje o un `flex` siguen
+  funcionando: por eso una celda de la rejilla del calendario también puede hundirse.
+
+Se comprueba con `grep -rn "pressed &&" src app`: debe devolver **cero líneas**. Cada una que
+devuelva es un control con un temperamento distinto al de sus vecinos.
+
+Las escalas: `press.scale` (0.97) para lo que se toca de uno en uno, `press.scaleSubtle` (0.985)
+para filas anchas y tarjetas, donde el 3 % desplaza el borde lo suficiente como para parecer un
+salto.
+
+### Las transiciones de pantalla son las del sistema
+
+`animation: 'default'` en las tres pilas. `slide_from_right` está documentado como **solo Android**
+en Expo 57: forzarlo no daba «deslizar en iOS», renunciaba al empuje nativo de UIKit —paralaje de
+la pantalla de abajo, sombra, y sobre todo el gesto de volver **interactivo**, enganchado al dedo y
+cancelable a medio camino—. Nada de eso se puede reimplementar con una animación declarada, y es
+justo lo que un usuario de iOS reconoce como «nativo» sin saber nombrarlo.
+
+Las pantallas de tarea acotada (`compra/monto`, `pago/[itemId]`) se declaran con
+`presentation: 'modal'` y nada más en iOS; el deslizamiento desde abajo se añade **solo en
+Android**, donde `modal` equivale a `push` y sin él no se distinguiría de un paso más del flujo.
+
+### La secuencia de arranque
+
+Abrir la app no enseña un logotipo: reproduce una secuencia de 2,8 s con principio, golpe y final
+(`src/ui/splash.tsx`). Las barras cinematográficas entran, la «A» **se dibuja sola** trazo a trazo,
+el relleno de marca aparece por debajo, una banda de luz cruza el metal en diagonal, y en el segundo
+1,66 hay un impacto —destello, onda expansiva, el resplandor de fondo que se abre— sincronizado al
+fotograma con el sonido de marca. Después el rótulo A·T·L·A·S aparece letra a letra cerrando el
+tracking hacia el centro, se queda quieto un tercio de segundo —el fotograma en el que se reconoce
+la marca— y la cámara acelera hasta atravesarla.
+
+Tres decisiones sostienen el resto:
+
+- **Un solo reloj.** Las ocho capas leen de un mismo valor lineal en milisegundos y cada una aplica
+  su curva sobre su tramo. Con ocho animaciones independientes y sus retardos, basta un fotograma
+  perdido en el arranque para que el destello y el sonido se separen — y separados dejan de ser un
+  golpe.
+- **El intro NO espera a que la app esté lista.** Arranca al montar y corre entero. La que espera es
+  la *salida*. Al revés, un arranque frío —justo cuando más tarda la sesión— dejaba la marca
+  congelada varios segundos, y una imagen quieta se lee como una app colgada.
+- **Hay grano de película y viñeta.** Un degradado digital perfecto se lee como plano, y un fondo
+  plano deja al logotipo pegado contra el cristal. Las motas se calculan una vez con semilla fija:
+  lo único que se anima es la opacidad de la capa, que el compositor resuelve sin redibujar nada.
+
+### El corte de marca
+
+Salir de la bienvenida —hacia el registro o hacia el acceso— atraviesa la marca: la cámara **se echa
+atrás** un cuarto de segundo, y entonces se lanza hacia el logotipo hasta cruzarlo, dejando estela,
+dispersión cromática y líneas de velocidad radiales; la pantalla de destino queda detrás
+(`src/ui/brand-cut.tsx`). Son 1,7 s, y se lo puede permitir porque ocurre **una vez por sesión** y
+porque durante él la app no hace esperar a nadie: el destino se monta detrás mientras la marca
+cubre.
+
+El retroceso inicial es anticipación: sin él la marca arranca ya en movimiento y el ojo no tiene
+contra qué medir la velocidad. Con él, el mismo recorrido se lee como el doble de rápido sin costar
+un píxel más. La estela son tres copias que leen el mismo reloj **atrasado en el tiempo**, no copias
+más pequeñas: una copia pequeña está quieta detrás; una atrasada recorre la misma trayectoria con
+retraso, que es lo que hace un obturador lento.
+
+No se usa para pasar de página del carrusel. El corte marca un **límite**; usarlo en cada toque lo
+convertiría en un peaje repetido cuatro veces.
+
+### El sonido de marca
+
+El «ta-dum» (`assets/audio/atlas-marca.mp3`, generado con `tools/generar-sonido-marca.mjs`) suena en
+el impacto del arranque. Cinco reglas lo mantienen del lado de «impacta» y fuera de «molesta», y
+están en `src/ui/brand-sound.tsx`:
+
+1. **El interruptor de silencio manda.** Quien silenció el teléfono ya dijo que no quiere sonidos.
+2. **Agacha, no interrumpe:** si hay música, baja de volumen y vuelve.
+3. **Una vez por apertura de app.** No por pantalla ni por navegación. Lo que convierte un sonido de
+   marca en una molestia es la repetición, no el volumen — por eso el corte de marca lo pide también
+   y no suena dos veces.
+4. **Al 70 %**, atenuado en reproducción y no en el archivo, para no perder cuerpo en el altavoz.
+5. **Nunca en segundo plano.**
+
+Con movimiento reducido no suena: un golpe de sonido sin nada que lo justifique en pantalla es ruido
+a secas.
+
+La **bienvenida hablada** es otra cosa y tiene otras reglas: la genera el worker de locución del
+motor con el nombre de quien entra, y sólo suena al **ingresar** —no al restaurar la sesión al abrir
+la app—. Ver `src/ui/welcome-voice.tsx`.
+
+### Lo demás que se mueve, y por qué
+
+- **El foco del recorrido guiado viaja** entre pasos en vez de reaparecer en otro sitio. Cuando el
+  recorte salta, cada paso obliga a buscar dónde está ahora el hueco; cuando se desplaza, el ojo lo
+  sigue y llega al elemento nuevo ya mirándolo.
+- **Los puntos del carrusel están atados al dedo**, no al final del gesto: el que se deja se encoge
+  y el que llega se alarga a la vez que la página. Además informa de algo que el salto no decía:
+  que el gesto se puede cancelar volviendo atrás.
+- **El icono de la pestaña activa se asienta** con un realce del 8 %. Deliberadamente pequeño: la
+  barra está siempre en pantalla, y lo que se busca no es que se note la animación sino que la
+  mirada tenga a dónde volver después de que el contenido haya cambiado entero.
+- **Los halos del fondo son degradados radiales** (`BrandHalo`), no vistas redondeadas. Un círculo
+  de color plano al 16 % sobre el navy no es un resplandor: es un círculo, con su borde definido, y
+  el ojo lo detecta incluso a opacidades muy bajas. Aplanaba la pantalla contra dos formas
+  geométricas en lugar de darle profundidad.
+
+### «Menos movimiento» no es «lo mismo pero rápido»
+
+Con el ajuste del sistema activo:
+
+| | Con movimiento reducido |
+|---|---|
+| Corte de marca | **No hay corte.** La acción se ejecuta en el acto |
+| Hundimiento al tocar | No hay escala; el control responde igual |
+| Entrada de bloques (`Appear`) | Aparecen en su sitio, sin subir |
+| Paralaje y puntos del carrusel | Sin interpolación; el punto activo se pinta ancho |
+| Foco del recorrido guiado | Se coloca, no viaja |
+
+Una capa que tapa la pantalla entera es exactamente el tipo de movimiento que provoca mareo, y
+degradarla a una versión corta de sí misma no lo arregla: hay que quitarla.
+
+### El hilo en el que corre
+
+Todas las animaciones son de Reanimated y corren en el **hilo de UI**. Durante una decisión de
+crédito el hilo de JS está ocupado —petición, parseo, re-render— y con animaciones dependientes de
+JS eso se ve como tirones justo en el momento en que el usuario más atento está. Por lo mismo, el
+progreso del carrusel se lee con `useAnimatedScrollHandler` y no con `onScroll`: a JS solo vuelve
+el número de página, y solo cuando cambia.
+
+---
+
+## 7. Qué NO se hizo, a propósito
+
+- **No se movió el ORDEN DE LECTURA de ninguna pantalla.** Los cambios de §4 y §4 bis son de
+  superficie, tipografía, jerarquía y profundidad. Ninguna pantalla cambió lo que dice ni en qué
+  orden lo dice: lo que cambió es con qué peso se dibuja cada nivel. Las dos excepciones son
+  deliberadas y están explicadas donde ocurren — la ayuda pasó de seis respuestas apiladas a un
+  índice plegable, y la bandeja de avisos se agrupó por tramo de tiempo. En las dos, la información
+  es exactamente la misma.
+- **No se animó nada que no responda a una acción o a un cambio de estado.** No hay entradas
+  decorativas, ni contadores que se animen solos, ni la cifra de la línea de crédito subiendo cada
+  vez que se abre el inicio: animar un número que ya estaba ahí lo vuelve ilegible durante el primer
+  instante, que es justo cuando se lo quiere leer. Ver §6.
 - **No se creó un tema claro.** Los tokens semánticos ya lo permiten (`color.surface.*`), pero la
   identidad publicada es oscura y un tema claro es una decisión de producto, no de implementación.
 
 ---
 
-## 7. Si cambia la marca
+## 8. Si cambia la marca
 
 Se toca `src/theme/tokens.ts` y nada más. Ese es el contrato. Si hay que buscar y reemplazar en
 las pantallas, es que alguien escribió un literal y hay que devolverlo al sistema.

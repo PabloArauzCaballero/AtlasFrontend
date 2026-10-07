@@ -9,16 +9,21 @@
  * "listo". Prometer una aprobacion que no ocurrio es el peor final posible para un onboarding.
  */
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { View, type ScrollView } from 'react-native';
+import { useCallback, useState, useRef } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { AtlasApiError, describeError } from '../../src/api/errors';
-import { SECTION_LABEL, SECTION_ROUTE, describeBlocker, describeLifecycle } from '../../src/features/onboarding-map';
+import { SECTION_ROUTE, describeBlocker, describeLifecycle, etiquetaDeSeccion } from '../../src/features/onboarding-map';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
-import { AtlasText, Badge, Button, Card, Divider, ErrorState, ListRow } from '../../src/ui/primitives';
+import { Gap, Screen, ScreenHeader, useScrollToError } from '../../src/ui/layout';
+import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, ListRow } from '../../src/ui/primitives';
+import { bitacora } from '../../src/features/bitacora';
+import { useBrandCut } from '../../src/ui/brand-cut';
+import { useCopy } from '../../src/features/use-contenido-remoto';
 
 export default function Review() {
+  useCopy(); // vuelve a pintar cuando llegan los textos del portal (etapas, bloqueos y estado de la cuenta)
   const router = useRouter();
   const session = useSession();
 
@@ -42,6 +47,8 @@ export default function Review() {
     }, [session]),
   );
 
+  const cortar = useBrandCut();
+
   const status = session.onboarding;
   const submitted =
     justSubmitted || status?.onboarding.completionStatus === 'completed' || status?.lifecycleStatus === 'under_review';
@@ -52,8 +59,22 @@ export default function Review() {
     setBusy(true);
     setError(null);
     try {
-      await onboardingApi.submitForReview(session.customerId);
-      setJustSubmitted(true);
+      await bitacora.medirEnvio(() => onboardingApi.submitForReview(session.customerId!));
+      // El alta termino: lo que quede de bitacora sale ahora y la cola se borra del disco.
+      await bitacora.cerrar().catch(() => undefined);
+      /*
+        El mismo corte de marca que abre la app, ahora para cerrarla.
+
+        Terminar el alta es el segundo momento del producto que merece marcarse: la pantalla apenas
+        cambiaba —el mismo fondo, otro texto— y ocho pasos de formulario terminaban sin que nada
+        dijera «esto ya está». El corte tapa el cambio de estado y lo devuelve convertido en un
+        hecho, con la misma gramática con la que se entró.
+
+        Va DESPUÉS del 200 y no antes: celebrar un envío que todavía puede fallar es peor que no
+        celebrarlo. Y `useBrandCut` respeta el ajuste de movimiento reducido —con él activo ejecuta
+        la acción sin animar—, así que esto no le tapa la pantalla a quien pidió que no se la tapen.
+      */
+      cortar(() => setJustSubmitted(true));
       // El refresco es para enriquecer la pantalla, no para saber si el envio ocurrio. Si falla
       // —incluido el 429 del limitador— la solicitud sigue enviada y la pantalla ya lo refleja.
       await session.refresh().catch(() => undefined);
@@ -78,6 +99,12 @@ export default function Review() {
   };
 
   const described = error ? describeError(error) : null;
+
+  // El fallo se pinta arriba y el boton esta abajo: hay que llevar la vista hasta el.
+
+  const scroll = useRef<ScrollView>(null);
+
+  useScrollToError(error, scroll);
   const pending = (status?.sections ?? []).filter((section) => section.status !== 'completed');
 
   /*
@@ -91,13 +118,13 @@ export default function Review() {
     [
       status?.canSubmit ?? false,
       firstPending
-        ? `Falta completar ${(SECTION_LABEL[firstPending.code]?.title ?? firstPending.code).toLowerCase()}.`
+        ? `Falta completar ${(etiquetaDeSeccion(firstPending.code)?.title ?? firstPending.code).toLowerCase()}.`
         : 'Todavía falta completar una parte de tu expediente.',
     ],
   ]);
 
   return (
-    <Screen
+    <Screen scrollRef={scroll}
       onRefresh={onRefresh}
       refreshing={refreshing}
       footer={
@@ -105,6 +132,7 @@ export default function Review() {
           <Button label="Actualizar estado" variant="secondary" onPress={onRefresh} loading={refreshing} />
         ) : (
           <Button
+            bitacora="enviar_solicitud"
             label="Enviar mi solicitud"
             onPress={submit}
             loading={busy}
@@ -115,51 +143,68 @@ export default function Review() {
         )
       }
     >
-      <ScreenHeader title={submitted ? lifecycle.title : 'Revisa y envia'} subtitle={lifecycle.detail} onBack="auto" />
+      <ScreenHeader
+        eyebrow="Último paso"
+        title={submitted ? lifecycle.title : 'Revisa y envía'}
+        subtitle={lifecycle.detail}
+        onBack="auto"
+      />
 
       {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
 
       {pending.length > 0 ? (
-        <Card>
-          <AtlasText variant="h3">Todavía falta</AtlasText>
-          <Divider />
-          {pending.map((section) => (
-            <ListRow
-              key={section.code}
-              title={SECTION_LABEL[section.code]?.title ?? section.code}
-              subtitle={SECTION_LABEL[section.code]?.detail}
-              right={<Badge label="pendiente" tone="warning" />}
-              onPress={() => router.push(SECTION_ROUTE[section.code])}
-            />
+        <Card tone="warning" padding="tight">
+          <CardHeader
+            icon="alerta"
+            iconTone="warning"
+            title="Todavía falta"
+            detail={pending.length === 1 ? '1 paso por completar' : `${pending.length} pasos por completar`}
+          />
+          {pending.map((section, index) => (
+            <View key={section.code}>
+              {index > 0 ? <Divider inset /> : null}
+              <ListRow
+                title={etiquetaDeSeccion(section.code)?.title ?? section.code}
+                subtitle={etiquetaDeSeccion(section.code)?.detail}
+                icon={etiquetaDeSeccion(section.code)?.icon}
+                right={<Badge dot label="pendiente" tone="warning" />}
+                onPress={() => router.push(SECTION_ROUTE[section.code])}
+              />
+            </View>
           ))}
         </Card>
       ) : null}
 
       {status && status.blockers.length > 0 ? (
-        <Card>
-          <AtlasText variant="h3">Estado de tu evaluación</AtlasText>
-          <Divider />
-          {status.blockers.map((blocker) => {
+        <Card padding="tight">
+          <CardHeader icon="escudo" title="Estado de tu evaluación" />
+          {status.blockers.map((blocker, index) => {
             const copy = describeBlocker(blocker);
             return (
-              <ListRow
-                key={blocker.code}
-                title={copy.title}
-                subtitle={copy.detail}
-                right={<Badge label={copy.actionable ? 'accion tuya' : 'en curso'} tone={copy.actionable ? 'warning' : 'info'} />}
-              />
+              <View key={blocker.code}>
+                {index > 0 ? <Divider inset /> : null}
+                <ListRow
+                  icon={copy.actionable ? 'alerta' : 'reloj'}
+                  title={copy.title}
+                  subtitle={copy.detail}
+                  right={
+                    <Badge dot label={copy.actionable ? 'acción tuya' : 'en curso'} tone={copy.actionable ? 'warning' : 'info'} />
+                  }
+                />
+              </View>
             );
           })}
         </Card>
       ) : null}
 
       {submitted ? (
-        <Card>
-          <AtlasText variant="bodyStrong">Que sigue</AtlasText>
-          <AtlasText variant="body" tone="secondary">
-            Un analista revisa tu documento y tu informacion. Te avisamos por notificacion apenas haya respuesta; no hace
-            falta que dejes la app abierta.
-          </AtlasText>
+        <Card tone="brand">
+          <CardHeader
+            icon="reloj"
+            title="Qué sigue"
+            detail="Una persona revisa tu carnet, tu selfie y tu información. Cuando tu cuenta esté verificada te llega un aviso «Tu cuenta ha sido verificada»; no hace falta que dejes la app abierta."
+            divider={false}
+          />
         </Card>
       ) : null}
 

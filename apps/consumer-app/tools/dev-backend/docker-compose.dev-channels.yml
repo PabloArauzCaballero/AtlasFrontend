@@ -67,7 +67,7 @@ services:
       DEV_ADMIN_PASSWORD: ${ATLAS_DEV_ADMIN_PASSWORD:-}
 
   api:
-    environment:
+    environment: &atlas_dev_env
       NOTIFICATION_SMS_PROVIDER: webhook
       NOTIFICATION_SMS_WEBHOOK_URL: http://host.docker.internal:4599/notify
       NOTIFICATION_WHATSAPP_PROVIDER: webhook
@@ -91,7 +91,14 @@ services:
       # la medida de su propio acierto.
       DECISION_ENGINE_API_KEY: ${ATLAS_DEV_DECISION_ENGINE_RUNTIME_KEY:-}
       DECISION_ENGINE_OUTCOME_API_KEY: ${ATLAS_DEV_DECISION_ENGINE_MANAGEMENT_KEY:-}
-      DECISION_ENGINE_CREDIT_ARTIFACT: ${ATLAS_DEV_DECISION_ENGINE_ARTIFACT:-credit_underwriting}
+      # El permiso del titular se replica en el motor por el plano de GOBIERNO. Cae a la de
+      # desenlaces si no se define aparte: las dos son del plano de gestion, y ninguna de las dos
+      # es la de ejecucion — quien decide no puede escribir el permiso que le autoriza a decidir.
+      DECISION_ENGINE_GOVERNANCE_API_KEY: ${ATLAS_DEV_DECISION_ENGINE_GOVERNANCE_KEY:-${ATLAS_DEV_DECISION_ENGINE_MANAGEMENT_KEY:-}}
+      # El defecto es el código REAL del artefacto. `credit_underwriting` no existe en el Motor: toda
+      # solicitud caía en 404 silencioso y se resolvía como engine_unavailable_manual.
+      DECISION_ENGINE_CREDIT_ARTIFACT: ${ATLAS_DEV_DECISION_ENGINE_ARTIFACT:-ATLAS_BNPL_UNDERWRITING}
+      DECISION_ENGINE_RISK_ARTIFACT: ${ATLAS_DEV_DECISION_ENGINE_RISK_ARTIFACT:-RIESGO_ONBOARDING_CLIENTE}
       # El ENTORNO del motor contra el que se decide. En local apunta a TEST porque es donde vive
       # la version desplegada de la politica; sin declararlo, el motor resuelve el suyo por defecto
       # y una version publicada en TEST no se estaria usando nunca.
@@ -103,6 +110,18 @@ services:
       # API real en lugar de escribir en la base a mano.
       DEV_ADMIN_EMAIL: ${ATLAS_DEV_ADMIN_EMAIL:-pablo@atlas.internal}
       DEV_ADMIN_PASSWORD: ${ATLAS_DEV_ADMIN_PASSWORD:-}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+  # El worker necesita EXACTAMENTE la misma configuracion que la API, y no la tenia.
+  #
+  # Los trabajos de fondo que mas dependen del motor —recalcular la linea al alta, trasladar la mora
+  # a la capacidad de pago, aplicar el extracto bancario— corren AQUI, no en la API. Con el motor
+  # configurado solo en la API, el planificador arrancaba, encontraba a los clientes sin linea y
+  # registraba «el motor no esta configurado» para cada uno: los trabajos existian y no hacian nada.
+  # El ancla evita que las dos configuraciones vuelvan a separarse por olvido.
+  worker:
+    environment: *atlas_dev_env
     extra_hosts:
       - 'host.docker.internal:host-gateway'
 

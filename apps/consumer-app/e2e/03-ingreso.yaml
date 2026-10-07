@@ -1,0 +1,26 @@
+# Ingreso con una cuenta ya creada, y la sesión restaurada donde se dejó.
+#
+#   maestro test -e CORREO=… -e PIN=… e2e/03-ingreso.yaml
+#
+# `clearState` a propósito: entrar de verdad es entrar SIN sesión guardada. Sin él, el flujo pasaría
+# igual con un token viejo y no probaría el acceso.
+appId: bo.atlas.consumer
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil: { visible: 'Ya tengo cuenta', timeout: 30000 }
+- tapOn: 'Ya tengo cuenta'
+- tapOn:
+    below:
+      text: 'Correo o teléfono *'
+- inputText: "${CORREO}"
+- tapOn:
+    id: 'pin-field'
+- inputText: "${PIN}"
+- takeScreenshot: ingreso-lleno
+
+# Con el cuarto dígito el ingreso se envía solo: no hay botón que tocar.
+- extendedWaitUntil:
+    visible: 'Avance de tu registro'
+    timeout: 30000
+- takeScreenshot: ingreso-sesion

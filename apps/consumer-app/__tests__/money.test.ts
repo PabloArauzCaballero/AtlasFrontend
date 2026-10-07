@@ -53,6 +53,16 @@ describe('formatMoney', () => {
   it('muestra siempre la moneda', () => {
     expect(formatMoney(minor(123_450))).toContain('Bs');
   });
+
+  /*
+    El importe no se puede partir en dos renglones: «Bs» al final de una linea y la cifra al
+    principio de la siguiente deja media cantidad sin moneda. Ver el comentario de `formatMoney`.
+  */
+  it('une el simbolo a la cifra con un espacio indivisible', () => {
+    const texto = formatMoney(minor(420_000));
+    expect(texto).toBe('Bs\u00A04.200,00');
+    expect(texto).not.toContain('Bs ');
+  });
 });
 
 describe('minor', () => {

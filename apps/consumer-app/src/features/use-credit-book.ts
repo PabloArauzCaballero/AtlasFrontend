@@ -9,6 +9,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import * as creditLineApi from '../api/endpoints/credit-line';
 import * as loansApi from '../api/endpoints/loans';
+import { AtlasApiError } from '../api/errors';
 
 type State = {
   ready: boolean;
@@ -31,9 +32,24 @@ type State = {
    * producto —cliente recien dado de alta— y no un fallo: la pantalla lo distingue.
    */
   creditLine: creditLineApi.CreditLine | null;
+  /** Por qué falló la consulta de la línea; `null` también cuando simplemente aún no la hay (404). */
+  creditLineError: string | null;
 };
 
-const EMPTY: State = { ready: false, error: null, loans: [], spending: null, rating: null, calendar: null, creditLine: null };
+const EMPTY: State = { ready: false, error: null, loans: [], spending: null, rating: null, calendar: null, creditLine: null, creditLineError: null };
+
+/**
+ * Por qué no hay línea, si no la hay. Un 404 es «todavía no estás activo»: no es un error. Cualquier otro fallo —el
+ * 503 `CREDIT_LINE_ENGINE_UNAVAILABLE` cuando el motor no respondió, la red— SÍ lo es, y antes se pintaba igual que
+ * el 404: «Todavía estamos calculando tu línea», prometiendo un cálculo que no estaba ocurriendo.
+ */
+export function errorDeLinea(motivo: unknown): string | null {
+  if (motivo instanceof AtlasApiError && motivo.status === 404) return null;
+  if (motivo instanceof AtlasApiError && motivo.code === 'CREDIT_LINE_ENGINE_UNAVAILABLE') {
+    return 'El motor de decisión no respondió al calcular tu crédito. Vuelve a intentarlo en un momento.';
+  }
+  return 'No pudimos consultar tu crédito. Revisa tu conexión y vuelve a intentarlo.';
+}
 
 export function useCreditBook(customerId: string | null) {
   const [state, setState] = useState<State>(EMPTY);
@@ -66,6 +82,7 @@ export function useCreditBook(customerId: string | null) {
       rating: rating.status === 'fulfilled' ? rating.value : null,
       calendar: calendar.status === 'fulfilled' ? calendar.value : null,
       creditLine: creditLine.status === 'fulfilled' ? creditLine.value : null,
+      creditLineError: creditLine.status === 'rejected' ? errorDeLinea(creditLine.reason) : null,
     });
   }, [customerId]);
 

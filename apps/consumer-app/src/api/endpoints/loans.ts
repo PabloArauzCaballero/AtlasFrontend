@@ -36,6 +36,9 @@ export type LoanSummary = {
 };
 
 export type LoanInstallment = {
+  /** El identificador de la cuota. Es lo que hace falta para avisar de un pago: el numero de orden
+   *  se repite entre creditos y no nombra nada por si solo. */
+  installmentId: string;
   installmentNumber: number;
   dueDate: string;
   principalAmount: string;
@@ -50,7 +53,7 @@ export type LoanInstallment = {
 
 export type LoanDetail = LoanSummary & {
   schedule: LoanInstallment[];
-  payments: Array<{ paymentId: string; amount: string; receivedAt: string; status: string }>;
+  payments: { paymentId: string; amount: string; receivedAt: string; status: string }[];
 };
 
 export const listLoans = (customerId: string) => request<{ items: LoanSummary[] }>(`/customers/${customerId}/loans`);
@@ -67,14 +70,14 @@ export type CategorySpend = {
   loanCount: number;
   overdueLoanCount: number;
   share: number;
-  merchants: Array<{
+  merchants: {
     partnerProfileId: string | null;
     displayName: string;
     financed: number;
     outstanding: number;
     overdue: number;
     loanCount: number;
-  }>;
+  }[];
 };
 
 export type SpendingByCategory = {
@@ -199,3 +202,17 @@ export type ResolvedMerchant = {
  */
 export const resolveMerchantQr = (token: string) =>
   request<ResolvedMerchant>('/merchant-qr/resolve', { method: 'POST', body: { token } });
+
+export type UploadedPaymentQr = {
+  qrId: string;
+  imageDataUrl: string;
+  bankInstitutionCode: string | null;
+  accountNumberMasked: string | null;
+};
+
+/** La imagen bancaria vigente de la empresa a la que pertenece esta caja activa. */
+export const getPaymentQrForPos = (partnerProfileId: string, posTerminalId: string) =>
+  request<UploadedPaymentQr | null>('/merchant-qr/payment', {
+    method: 'POST',
+    body: { partnerProfileId, posTerminalId },
+  });
