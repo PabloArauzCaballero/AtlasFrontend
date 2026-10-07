@@ -218,11 +218,11 @@ export type Badge = {
   current: number;
   target: number;
   /**
-   * Cuándo se ganó y cuántos puntos sumó. Opcionales A PROPÓSITO: el backend de hoy calcula las insignias al vuelo y no
-   * guarda ni la fecha ni un premio en puntos. Cuando los mande, la carta los enseña; mientras no, no inventa ninguno.
+   * Cuándo se ganó. Opcional A PROPÓSITO: el backend de hoy calcula las insignias al vuelo y no guarda la fecha. Cuando
+   * la mande, la carta la enseña; mientras no, no inventa ninguna. Las insignias NO dan puntos: los puntos son sólo por
+   * boliviano pagado a tiempo (Pablo, 2026-10-07).
    */
   earnedAt?: string | null;
-  points?: number | null;
 };
 
 /** Puntos de experiencia: 1 por cada boliviano PAGADO a tiempo (comprar no suma). */

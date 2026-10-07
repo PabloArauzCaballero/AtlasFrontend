@@ -9,8 +9,7 @@
  * 3. Un barrido de luz diagonal cruza toda la carta: es el «holo» que la hace sentir de coleccionista.
  * 4. La cifra de abajo cuenta hacia arriba y la barra sube con su punto vivo (`cuenta-arriba.tsx`).
  *
- * Ganada: el sello GANADA y, si el servidor los manda, la fecha y los puntos que sumó. No se inventa ninguno: hoy el
- * backend calcula las insignias al vuelo y no guarda ni cuándo se ganaron ni un premio en puntos (ver `Badge`).
+ * Ganada: el sello GANADA y la fecha en que se ganó, si el servidor la manda (hoy no la guarda: ver `Badge`). Las insignias no dan puntos.
  * Pendiente: cuánto llevas y cuánto falta. Secreta sin ganar: sólo su pista.
  *
  * Es una capa en el layout, no un `Modal` (ver `celebracion-logro.tsx`). Con movimiento reducido todo aparece ya puesto.
@@ -121,7 +120,6 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
   }));
 
   const fecha = fechaLarga(insignia.earnedAt);
-  const puntos = typeof insignia.points === 'number' && insignia.points > 0 ? insignia.points : null;
   const faltan = Math.max(0, insignia.target - insignia.current);
   const coleccion = insignia.category ? NOMBRE_COLECCION[insignia.category] : null;
 
@@ -188,17 +186,6 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
                         {`El ${fecha}`}
                       </AtlasText>
                     ) : null}
-                    {puntos ? (
-                      <View style={styles.puntos} accessibilityLabel={`Sumó ${miles(puntos)} puntos`}>
-                        <AtlasText variant="h2" style={{ color: m.luz }}>
-                          +
-                        </AtlasText>
-                        <CuentaArriba avance={avance} hasta={puntos} formato={miles} tamano="h2" color={m.luz} />
-                        <AtlasText variant="caption" tone="secondary">
-                          puntos
-                        </AtlasText>
-                      </View>
-                    ) : null}
                   </View>
                 ) : cara.oculta ? (
                   <AtlasText variant="captionStrong" tone="tertiary" align="center">
@@ -247,7 +234,6 @@ const styles = StyleSheet.create({
   cuerpo: { flex: 1, gap: space.sm, padding: space.md, justifyContent: 'center' },
   sello: { alignItems: 'center', gap: space.xs },
   selloMarca: { flexDirection: 'row', alignItems: 'center', gap: space.xs, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: 3 },
-  puntos: { flexDirection: 'row', alignItems: 'baseline', gap: space.xs },
   avance: { gap: space.xs },
   cifraAvance: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'center', gap: space.xs },
   barrido: { position: 'absolute', top: -40, left: 0, width: 90 },
