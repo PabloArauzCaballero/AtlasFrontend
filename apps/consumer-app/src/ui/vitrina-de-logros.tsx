@@ -7,7 +7,7 @@
  * anticipan: enseñan su pista y un candado.
  *
  * Tocar CUALQUIER insignia abre su carta (`carta-de-insignia.tsx`); desde la de una ganada se puede revivir su celebración.
- * Van paginadas por colección: treinta y cuatro de golpe eran demasiadas (Pablo, 2026-10-07).
+ * Van TODAS, paginadas por colección: treinta y cuatro de golpe eran demasiadas y Pablo pidió paginar, no esconder (2026-10-07).
  */
 import { useRef, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -38,25 +38,6 @@ export function porColeccion(badges: readonly Badge[]): { clave: string; nombre:
     .map(([clave, items]) => ({ clave, nombre: NOMBRE_COLECCION[clave] ?? 'Tus trofeos', items }));
 }
 
-/** Cuántas pendientes se enseñan por colección antes de «Ver las que faltan»: lo ganado y lo próximo, no el catálogo. */
-export const PENDIENTES_A_LA_VISTA = 3;
-
-/**
- * Lo que se ve de una colección: todo lo ganado y las pendientes más cercanas (las secretas, al final). Treinta y cuatro
- * insignias a la vez abruman; la gente mira lo que ya es suyo y lo que está a un paso (Pablo, 2026-10-07).
- */
-export function aLaVista(items: readonly Badge[], abierta: boolean): { visibles: Badge[]; ocultas: number } {
-  if (abierta) return { visibles: [...items], ocultas: 0 };
-  const razon = (b: Badge) => (b.target > 0 ? b.current / b.target : 0);
-  const pendientes = items
-    .filter((b) => !b.earned)
-    .sort((a, b) => Number(!!a.secret) - Number(!!b.secret) || razon(b) - razon(a))
-    .slice(0, PENDIENTES_A_LA_VISTA);
-  const elegidas = new Set(pendientes.map((b) => b.code));
-  const visibles = items.filter((b) => b.earned || elegidas.has(b.code));
-  return { visibles, ocultas: items.length - visibles.length };
-}
-
 export function VitrinaDeLogros({ progress }: { progress: Progress }) {
   const badges = progress.experience.badges;
   const ganadas = badges.filter((b) => b.earned).length;
@@ -65,7 +46,6 @@ export function VitrinaDeLogros({ progress }: { progress: Progress }) {
   const { width: ventana } = useWindowDimensions();
   const [ancho, setAncho] = useState(Math.max(240, ventana - 80));
   const [pagina, setPagina] = useState(0);
-  const [abiertas, setAbiertas] = useState<ReadonlySet<string>>(new Set());
   const progresoScroll = useSharedValue(0);
   const scroll = useRef<Animated.ScrollView>(null);
 
@@ -106,39 +86,15 @@ export function VitrinaDeLogros({ progress }: { progress: Progress }) {
         ) : null}
         <View onLayout={(e: LayoutChangeEvent) => e.nativeEvent.layout.width > 0 && setAncho(Math.round(e.nativeEvent.layout.width))} style={styles.visor}>
           <Animated.ScrollView ref={scroll} horizontal pagingEnabled decelerationRate="fast" showsHorizontalScrollIndicator={false} onScroll={alDesplazar} scrollEventThrottle={16}>
-            {grupos.map((grupo) => {
-              const abierta = abiertas.has(grupo.clave);
-              const { visibles, ocultas } = aLaVista(grupo.items, abierta);
-              return (
-                <View key={grupo.clave} style={[styles.rejilla, { width: ancho }]} testID={`coleccion-${grupo.clave}`}>
-                  <View style={styles.celdas} testID={grupo.clave === 'todas' ? 'insignias' : undefined}>
-                    {visibles.map((insignia) => (
-                      <Insignia key={insignia.code} insignia={insignia} onPress={() => abrirCartaDeInsignia(logroDeInsignia(progress, insignia))} />
-                    ))}
-                  </View>
-                  {ocultas > 0 || abierta ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      hitSlop={8}
-                      style={styles.verTodas}
-                      onPress={() =>
-                        setAbiertas((previas) => {
-                          const sig = new Set(previas);
-                          if (sig.has(grupo.clave)) sig.delete(grupo.clave);
-                          else sig.add(grupo.clave);
-                          return sig;
-                        })
-                      }
-                      testID={`ver-todas-${grupo.clave}`}
-                    >
-                      <AtlasText variant="caption" tone="brand">
-                        {abierta ? 'Ver menos' : `Ver las ${ocultas} que faltan`}
-                      </AtlasText>
-                    </Pressable>
-                  ) : null}
+            {grupos.map((grupo) => (
+              <View key={grupo.clave} style={[styles.rejilla, { width: ancho }]} testID={`coleccion-${grupo.clave}`}>
+                <View style={styles.celdas} testID={grupo.clave === 'todas' ? 'insignias' : undefined}>
+                  {grupo.items.map((insignia) => (
+                    <Insignia key={insignia.code} insignia={insignia} onPress={() => abrirCartaDeInsignia(logroDeInsignia(progress, insignia))} />
+                  ))}
                 </View>
-              );
-            })}
+              </View>
+            ))}
           </Animated.ScrollView>
         </View>
         {grupos.length > 1 ? (
@@ -173,7 +129,6 @@ const styles = StyleSheet.create({
   visor: { overflow: 'hidden' },
   rejilla: { justifyContent: 'flex-start' },
   celdas: { flexDirection: 'row', flexWrap: 'wrap' },
-  verTodas: { alignSelf: 'center', paddingVertical: space.sm },
   puntos: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs, paddingTop: space.xs },
   dot: { height: 6, borderRadius: 3, backgroundColor: color.action.primary },
 });

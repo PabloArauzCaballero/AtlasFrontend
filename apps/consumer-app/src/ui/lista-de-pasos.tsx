@@ -1,18 +1,32 @@
 /**
- * Una lista VERTICAL de pasos (niveles, misiones) que se enseña poco a poco y entra con movimiento.
+ * Una lista de pasos (niveles, misiones) PAGINADA: unas pocas filas por página, deslizando de lado, con puntos abajo.
  *
- * Pablo (2026-10-07): «aquí puede ser vertical» y «hay demasiados»: los doce niveles y todas las misiones de golpe eran una
- * pared. Aquí se enseña lo que importa (`resumir`) y el resto queda tras un botón.
+ * Pablo (2026-10-07): «que se paginen todos». Los doce niveles y todas las misiones de golpe eran una pared; esconderlos
+ * tras un botón tampoco era lo pedido. Aquí están todos y se llega a cada uno con el dedo, igual que en la calificación
+ * y en las insignias.
  *
  * ## Movimiento (contesta «¿de dónde salió esto?»)
  *
- * Cada fila sube 10 px mientras aparece, escalonada; en la escalera de niveles (`ascender`) la cuenta empieza por ABAJO,
- * así que se ve cómo se sube hasta donde estás. La marca de lo hecho entra con un muelle corto. Con movimiento reducido
- * todo aparece ya puesto.
+ * Al llegar a una página por PRIMERA vez, sus filas suben 10 px mientras aparecen, escalonadas; en la escalera de niveles
+ * (`ascender`) la cuenta empieza por ABAJO, así que se ve cómo se sube. La marca de lo hecho entra con un muelle corto.
+ * La lista abre en la página donde está lo actual (`actual`). Con movimiento reducido todo aparece ya puesto.
  */
-import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { type LayoutChangeEvent, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, {
+  Easing,
+  Extrapolation,
+  interpolate,
+  runOnJS,
+  type SharedValue,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { color, easing, motion, radius, space, spring } from '../theme/tokens';
 import { Icon } from './icons';
 import { AtlasText, Card, Divider } from './primitives';
@@ -22,15 +36,24 @@ export type Paso = { clave: string; titulo: string; derecha: string; hecho: bool
 const CURVA = Easing.bezier(easing.decelerate[0], easing.decelerate[1], easing.decelerate[2], easing.decelerate[3]);
 const ESCALON_MS = 90;
 
-function Fila({ paso, retardo, separador }: { paso: Paso; retardo: number; separador: boolean }) {
+/** Reparte los pasos en páginas de `porPagina`. */
+export function paginar<T>(items: readonly T[], porPagina: number): T[][] {
+  const paginas: T[][] = [];
+  for (let i = 0; i < items.length; i += porPagina) paginas.push(items.slice(i, i + porPagina));
+  return paginas;
+}
+
+function Fila({ paso, retardo, separador, reproducir }: { paso: Paso; retardo: number; separador: boolean; reproducir: boolean }) {
   const reducido = useReducedMotion();
   const entrada = useSharedValue(reducido ? 1 : 0);
   const marca = useSharedValue(reducido || !paso.hecho ? 1 : 0);
+  const arrancada = useRef(false);
   useEffect(() => {
-    if (reducido) return;
+    if (reducido || !reproducir || arrancada.current) return;
+    arrancada.current = true;
     entrada.value = withDelay(retardo, withTiming(1, { duration: motion.base, easing: CURVA }));
     if (paso.hecho) marca.value = withDelay(retardo + motion.fast, withSpring(1, spring.settle));
-  }, [entrada, marca, paso.hecho, reducido, retardo]);
+  }, [entrada, marca, paso.hecho, reducido, reproducir, retardo]);
   const estiloFila = useAnimatedStyle(() => ({ opacity: entrada.value, transform: [{ translateY: (1 - entrada.value) * 10 }] }));
   const estiloMarca = useAnimatedStyle(() => ({ transform: [{ scale: 0.4 + 0.6 * marca.value }], opacity: marca.value }));
   return (
@@ -45,7 +68,7 @@ function Fila({ paso, retardo, separador }: { paso: Paso; retardo: number; separ
           ) : null}
         </View>
         <View style={styles.texto}>
-          <AtlasText variant="bodyStrong" tone={paso.actual ? 'brand' : paso.hecho && !paso.actual ? 'primary' : 'primary'}>
+          <AtlasText variant="bodyStrong" tone={paso.actual ? 'brand' : 'primary'}>
             {paso.titulo}
           </AtlasText>
           {paso.detalle ? (
@@ -62,59 +85,97 @@ function Fila({ paso, retardo, separador }: { paso: Paso; retardo: number; separ
   );
 }
 
+/** Un punto del pie: el activo se alarga y se enciende; sigue al dedo mientras se desliza. */
+function Punto({ indice, progreso, activo, onPress }: { indice: number; progreso: SharedValue<number>; activo: boolean; onPress: () => void }) {
+  const estilo = useAnimatedStyle(() => {
+    const cerca = interpolate(progreso.value, [indice - 1, indice, indice + 1], [0, 1, 0], Extrapolation.CLAMP);
+    return { width: 6 + 14 * cerca, opacity: 0.35 + 0.65 * cerca };
+  });
+  return (
+    <Pressable onPress={onPress} hitSlop={10} accessibilityRole="tab" accessibilityState={{ selected: activo }} accessibilityLabel={`Ir a la página ${indice + 1}`}>
+      <Animated.View style={[styles.dot, estilo]} />
+    </Pressable>
+  );
+}
+
 export function ListaDePasos({
   pasos,
-  resumir,
+  porPagina,
   ascender = false,
-  verTodos,
   testID,
 }: {
   pasos: readonly Paso[];
-  /** Qué enseñar de entrada. Sin esto se enseña todo. */
-  resumir?: (pasos: readonly Paso[]) => Paso[];
-  /** La cuenta de la animación empieza por el final de la lista (la escalera de niveles se sube desde abajo). */
+  porPagina: number;
+  /** La cuenta de la animación empieza por el final de cada página (la escalera de niveles se sube desde abajo). */
   ascender?: boolean;
-  verTodos: (ocultos: number) => string;
   testID?: string;
 }) {
-  const [abierta, setAbierta] = useState(false);
-  const visibles = abierta || !resumir ? [...pasos] : resumir(pasos);
-  const ocultos = pasos.length - visibles.length;
+  const paginas = paginar(pasos, porPagina);
+  const inicial = Math.max(0, paginas.findIndex((p) => p.some((x) => x.actual)));
+  const { width: ventana } = useWindowDimensions();
+  const [ancho, setAncho] = useState(Math.max(240, ventana - 32));
+  const [pagina, setPagina] = useState(inicial);
+  const [vistas] = useState(() => new Set<number>([inicial]));
+  const progreso = useSharedValue(inicial);
+  const scroll = useRef<Animated.ScrollView>(null);
+
+  const alMedir = useCallback(
+    (e: LayoutChangeEvent) => {
+      const w = Math.round(e.nativeEvent.layout.width);
+      if (w <= 0) return;
+      setAncho(w);
+      // Abre en la página donde está lo actual, sin animar.
+      requestAnimationFrame(() => scroll.current?.scrollTo({ x: inicial * w, animated: false }));
+    },
+    [inicial],
+  );
+  const marcar = useCallback(
+    (n: number) => {
+      vistas.add(n);
+      setPagina(n);
+    },
+    [vistas],
+  );
+  const alDesplazar = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      progreso.value = e.contentOffset.x / ancho;
+      runOnJS(marcar)(Math.round(e.contentOffset.x / ancho));
+    },
+  });
+  const irA = (n: number) => scroll.current?.scrollTo({ x: n * ancho, animated: true });
+
   return (
     <View testID={testID}>
       <Card padding="none">
-        {visibles.map((paso, i) => (
-          <Fila key={paso.clave} paso={paso} separador={i > 0} retardo={(ascender ? visibles.length - 1 - i : i) * ESCALON_MS} />
-        ))}
+        <View onLayout={alMedir} style={styles.visor}>
+          <Animated.ScrollView ref={scroll} horizontal pagingEnabled decelerationRate="fast" showsHorizontalScrollIndicator={false} onScroll={alDesplazar} scrollEventThrottle={16}>
+            {paginas.map((filas, p) => (
+              <View key={p} style={{ width: ancho }} testID={testID ? `${testID}-pagina-${p + 1}` : undefined}>
+                {filas.map((paso, i) => (
+                  <Fila key={paso.clave} paso={paso} separador={i > 0} reproducir={vistas.has(p) || pagina === p} retardo={(ascender ? filas.length - 1 - i : i) * ESCALON_MS} />
+                ))}
+              </View>
+            ))}
+          </Animated.ScrollView>
+        </View>
       </Card>
-      {ocultos > 0 || abierta ? (
-        <Pressable accessibilityRole="button" hitSlop={8} style={styles.ver} onPress={() => setAbierta((a) => !a)} testID={testID ? `${testID}-ver-todos` : undefined}>
-          <AtlasText variant="caption" tone="brand">
-            {abierta ? 'Ver menos' : verTodos(ocultos)}
-          </AtlasText>
-        </Pressable>
+      {paginas.length > 1 ? (
+        <View style={styles.puntos} accessibilityRole="tablist">
+          {paginas.map((_, p) => (
+            <Punto key={p} indice={p} progreso={progreso} activo={pagina === p} onPress={() => irA(p)} />
+          ))}
+        </View>
       ) : null}
     </View>
   );
 }
 
-/** Los niveles, de arriba abajo (el más alto primero): se enseñan los 3 que vienen, el actual y nada más. */
-export const resumirNiveles = (pasos: readonly Paso[]): Paso[] => {
-  const actual = pasos.findIndex((p) => p.actual);
-  if (actual < 0) return pasos.slice(0, 5);
-  return pasos.slice(Math.max(0, actual - 3), actual + 1);
-};
-
-/** Las misiones: las pendientes primero (hasta 4); si ya no queda ninguna, las primeras hechas. */
-export const resumirMisiones = (pasos: readonly Paso[]): Paso[] => {
-  const pendientes = pasos.filter((p) => !p.hecho);
-  return (pendientes.length > 0 ? pendientes : pasos).slice(0, 4);
-};
-
 const styles = StyleSheet.create({
+  visor: { overflow: 'hidden' },
   fila: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },
   texto: { flex: 1, gap: 2 },
   marca: { width: 24, height: 24, borderRadius: radius.pill, borderWidth: 1.5, borderColor: color.border.strong, alignItems: 'center', justifyContent: 'center' },
   marcaHecha: { backgroundColor: color.action.primary, borderColor: color.action.primary },
-  ver: { alignSelf: 'center', paddingVertical: space.sm },
+  puntos: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs, paddingTop: space.md },
+  dot: { height: 6, borderRadius: 3, backgroundColor: color.action.primary },
 });
