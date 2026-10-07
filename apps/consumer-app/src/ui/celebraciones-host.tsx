@@ -14,6 +14,7 @@ import * as creditLineApi from '../api/endpoints/credit-line';
 import { esRutaTranquila, pendientesDeCelebrar, type Logro, type Vistos } from '../features/celebraciones';
 import { suscribirCelebraciones } from '../features/celebraciones-bus';
 import { useSession } from '../session/session';
+import { CartaDeInsignia } from './carta-de-insignia';
 import { CelebracionDeLogro } from './celebracion-logro';
 import { useTour } from './tour';
 
@@ -52,6 +53,7 @@ export function CelebracionesHost() {
   const [cola, setCola] = useState<Logro[]>([]);
   const [mas, setMas] = useState(0);
   const [repeticion, setRepeticion] = useState<Logro | null>(null);
+  const [carta, setCarta] = useState<Logro | null>(null);
   const [listo, setListo] = useState(false);
   const ultima = useRef(0);
   const enCurso = useRef(false);
@@ -90,6 +92,7 @@ export function CelebracionesHost() {
     const baja = suscribirCelebraciones({
       revisar: () => setTimeout(() => void revisar(true), 700),
       repetir: (logro) => setRepeticion(logro),
+      carta: (logro) => setCarta(logro),
     });
     return () => {
       clearTimeout(t);
@@ -115,6 +118,17 @@ export function CelebracionesHost() {
     return () => clearTimeout(t);
   }, [hayCola, tranquila, tour.activo, pathname]);
 
+  if (carta && carta.tipo === 'insignia' && !repeticion)
+    return (
+      <CartaDeInsignia
+        logro={carta}
+        onCerrar={() => setCarta(null)}
+        onRevivir={() => {
+          setRepeticion(carta);
+          setCarta(null);
+        }}
+      />
+    );
   if (repeticion) return <CelebracionDeLogro logro={repeticion} posicion={{ actual: 1, total: 1 }} onCerrar={() => setRepeticion(null)} />;
   if (!hayCola || !listo) return null;
   return (

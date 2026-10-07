@@ -51,7 +51,8 @@ import { easing, motion, space, spring } from '../theme/tokens';
 import { EscudoDeNivel } from './escudo-de-nivel';
 import { caraDe } from './insignia';
 import { AtlasText, Button, ProgressBar } from './primitives';
-import { METAL, SILUETA_COPA, Trofeo, type Rango } from './trofeo';
+import { Medalla, SILUETA_MEDALLA } from './medalla';
+import { METAL, type Rango } from './trofeo';
 
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 
@@ -268,7 +269,7 @@ export function CelebracionDeLogro({
     <>
       <Defs>
         <ClipPath id={`clip-${clave}`}>
-          <Path d={SILUETA_COPA} />
+          <Path d={SILUETA_MEDALLA} />
         </ClipPath>
         <LinearGradient id={`luz-${clave}`} x1="0" y1="0" x2="1" y2="0">
           <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0} />
@@ -321,9 +322,9 @@ export function CelebracionDeLogro({
 
           <Animated.View style={[styles.capa, estiloHeroe]}>
             {logro.tipo === 'insignia' ? (
-              <Trofeo codigo={clave} rango={rango} icono={cara?.icon ?? 'estrella'} ganado lado={lado}>
+              <Medalla codigo={clave} rango={rango} icono={cara?.icon ?? 'estrella'} ganado lado={lado}>
                 {animar ? barridoLuz : null}
-              </Trofeo>
+              </Medalla>
             ) : (
               <EscudoDeNivel rango={rango} icono={ICONO_DE_ESCALON[logro.nivel.id] ?? 'estrella'} numero={logro.nivel.index} de={logro.nivel.of} lado={lado} />
             )}

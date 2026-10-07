@@ -6,12 +6,15 @@
  * 4 en Rachas» da una razón concreta para el siguiente paso. Las insignias secretas cuentan en el total pero no se
  * anticipan: enseñan su pista y un candado.
  *
- * Tocar un trofeo ganado repite su celebración: revivir lo ganado es parte del premio.
+ * Tocar CUALQUIER insignia abre su carta (`carta-de-insignia.tsx`); desde la de una ganada se puede revivir su celebración.
+ * Van paginadas por colección: treinta y cuatro de golpe eran demasiadas (Pablo, 2026-10-07).
  */
-import { StyleSheet, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { type LayoutChangeEvent, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, { Extrapolation, interpolate, runOnJS, type SharedValue, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import type { Badge, Progress } from '../api/endpoints/credit-line';
 import { logroDeInsignia, NOMBRE_COLECCION } from '../features/celebraciones';
-import { repetirCelebracion } from '../features/celebraciones-bus';
+import { abrirCartaDeInsignia } from '../features/celebraciones-bus';
 import { avanceDeInsignia } from '../features/puntaje-explicado';
 import { color, palette, space } from '../theme/tokens';
 import { Insignia } from './insignia';
@@ -39,12 +42,26 @@ export function VitrinaDeLogros({ progress }: { progress: Progress }) {
   const ganadas = badges.filter((b) => b.earned).length;
   const cercano = masCercano(badges);
   const grupos = porColeccion(badges);
-  let indice = 0;
+  const { width: ventana } = useWindowDimensions();
+  const [ancho, setAncho] = useState(Math.max(240, ventana - 80));
+  const [pagina, setPagina] = useState(0);
+  const progresoScroll = useSharedValue(0);
+  const scroll = useRef<Animated.ScrollView>(null);
+
+  const alDesplazar = useAnimatedScrollHandler({
+    onScroll: (e) => {
+      progresoScroll.value = e.contentOffset.x / ancho;
+      runOnJS(setPagina)(Math.round(e.contentOffset.x / ancho));
+    },
+  });
+  const irA = (n: number) => scroll.current?.scrollTo({ x: n * ancho, animated: true });
+  const actual = grupos[Math.min(pagina, grupos.length - 1)];
+  const hechas = actual ? actual.items.filter((b) => b.earned).length : 0;
 
   return (
     <View style={styles.vitrina}>
-      <SectionHeader title="Tus trofeos" detail={`${ganadas} de ${badges.length} ganados · de bronce a diamante`} />
-      <ProgressBar value={badges.length > 0 ? Math.round((ganadas / badges.length) * 100) : 0} label={`${ganadas} de ${badges.length} trofeos ganados`} />
+      <SectionHeader title="Tus insignias" detail={`${ganadas} de ${badges.length} ganadas · de bronce a diamante`} />
+      <ProgressBar value={badges.length > 0 ? Math.round((ganadas / badges.length) * 100) : 0} label={`${ganadas} de ${badges.length} insignias ganadas`} />
       {cercano ? (
         <Card tone="brand" testID="logro-mas-cercano">
           <AtlasText variant="overline" tone="brand">
@@ -55,45 +72,62 @@ export function VitrinaDeLogros({ progress }: { progress: Progress }) {
           <ProgressBar value={Math.round((cercano.current / cercano.target) * 100)} label={`Avance de ${cercano.label}`} />
         </Card>
       ) : null}
-      {grupos.map((grupo) => {
-        const hechas = grupo.items.filter((b) => b.earned).length;
-        return (
-          <View key={grupo.clave} style={styles.grupo} testID={`coleccion-${grupo.clave}`}>
-            {grupo.clave === 'todas' ? null : (
-              <View style={styles.cabecera}>
-                <AtlasText variant="bodyStrong">{grupo.nombre}</AtlasText>
-                <AtlasText variant="caption" tone={hechas === grupo.items.length ? 'brand' : 'tertiary'}>
-                  {hechas === grupo.items.length ? 'Completa' : `${hechas} de ${grupo.items.length}`}
-                </AtlasText>
-              </View>
-            )}
-            {/* La vitrina: un fondo más hondo que el de las tarjetas, para que el metal de los trofeos brille. */}
-            <Card style={styles.caja}>
-              <View style={styles.rejilla} testID={grupo.clave === 'todas' ? 'insignias' : undefined}>
-                {grupo.items.map((insignia) => {
-                  const i = indice++;
-                  return (
-                    <Insignia
-                      key={insignia.code}
-                      insignia={insignia}
-                      indice={i}
-                      onPress={insignia.earned ? () => repetirCelebracion(logroDeInsignia(progress, insignia)) : undefined}
-                    />
-                  );
-                })}
-              </View>
-            </Card>
+
+      {/* Una colección por página: treinta y cuatro insignias de golpe eran una pared, no una vitrina. */}
+      <Card style={styles.caja} testID="vitrina-paginada">
+        {actual && actual.clave !== 'todas' ? (
+          <View style={styles.cabecera}>
+            <AtlasText variant="bodyStrong">{actual.nombre}</AtlasText>
+            <AtlasText variant="caption" tone={hechas === actual.items.length ? 'brand' : 'tertiary'}>
+              {hechas === actual.items.length ? 'Completa' : `${hechas} de ${actual.items.length}`}
+            </AtlasText>
           </View>
-        );
-      })}
+        ) : null}
+        <View onLayout={(e: LayoutChangeEvent) => e.nativeEvent.layout.width > 0 && setAncho(Math.round(e.nativeEvent.layout.width))} style={styles.visor}>
+          <Animated.ScrollView ref={scroll} horizontal pagingEnabled decelerationRate="fast" showsHorizontalScrollIndicator={false} onScroll={alDesplazar} scrollEventThrottle={16}>
+            {grupos.map((grupo) => (
+              <View key={grupo.clave} style={[styles.rejilla, { width: ancho }]} testID={`coleccion-${grupo.clave}`}>
+                <View style={styles.celdas} testID={grupo.clave === 'todas' ? 'insignias' : undefined}>
+                  {grupo.items.map((insignia) => (
+                    <Insignia key={insignia.code} insignia={insignia} onPress={() => abrirCartaDeInsignia(logroDeInsignia(progress, insignia))} />
+                  ))}
+                </View>
+              </View>
+            ))}
+          </Animated.ScrollView>
+        </View>
+        {grupos.length > 1 ? (
+          <View style={styles.puntos} accessibilityRole="tablist">
+            {grupos.map((g, i) => (
+              <Punto key={g.clave} indice={i} progreso={progresoScroll} activo={pagina === i} etiqueta={g.nombre} onPress={() => irA(i)} />
+            ))}
+          </View>
+        ) : null}
+      </Card>
     </View>
+  );
+}
+
+/** Un punto del pie: el activo se alarga y se enciende; sigue al dedo mientras se desliza. */
+function Punto({ indice, progreso, activo, etiqueta, onPress }: { indice: number; progreso: SharedValue<number>; activo: boolean; etiqueta: string; onPress: () => void }) {
+  const estilo = useAnimatedStyle(() => {
+    const cerca = interpolate(progreso.value, [indice - 1, indice, indice + 1], [0, 1, 0], Extrapolation.CLAMP);
+    return { width: 6 + 14 * cerca, opacity: 0.35 + 0.65 * cerca };
+  });
+  return (
+    <Pressable onPress={onPress} hitSlop={10} accessibilityRole="tab" accessibilityState={{ selected: activo }} accessibilityLabel={`Colección ${etiqueta}`}>
+      <Animated.View style={[styles.dot, estilo]} />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   vitrina: { gap: space.md },
-  grupo: { gap: space.sm },
-  cabecera: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', paddingHorizontal: space.xs },
-  caja: { backgroundColor: palette.bg, borderColor: color.feedbackBorder.brand },
-  rejilla: { flexDirection: 'row', flexWrap: 'wrap' },
+  caja: { backgroundColor: palette.bg, borderColor: color.feedbackBorder.brand, gap: space.sm },
+  cabecera: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  visor: { overflow: 'hidden' },
+  rejilla: { justifyContent: 'flex-start' },
+  celdas: { flexDirection: 'row', flexWrap: 'wrap' },
+  puntos: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs, paddingTop: space.xs },
+  dot: { height: 6, borderRadius: 3, backgroundColor: color.action.primary },
 });
