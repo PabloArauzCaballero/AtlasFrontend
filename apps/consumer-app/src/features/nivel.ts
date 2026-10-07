@@ -20,7 +20,7 @@ export const ICONO_DE_NIVEL: Record<TierCode, IconName> = {
 /** Los mismos escalones que `AtlasBackend/src/modules/credit/domain/points-level.ts`; sólo se usan si el backend no los manda. */
 const ESCALONES: readonly { code: TierCode; label: string; from: number }[] = [
   { code: 'NUEVO', label: 'Nuevo', from: 0 },
-  { code: 'EN_CONSTRUCCION', label: 'En construcción', from: 500 },
+  { code: 'EN_CONSTRUCCION', label: 'En crecimiento', from: 500 },
   { code: 'ESTABLECIDO', label: 'Establecido', from: 2_000 },
   { code: 'CONSOLIDADO', label: 'Consolidado', from: 5_000 },
   { code: 'PREFERENTE', label: 'Preferente', from: 10_000 },

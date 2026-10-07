@@ -45,7 +45,7 @@ describe('porcentajeDeBarra', () => {
 describe('fraseDeLoQueFalta', () => {
   it('habla en PUNTOS y con separador de miles, nunca en calificación', () => {
     const frase = fraseDeLoQueFalta(nivelPorPuntos(conPuntos(24)));
-    expect(frase).toBe('Te faltan 476 puntos para «En construcción». Sumas 1 por cada boliviano que compras.');
+    expect(frase).toBe('Te faltan 476 puntos para «En crecimiento». Sumas 1 por cada boliviano que compras.');
     expect(frase).not.toMatch(/calificación|de 100/);
   });
   it('singular con 1 punto', () => expect(fraseDeLoQueFalta(nivelPorPuntos(conPuntos(499)))).toMatch(/^Te falta 1 punto para/));

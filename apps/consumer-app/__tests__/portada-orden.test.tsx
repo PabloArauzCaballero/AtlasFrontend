@@ -122,7 +122,8 @@ describe("Inicio · el orden de la portada", () => {
     await montar();
     expect(screen.queryByText("TU PUNTAJE")).toBeNull();
     expect(screen.queryByTestId("por-que-puntaje")).toBeNull();
-    expect(screen.getAllByText("Más info")).toHaveLength(2);
+    expect(screen.getByTestId("nivel-mas-info")).toBeTruthy();
+    expect(screen.getByTestId("calificacion-mas-info")).toBeTruthy();
   });
 
   it("enseña el disponible como la cifra de la tarjeta principal, con el límite y lo que falta por pagar", async () => {

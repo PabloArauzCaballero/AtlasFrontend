@@ -61,7 +61,7 @@ export const PROGRESO_DE_PRUEBA: Progress = {
   tier: { code: "NUEVO", label: "Nuevo", index: 1, of: 5, multiplier: 1 },
   nextTier: {
     code: "EN_CONSTRUCCION",
-    label: "En construcción",
+    label: "En crecimiento",
     from: 25,
     pointsMissing: 1,
     multiplier: 1.5,
@@ -70,7 +70,7 @@ export const PROGRESO_DE_PRUEBA: Progress = {
     { code: "NUEVO", label: "Nuevo", from: 0, multiplier: 1, reached: true },
     {
       code: "EN_CONSTRUCCION",
-      label: "En construcción",
+      label: "En crecimiento",
       from: 25,
       multiplier: 1.5,
       reached: false,

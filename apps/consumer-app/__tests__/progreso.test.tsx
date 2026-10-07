@@ -75,11 +75,11 @@ describe("NivelCard", () => {
     expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
     // En PUNTOS de experiencia, nunca la calificación 24 de 100.
     expect(screen.getByText("350")).toBeTruthy();
-    expect(screen.getByText("puntos XP")).toBeTruthy();
+    expect(screen.getByText("puntos")).toBeTruthy();
     expect(screen.getByText("Racha 3")).toBeTruthy();
     expect(screen.queryByText("24")).toBeNull();
     expect(screen.queryByText("de 100")).toBeNull();
-    expect(screen.getByText("Faltan 150 para «En construcción»")).toBeTruthy();
+    expect(screen.getByText("Faltan 150 para «En crecimiento»")).toBeTruthy();
   });
 
   it("«Más info» abre cómo se ganan los puntos: 1 por boliviano comprado, con la escalera de niveles", async () => {
@@ -365,7 +365,7 @@ describe("Puntaje y Calificación son pestañas SEPARADAS", () => {
         nextLevel: { code: "CONSOLIDADO", label: "Consolidado", from: 5000, pointsMissing: 2600 },
         levelLadder: [
           { code: "NUEVO", label: "Nuevo", from: 0, reached: true },
-          { code: "EN_CONSTRUCCION", label: "En construcción", from: 500, reached: true },
+          { code: "EN_CONSTRUCCION", label: "En crecimiento", from: 500, reached: true },
           { code: "ESTABLECIDO", label: "Establecido", from: 2000, reached: true },
           { code: "CONSOLIDADO", label: "Consolidado", from: 5000, reached: false },
           { code: "PREFERENTE", label: "Preferente", from: 10000, reached: false },

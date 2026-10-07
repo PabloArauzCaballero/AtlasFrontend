@@ -10,9 +10,9 @@ import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
 import { calificacionDe, fraseDeCalificacion } from '../features/calificacion';
 import { space } from '../theme/tokens';
-import { InfoSheet } from './help-sheet';
+import { BotonInfo, InfoSheet } from './help-sheet';
 import { PressSurface } from './motion';
-import { AtlasText, Button, Card, CardHeader, ProgressBar } from './primitives';
+import { AtlasText, Card, CardHeader, ProgressBar } from './primitives';
 import { PuntajeDesglose } from './puntaje-desglose';
 
 /**
@@ -26,8 +26,7 @@ export function CalificacionCard({ progress, onPress, masInfo = false }: { progr
   if (masInfo) {
     return (
       <Card testID="calificacion-card">
-        <Cuerpo valor={valor} frase={frase} />
-        <Button label="Más info" icon="info" variant="secondary" haptic="none" onPress={() => setInfo(true)} testID="calificacion-mas-info" />
+        <Cuerpo valor={valor} frase={frase} info={<BotonInfo etiqueta="cómo se calcula tu calificación" onPress={() => setInfo(true)} testID="calificacion-mas-info" />} />
         <InfoSheet visible={info} titulo="Cómo se calcula tu calificación" onClose={() => setInfo(false)} testID="calificacion-info">
           <PuntajeDesglose progress={progress} titulo="Parte por parte" plano />
         </InfoSheet>
@@ -49,10 +48,10 @@ export function CalificacionCard({ progress, onPress, masInfo = false }: { progr
   );
 }
 
-function Cuerpo({ valor, frase }: { valor: number; frase: string }) {
+function Cuerpo({ valor, frase, info }: { valor: number; frase: string; info?: React.ReactNode }) {
   return (
     <>
-      <CardHeader icon="grafico" eyebrow="Qué tan buen pagador eres" title="Tu calificación" divider={false} />
+      <CardHeader icon="grafico" eyebrow="Qué tan buen pagador eres" title="Tu calificación" trailing={info} divider={false} />
       <View style={styles.cifra}>
         <AtlasText variant="amount">{String(valor)}</AtlasText>
         <AtlasText variant="caption" tone="secondary">
