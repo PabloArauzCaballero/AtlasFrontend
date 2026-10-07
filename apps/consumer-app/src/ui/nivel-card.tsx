@@ -16,7 +16,8 @@ import { color, radius, space, stroke } from '../theme/tokens';
 import { BotonInfo, InfoSheet } from './help-sheet';
 import { Icon } from './icons';
 import { Vivo } from './motion';
-import { AtlasText, Button, Divider, ProgressBar } from './primitives';
+import { AtlasText, Button, Divider } from './primitives';
+import { BarraViva, CuentaArriba, useAvance } from './cuenta-arriba';
 
 export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVerLogros?: () => void }) {
   const [info, setInfo] = useState(false);
@@ -26,6 +27,7 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
   const currentStreak = progress.experience?.currentStreak ?? 0;
   const bestStreak = progress.experience?.bestStreak ?? 0;
   const puntos = level.points === 1 ? 'punto' : 'puntos';
+  const avance = useAvance(true);
 
   return (
     <View
@@ -52,15 +54,13 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
           </AtlasText>
         </View>
         <View style={styles.puntos}>
-          <AtlasText variant="amount" numberOfLines={1}>
-            {formatoPuntos(level.points)}
-          </AtlasText>
+          <CuentaArriba avance={avance} hasta={level.points} formato={formatoPuntos} tamano="amount" />
           <AtlasText variant="caption" tone="secondary">
             {puntos}
           </AtlasText>
         </View>
       </View>
-      <ProgressBar
+      <BarraViva
         value={porcentajeDeBarra(nivel)}
         label={nextLevel ? `${formatoPuntos(level.points)} puntos; ${nextLevel.label} empieza en ${formatoPuntos(nextLevel.from)}` : 'Nivel máximo'}
       />

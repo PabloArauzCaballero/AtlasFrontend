@@ -1,3 +1,10 @@
+// Las cifras que cuentan hacia arriba dependen del reloj de animación, que en jest no avanza. Con movimiento reducido —un
+// camino real de la app— nacen ya en su destino; es lo que estas pruebas leen.
+jest.mock("react-native-reanimated", () => {
+  const actual = jest.requireActual("react-native-reanimated");
+  return new Proxy(actual, { get: (objetivo, clave) => (clave === "useReducedMotion" ? () => true : objetivo[clave]) });
+});
+
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import {
   SafeAreaProvider,
@@ -111,11 +118,14 @@ describe("pantalla «Tu nivel Atlas»", () => {
   it("lista las misiones y marca las cumplidas", async () => {
     await render(envolver(<Progreso />));
     await abrir("Logros");
-    expect(
-      screen.getByLabelText(/Verifica tu identidad\. Cumplida/),
-    ).toBeTruthy();
+    // De entrada se ven las pendientes; las cumplidas quedan tras «Ver las N que faltan».
     expect(
       screen.getByLabelText(/Termina de pagar una compra\. Pendiente/),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText(/Verifica tu identidad\. Cumplida/)).toBeNull();
+    await fireEvent.press(screen.getByTestId("misiones-ver-todos"));
+    expect(
+      screen.getByLabelText(/Verifica tu identidad\. Cumplida/),
     ).toBeTruthy();
   });
 

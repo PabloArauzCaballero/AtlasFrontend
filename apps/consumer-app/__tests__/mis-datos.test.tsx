@@ -16,6 +16,11 @@ import {
  * «Mis datos»: todo lo que Atlas sabe de la persona, siempre disponible pero tras volver a pedir el PIN.
  * Llegar por un enlace directo no se salta el PIN: sin confirmación reciente no se pide ni se pinta nada.
  */
+// Las cifras que cuentan hacia arriba dependen del reloj de animación, que en jest no avanza: con movimiento reducido nacen en su destino.
+jest.mock("react-native-reanimated", () => {
+  const actual = jest.requireActual("react-native-reanimated");
+  return new Proxy(actual, { get: (objetivo, clave) => (clave === "useReducedMotion" ? () => true : objetivo[clave]) });
+});
 jest.mock("expo-router", () => ({
   useRouter: () => ({
     push: jest.fn(),
