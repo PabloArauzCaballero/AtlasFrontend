@@ -12,6 +12,7 @@ import * as authApi from '../../src/api/endpoints/auth';
 import { describeError } from '../../src/api/errors';
 import { firstBlocker } from '../../src/ui/blocked';
 import { Field } from '../../src/ui/fields';
+import { CodeField } from '../../src/ui/code-field';
 import { PinField } from '../../src/ui/pin-field';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { space } from '../../src/theme/tokens';
@@ -114,16 +115,11 @@ export default function RecoverPassword() {
         />
       ) : (
         <>
-          <Field
+          <CodeField
             label="Código de 6 dígitos"
             value={code}
-            onChangeText={(next) => setCode(next.replace(/\D/g, '').slice(0, 6))}
-            keyboardType="number-pad"
-            textContentType="oneTimeCode"
-            autoComplete="one-time-code"
-            maxLength={6}
-            ayuda="Los seis dígitos que te acabamos de enviar por correo, sin espacios. Sirven una sola vez y vencen en pocos minutos; si no llegó, revisa la carpeta de spam antes de pedir otro."
-            required
+            onChangeText={setCode}
+            ayuda="Los seis dígitos que te acabamos de enviar por correo. Sirven una sola vez y vencen en pocos minutos; si no llegó, revisa la carpeta de spam antes de pedir otro."
           />
           {/*
             Un PIN, no una contrasena: lo mismo que se creo al registrarse y lo mismo que pide el

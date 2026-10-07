@@ -180,6 +180,41 @@ describe('guardar el PIN nuevo', () => {
     expect(mockReplace).toHaveBeenCalledWith('/ingresar');
   });
 
+  it('el cierre local avisa de que el servidor ya revocó las sesiones (sin llamadas con el token muerto)', async () => {
+    confirmPinChange.mockResolvedValue({ updated: true });
+    await llegarAlPaso2ConDatos();
+    await fireEvent.press(screen.getByRole('button', { name: /Guardar mi PIN nuevo/ }));
+    await waitFor(() => expect(screen.getByText('PIN actualizado')).toBeTruthy());
+    await fireEvent.press(screen.getByRole('button', { name: /Entrar con mi PIN nuevo/ }));
+    await waitFor(() => expect(mockSignOut).toHaveBeenCalledWith({ servidorYaRevoco: true }));
+  });
+
+  it('si el cierre local se atasca, a los 3 s lleva a entrar igual: el botón no gira para siempre', async () => {
+    confirmPinChange.mockResolvedValue({ updated: true });
+    mockSignOut.mockImplementationOnce(() => new Promise<undefined>(() => undefined));
+    await llegarAlPaso2ConDatos();
+    await fireEvent.press(screen.getByRole('button', { name: /Guardar mi PIN nuevo/ }));
+    await waitFor(() => expect(screen.getByText('PIN actualizado')).toBeTruthy());
+    jest.useFakeTimers();
+    try {
+      await fireEvent.press(screen.getByRole('button', { name: /Entrar con mi PIN nuevo/ }));
+      expect(mockReplace).not.toHaveBeenCalledWith('/ingresar');
+      await act(async () => {
+        jest.advanceTimersByTime(3_100);
+      });
+      expect(mockReplace).toHaveBeenCalledWith('/ingresar');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('el código de 6 dígitos se escribe en seis casillas, como el PIN, y se ve mientras se teclea', async () => {
+    await llegarAlPaso2ConDatos('7391', '590772');
+    expect(screen.getByTestId('code-field')).toBeTruthy();
+    expect(screen.getByLabelText('Código de 6 dígitos').props.maxLength).toBe(6);
+    for (const digito of ['5', '9', '0', '7', '2']) expect(screen.getAllByText(digito).length).toBeGreaterThan(0);
+  });
+
   it('el éxito no ofrece «volver al perfil»: la sesión ya no existe', async () => {
     confirmPinChange.mockResolvedValue({ updated: true });
     await llegarAlPaso2ConDatos();

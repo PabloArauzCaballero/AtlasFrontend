@@ -33,7 +33,11 @@ export type SessionValue = {
   refresh(): Promise<void>;
   signIn(identifier: string, password: string): Promise<void>;
   register(input: RegisterInput): Promise<onboardingApi.StartOnboardingResponse>;
-  signOut(): Promise<void>;
+  /**
+   * `servidorYaRevoco`: el servidor ya cerró TODAS las sesiones (cambio de PIN). Se salta lo que habla con él con
+   * el token muerto —cada llamada daba 401, intentaba refrescar y esperaba— y se cierra sólo lo local.
+   */
+  signOut(opciones?: { servidorYaRevoco?: boolean }): Promise<void>;
   /**
    * Vuelve a registrar los consentimientos y a encender las señales con la decision de permisos
    * que la persona acaba de tomar. Lo llama la pantalla de permisos cuando se abre DENTRO del alta:
@@ -308,7 +312,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     [signIn],
   );
 
-  const signOut = useCallback<SessionValue['signOut']>(async () => {
+  const signOut = useCallback<SessionValue['signOut']>(async (opciones) => {
+    const servidorYaRevoco = opciones?.servidorYaRevoco === true;
     /*
       Se apaga el rastreo ANTES de revocar el token.
       
@@ -324,11 +329,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setLatido(null);
     await desactivarSeñalesDelDispositivo();
     // Lo que quede de bitacora sale con el token todavia valido; despues se borra del disco.
-    await bitacora.cerrar().catch(() => undefined);
+    // Con las sesiones ya revocadas el lote no puede entrar: se vacía el disco sin esperar a la red.
+    await (servidorYaRevoco ? Promise.resolve() : bitacora.cerrar()).catch(() => undefined);
 
     const abierta = sesionTelemetria.current;
     const salienteId = profile?.customerId;
-    if (abierta && salienteId) {
+    if (abierta && salienteId && !servidorYaRevoco) {
       // Cerrarla antes de revocar el token: despues ya no hay con que autenticar la llamada, y una
       // sesion que nunca se cierra se queda «activa» para siempre en la auditoria.
       // Con plazo: como mucho 5 s, y si no se pudo, el cierre local sigue igual. Ver `cierre-de-sesion.ts`.
@@ -336,7 +342,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       sesionTelemetria.current = null;
     }
     const tokens = await secureTokenStore.read();
-    if (tokens) {
+    if (tokens && !servidorYaRevoco) {
       // Si la revocacion falla, la sesion local se cierra igual: dejar tokens en el dispositivo
       // porque el servidor no respondio seria el peor de los dos resultados.
       await authApi.logout(tokens.refreshToken).catch(() => undefined);

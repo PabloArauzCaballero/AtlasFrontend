@@ -137,7 +137,7 @@ describe('la pantalla de verificacion del contacto', () => {
     expect(screen.getByText(/revisa tus mensajes/i)).toBeTruthy();
     expect(screen.queryByText(/Algo no salió bien/i)).toBeNull();
     // Y el campo del codigo, que es lo unico que hay que hacer ahi.
-    expect(screen.getByLabelText(/^Código recibido/)).toBeTruthy();
+    expect(screen.getByLabelText("Código recibido")).toBeTruthy();
   });
 
   /* Un solo envio por ronda: nada de un mensaje por cada repintado. */
