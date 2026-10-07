@@ -33,16 +33,16 @@ describe("CartaDeInsignia", () => {
     expect(screen.queryByTestId("carta-revivir")).toBeNull();
   });
 
-  it("ganada: sello, y sólo enseña puntos y fecha si el servidor los manda", async () => {
+  it("ganada: sello, sin puntos (las insignias no dan) y sin fecha si el servidor no la manda", async () => {
     await pintar(b({ earned: true, current: 6 }));
     expect(screen.getByText("GANADA")).toBeTruthy();
     expect(screen.queryByText("puntos")).toBeNull();
+    expect(screen.queryByText(/^El /)).toBeNull();
     expect(screen.getByTestId("carta-revivir")).toBeTruthy();
   });
 
-  it("ganada con puntos y fecha del servidor: los enseña", async () => {
-    await pintar(b({ earned: true, current: 6, points: 120, earnedAt: "2026-10-07T12:00:00Z" }));
-    expect(screen.getByLabelText("Sumó 120 puntos")).toBeTruthy();
+  it("ganada con fecha del servidor: la enseña", async () => {
+    await pintar(b({ earned: true, current: 6, earnedAt: "2026-10-07T12:00:00Z" }));
     expect(screen.getByText(/^El .*2026/)).toBeTruthy();
   });
 

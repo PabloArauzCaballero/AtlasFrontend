@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import type { Badge, Progress } from "../src/api/endpoints/credit-line";
 import * as bus from "../src/features/celebraciones-bus";
-import { masCercano, porColeccion, VitrinaDeLogros } from "../src/ui/vitrina-de-logros";
+import { aLaVista, masCercano, porColeccion, VitrinaDeLogros } from "../src/ui/vitrina-de-logros";
 import { PROGRESO_DE_PRUEBA } from "./progreso-datos";
 
 const b = (code: string, extra: Partial<Badge> = {}): Badge => ({
@@ -98,5 +98,23 @@ describe("VitrinaDeLogros", () => {
     await render(<VitrinaDeLogros progress={con([b("d", { rank: "diamante", earned: true, current: 10, label: "Imparable" })])} />);
     expect(screen.getByText("DIAMANTE")).toBeTruthy();
     expect(screen.getByLabelText(/Insignia de diamante: Imparable\. Ganado/)).toBeTruthy();
+  });
+});
+
+describe("aLaVista", () => {
+  const muchas = [
+    b("g1", { earned: true, current: 10 }),
+    ...["p1", "p2", "p3", "p4", "p5"].map((c, i) => b(c, { current: i })),
+    b("s", { secret: true, current: 9 }),
+  ];
+
+  it("enseña lo ganado y las 3 pendientes más cercanas; las secretas, al final", () => {
+    const { visibles, ocultas } = aLaVista(muchas, false);
+    expect(visibles.map((x) => x.code)).toEqual(["g1", "p3", "p4", "p5"]);
+    expect(ocultas).toBe(3);
+  });
+
+  it("abierta, enseña todo", () => {
+    expect(aLaVista(muchas, true)).toEqual({ visibles: muchas, ocultas: 0 });
   });
 });
