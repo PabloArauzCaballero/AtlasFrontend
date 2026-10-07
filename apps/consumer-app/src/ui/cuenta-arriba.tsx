@@ -5,7 +5,7 @@
  * Comparten un solo valor compartido 0→1 (`useAvance`): cifra y barra son lo mismo visto de dos maneras, y si cada una
  * llevara su reloj acabarían desfasadas. Con movimiento reducido todo nace en su valor final.
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
@@ -37,10 +37,12 @@ export function useAvance(activa: boolean): SharedValue<number> {
   const reducido = useReducedMotion();
   const avance = useSharedValue(reducido ? 1 : 0);
   const arrancado = useRef(false);
-  if (activa && !arrancado.current) {
+  // En un efecto y no en el render: escribir un valor compartido mientras se renderiza es lo que Reanimated 4 desaconseja.
+  useEffect(() => {
+    if (!activa || arrancado.current) return;
     arrancado.current = true;
     avance.value = reducido ? 1 : withDelay(motion.base, withTiming(1, { duration: SUBIDA, easing: CURVA }));
-  }
+  }, [activa, avance, reducido]);
   return avance;
 }
 
@@ -58,13 +60,18 @@ export function CuentaArriba({
   tamano?: 'display' | 'h2';
   color?: string;
 }) {
-  const [texto, setTexto] = useState(() => formato(avance.value >= 1 ? hasta : 0));
+  /*
+    A JS sólo vuelve el NÚMERO. `formato` es una función normal de JS: llamarla desde la reacción (hilo de UI) funciona
+    en el navegador, donde no hay dos hilos, y tumba la app en el teléfono. El texto se compone aquí, en el render.
+  */
+  const [valor, setValor] = useState(() => (avance.value >= 1 ? hasta : 0));
   useAnimatedReaction(
     () => Math.round(hasta * avance.value * 10) / 10,
     (actual, previo) => {
-      if (actual !== previo) runOnJS(setTexto)(formato(actual));
+      if (actual !== previo) runOnJS(setValor)(actual);
     },
   );
+  const texto = formato(valor);
   return (
     <AtlasText variant={tamano} style={[styles.numero, tinta ? { color: tinta } : null]} accessibilityLabel={formato(hasta)}>
       {texto}
