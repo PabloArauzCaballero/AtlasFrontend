@@ -31,20 +31,7 @@ import { AtlasText } from './primitives';
 
 export const PIN_LENGTH = 4;
 
-export function PinField({
-  label,
-  value,
-  onChangeText,
-  error,
-  hint,
-  ayuda,
-  autoFocus = false,
-  onComplete,
-  bitacora,
-  tamano = 'base',
-  autoComplete,
-  textContentType = 'oneTimeCode',
-}: {
+export type PinFieldProps = {
   label: string;
   value: string;
   onChangeText: (next: string) => void;
@@ -66,17 +53,47 @@ export function PinField({
   autoComplete?: 'current-password' | 'new-password' | 'one-time-code' | 'off';
   /** `password` en el login; por defecto `oneTimeCode`, que es lo que sirve al alta y a recuperar. */
   textContentType?: 'password' | 'newPassword' | 'oneTimeCode';
-}) {
+  /** Casillas del campo. Un PIN lleva cuatro; los códigos de un solo uso, seis (ver `code-field.tsx`). */
+  length?: number;
+  /** `false` para lo que se lee y se copia (un código del correo): sin puntitos y sin ojo. */
+  secret?: boolean;
+  /** Se deja cambiar para que un código no se confunda con un PIN en las pruebas de recorrido. */
+  testID?: string;
+  editable?: boolean;
+};
+
+export function PinField({
+  label,
+  value,
+  onChangeText,
+  error,
+  hint,
+  ayuda,
+  autoFocus = false,
+  onComplete,
+  bitacora,
+  tamano = 'base',
+  autoComplete,
+  textContentType = 'oneTimeCode',
+  length = PIN_LENGTH,
+  secret = true,
+  testID = 'pin-field',
+  editable = true,
+}: PinFieldProps) {
   const anotar = ganchosDeCampo(bitacora, () => value.length);
   const input = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
-  const [visible, setVisible] = useState(false);
+  const [verManual, setVisible] = useState(false);
+  const visible = !secret || verManual;
+
+  // Seis casillas de 64 no caben en un teléfono: se estrechan y bajan un poco, sin salirse del ancho.
+  const compacto = length > PIN_LENGTH;
 
   const handleChange = (raw: string) => {
     // Solo digitos: pegar «1 2-3 4» desde otra app tiene que funcionar igual que teclearlo.
-    const digits = raw.replace(/\D/g, '').slice(0, PIN_LENGTH);
+    const digits = raw.replace(/\D/g, '').slice(0, length);
     onChangeText(digits);
-    if (digits.length === PIN_LENGTH) {
+    if (digits.length === length) {
       if (esCampo(bitacora)) bitacoraDelAlta.campoCompleto(bitacora);
       onComplete?.(digits);
     }
@@ -96,6 +113,7 @@ export function PinField({
         required
         ayuda={ayuda}
         trailing={
+          secret ? (
           <Pressable
             onPress={() => setVisible(!visible)}
             hitSlop={12}
@@ -105,6 +123,7 @@ export function PinField({
           >
             <Icon name={visible ? 'ojo-tachado' : 'ojo'} size={20} tint={visible ? color.action.primary : color.text.tertiary} />
           </Pressable>
+          ) : undefined
         }
       />
 
@@ -122,17 +141,17 @@ export function PinField({
       <Pressable
         onPress={() => input.current?.focus()}
         accessibilityRole="none"
-        accessibilityLabel={`${label}: ${PIN_LENGTH} dígitos`}
-        testID="pin-field"
+        accessibilityLabel={`${label}: ${length} dígitos`}
+        testID={testID}
       >
-        <View style={[styles.boxes, tamano === 'grande' && styles.boxesGrande]}>
-          {Array.from({ length: PIN_LENGTH }, (_, index) => {
+        <View style={[styles.boxes, tamano === 'grande' && styles.boxesGrande, compacto && styles.boxesCompact]}>
+          {Array.from({ length }, (_, index) => {
             const filled = index < value.length;
             const active = focused && index === value.length;
             return (
               <View
                 key={index}
-                style={[styles.box, tamano === 'grande' && styles.boxGrande, filled && styles.boxFilled, active && styles.boxActive, error ? styles.boxError : null]}
+                style={[styles.box, tamano === 'grande' && styles.boxGrande, compacto && styles.boxCompact, filled && styles.boxFilled, active && styles.boxActive, error ? styles.boxError : null]}
               >
                 {filled ? (
                   visible ? (
@@ -161,10 +180,11 @@ export function PinField({
           onChangeText={handleChange}
           keyboardType="number-pad"
           inputMode="numeric"
-          maxLength={PIN_LENGTH}
+          maxLength={length}
+          editable={editable}
           autoFocus={autoFocus}
           caretHidden
-          secureTextEntry={!visible && Platform.OS === 'ios'}
+          secureTextEntry={secret && !visible && Platform.OS === 'ios'}
           textContentType={textContentType}
           autoComplete={autoComplete}
           onFocus={() => {
@@ -175,7 +195,7 @@ export function PinField({
             setFocused(false);
             anotar.onBlur();
           }}
-          style={[styles.hiddenInput, tamano === 'grande' && styles.hiddenInputGrande]}
+          style={[styles.hiddenInput, tamano === 'grande' && styles.hiddenInputGrande, compacto && styles.hiddenInputCompact]}
           accessibilityLabel={label}
         />
       </Pressable>
@@ -187,6 +207,7 @@ export function PinField({
 
 const BOX = 64;
 const BOX_GRANDE = 72;
+const BOX_COMPACT = 52;
 
 const styles = StyleSheet.create({
   wrapper: { gap: space.xs },
@@ -210,6 +231,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   boxesGrande: { gap: space.lg },
+  boxesCompact: { gap: space.sm },
+  boxCompact: { flex: 1, width: undefined, maxWidth: BOX, height: BOX_COMPACT },
+  hiddenInputCompact: { height: BOX_COMPACT },
   boxGrande: { width: BOX_GRANDE, height: BOX_GRANDE },
   hiddenInputGrande: { height: BOX_GRANDE },
   boxFilled: { borderColor: color.border.focus, backgroundColor: color.brandWash.to },

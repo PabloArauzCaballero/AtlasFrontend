@@ -76,6 +76,6 @@ it("tras un timeout no afirma que falló el envío y reconcilia el código al re
   );
   fireEvent.press(screen.getByText("Intentar de nuevo"));
   await waitFor(() => expect(screen.getByText("Código enviado")).toBeTruthy());
-  expect(screen.getByLabelText(/^Código recibido/)).toBeTruthy();
+  expect(screen.getByLabelText("Código recibido")).toBeTruthy();
   expect(onboardingApi.requestContactVerification).toHaveBeenCalledTimes(2);
 });

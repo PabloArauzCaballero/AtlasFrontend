@@ -29,12 +29,15 @@ import { describeError } from '../../src/api/errors';
 import { SEGUNDOS_ENTRE_ENVIOS, textoDeReenvio } from '../../src/features/cambiar-pin-reenvio';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
-import { Field } from '../../src/ui/fields';
+import { CodeField } from '../../src/ui/code-field';
 import { PinField } from '../../src/ui/pin-field';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, Card, ErrorState } from '../../src/ui/primitives';
 
 type Step = 'current' | 'confirm' | 'done';
+
+/** Tope de espera del cierre local tras el cambio de PIN: pasado, se va a entrar igual. */
+const PLAZO_SALIDA_MS = 3_000;
 
 export default function ChangePin() {
   const router = useRouter();
@@ -47,6 +50,7 @@ export default function ChangePin() {
   const [code, setCode] = useState('');
   const [newPin, setNewPin] = useState('');
   const [busy, setBusy] = useState(false);
+  const [saliendo, setSaliendo] = useState(false);
   const [error, setError] = useState<unknown>(null);
   /** Segundos que faltan para poder pedir otro código. */
   const [espera, setEspera] = useState(0);
@@ -91,9 +95,20 @@ export default function ChangePin() {
           <Button
             label="Entrar con mi PIN nuevo"
             icon="adelante"
+            loading={saliendo}
+            disabled={saliendo}
             onPress={async () => {
               // El servidor ya revocó todas las sesiones: se cierra la local y se va a entrar. No «volver al perfil».
-              await session.signOut();
+              // Sin esperar de más: si el cierre local se atasca, la persona NO se queda mirando un botón girando.
+              setSaliendo(true);
+              try {
+                await Promise.race([
+                  session.signOut({ servidorYaRevoco: true }),
+                  new Promise((resolve) => setTimeout(resolve, PLAZO_SALIDA_MS)),
+                ]);
+              } catch {
+                // El cierre local sigue su curso; lo que importa es llegar a la pantalla de entrada.
+              }
               router.replace('/ingresar');
             }}
           />
@@ -182,16 +197,11 @@ export default function ChangePin() {
             />
           </Card>
 
-          <Field
+          <CodeField
             label="Código de 6 dígitos"
             value={code}
-            onChangeText={(next) => setCode(next.replace(/\D/g, '').slice(0, 6))}
-            keyboardType="number-pad"
-            textContentType="oneTimeCode"
-            autoComplete="one-time-code"
-            maxLength={6}
-            ayuda="Los seis dígitos que te acabamos de enviar por correo, sin espacios. Sirven una sola vez y vencen en pocos minutos; si no llegó, revisa la carpeta de spam antes de pedir otro."
-            required
+            onChangeText={setCode}
+            ayuda="Los seis dígitos que te acabamos de enviar por correo. Sirven una sola vez y vencen en pocos minutos; si no llegó, revisa la carpeta de spam antes de pedir otro."
           />
           <PinField
             label="Tu PIN nuevo"

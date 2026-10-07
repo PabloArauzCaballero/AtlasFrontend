@@ -20,7 +20,8 @@ import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { space } from '../../src/theme/tokens';
 import { firstBlocker } from '../../src/ui/blocked';
-import { IconField, SelectField } from '../../src/ui/form-controls';
+import { CodeField } from '../../src/ui/code-field';
+import { SelectField } from '../../src/ui/form-controls';
 import { Gap, Screen, useScrollToError } from '../../src/ui/layout';
 import { StepHeader } from '../../src/ui/step-header';
 import { AtlasText, Button, Card, CardHeader, ErrorState, IconChip } from '../../src/ui/primitives';
@@ -532,19 +533,15 @@ export default function VerifyContact() {
             </Card>
           )}
 
-          <IconField icon="escudo" bitacora="codigo_verificacion"
+          <CodeField
+            bitacora="codigo_verificacion"
             label="Código recibido"
             value={code}
-            onChangeText={(next) => setCode(next.replace(/\D/g, '').slice(0, 8))}
-            ayuda="Los dígitos que acabas de recibir, sin espacios. Sirven una sola vez y vencen en pocos minutos; si ya venció, pide otro y usa el último que llegó."
-            keyboardType="number-pad"
-            textContentType="oneTimeCode"
-            autoComplete="one-time-code"
-            maxLength={8}
+            onChangeText={setCode}
+            ayuda="Los seis dígitos que acabas de recibir. Sirven una sola vez y vencen en pocos minutos; si ya venció, pide otro y usa el último que llegó."
             // Vencido, el campo se cierra: teclear ahi solo puede acabar en un intento fallido.
             editable={!vencido}
             autoFocus
-            required
           />
         </>
       ) : null}
