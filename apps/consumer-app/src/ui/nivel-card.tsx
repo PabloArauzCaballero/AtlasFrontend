@@ -11,7 +11,7 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
-import { formatoPuntos, fraseDeLoQueFalta, ICONO_DE_NIVEL, nivelPorPuntos, porcentajeDeBarra } from '../features/nivel';
+import { formatoPuntos, fraseDeLoQueFalta, iconoDeEscalon, idDeEscalon, nivelPorPuntos, porcentajeDeBarra } from '../features/nivel';
 import { color, radius, space, stroke } from '../theme/tokens';
 import { BotonInfo, InfoSheet } from './help-sheet';
 import { Icon } from './icons';
@@ -37,7 +37,7 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
         {/* La insignia del nivel respira: es lo que se ha ganado y lo primero que se mira. */}
         <Vivo tipo="flota" periodo={3200}>
           <View style={styles.insignia}>
-            <Icon name={ICONO_DE_NIVEL[level.code]} size={26} tint={color.action.primary} />
+            <Icon name={iconoDeEscalon(level)} size={26} tint={color.action.primary} />
           </View>
         </Vivo>
         <View style={styles.titulos}>
@@ -87,9 +87,9 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
           <Divider />
           <AtlasText variant="bodyStrong">Los niveles</AtlasText>
           {nivel.levelLadder.map((escalon) => (
-            <View key={escalon.code} style={styles.escalon}>
-              <Icon name={escalon.reached ? 'check' : ICONO_DE_NIVEL[escalon.code]} size={18} tint={escalon.reached ? color.action.primary : color.text.tertiary} />
-              <AtlasText variant="body" tone={escalon.code === level.code ? 'brand' : escalon.reached ? 'primary' : 'secondary'} style={styles.falta}>
+            <View key={idDeEscalon(escalon)} style={styles.escalon}>
+              <Icon name={escalon.reached ? 'check' : iconoDeEscalon(escalon)} size={18} tint={escalon.reached ? color.action.primary : color.text.tertiary} />
+              <AtlasText variant="body" tone={idDeEscalon(escalon) === idDeEscalon(level) ? 'brand' : escalon.reached ? 'primary' : 'secondary'} style={styles.falta}>
                 {escalon.label}
               </AtlasText>
               <AtlasText variant="caption" tone="secondary">

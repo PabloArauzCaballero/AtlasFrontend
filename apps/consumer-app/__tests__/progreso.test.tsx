@@ -71,8 +71,8 @@ beforeEach(() => {
 describe("NivelCard", () => {
   it("junta el nivel, los puntos de experiencia y la racha en una tarjeta corta", async () => {
     await render(envolver(<NivelCard progress={PROGRESO} />));
-    expect(screen.getByText("Nuevo")).toBeTruthy();
-    expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
+    expect(screen.getByText("Explorador")).toBeTruthy();
+    expect(screen.getByText("NIVEL 2 DE 12")).toBeTruthy();
     // En PUNTOS de experiencia, nunca la calificación 24 de 100.
     expect(screen.getByText("350")).toBeTruthy();
     expect(screen.getByText("puntos")).toBeTruthy();
@@ -102,7 +102,7 @@ describe("NivelCard", () => {
 describe("pantalla «Tu nivel Atlas»", () => {
   it("sin línea de crédito igual muestra el nivel y los puntos (no una pantalla vacía)", async () => {
     await render(envolver(<Progreso />));
-    expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
+    expect(screen.getByText("NIVEL 2 DE 12")).toBeTruthy();
     await abrirCalificacion();
     expect(screen.getByText("Por qué tienes esta calificación")).toBeTruthy();
     expect(screen.getByText("Pagos a tiempo")).toBeTruthy();
@@ -128,7 +128,7 @@ describe("pantalla «Tu nivel Atlas»", () => {
   it("marca dónde está la persona en la escalera de niveles", async () => {
     await render(envolver(<Progreso />));
     await abrir("Historia");
-    expect(screen.getByText(/Nuevo · estás aquí/)).toBeTruthy();
+    expect(screen.getByText(/Explorador · estás aquí/)).toBeTruthy();
     expect(
       screen.getByLabelText(/Establecido, desde 2\.000 puntos\. Por alcanzar/),
     ).toBeTruthy();
@@ -283,7 +283,7 @@ describe("pestañas de «Tu nivel Atlas»", () => {
   it("Puntaje enseña la tarjeta y el nivel con sus puntos (cómo se ganan, en «Más info»), y NADA de la calificación", async () => {
     await render(envolver(<Progreso />));
     expect(screen.getByTestId("tarjeta-seccion")).toBeTruthy();
-    expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
+    expect(screen.getByText("NIVEL 2 DE 12")).toBeTruthy();
     expect(screen.getByTestId("nivel-card")).toBeTruthy();
     expect(screen.getByTestId("nivel-mas-info")).toBeTruthy();
     expect(screen.queryByTestId("calificacion-card")).toBeNull();

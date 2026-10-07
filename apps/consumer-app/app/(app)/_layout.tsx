@@ -12,6 +12,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { areaFor, useSession } from '../../src/session/session';
 import { color } from '../../src/theme/tokens';
 import { AssistFab } from '../../src/ui/assist-fab';
+import { CelebracionesHost } from '../../src/ui/celebraciones-host';
 import { useTramo } from '../../src/ui/responsive';
 import { BarraSuperior } from '../../src/web/Cascara';
 import { webData } from '../../src/web/estilo';
@@ -82,6 +83,7 @@ export default function AppLayout() {
       <View style={styles.cascara}>
         {pila}
         <AssistFab />
+        <CelebracionesHost />
       </View>
     );
   return (
@@ -89,6 +91,7 @@ export default function AppLayout() {
       <BarraSuperior />
       {pila}
       <AssistFab />
+      <CelebracionesHost />
     </View>
   );
 }

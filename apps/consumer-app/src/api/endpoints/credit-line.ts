@@ -200,11 +200,20 @@ export const createBankStatementUploadUrl = (
 
 export type TierCode = 'NUEVO' | 'EN_CONSTRUCCION' | 'ESTABLECIDO' | 'CONSOLIDADO' | 'PREFERENTE';
 
+/** Qué tan difícil es una insignia. Un backend anterior al 2026-10-07 no lo manda: la app la deduce del código. */
+export type BadgeRank = 'bronce' | 'plata' | 'oro' | 'platino' | 'diamante';
+export type BadgeCategory = 'compras' | 'pagos' | 'rachas' | 'dinero' | 'estilo' | 'cuenta' | 'coleccion';
+
 export type Badge = {
   code: string;
   label: string;
   detail: string;
   icon: string;
+  rank?: BadgeRank;
+  category?: BadgeCategory;
+  /** Secreta: hasta ganarla se enseña sólo `hint`. */
+  secret?: boolean;
+  hint?: string | null;
   earned: boolean;
   current: number;
   target: number;
@@ -284,9 +293,9 @@ export type Progress = {
    * Normal…Black sigue a este nivel. Ausente con un backend anterior al 2026-10-06: `nivelPorPuntos` lo calcula
    * con los mismos escalones a partir de `experience.xp`.
    */
-  level?: { code: TierCode; label: string; index: number; of: number; points: number };
-  nextLevel?: { code: TierCode; label: string; from: number; pointsMissing: number } | null;
-  levelLadder?: { code: TierCode; label: string; from: number; reached: boolean }[];
+  level?: { id?: string; code: TierCode; label: string; index: number; of: number; points: number };
+  nextLevel?: { id?: string; code: TierCode; label: string; from: number; pointsMissing: number } | null;
+  levelLadder?: { id?: string; code: TierCode; label: string; from: number; reached: boolean }[];
   /** Ausente si el backend todavía no trae las tarjetas: las pantallas lo toleran y no la pintan. */
   card?: CardView;
   missions: ProgressMission[];

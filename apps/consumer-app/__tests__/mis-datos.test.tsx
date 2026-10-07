@@ -216,14 +216,14 @@ it("muestra tu nivel con sus puntos de experiencia y la explicación tras «Más
   marcarPinConfirmado();
   await montar();
   await waitFor(() => expect(screen.getByText("Pablo Arauz")).toBeTruthy());
-  expect(screen.getByText("NIVEL 1 DE 5")).toBeTruthy();
+  expect(screen.getByText("NIVEL 2 DE 12")).toBeTruthy();
   expect(screen.getByText("350")).toBeTruthy();
   expect(screen.getByTestId("nivel-mas-info")).toBeTruthy();
 });
 
 it("sin PIN confirmado el nivel tampoco se enseña", async () => {
   await montar();
-  expect(screen.queryByText("NIVEL 1 DE 5")).toBeNull();
+  expect(screen.queryByText("NIVEL 2 DE 12")).toBeNull();
 });
 
 it("con el PIN confirmado enseña los extractos bancarios del cliente, que se piden por SU id", async () => {
