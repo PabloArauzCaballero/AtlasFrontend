@@ -19,7 +19,8 @@
  * Medir la quietud con el tamaño del JPEG casi nunca da «quieto» en un teléfono real —el ruido del sensor mueve el
  * tamaño más de lo que la quietud lo mueve—, así que la foto no salía y había que esperar al botón. Ahora hay una
  * CUENTA ATRÁS visible de 3 segundos: si la imagen se queda quieta antes (pasado un mínimo), se dispara antes; si no,
- * se dispara al llegar a cero. Siempre sale sola, y «Tomar ahora» queda de respaldo.
+ * se dispara al llegar a cero. Siempre sale sola, y «Tomar ahora» está SIEMPRE a la vista: la prueba de vida nunca puede
+ * bloquear el alta (Pablo, 2026-10-07: «que no me impida el flujo; que me deje sacarla yo mismo, las tres»).
  */
 import { CameraView } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
@@ -46,8 +47,6 @@ const MUESTREO_MS = 350;
 const CUENTA_ATRAS_MS = 3000;
 /** Antes de este tiempo no se dispara por quietud: da margen a colocarse en la pose. */
 const MINIMO_MS = 1200;
-/** Si algo impide el disparo automático, a los 8 s aparece «Tomar ahora». */
-const AYUDA_MANUAL_MS = 8_000;
 
 export function PruebaDeVida({
   poses,
@@ -70,7 +69,6 @@ export function PruebaDeVida({
   const [avance, setAvance] = useState(0);
   /** Segundos que faltan para la foto; 0 = todavía no empieza la cuenta. */
   const [cuenta, setCuenta] = useState(0);
-  const [ayudaManual, setAyudaManual] = useState(false);
   const [fotos, setFotos] = useState<EstadoFoto[]>([]);
   const disparando = useRef(false);
   const destello = useSharedValue(0);
@@ -107,7 +105,6 @@ export function PruebaDeVida({
         setFase('colocate');
         setAvance(0);
         setCuenta(0);
-        setAyudaManual(false);
       }, 1100);
     } finally {
       disparando.current = false;
@@ -118,7 +115,6 @@ export function PruebaDeVida({
   useEffect(() => {
     if (!lista || !pose || fase !== 'colocate') return;
     let vivo = true;
-    const ayuda = setTimeout(() => vivo && setAyudaManual(true), AYUDA_MANUAL_MS);
     void (async () => {
       await new Promise((r) => setTimeout(r, RESPIRO_MS));
       if (!vivo) return;
@@ -148,7 +144,6 @@ export function PruebaDeVida({
     })();
     return () => {
       vivo = false;
-      clearTimeout(ayuda);
     };
   }, [lista, pose, fase, disparar]);
 
@@ -233,7 +228,7 @@ export function PruebaDeVida({
           })}
         </View>
         {todasEnviadas ? <Button label="Continuar" onPress={onTerminar} haptic="success" testID="prueba-de-vida-continuar" /> : null}
-        {ayudaManual && pose && !quieto ? <Button label="Tomar ahora" variant="secondary" icon="camara" onPress={() => void disparar()} testID="prueba-de-vida-manual" /> : null}
+        {pose && !quieto ? <Button label="Tomar ahora" variant="secondary" icon="camara" onPress={() => void disparar()} testID="prueba-de-vida-manual" /> : null}
       </View>
     </View>
   );
