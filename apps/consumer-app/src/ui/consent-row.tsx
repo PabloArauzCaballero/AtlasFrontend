@@ -19,7 +19,7 @@ import { toqueWeb } from './hit-slop';
 import { Icon } from './icons';
 import { ANCHO_COLUMNA } from './responsive';
 import { PressSurface } from './motion';
-import { AtlasText } from './primitives';
+import { AtlasText, IconButton } from './primitives';
 
 export type ConsentRowProps = {
   title: string;
@@ -125,11 +125,7 @@ export function ConsentRow({ title, summary, bodyMarkdown, versionCode, required
                 </AtlasText>
               ) : null}
             </View>
-            <Pressable onPress={() => setReading(false)} accessibilityRole="button" accessibilityLabel="Cerrar" hitSlop={8} {...toqueWeb(8)}>
-              <AtlasText variant="bodyStrong" tone="brand">
-                Cerrar
-              </AtlasText>
-            </Pressable>
+            <IconButton icon="cerrar" label="Cerrar" onPress={() => setReading(false)} />
           </View>
 
           <ScrollView contentContainerStyle={[styles.sheetBody, styles.lectura]}>{renderBody(bodyMarkdown ?? '')}</ScrollView>

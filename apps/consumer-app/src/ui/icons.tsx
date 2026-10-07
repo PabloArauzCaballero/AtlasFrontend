@@ -81,6 +81,8 @@ export type IconName =
   | 'lista'
   | 'cuadricula'
   | 'descargar'
+  // Subir un archivo: la misma bandeja que `descargar`, con la flecha al revés.
+  | 'subir'
   | 'tendencia'
   | 'etiqueta'
   | 'estrella'
@@ -428,6 +430,13 @@ const PATHS: Record<IconName, (stroke: string, width: number, d: Dibujo) => Reac
     <>
       <Path d="M12 3.5v11" stroke={d.a} strokeWidth={w} strokeLinecap="round" />
       <Path d="M7.8 10.5 12 14.7l4.2-4.2" stroke={d.a} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M4 17v2a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-2" stroke={s} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  subir: (s, w, d) => (
+    <>
+      <Path d="M12 14.5v-11" stroke={d.a} strokeWidth={w} strokeLinecap="round" />
+      <Path d="M7.8 7.7 12 3.5l4.2 4.2" stroke={d.a} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
       <Path d="M4 17v2a1.5 1.5 0 0 0 1.5 1.5h13A1.5 1.5 0 0 0 20 19v-2" stroke={s} strokeWidth={w} strokeLinecap="round" />
     </>
   ),

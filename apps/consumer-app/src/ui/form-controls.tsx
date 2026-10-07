@@ -17,14 +17,14 @@
  */
 import DateTimePicker, { type DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import { forwardRef, useMemo, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, TextInput, type TextInputProps, View } from 'react-native';
 import { color, inputChrome, press, radius, space, stroke, touch, type } from '../theme/tokens';
 import { webData } from '../web/estilo';
 import { ganchosDeCampo } from '../features/bitacora/ganchos';
 import { BottomSheet, FieldFoot, FieldLabel } from './help-sheet';
 import { Icon, type IconName } from './icons';
 import { PressSurface } from './motion';
-import { AtlasText } from './primitives';
+import { AtlasText, IconButton } from './primitives';
 
 const CONTROL_HEIGHT = 56;
 
@@ -505,11 +505,7 @@ export function SelectField<T extends string = string>({
               style={styles.buscadorInput}
             />
             {busqueda ? (
-              <Pressable onPress={() => setBusqueda('')} accessibilityRole="button" accessibilityLabel="Borrar la búsqueda">
-                <AtlasText variant="caption" tone="secondary">
-                  Borrar
-                </AtlasText>
-              </Pressable>
+              <IconButton icon="cerrar" size={18} label="Borrar la búsqueda" onPress={() => setBusqueda('')} style={styles.buscadorBorrar} />
             ) : null}
           </View>
         ) : null}
@@ -719,6 +715,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: color.surface.sunken,
   },
+  // El área táctil de 48 no puede engordar la barra de búsqueda: se recorta con margen negativo.
+  buscadorBorrar: { marginVertical: -space.sm, marginRight: -space.sm },
   buscadorInput: { flex: 1, color: color.text.primary, ...type.body, includeFontPadding: false, textAlignVertical: 'center' },
   sinResultados: { paddingHorizontal: space.lg, paddingVertical: space.lg },
   countryRow: {

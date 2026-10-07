@@ -102,6 +102,7 @@ export function PuntajeDesglose({
           <AtlasText variant="caption" tone="brand">
             Ver cómo subir de nivel
           </AtlasText>
+          <Icon name="adelante" size={14} tint={color.action.primary} />
         </Pressable>
       ) : null}
     </Envoltura>
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
   cifra: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm, paddingTop: space.xs },
   puntos: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs, paddingTop: space.md },
   dot: { height: 6, borderRadius: 3, backgroundColor: color.action.primary },
-  verMas: { alignSelf: 'center', paddingTop: space.sm },
+  verMas: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: space.xxs, paddingTop: space.sm },
   tope: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm, paddingTop: space.xs },
   texto: { flex: 1, gap: 2 },
 });

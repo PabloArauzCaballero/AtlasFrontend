@@ -19,7 +19,7 @@ import { fechaRelativa, type EstadoHistorial } from '../features/assist';
 import { color, radius, space, stroke, touch } from '../theme/tokens';
 import { toqueWeb } from './hit-slop';
 import { Icon } from './icons';
-import { AtlasText, Badge, Button, Skeleton } from './primitives';
+import { AtlasText, Badge, Button, IconButton, Skeleton } from './primitives';
 import { webData } from '../web/estilo';
 
 export function AssistHistorial({
@@ -176,18 +176,14 @@ function Fila({
           {abierta ? <Badge label="Abierta" tone="info" /> : null}
         </View>
       </Pressable>
-      <Pressable
+      <IconButton
+        icon="papelera"
+        tone="danger"
+        label={`Borrar la conversación ${titulo}`}
         onPress={() => setConfirmando(true)}
-        accessibilityRole="button"
-        accessibilityLabel={`Borrar la conversación ${titulo}`}
         style={styles.borrar}
-        {...webData('presionable')}
         testID={`asistente-historial-borrar-${n}`}
-      >
-        <AtlasText variant="captionStrong" tone="danger">
-          Borrar
-        </AtlasText>
-      </Pressable>
+      />
     </View>
   );
 }
@@ -221,7 +217,7 @@ const styles = StyleSheet.create({
   filaConfirmar: { flexDirection: 'column', alignItems: 'stretch', gap: space.sm, padding: space.md, borderColor: color.feedbackBorder.danger },
   filaTexto: { flex: 1, minHeight: touch.minSize, padding: space.md, gap: space.xxs, justifyContent: 'center' },
   meta: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.sm },
-  borrar: { minHeight: touch.minSize, minWidth: touch.minSize, paddingHorizontal: space.md, alignItems: 'center', justifyContent: 'center' },
+  borrar: { marginRight: space.xs },
   confirmarAcciones: { flexDirection: 'row', gap: space.sm },
   confirmarBoton: { flex: 1 },
 });

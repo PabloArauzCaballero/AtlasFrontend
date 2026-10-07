@@ -29,7 +29,7 @@ import { ANCHO_COLUMNA, useTramo } from './responsive';
 import { color, radius, shadow, space, stroke, touch } from '../theme/tokens';
 import { toqueWeb } from './hit-slop';
 import { Icon } from './icons';
-import { AtlasText, Overline } from './primitives';
+import { AtlasText, IconButton, Overline } from './primitives';
 
 /* ------------------------------------------------------------------ la hoja */
 
@@ -46,7 +46,7 @@ export function BottomSheet({
   visible: boolean;
   titulo: string;
   onClose: () => void;
-  /** El texto del boton de la derecha. «Listo» cuando se elige algo; «Cerrar» cuando solo se lee. */
+  /** El boton de la derecha. «Listo» (texto) cuando se elige algo; «Cerrar» o «Cancelar» (una equis) cuando solo se lee o se sale. */
   cierre?: string;
   /**
    * Para las hojas con un campo de texto (el chat del asistente): en iOS el teclado sube DELANTE
@@ -109,11 +109,19 @@ export function BottomSheet({
             <AtlasText variant="h3" style={styles.sheetTitle}>
               {titulo}
             </AtlasText>
-            <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={cierre} hitSlop={12} {...toqueWeb(12)}>
-              <AtlasText variant="bodyStrong" tone="brand">
-                {cierre}
-              </AtlasText>
-            </Pressable>
+            {/*
+              «Cerrar» y «Cancelar» salen de la hoja sin decidir nada: son una equis, no una palabra.
+              «Listo» CONFIRMA lo elegido y se queda como texto: es la acción, no la salida.
+            */}
+            {cierre === 'Cerrar' || cierre === 'Cancelar' ? (
+              <IconButton icon="cerrar" label={cierre} onPress={onClose} testID="hoja-cerrar" />
+            ) : (
+              <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel={cierre} hitSlop={12} {...toqueWeb(12)}>
+                <AtlasText variant="bodyStrong" tone="brand">
+                  {cierre}
+                </AtlasText>
+              </Pressable>
+            )}
           </View>
           {children}
         </View>
