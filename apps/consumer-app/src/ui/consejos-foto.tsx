@@ -98,6 +98,7 @@ export function ConsejosFoto({ tipo, children }: { tipo: TipoDeFoto; children: R
               hitSlop={4}
               {...toqueWeb(4)}
             >
+              <Icon name="check" size={18} tint={color.text.primary} />
               <AtlasText variant="bodyStrong" tone="primary">
                 Entendido
               </AtlasText>
@@ -227,6 +228,8 @@ const styles = StyleSheet.create({
   insignia: { position: 'absolute', right: space.xs, bottom: space.xs },
   cerrar: {
     minHeight: touch.minSize,
+    flexDirection: 'row',
+    gap: space.xs,
     alignItems: 'center',
     justifyContent: 'center',
     borderTopWidth: stroke.hairline,

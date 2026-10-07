@@ -14,6 +14,7 @@ import React from 'react';
 import {
   ActivityIndicator,
   Platform,
+  Pressable,
   type PressableProps,
   StyleSheet,
   Text,
@@ -35,9 +36,11 @@ import Reanimated, {
 } from 'react-native-reanimated';
 import { color, palette, press, radius, shadow, space, spring, stroke, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
+import { iconoDeAccion } from './icono-de-accion';
 import { AnimatedPressable, PressSurface } from './motion';
 import { AnilloAtlas, BarraDeCarga } from './cargador-atlas';
 import { webData } from '../web/estilo';
+import { toqueWeb } from './hit-slop';
 import { medirToque, useDisposicion } from '../features/bitacora/ganchos';
 
 /* ------------------------------------------------------------------ texto */
@@ -175,6 +178,9 @@ export function Button({
   /**
    * Un nombre del set de iconos (`'camara'`) o un nodo propio. Con nombre, el icono toma el color de
    * la variante —el mismo que el texto— y no hay que pasar `tint` a mano.
+   *
+   * Sin `icon`, lo decide la etiqueta (`icono-de-accion.ts`): «Guardar» lleva check en toda la app
+   * sin que cada pantalla lo repita. `icon={null}` lo quita cuando sobra.
    */
   icon?: IconName | React.ReactNode;
   /**
@@ -205,6 +211,7 @@ export function Button({
     };
   }, []);
   const cargando = loading || pendiente;
+  const icono = icon === undefined ? iconoDeAccion(label) : icon;
   const isBlocked = disabled || cargando;
   const disposicion = useDisposicion();
 
@@ -320,14 +327,14 @@ export function Button({
       <View style={styles.buttonInner}>
           {cargando ? (
             <ActivityIndicator size="small" color={variant === 'primary' ? color.text.onBrand : color.text.primary} />
-          ) : typeof icon === 'string' ? (
+          ) : typeof icono === 'string' ? (
             <Icon
-              name={icon as IconName}
+              name={icono as IconName}
               size={18}
               tint={variant === 'primary' ? color.text.onBrand : variant === 'destructive' ? color.feedback.danger : color.text.primary}
             />
           ) : (
-            icon
+            icono
           )}
           <AtlasText
             variant="bodyStrong"
@@ -463,6 +470,52 @@ export function IconChip({
       {/* El chip es donde el icono es protagonista: dos tonos y vida propia. En un botón o una fila de texto, no. */}
       <Icon name={name} size={glyph} tint={tint} duo vivo />
     </View>
+  );
+}
+
+/**
+ * Un control que es SÓLO un icono: cerrar una hoja, borrar una fila, vaciar un buscador.
+ *
+ * Existe porque «Cerrar» y «Borrar» estaban escritos como texto suelto en cada pantalla: ocupaban
+ * ancho que una fila de teléfono no sobra, había que leerlos, y cada sitio los pintaba con otro
+ * tamaño y otro color. Con el dibujo basta —la equis y la papelera se reconocen sin leer— y el
+ * nombre accesible sigue diciendo la acción completa.
+ *
+ * `label` es OBLIGATORIO y distinto del icono: un lector de pantalla no puede anunciar «papelera»
+ * cuando lo que hace es borrar UNA conversación concreta. El área táctil mide `touch.minSize`
+ * aunque el dibujo mida 20.
+ */
+export function IconButton({
+  icon,
+  label,
+  onPress,
+  tone = 'neutral',
+  size = 20,
+  testID,
+  style,
+}: {
+  icon: IconName;
+  label: string;
+  onPress: () => void;
+  tone?: 'neutral' | 'brand' | 'danger';
+  size?: number;
+  testID?: string;
+  style?: ViewStyle;
+}) {
+  const tint = tone === 'danger' ? color.feedback.danger : tone === 'brand' ? color.action.primary : color.text.secondary;
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={4}
+      {...toqueWeb(4)}
+      {...webData('presionable')}
+      style={[styles.iconButton, style]}
+      testID={testID}
+    >
+      <Icon name={icon} size={size} tint={tint} />
+    </Pressable>
   );
 }
 
@@ -1245,6 +1298,7 @@ export function ListRow({
 }
 
 const styles = StyleSheet.create({
+  iconButton: { minHeight: touch.minSize, minWidth: touch.minSize, alignItems: 'center', justifyContent: 'center' },
   button: {
     minHeight: touch.minSize,
     borderRadius: radius.pill,

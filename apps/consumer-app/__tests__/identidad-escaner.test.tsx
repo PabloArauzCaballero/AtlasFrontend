@@ -193,7 +193,7 @@ describe('identidad con la bandera del escaner encendida', () => {
     expect(screen.getByText('Antes de escanear')).toBeTruthy();
     expect(escanear).not.toHaveBeenCalled();
 
-    await fireEvent.press(screen.getByText('Cerrar'));
+    await fireEvent.press(screen.getByLabelText('Cerrar'));
     await waitFor(() => expect(screen.queryByText('Antes de escanear')).toBeNull());
     expect(escanear).not.toHaveBeenCalled();
 
