@@ -81,12 +81,11 @@ it('SIN línea de crédito, Perfil muestra igual el nivel y los puntos', async (
   expect(screen.getByText('Faltan 100 para «Explorador»')).toBeTruthy();
 });
 
-it('SIN línea, explica por qué falta el puntaje (no es un hueco que parezca un fallo) y ofrece el extracto', async () => {
+it('Perfil NO repite el índice de crédito ni su porqué: eso vive en «Tu nivel Atlas»', async () => {
   await montar();
-  expect(screen.getByText('Tu índice de crédito')).toBeTruthy();
-  expect(screen.getByText('Todavía no calculamos tu línea de crédito.')).toBeTruthy();
-  await fireEvent.press(screen.getByRole('button', { name: 'Subir mi extracto bancario' }));
-  expect(mockPush).toHaveBeenCalledWith('/(app)/extracto-bancario');
+  expect(screen.queryByText('Tu índice de crédito')).toBeNull();
+  expect(screen.queryByText('Todavía no calculamos tu línea de crédito.')).toBeNull();
+  expect(screen.queryByText('CON QUÉ SE CALCULÓ')).toBeNull();
 });
 
 it('«Mis logros» en la tarjeta del nivel abre «Tu nivel Atlas»', async () => {
@@ -108,11 +107,11 @@ it('si el nivel falla, lo dice con reintento', async () => {
   expect(screen.getByText('No pudimos cargar tu nivel')).toBeTruthy();
 });
 
-it('si el libro de créditos falla, el nivel se sigue viendo y el fallo del puntaje se dice aparte', async () => {
+it('si el libro de créditos falla, el nivel se sigue viendo y Perfil no pinta una tarjeta de índice con error', async () => {
   mockLibro.error = 'No pudimos cargar tus créditos.';
   await montar();
   expect(screen.getByText('NIVEL 1 DE 12')).toBeTruthy();
-  expect(screen.getByText('No pudimos cargar tu índice de crédito')).toBeTruthy();
+  expect(screen.queryByText('No pudimos cargar tu índice de crédito')).toBeNull();
 });
 
 it('lo primero de Perfil es el saldo de crédito, antes de la tarjeta y del nivel', async () => {
@@ -134,14 +133,14 @@ describe('el extracto bancario en Perfil, sin línea calculada', () => {
     mockUltimoExtracto.mockResolvedValue({ status: 'received', rejectionReason: null });
     await montar();
     await waitFor(() => expect(screen.getAllByText(/pendiente de evaluar/).length).toBeGreaterThan(0));
+    // El extracto se gestiona desde la fila «Recalcular mi línea», no desde una tarjeta repetida.
     expect(screen.queryByText('Subir mi extracto bancario')).toBeNull();
-    expect(screen.getByText('Ver mis extractos')).toBeTruthy();
   });
 
-  it('sin nada subido sí lo pide', async () => {
+  it('sin nada subido la fila «Recalcular mi línea» lo pide', async () => {
     mockUltimoExtracto.mockResolvedValue(null);
     await montar();
-    expect(await screen.findByText('Subir mi extracto bancario')).toBeTruthy();
+    expect(await screen.findByText('Sube tu extracto bancario y la recalculamos en un máximo de 24 h')).toBeTruthy();
     expect(screen.queryByText(/pendiente de evaluar/)).toBeNull();
   });
 });
