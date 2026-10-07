@@ -13,6 +13,7 @@ import { useIsFocused, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { isSandboxPurchase } from '../../../src/api/config';
+import { AtlasApiError } from '../../../src/api/errors';
 import { resolveMerchantQr } from '../../../src/api/endpoints/loans';
 import { rechazoVigente, type RechazoDeQr } from '../../../src/features/qr-rechazado';
 import { DEMO_TOKEN, REVOKED_DEMO_TOKEN } from '../../../src/sandbox/fixtures';
@@ -30,7 +31,25 @@ const REJECTION_KEYS = {
   QR_NOT_RECOGNIZED: 'escanear.qr.no_reconocido',
   QR_REVOKED: 'escanear.qr.revocado',
   QR_EXPIRED: 'escanear.qr.vencido',
+  /* No son rechazos del QR sino del camino hasta el servidor: el QR pudo ser perfecto. */
+  SERVICE_UNREACHABLE: 'escanear.qr.sin_conexion',
+  SESSION_EXPIRED: 'escanear.qr.sesion',
 } as const;
+
+/**
+ * Por qué falló la consulta, cuando NO es que el servidor haya dicho «ese QR no vale».
+ *
+ * Antes cualquier error se contaba como «Este QR no es de Atlas»: con la red caída o el API
+ * redesplegándose, un QR válido salía acusado de falso, y además se anotaba como rechazado, con lo
+ * que la cámara lo ignoraba diez segundos. La persona se quedaba apuntando a un QR bueno sin que
+ * nada le dijera que lo que fallaba era la conexión.
+ */
+function fallaDelCamino(error: unknown): 'SERVICE_UNREACHABLE' | 'SESSION_EXPIRED' | null {
+  if (!(error instanceof AtlasApiError)) return null;
+  if (error.kind === 'auth') return 'SESSION_EXPIRED';
+  if (error.fromGateway || ['network', 'timeout', 'unavailable', 'server'].includes(error.kind)) return 'SERVICE_UNREACHABLE';
+  return null;
+}
 
 export default function ScanScreen() {
   const t = useCopy();
@@ -39,6 +58,8 @@ export default function ScanScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [manual, setManual] = useState('');
   const [rejection, setRejection] = useState<string | null>(null);
+  // Mientras el servidor confirma el código la pantalla lo dice: sin esto, leer un QR no hacía NADA visible.
+  const [verificando, setVerificando] = useState(false);
   // Un QR permanece en cuadro varios fotogramas: sin este cerrojo se abririan varias sesiones.
   const locked = useRef(false);
   // Y sin este, un QR rechazado se reenviaria cada 1,5 s mientras siga delante. Ver `qr-rechazado.ts`.
@@ -103,6 +124,9 @@ export default function ScanScreen() {
       };
 
       let resolved: Awaited<ReturnType<typeof resolveMerchantQr>> | null = null;
+      setRejection(null);
+      setVerificando(true);
+      void Haptics.selectionAsync();
       try {
         resolved = await resolveMerchantQr(token.trim());
       } catch (error) {
@@ -114,13 +138,24 @@ export default function ScanScreen() {
          */
         const isDemoFixture = token === DEMO_TOKEN || token === REVOKED_DEMO_TOKEN;
         if (!(isSandboxPurchase && isDemoFixture)) {
+          setVerificando(false);
+          const delCamino = fallaDelCamino(error);
+          if (delCamino) {
+            // No se anota como rechazo: el mismo QR, un segundo después, puede funcionar.
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            setRejection(delCamino);
+            release(1500);
+            return;
+          }
           /*
            * El backend manda el codigo en el mensaje del error. Si no se reconoce ninguno, se trata
            * como QR no reconocido: es el mensaje con salida —«pide al comercio el codigo vigente»—
            * y el unico honesto cuando no sabemos por que fallo.
            */
           const raw = error instanceof Error ? error.message : '';
-          const known = Object.keys(REJECTION_KEYS).find((code) => raw.includes(code));
+          const known = (['QR_NOT_RECOGNIZED', 'QR_REVOKED', 'QR_EXPIRED'] as const).find(
+            (code) => raw.includes(code) || (error instanceof AtlasApiError && error.code === code),
+          );
           reject(known ?? 'QR_NOT_RECOGNIZED');
           return;
         }
@@ -135,6 +170,7 @@ export default function ScanScreen() {
        * `sandbox.scan` queda para los codigos de demostracion, que son los unicos que el servidor
        * no reconoce y aun asi deben poder recorrer el flujo.
        */
+      setVerificando(false);
       const sessionId = resolved ? sandbox.scanResolved(resolved).sessionId : null;
       if (!sessionId) {
         const result = sandbox.scan(token);
@@ -168,6 +204,12 @@ export default function ScanScreen() {
         subtitle="Apunta al código QR de Atlas del comercio."
         action={<DataSourceBadge />}
       />
+
+      {verificando ? (
+        <Card>
+          <CardHeader icon="camara" title="Verificando el código…" detail="Estamos confirmando el comercio con Atlas." />
+        </Card>
+      ) : null}
 
       {copy ? <ErrorState title={copy.title} detail={copy.detail} /> : null}
 
@@ -212,9 +254,10 @@ export default function ScanScreen() {
           label="Código del comercio"
           value={manual}
           onChangeText={setManual}
-          autoCapitalize="none"
+          placeholder="K7M2-9QXD"
+          autoCapitalize="characters"
           autoCorrect={false}
-          ayuda="El código impreso debajo del QR de la caja, de al menos tres caracteres. Pídeselo al comercio si la cámara no lee el QR; identifica la caja exacta donde estás comprando."
+          ayuda="El código de 8 caracteres impreso debajo del QR de la caja (por ejemplo K7M2-9QXD); no importa si lo escribes en minúsculas o sin el guion. Pídeselo al comercio si la cámara no lee el QR; identifica la caja exacta donde estás comprando."
         />
         <Button
           label="Continuar"

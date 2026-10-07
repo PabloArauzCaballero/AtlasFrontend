@@ -77,6 +77,18 @@ export const COPY = {
     titulo: 'QR vencido',
     texto: 'Este código ya no está activo. Pide al comercio el código vigente.',
   },
+  'escanear.qr.sin_conexion': {
+    pantalla: 'Escanear',
+    donde: 'Cuando el QR se leyó bien pero el servicio no respondió (red caída, redespliegue)',
+    titulo: 'Sin conexión',
+    texto: 'Leímos el código, pero no pudimos confirmarlo con Atlas. Revisa tu conexión y vuelve a apuntar al QR, o escríbelo a mano.',
+  },
+  'escanear.qr.sesion': {
+    pantalla: 'Escanear',
+    donde: 'Cuando la sesión venció mientras se confirmaba el QR',
+    titulo: 'Tu sesión venció',
+    texto: 'Vuelve a iniciar sesión y escanea el QR otra vez.',
+  },
   'avisos.resumen': {
     pantalla: 'Avisos',
     donde: 'Resumen de los avisos que SÍ llegan (Avisos y Preferencias). Dice lo que el sistema envía hoy',
