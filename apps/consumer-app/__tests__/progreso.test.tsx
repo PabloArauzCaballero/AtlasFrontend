@@ -245,8 +245,8 @@ describe("experiencia e insignias", () => {
   it("los trofeos ganados se distinguen de los pendientes, con su rango, y los pendientes dicen su avance", async () => {
     await render(envolver(<Progreso />));
     await abrir("Logros");
-    expect(screen.getByText(/2 de 4 ganados/)).toBeTruthy();
-    expect(screen.getByLabelText(/Trofeo de bronce: Primera compra\. Ganado/)).toBeTruthy();
+    expect(screen.getByText(/2 de 4 ganadas/)).toBeTruthy();
+    expect(screen.getByLabelText(/Insignia de bronce: Primera compra\. Ganado/)).toBeTruthy();
     expect(screen.getByLabelText(/Racha de 6\. Pendiente, 3 de 6/)).toBeTruthy();
     expect(screen.getByLabelText(/1\.000 Bs a tiempo\. Pendiente, 350 de 1\.000/)).toBeTruthy();
   });
@@ -295,7 +295,7 @@ describe("pestañas de «Tu nivel Atlas»", () => {
   it("al cambiar de pestaña desaparece lo anterior y aparece lo nuevo", async () => {
     await render(envolver(<Progreso />));
     await abrir("Logros");
-    expect(screen.getByText("Tus trofeos")).toBeTruthy();
+    expect(screen.getByText("Tus insignias")).toBeTruthy();
     expect(screen.getByText("Misiones")).toBeTruthy();
     expect(screen.queryByTestId("tarjeta-seccion")).toBeNull();
     expect(

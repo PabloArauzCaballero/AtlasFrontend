@@ -56,10 +56,11 @@ describe("VitrinaDeLogros", () => {
         ])}
       />,
     );
-    expect(screen.getByText("2 de 3 ganados · de bronce a diamante")).toBeTruthy();
+    expect(screen.getByText("2 de 3 ganadas · de bronce a diamante")).toBeTruthy();
     expect(screen.getByTestId("logro-mas-cercano")).toBeTruthy();
-    expect(screen.getByText("1 de 2")).toBeTruthy();
+    // La cabecera es la de la colección que se ve (la primera: Compras, completa); las demás están a un deslizamiento.
     expect(screen.getByText("Completa")).toBeTruthy();
+    expect(screen.getByLabelText("Colección Rachas")).toBeTruthy();
   });
 
   it("una secreta sin ganar no dice su nombre: enseña su pista", async () => {
@@ -75,20 +76,27 @@ describe("VitrinaDeLogros", () => {
     expect(screen.getByText("Pago de domingo")).toBeTruthy();
   });
 
-  it("tocar un trofeo ganado repite su celebración; uno pendiente no hace nada", async () => {
-    const repetir = jest.spyOn(bus, "repetirCelebracion").mockImplementation(() => {});
+  it("tocar CUALQUIER insignia abre su carta, ganada o pendiente", async () => {
+    const abrir = jest.spyOn(bus, "abrirCartaDeInsignia").mockImplementation(() => {});
     await render(<VitrinaDeLogros progress={con([b("g", { earned: true, current: 10, label: "Ganada" }), b("p", { label: "Pendiente", current: 2 })])} />);
     await fireEvent.press(screen.getByTestId("insignia-g"));
-    expect(repetir).toHaveBeenCalledTimes(1);
-    expect(repetir.mock.calls[0]![0]).toMatchObject({ tipo: "insignia", insignia: { code: "g" } });
+    expect(abrir).toHaveBeenCalledTimes(1);
+    expect(abrir.mock.calls[0]![0]).toMatchObject({ tipo: "insignia", insignia: { code: "g" } });
     await fireEvent.press(screen.getByTestId("insignia-p"));
-    expect(repetir).toHaveBeenCalledTimes(1);
-    repetir.mockRestore();
+    expect(abrir).toHaveBeenCalledTimes(2);
+    expect(abrir.mock.calls[1]![0]).toMatchObject({ insignia: { code: "p", earned: false } });
+    abrir.mockRestore();
+  });
+
+  it("va paginada: una página por colección, con un punto por colección", async () => {
+    await render(<VitrinaDeLogros progress={con([b("a", { category: "compras" }), b("b", { category: "rachas" }), b("c", { category: "cuenta" })])} />);
+    expect(screen.getByTestId("coleccion-compras")).toBeTruthy();
+    expect(screen.getAllByRole("tab")).toHaveLength(3);
   });
 
   it("cada rango tiene su metal: un diamante se anuncia como diamante", async () => {
     await render(<VitrinaDeLogros progress={con([b("d", { rank: "diamante", earned: true, current: 10, label: "Imparable" })])} />);
     expect(screen.getByText("DIAMANTE")).toBeTruthy();
-    expect(screen.getByLabelText(/Trofeo de diamante: Imparable\. Ganado/)).toBeTruthy();
+    expect(screen.getByLabelText(/Insignia de diamante: Imparable\. Ganado/)).toBeTruthy();
   });
 });

@@ -7,19 +7,19 @@
  *
  * ## Qué muestra
  *
- * Ganado: copa de metal con reflejo, peana con placa, el icono del logro en un medallón y un halo del color del metal.
- * Flota despacio (`Vivo`). Pendiente: la misma silueta en grafito, con un anillo que se llena según el avance —se ve
- * cuánto falta, no un candado mudo—. Tocar uno ganado repite su celebración.
+ * Ganada: medalla-escudo de metal con gemas por rango, el icono del logro en el centro y un halo del color del metal.
+ * Pendiente: la misma silueta en grafito, con un anillo que se llena según el avance —se ve
+ * cuánto falta, no un candado mudo—.
  *
- * El dibujo vive en `trofeo.tsx`: la celebración al ganar usa el mismo, grande.
+ * El dibujo vive en `medalla.tsx`: la celebración al ganar y la carta usan el mismo, grande. Tocar CUALQUIERA abre su carta.
  */
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { Badge } from '../api/endpoints/credit-line';
 import { avanceDeInsignia } from '../features/puntaje-explicado';
 import { color, radius, space, stroke } from '../theme/tokens';
-import { Vivo } from './motion';
 import { AtlasText } from './primitives';
-import { METAL, rangoDe, Trofeo } from './trofeo';
+import { Medalla } from './medalla';
+import { METAL, rangoDe } from './trofeo';
 
 export { rangoDe };
 export type { Rango } from './trofeo';
@@ -32,7 +32,7 @@ export function caraDe(insignia: Badge): { label: string; detail: string; icon: 
     : { label: insignia.label, detail: insignia.detail, icon: insignia.icon, oculta };
 }
 
-export function Insignia({ insignia, indice = 0, onPress }: { insignia: Badge; indice?: number; onPress?: () => void }) {
+export function Insignia({ insignia, onPress }: { insignia: Badge; onPress?: () => void }) {
   const cara = caraDe(insignia);
   const avance = insignia.target > 0 && !cara.oculta ? Math.min(1, insignia.current / insignia.target) : 0;
   const rango = rangoDe(insignia);
@@ -40,22 +40,11 @@ export function Insignia({ insignia, indice = 0, onPress }: { insignia: Badge; i
   const ganada = insignia.earned;
   const pie = ganada ? m.nombre.toUpperCase() : cara.oculta ? 'SECRETA' : avanceDeInsignia(insignia);
 
-  const trofeo = <Trofeo codigo={insignia.code} rango={rango} icono={cara.icon} ganado={ganada} avance={avance} />;
+  const trofeo = <Medalla codigo={insignia.code} rango={rango} icono={cara.icon} ganado={ganada} avance={avance} />;
 
   const contenido = (
     <>
-      {/* Ganados flotan (descompasados); el que está más cerca de ganarse se mece para invitarte. */}
-      {ganada ? (
-        <Vivo tipo="flota" retardo={indice * 330} periodo={3000}>
-          {trofeo}
-        </Vivo>
-      ) : avance >= 0.5 ? (
-        <Vivo tipo="oscila" retardo={indice * 330} periodo={2200}>
-          {trofeo}
-        </Vivo>
-      ) : (
-        trofeo
-      )}
+      {trofeo}
       <AtlasText variant="captionStrong" tone={ganada ? 'primary' : 'secondary'} align="center" numberOfLines={2}>
         {cara.label}
       </AtlasText>
@@ -67,15 +56,15 @@ export function Insignia({ insignia, indice = 0, onPress }: { insignia: Badge; i
     </>
   );
 
-  const etiqueta = `Trofeo de ${m.nombre.toLowerCase()}: ${cara.label}. ${ganada ? 'Ganado' : cara.oculta ? 'Secreto' : `Pendiente, ${avanceDeInsignia(insignia)}`}. ${cara.detail}`;
+  const etiqueta = `Insignia de ${m.nombre.toLowerCase()}: ${cara.label}. ${ganada ? 'Ganado' : cara.oculta ? 'Secreto' : `Pendiente, ${avanceDeInsignia(insignia)}`}. ${cara.detail}`;
 
-  if (onPress && ganada)
+  if (onPress)
     return (
       <Pressable
         style={styles.celda}
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={`${etiqueta} Toca para repetir la celebración.`}
+        accessibilityLabel={`${etiqueta} Toca para ver su carta.`}
         testID={`insignia-${insignia.code}`}
       >
         {contenido}

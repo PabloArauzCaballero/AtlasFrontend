@@ -7,7 +7,7 @@
  */
 import type { Logro } from './celebraciones';
 
-type Oyente = { revisar: () => void; repetir: (logro: Logro) => void };
+type Oyente = { revisar: () => void; repetir: (logro: Logro) => void; carta?: (logro: Logro) => void };
 
 const oyentes = new Set<Oyente>();
 
@@ -23,3 +23,6 @@ export const pedirRevisionDeLogros = () => oyentes.forEach((o) => o.revisar());
 
 /** Vuelve a celebrar un logro ya ganado (tocar un trofeo en la vitrina). */
 export const repetirCelebracion = (logro: Logro) => oyentes.forEach((o) => o.repetir(logro));
+
+/** Abre la carta de una insignia (ganada o pendiente) a pantalla completa: tocar una en la vitrina. */
+export const abrirCartaDeInsignia = (logro: Logro) => oyentes.forEach((o) => o.carta?.(logro));
