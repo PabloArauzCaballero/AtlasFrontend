@@ -126,3 +126,19 @@ export const submitPaymentClaim = (
     method: 'POST',
     body: input,
   });
+
+/**
+ * El aviso del pago INICIAL de una compra (el 60 %): mismo comprobante que el de una cuota, pero cuelga de la
+ * SOLICITUD de crédito porque el préstamo todavía no existe. Sólo se acepta cuando el comercio ya aceptó la
+ * venta, y NO da nada por pagado: el comercio lo confirma desde su ERP.
+ */
+export const submitDownPayment = (
+  customerId: string,
+  applicationId: string,
+  input: { amount: string; payerReference?: string; storageKey: string; contentType: string },
+) =>
+  request<{ applicationId: string; downPaymentStatus: string | null; downPaymentAmount: string | null }>(
+    `/customers/${encodeURIComponent(customerId)}/credit-applications/${encodeURIComponent(applicationId)}/down-payment`,
+    { method: 'POST', body: input },
+  );
+

@@ -13,19 +13,20 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { isSandboxPurchase } from '../../../src/api/config';
 import { getPaymentQrForPos } from '../../../src/api/endpoints/loans';
-import { formatMoney } from '../../../src/domain/money';
+import { listCreditApplications } from '../../../src/api/endpoints/credit';
+import { formatMoney, toMajorNumber } from '../../../src/domain/money';
 import { dueLabel, formatTime, itemTitle, statusLabel, statusTone } from '../../../src/features/payment-copy';
+import { ESPERA_ENTRE_CONSULTAS_MS, estadoDelPagoInicial, type EstadoPagoInicial } from '../../../src/features/pago-inicial';
 import { useSandbox } from '../../../src/sandbox/store';
 import { POS_QRS } from '../../../src/sandbox/fixtures';
 import { useSession } from '../../../src/session/session';
-import { requestProofTicket, submitPaymentClaim, uploadProof } from '../../../src/api/endpoints/payment-claims';
+import { requestProofTicket, submitDownPayment, submitPaymentClaim, uploadProof } from '../../../src/api/endpoints/payment-claims';
 import { color, palette, radius, space } from '../../../src/theme/tokens';
-import { DataSourceBadge } from '../../../src/ui/brand';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Cargando, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, Overline, Skeleton } from '../../../src/ui/primitives';
@@ -60,6 +61,50 @@ export default function PaymentScreen() {
   const partnerId = order?.context.organizationId;
   const posId = order?.context.posId;
   const ensureUploadedQrInstruction = sandbox.ensureUploadedQrInstruction;
+
+  /*
+   * El pago INICIAL de una compra real vive en el backend: el cliente avisa con su comprobante y sólo el comercio lo
+   * confirma desde su ERP. `esInicialReal` es la compra que nació de una solicitud de crédito de verdad; las de
+   * demostración (sin solicitud) siguen en el motor local y se dicen como tales.
+   */
+  const applicationId = order?.backendApplicationId ?? null;
+  const esInicialReal = Boolean(item?.itemType === 'INITIAL' && applicationId && session.customerId);
+  const [remoto, setRemoto] = useState<EstadoPagoInicial>({ tipo: 'sin_avisar' });
+  const yaConfirmado = useRef(false);
+  const itemIdActual = item?.id;
+  const confirmarLocal = sandbox.confirmMerchantReceipt;
+
+  useEffect(() => {
+    if (!esInicialReal || !applicationId || !session.customerId || !itemIdActual) return;
+    let vivo = true;
+    let temporizador: ReturnType<typeof setTimeout> | undefined;
+    const consultar = async () => {
+      try {
+        const { applications } = await listCreditApplications(session.customerId!, { sinPantalla: true });
+        const mia = applications.find((solicitud) => String(solicitud.applicationId) === String(applicationId));
+        if (!vivo) return;
+        const estado = estadoDelPagoInicial(mia);
+        setRemoto(estado);
+        if (estado.tipo === 'confirmado') {
+          // El comercio lo vio entrar: sólo ahora el inicial se da por pagado y la compra se activa. Una sola vez.
+          if (!yaConfirmado.current) {
+            yaConfirmado.current = true;
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            confirmarLocal(itemIdActual);
+          }
+          return;
+        }
+      } catch {
+        // Sin red no se afirma nada: se sigue esperando y se vuelve a preguntar.
+      }
+      if (vivo) temporizador = setTimeout(consultar, ESPERA_ENTRE_CONSULTAS_MS);
+    };
+    void consultar();
+    return () => {
+      vivo = false;
+      if (temporizador) clearTimeout(temporizador);
+    };
+  }, [esInicialReal, applicationId, session.customerId, itemIdActual, confirmarLocal]);
 
   useEffect(() => {
     if (!realPos || !partnerId || !posId || !itemId || instruction) return;
@@ -143,6 +188,34 @@ export default function PaymentScreen() {
   const reportPayment = async () => {
     if (!instruction) return;
 
+    if (esInicialReal && applicationId && session.customerId) {
+      if (!proofUri) {
+        setFallo(t.texto('pago.comprobante_falta'));
+        return;
+      }
+      setEnviando(true);
+      setFallo(null);
+      try {
+        const contentType = 'image/jpeg';
+        const blob = await (await fetch(proofUri)).blob();
+        const ticket = await requestProofTicket(session.customerId, { contentType, sizeBytes: blob.size });
+        await uploadProof(ticket, proofUri, contentType);
+        await submitDownPayment(session.customerId, applicationId, {
+          amount: toMajorNumber(item.amount).toFixed(2),
+          payerReference: reference.trim() || undefined,
+          storageKey: ticket.storageKey,
+          contentType,
+        });
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        setRemoto({ tipo: 'esperando_al_comercio' });
+      } catch (error) {
+        setFallo(error instanceof Error ? error.message : 'No pudimos enviar tu aviso. Intenta de nuevo.');
+      } finally {
+        setEnviando(false);
+      }
+      return;
+    }
+
     if (realPos && !isSandboxPurchase) {
       setFallo('El pago inicial de esta compra aún no admite avisos reales. Conserva el comprobante y contacta al comercio.');
       return;
@@ -192,10 +265,13 @@ export default function PaymentScreen() {
     }
   };
 
+  /* El aviso en espera: el real lo dice el backend; el de demostración, el motor local. */
+  const esperandoAlComercio = esInicialReal ? remoto.tipo === 'esperando_al_comercio' : reported || Boolean(claim);
+
   return (
     <Screen
       footer={
-        reported || claim ? (
+        esperandoAlComercio ? (
           <Button label="Entendido" onPress={() => router.back()} />
         ) : (
           <Button
@@ -270,13 +346,22 @@ export default function PaymentScreen() {
         />
       )}
 
-      {reported || claim ? (
+      {esInicialReal && remoto.tipo === 'rechazado' ? (
+        <ErrorState
+          title="El comercio no pudo confirmar tu pago"
+          detail={`${remoto.motivo} Revisa tu comprobante y vuelve a avisar: tu compra sigue abierta.`}
+        />
+      ) : null}
+
+      {esperandoAlComercio ? (
         <Card tone="brand">
           <CardHeader
             icon="reloj"
-            title="Recibimos tu reporte"
-            trailing={<Badge dot label="en verificación" tone="info" />}
+            title="Recibimos tu comprobante"
+            trailing={<Badge dot label="esperando al comercio" tone="warning" />}
           />
+          {/* Sigue «esperando» hasta que el comercio confirme desde su ERP: el comprobante es evidencia, no confirmación. */}
+          <Cargando texto="Esperando que el comercio confirme que recibió tu pago…" />
           <AtlasText variant="body" tone="secondary">
             {t.texto('pago.comprobante_evidencia')}
           </AtlasText>
@@ -306,54 +391,6 @@ export default function PaymentScreen() {
           ) : null}
         </Card>
       )}
-
-      <Card>
-        <CardHeader
-          icon="alerta"
-          iconTone="warning"
-          title="Algo no cuadra"
-          detail="Si pagaste y sigue apareciendo pendiente, abre una revisión. No se borra el vencimiento mientras la revisamos."
-          divider={false}
-        />
-        {/*
-          Antes esto abría una «disputa» en el motor local y volvía atrás sin decir nada, en cualquier
-          modo: la queja no salía del teléfono. Con una compra real, el camino que sí llega a alguien es
-          Ayuda; con una simulada, se dice que es simulada.
-        */}
-        <Button
-          label={isSandboxPurchase ? 'Reportar un problema (demostración)' : 'Pedir ayuda con este pago'}
-          variant="ghost"
-          onPress={() => {
-            if (isSandboxPurchase || !session.customerId) {
-              sandbox.openDispute(item.id, 'CONSUMER_CLAIMS_PAID');
-              setFallo(t.texto('demo.compra'));
-              return;
-            }
-            router.push('/(app)/soporte');
-          }}
-        />
-      </Card>
-
-      {isSandboxPurchase ? (
-        <Card>
-          <CardHeader
-            icon="chispa"
-            iconTone="neutral"
-            title="Simular la confirmación del comercio"
-            detail="En producción esta confirmación llega desde el portal del comercio y es la única que resuelve la cuota como pagada. Aquí se dispara a mano para poder recorrer el ciclo completo."
-            trailing={<DataSourceBadge label="Solo en sandbox" />}
-            divider={false}
-          />
-          <Button
-            label="El comercio confirma que recibió el pago"
-            variant="secondary"
-            onPress={() => {
-              sandbox.confirmMerchantReceipt(item.id);
-              router.back();
-            }}
-          />
-        </Card>
-      ) : null}
 
       <Gap size="sm" />
       <AtlasText variant="caption" tone="tertiary">
