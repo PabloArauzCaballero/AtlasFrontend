@@ -4,7 +4,7 @@
  *
  * ## Qué pasa, en orden (≈ 1,8 s)
  *
- * 1. La carta GIRA hacia el frente desde el canto (rotateY) y se asienta con el muelle `settle`.
+ * 1. La carta se VOLTEA hacia el frente desde el canto (escala horizontal, en 2D) y se asienta con el muelle `settle`.
  * 2. La medalla entra con un golpe corto en el centro del arte, y en las ganadas suena un toque.
  * 3. Un barrido de luz diagonal cruza toda la carta: es el «holo» que la hace sentir de coleccionista.
  * 4. La cifra de abajo cuenta hacia arriba y la barra sube con su punto vivo (`cuenta-arriba.tsx`).
@@ -109,14 +109,19 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
   }, []);
 
   const estiloFondo = useAnimatedStyle(() => ({ opacity: fondo.value }));
+  /*
+    El «giro» es un volteo en 2D (se ensancha desde el canto), NO un `rotateY` con `perspective`: en iPhone esa combinación,
+    junto con la sombra y la opacidad animadas, dejaba la mitad izquierda de la pantalla oscura (capa 3D mal compuesta).
+    La animación va en una vista interior y la sombra en la exterior, que no se anima.
+  */
   const estiloCarta = useAnimatedStyle(() => ({
     opacity: Math.min(1, giro.value * 2.2),
-    transform: [{ perspective: 1000 }, { rotateY: `${(1 - giro.value) * -84}deg` }, { scale: 0.86 + 0.14 * giro.value }],
+    transform: [{ scaleX: 0.06 + 0.94 * Math.min(1, giro.value) }, { scale: 0.9 + 0.1 * Math.min(1, giro.value) }],
   }));
   const estiloMedalla = useAnimatedStyle(() => ({ opacity: Math.min(1, medalla.value * 2), transform: [{ scale: 0.35 + 0.65 * medalla.value }] }));
   const estiloBarrido = useAnimatedStyle(() => ({
     opacity: barrido.value > 0 && barrido.value < 1 ? 1 : 0,
-    transform: [{ translateX: -ancho * 0.6 + barrido.value * ancho * 1.8 }, { rotate: '18deg' }],
+    transform: [{ translateX: -ancho * 0.6 + barrido.value * ancho * 1.8 }, { skewX: '-18deg' }],
   }));
 
   const fecha = fechaLarga(insignia.earnedAt);
@@ -136,7 +141,8 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
       </Animated.View>
 
       <View style={[styles.centro, { paddingTop: insets.top + space.md, paddingBottom: insets.bottom + space.md }]} pointerEvents="box-none">
-        <Animated.View style={[{ width: ancho, height: alto }, estiloCarta, styles.sombra, { shadowColor: m.halo }]}>
+        <View style={[{ width: ancho, height: alto }, styles.sombra, { shadowColor: m.halo }]}>
+          <Animated.View style={[StyleSheet.absoluteFill, estiloCarta]}>
           {/* El marco: metal con degradado, y dentro la carta. */}
           <LinearGradient colors={[m.luz, m.medio, m.sombra, m.medio]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.marco}>
             <View style={styles.cara}>
@@ -209,7 +215,8 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
               </Animated.View>
             </View>
           </LinearGradient>
-        </Animated.View>
+          </Animated.View>
+        </View>
 
         <View style={[styles.botones, { width: ancho }]}>
           {ganada ? <Button label="Ver la celebración" variant="ghost" onPress={onRevivir} testID="carta-revivir" /> : null}

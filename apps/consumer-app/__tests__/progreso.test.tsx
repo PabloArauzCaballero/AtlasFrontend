@@ -127,13 +127,14 @@ describe("pantalla «Tu nivel Atlas»", () => {
     ).toBeTruthy();
   });
 
-  it("los niveles van paginados: están todos, en páginas de 4, con un punto por página", async () => {
+  it("los niveles son una línea de progreso vertical: están los 12, el actual marcado, sin paginar", async () => {
     await render(envolver(<Progreso />));
     await abrir("Historia");
-    expect(screen.getByTestId("niveles-pagina-1")).toBeTruthy();
-    expect(screen.getByTestId("niveles-pagina-3")).toBeTruthy();
-    expect(screen.queryByText(/niveles que faltan/)).toBeNull();
-    expect(screen.getAllByLabelText(/^Ir a la página/).length).toBeGreaterThanOrEqual(3);
+    expect(screen.getByTestId("niveles")).toBeTruthy();
+    expect(screen.getByLabelText(/^Explorador, desde 100 puntos\. Alcanzado/)).toBeTruthy();
+    expect(screen.getByLabelText(/^Titán Atlas, desde 50\.000 puntos\. Por alcanzar/)).toBeTruthy();
+    expect(screen.getByText("Explorador · estás aquí")).toBeTruthy();
+    expect(screen.queryByLabelText(/^Ir a la página/)).toBeNull();
   });
 
   it("dice que pedir crédito no suma puntos", async () => {
