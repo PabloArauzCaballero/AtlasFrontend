@@ -321,7 +321,12 @@ export default function Identity() {
       const comprobacion = comprobarCaptura(resultado);
       if (!comprobacion.ok) {
         bitacora.validacion(`captura_${comprobacion.motivo}`);
-        setSubida({ kind: step.kind, vista: { fase: 'rechazada', mensaje: comprobacion.mensaje } });
+        setSubida({
+          kind: step.kind,
+          vista: { fase: 'rechazada', mensaje: comprobacion.mensaje },
+          // Para «Usar esta foto igual»: la comprobación ahorra subidas dudosas, pero no es el juez.
+          reintento: { uri: resultado.uri, origen: 'system_scanner' },
+        });
         return;
       }
       await subir(step.kind, resultado.uri, 'system_scanner');
@@ -602,7 +607,12 @@ export default function Identity() {
         </ConsejosFoto>
         {described ? <ErrorState title={described.title} detail={described.detail} reference={described.reference} /> : null}
         {subida && subida.kind === activeStep.kind ? (
-          <EstadoDeSubidaVista estado={subida.vista} onReintentar={reintentarSubida} onRepetir={() => setSubida(null)} />
+          <EstadoDeSubidaVista
+            estado={subida.vista}
+            onReintentar={reintentarSubida}
+            onRepetir={() => setSubida(null)}
+            onUsarIgual={subida.vista.fase === 'rechazada' && subida.reintento ? reintentarSubida : undefined}
+          />
         ) : null}
 
       </Screen>
@@ -716,6 +726,7 @@ export default function Identity() {
                 const step = STEPS.find((candidato) => candidato.kind === subida.kind);
                 if (step) void abrirCaptura(step);
               }}
+              onUsarIgual={subida.vista.fase === 'rechazada' && subida.reintento ? reintentarSubida : undefined}
             />
           ) : null}
         </Card>

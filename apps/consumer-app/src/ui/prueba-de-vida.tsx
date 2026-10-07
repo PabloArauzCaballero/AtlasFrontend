@@ -14,8 +14,12 @@
  *    que el servidor la tiene. La siguiente pose empieza sola; la subida no la frena.
  * 4. Si una subida falla, su miniatura lo dice y se reintenta tocándola, con la MISMA foto.
  *
- * Si en 12 s no se consigue quietud (poca luz, un teléfono que comprime distinto), aparece «Tomar ahora»: el
- * automático es la comodidad, nunca la única puerta.
+ * ## Sale SOLA, siempre (Pablo, 2026-10-07: «no quiere sacar la foto automáticamente, es muy difícil lo de la cara»)
+ *
+ * Medir la quietud con el tamaño del JPEG casi nunca da «quieto» en un teléfono real —el ruido del sensor mueve el
+ * tamaño más de lo que la quietud lo mueve—, así que la foto no salía y había que esperar al botón. Ahora hay una
+ * CUENTA ATRÁS visible de 3 segundos: si la imagen se queda quieta antes (pasado un mínimo), se dispara antes; si no,
+ * se dispara al llegar a cero. Siempre sale sola, y «Tomar ahora» queda de respaldo.
  */
 import { CameraView } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
@@ -27,6 +31,7 @@ import type { IdentityEvidenceKind } from '../features/evidence-upload';
 import { avanceDeQuietud, estaQuieto } from '../features/quietud';
 import { color, palette, radius, space, stroke } from '../theme/tokens';
 import { Icon } from './icons';
+import { SiluetaDeCara, silutaDe } from './silueta-de-cara';
 import { AtlasText, Button } from './primitives';
 
 export type PoseDeVida = { kind: IdentityEvidenceKind; titulo: string; instruccion: string };
@@ -36,9 +41,13 @@ type EstadoFoto = { kind: IdentityEvidenceKind; uri: string; estado: 'enviando' 
 /** Tiempo para colocarse en la pose antes de empezar a medir. */
 const RESPIRO_MS = 1600;
 /** Entre fotograma y fotograma de medida. */
-const MUESTREO_MS = 450;
-/** Sin quietud en este tiempo, aparece «Tomar ahora». */
-const AYUDA_MANUAL_MS = 12_000;
+const MUESTREO_MS = 350;
+/** La cuenta atrás: a los 3 s se dispara aunque la imagen no se haya quedado «quieta» por el sensor. */
+const CUENTA_ATRAS_MS = 3000;
+/** Antes de este tiempo no se dispara por quietud: da margen a colocarse en la pose. */
+const MINIMO_MS = 1200;
+/** Si algo impide el disparo automático, a los 8 s aparece «Tomar ahora». */
+const AYUDA_MANUAL_MS = 8_000;
 
 export function PruebaDeVida({
   poses,
@@ -59,6 +68,8 @@ export function PruebaDeVida({
   const [indice, setIndice] = useState(0);
   const [fase, setFase] = useState<'colocate' | 'midiendo' | 'tomada'>('colocate');
   const [avance, setAvance] = useState(0);
+  /** Segundos que faltan para la foto; 0 = todavía no empieza la cuenta. */
+  const [cuenta, setCuenta] = useState(0);
   const [ayudaManual, setAyudaManual] = useState(false);
   const [fotos, setFotos] = useState<EstadoFoto[]>([]);
   const disparando = useRef(false);
@@ -95,6 +106,7 @@ export function PruebaDeVida({
         setIndice((n) => n + 1);
         setFase('colocate');
         setAvance(0);
+        setCuenta(0);
         setAyudaManual(false);
       }, 1100);
     } finally {
@@ -111,6 +123,8 @@ export function PruebaDeVida({
       await new Promise((r) => setTimeout(r, RESPIRO_MS));
       if (!vivo) return;
       setFase('midiendo');
+      const inicio = Date.now();
+      setCuenta(Math.ceil(CUENTA_ATRAS_MS / 1000));
       const tamanos: number[] = [];
       while (vivo && camara.current) {
         try {
@@ -122,7 +136,10 @@ export function PruebaDeVida({
         if (!vivo) return;
         if (tamanos.length > 6) tamanos.shift();
         setAvance(avanceDeQuietud(tamanos));
-        if (estaQuieto(tamanos)) {
+        const transcurrido = Date.now() - inicio;
+        setCuenta(Math.max(1, Math.ceil((CUENTA_ATRAS_MS - transcurrido) / 1000)));
+        if ((transcurrido >= MINIMO_MS && estaQuieto(tamanos)) || transcurrido >= CUENTA_ATRAS_MS) {
+          setCuenta(0);
           await disparar();
           return;
         }
@@ -146,10 +163,15 @@ export function PruebaDeVida({
     <View style={styles.pantalla} testID="prueba-de-vida">
       <CameraView ref={camara} style={StyleSheet.absoluteFill} facing="front" mirror animateShutter={false} onCameraReady={() => setLista(true)} />
 
-      {/* Sólo el contorno donde va la cara. */}
-      <View style={styles.centro} pointerEvents="none">
-        <View style={[styles.ovalo, { borderColor: bordeOvalo, borderWidth: quieto ? 5 : 3 + avance * 2 }]} testID="prueba-de-vida-ovalo" />
-      </View>
+      {/* La silueta donde va la cabeza y los hombros (de frente o girando), no un óvalo. */}
+      {pose ? <SiluetaDeCara pose={silutaDe(pose.kind)} color={bordeOvalo} grosor={quieto ? 5 : 3 + avance * 2} testID="prueba-de-vida-ovalo" /> : null}
+      {fase === 'midiendo' && cuenta > 0 ? (
+        <View style={styles.cuentaCaja} pointerEvents="none">
+          <AtlasText variant="amountHero" style={styles.cuenta} testID="prueba-de-vida-cuenta">
+            {String(cuenta)}
+          </AtlasText>
+        </View>
+      ) : null}
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.destello, estiloDestello]} />
 
       {/* Arriba: salir, paso y la instrucción. */}
@@ -165,7 +187,7 @@ export function PruebaDeVida({
                 {quieto ? '¡Foto tomada!' : pose.titulo}
               </AtlasText>
               <AtlasText variant="body" style={styles.claroSuave} align="center">
-                {quieto ? 'Enviándola. Sigue la siguiente indicación.' : fase === 'midiendo' ? `${pose.instruccion} Quédate quieto…` : pose.instruccion}
+                {quieto ? 'Enviándola. Sigue la siguiente indicación.' : fase === 'midiendo' ? `${pose.instruccion} Quédate quieto: la foto sale sola.` : pose.instruccion}
               </AtlasText>
             </>
           ) : (
@@ -222,8 +244,10 @@ const ESTADO_TEXTO: Record<EstadoFoto['estado'], string> = { enviando: 'Enviando
 const styles = StyleSheet.create({
   pantalla: { flex: 1, backgroundColor: palette.black },
   centro: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
-  ovalo: { width: '68%', aspectRatio: 0.76, borderRadius: 999 },
   destello: { backgroundColor: palette.white },
+  // Sobre el pecho, no sobre la cara: la persona tiene que verse mientras cuenta.
+  cuentaCaja: { position: 'absolute', left: 0, right: 0, top: '58%', alignItems: 'center' },
+  cuenta: { color: palette.white, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 8 },
   arriba: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: space.lg, gap: space.sm, backgroundColor: 'rgba(0,0,0,0.35)', paddingBottom: space.md },
   salir: { alignSelf: 'flex-start', width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   instruccion: { alignItems: 'center', gap: space.xxs },

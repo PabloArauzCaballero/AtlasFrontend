@@ -31,12 +31,19 @@ export function EstadoDeSubidaVista({
   onCancelar,
   onReintentar,
   onRepetir,
+  onUsarIgual,
 }: Readonly<{
   estado: EstadoDeSubida;
   /** Corta la subida en curso. Sin el, la vista no pinta boton (la pantalla lo tiene en otro sitio). */
   onCancelar?: () => void;
   onReintentar?: () => void;
   onRepetir?: () => void;
+  /**
+   * Sólo en una captura rechazada por la comprobación del teléfono: subirla igual. La comprobación es un ahorro (evita
+   * una subida que se sabe dudosa), no el juez: el Motor sigue juzgando. Sin esta salida, quien tenía una foto buena
+   * que el umbral no aceptaba se quedaba repitiendo (Pablo, 2026-10-07: «es muy difícil el escáner»).
+   */
+  onUsarIgual?: () => void;
 }>) {
   if (estado.fase === 'subiendo') {
     return (
@@ -63,7 +70,12 @@ export function EstadoDeSubidaVista({
       <ErrorState
         title="Repite la foto"
         detail={estado.mensaje}
-        actions={onRepetir ? <Button label="Repetir la foto" variant="secondary" onPress={onRepetir} /> : undefined}
+        actions={
+          <>
+            {onRepetir ? <Button label="Repetir la foto" variant="secondary" onPress={onRepetir} /> : null}
+            {onUsarIgual ? <Button label="Usar esta foto igual" variant="ghost" onPress={onUsarIgual} testID="usar-captura-igual" /> : null}
+          </>
+        }
       />
     );
   }
