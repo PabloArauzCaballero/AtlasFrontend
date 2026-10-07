@@ -96,7 +96,16 @@ export type IconName =
   | 'clip'
   | 'chat'
   | 'galeria'
-  | 'papelera';
+  | 'papelera'
+  // Los trofeos y los niveles: cada logro y cada escalón con su propio dibujo, no la estrella para todo.
+  | 'fuego'
+  | 'corona'
+  | 'rayo'
+  | 'diamante'
+  | 'cohete'
+  | 'sol'
+  | 'luna'
+  | 'medalla';
 
 /** Opacidad del relleno suave de la forma principal en un icono de dos tonos. Sutil a propósito: da cuerpo sin teñir. */
 const RELLENO = 0.16;
@@ -432,6 +441,57 @@ const PATHS: Record<IconName, (stroke: string, width: number, d: Dibujo) => Reac
     <>
       <Path d="M11.6 3.5H19a1.5 1.5 0 0 1 1.5 1.5v7.4a2 2 0 0 1-.59 1.42l-6.6 6.6a2 2 0 0 1-2.83 0l-6.4-6.4a2 2 0 0 1 0-2.83l6.6-6.6a2 2 0 0 1 1.42-.59z" stroke={s} fill={s} fillOpacity={d.f} strokeWidth={w} strokeLinejoin="round" />
       <Circle cx={16} cy={8} r={1.3} stroke={d.a} strokeWidth={w} />
+    </>
+  ),
+  // Trofeos y niveles. Mismo criterio que el resto: lo menos que conserve el significado a 16 px.
+  fuego: (s, w, d) => (
+    <>
+      <Path d="M12 3.2c.4 3.3 3.6 5 3.6 9.1a3.6 3.6 0 0 1-7.2 0c0-1.6.6-2.5 1.3-3.4C9.5 10.3 11.4 7.6 12 3.2z" stroke={s} fill={s} fillOpacity={d.f} strokeWidth={w} strokeLinejoin="round" />
+      <Path d="M12 20.8a6.4 6.4 0 0 0 6.4-6.4c0-3.4-2.2-5.2-3-8.2M12 20.8a6.4 6.4 0 0 1-6.4-6.4c0-1.5.5-2.7 1.2-3.7" stroke={d.a} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  corona: (s, w, d) => (
+    <>
+      <Path d="M3.5 8.5 7.8 12 12 5.5 16.2 12l4.3-3.5-1.6 10H5.1z" stroke={s} fill={s} fillOpacity={d.f} strokeWidth={w} strokeLinejoin="round" />
+      <Path d="M5.6 20.5h12.8" stroke={d.a} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  rayo: (s, w, d) => (
+    <>
+      <Path d="M13.2 2.8 5.2 13.4h5.6l-1 7.8 8-10.6h-5.6z" stroke={s} fill={s} fillOpacity={d.f} strokeWidth={w} strokeLinejoin="round" />
+      <Path d="M16.6 5.2l1.4-1.4M19 8h1.8" stroke={d.a} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  diamante: (s, w, d) => (
+    <>
+      <Path d="M6.5 4.5h11l3.5 5-9 10.5L3 9.5z" stroke={s} fill={s} fillOpacity={d.f} strokeWidth={w} strokeLinejoin="round" />
+      <Path d="M3 9.5h18M9.5 4.5 8 9.5l4 10.5 4-10.5-1.5-5" stroke={d.a} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  cohete: (s, w, d) => (
+    <>
+      <Path d="M12 2.8c3.2 2.2 4.6 5.6 4.2 9.7l-1.7 2.6H9.5l-1.7-2.6C7.4 8.4 8.8 5 12 2.8z" stroke={s} fill={s} fillOpacity={d.f} strokeWidth={w} strokeLinejoin="round" />
+      <Circle cx={12} cy={9.2} r={1.6} stroke={d.a} strokeWidth={w} />
+      <Path d="M8.2 13.2 5.2 16l.6 2.7 3-1.5M15.8 13.2l3 2.8-.6 2.7-3-1.5M12 18v3.2" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  sol: (s, w, d) => (
+    <>
+      <Circle cx={12} cy={12} r={4.2} stroke={s} fill={s} fillOpacity={d.f} strokeWidth={w} />
+      <Path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6" stroke={d.a} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  luna: (s, w, d) => (
+    <>
+      <Path d="M19.5 14.6A8 8 0 0 1 9.4 4.5a8 8 0 1 0 10.1 10.1z" stroke={s} fill={s} fillOpacity={d.f} strokeWidth={w} strokeLinejoin="round" />
+      <Path d="M17 4.5v3M15.5 6h3" stroke={d.a} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  medalla: (s, w, d) => (
+    <>
+      <Circle cx={12} cy={14.5} r={5.5} stroke={s} fill={s} fillOpacity={d.f} strokeWidth={w} />
+      <Path d="M8.6 3.5 10.8 9.4M15.4 3.5 13.2 9.4" stroke={s} strokeWidth={w} strokeLinecap="round" />
+      <Path d="m12 12 .9 1.8 2 .3-1.45 1.4.35 2-1.8-.95-1.8.95.35-2L9.1 14.1l2-.3z" stroke={d.a} strokeWidth={w * 0.7} strokeLinejoin="round" />
     </>
   ),
   estrella: (s, w, d) => (

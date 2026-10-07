@@ -14,16 +14,47 @@ export const ICONO_DE_NIVEL: Record<TierCode, IconName> = {
   EN_CONSTRUCCION: 'tendencia',
   ESTABLECIDO: 'escudo',
   CONSOLIDADO: 'estrella',
-  PREFERENTE: 'estrella',
+  PREFERENTE: 'corona',
 };
 
-/** Los mismos escalones que `AtlasBackend/src/modules/credit/domain/points-level.ts`; sólo se usan si el backend no los manda. */
-const ESCALONES: readonly { code: TierCode; label: string; from: number }[] = [
-  { code: 'NUEVO', label: 'Nuevo', from: 0 },
-  { code: 'EN_CONSTRUCCION', label: 'En crecimiento', from: 500 },
-  { code: 'ESTABLECIDO', label: 'Establecido', from: 2_000 },
-  { code: 'CONSOLIDADO', label: 'Consolidado', from: 5_000 },
-  { code: 'PREFERENTE', label: 'Preferente', from: 10_000 },
+/** El icono de cada uno de los doce niveles; uno que la app no conoce (llega del servidor) cae al de su escalón. */
+export const ICONO_DE_ESCALON: Record<string, IconName> = {
+  NUEVO: 'chispa',
+  EXPLORADOR: 'cohete',
+  EN_CONSTRUCCION: 'tendencia',
+  CONSTANTE: 'fuego',
+  ESTABLECIDO: 'escudo',
+  CONFIABLE: 'medalla',
+  CONSOLIDADO: 'estrella',
+  DESTACADO: 'rayo',
+  PREFERENTE: 'corona',
+  ELITE: 'diamante',
+  LEYENDA: 'sol',
+  TITAN: 'diamante',
+};
+
+export const iconoDeEscalon = (e: { id?: string; code: TierCode }): IconName => ICONO_DE_ESCALON[e.id ?? e.code] ?? ICONO_DE_NIVEL[e.code];
+
+/** El identificador único de un escalón: el `id` de un backend nuevo o, con uno anterior, su `code`. */
+export const idDeEscalon = (e: { id?: string; code: string }): string => e.id ?? e.code;
+
+/**
+ * Los mismos doce escalones que `AtlasBackend/src/modules/credit/domain/points-level.ts`; sólo se usan si el backend no
+ * los manda. Los cinco cortes originales (0, 500, 2.000, 5.000, 10.000) no se movieron.
+ */
+const ESCALONES: readonly { id: string; code: TierCode; label: string; from: number }[] = [
+  { id: 'NUEVO', code: 'NUEVO', label: 'Nuevo', from: 0 },
+  { id: 'EXPLORADOR', code: 'NUEVO', label: 'Explorador', from: 100 },
+  { id: 'EN_CONSTRUCCION', code: 'EN_CONSTRUCCION', label: 'En crecimiento', from: 500 },
+  { id: 'CONSTANTE', code: 'EN_CONSTRUCCION', label: 'Constante', from: 1_000 },
+  { id: 'ESTABLECIDO', code: 'ESTABLECIDO', label: 'Establecido', from: 2_000 },
+  { id: 'CONFIABLE', code: 'ESTABLECIDO', label: 'Confiable', from: 3_500 },
+  { id: 'CONSOLIDADO', code: 'CONSOLIDADO', label: 'Consolidado', from: 5_000 },
+  { id: 'DESTACADO', code: 'CONSOLIDADO', label: 'Destacado', from: 7_500 },
+  { id: 'PREFERENTE', code: 'PREFERENTE', label: 'Preferente', from: 10_000 },
+  { id: 'ELITE', code: 'PREFERENTE', label: 'Élite', from: 15_000 },
+  { id: 'LEYENDA', code: 'PREFERENTE', label: 'Leyenda', from: 25_000 },
+  { id: 'TITAN', code: 'PREFERENTE', label: 'Titán Atlas', from: 50_000 },
 ];
 
 export type NivelPorPuntos = {
@@ -46,8 +77,8 @@ export function nivelPorPuntos(progress: Pick<Progress, 'level' | 'nextLevel' | 
   const actual = ESCALONES[indice]!;
   const siguiente = ESCALONES[indice + 1];
   return {
-    level: { code: actual.code, label: actual.label, index: indice + 1, of: ESCALONES.length, points: puntos },
-    nextLevel: siguiente ? { code: siguiente.code, label: siguiente.label, from: siguiente.from, pointsMissing: siguiente.from - puntos } : null,
+    level: { id: actual.id, code: actual.code, label: actual.label, index: indice + 1, of: ESCALONES.length, points: puntos },
+    nextLevel: siguiente ? { id: siguiente.id, code: siguiente.code, label: siguiente.label, from: siguiente.from, pointsMissing: siguiente.from - puntos } : null,
     levelLadder: ESCALONES.map((e) => ({ ...e, reached: puntos >= e.from })),
   };
 }

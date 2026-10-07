@@ -10,11 +10,11 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import type { CreditLine, Progress } from '../api/endpoints/credit-line';
-import { color, palette, radius, space } from '../theme/tokens';
+import { color, radius, space } from '../theme/tokens';
 import { Icon } from './icons';
-import { Insignia } from './insignia';
+import { VitrinaDeLogros } from './vitrina-de-logros';
 import { Gap } from './layout';
-import { formatoPuntos, nivelPorPuntos } from '../features/nivel';
+import { formatoPuntos, idDeEscalon, nivelPorPuntos } from '../features/nivel';
 import { Appear } from './motion';
 import { NivelCard } from './nivel-card';
 import { AtlasText, Button, Card, Divider, EmptyState, SectionHeader } from './primitives';
@@ -82,21 +82,12 @@ export function PestanaCalificacion({ progress, creditLine }: { progress: Progre
   );
 }
 
-/** ¿Qué he ganado y qué sigue? Las insignias y las misiones. */
+/** ¿Qué he ganado y qué sigue? Las insignias, por colección, y las misiones. */
 export function PestanaLogros({ progress }: { progress: Progress }) {
-  const ganadas = progress.experience.badges.filter((b) => b.earned).length;
   return (
     <>
       <Appear index={0} style={styles.seccion}>
-        <SectionHeader title="Tus trofeos" detail={`${ganadas} de ${progress.experience.badges.length} ganados · bronce, plata, oro y platino`} />
-        {/* La vitrina: un fondo más hondo que el de las tarjetas, para que el metal de los trofeos brille. */}
-        <Card style={styles.vitrina}>
-          <View style={styles.rejilla} testID="insignias">
-            {progress.experience.badges.map((insignia, indice) => (
-              <Insignia key={insignia.code} insignia={insignia} indice={indice} />
-            ))}
-          </View>
-        </Card>
+        <VitrinaDeLogros progress={progress} />
       </Appear>
       <Appear index={1} style={styles.seccion}>
         <SectionHeader title="Misiones" detail="Lo que sube tu calificación." />
@@ -141,7 +132,7 @@ export function PestanaHistoria({ progress }: { progress: Progress }) {
         <SectionHeader title="Los niveles" detail="Se suben con los puntos que ganas pagando a tiempo." />
         <Card padding="none">
           {[...levelLadder].reverse().map((escalon, indice) => (
-            <View key={escalon.code}>
+            <View key={idDeEscalon(escalon)}>
               {indice > 0 ? <Divider inset /> : null}
               <View
                 style={styles.fila}
@@ -151,9 +142,9 @@ export function PestanaHistoria({ progress }: { progress: Progress }) {
                   {escalon.reached ? <Icon name="check" size={16} tint={color.text.onBrand} /> : null}
                 </View>
                 <View style={styles.texto}>
-                  <AtlasText variant="bodyStrong" tone={escalon.code === level.code ? 'brand' : 'primary'}>
+                  <AtlasText variant="bodyStrong" tone={idDeEscalon(escalon) === idDeEscalon(level) ? 'brand' : 'primary'}>
                     {escalon.label}
-                    {escalon.code === level.code ? ' · estás aquí' : ''}
+                    {idDeEscalon(escalon) === idDeEscalon(level) ? ' · estás aquí' : ''}
                   </AtlasText>
                 </View>
                 <AtlasText variant="caption" tone="secondary">{`desde ${formatoPuntos(escalon.from)} puntos`}</AtlasText>
@@ -224,8 +215,6 @@ function EvolucionDeLinea({ history }: { history: Progress['history'] }) {
 const styles = StyleSheet.create({
   // El encabezado de sección y su tarjeta van en el mismo bloque: sin este `gap` la tarjeta pisaba el apunte del encabezado.
   seccion: { gap: space.sm },
-  rejilla: { flexDirection: 'row', flexWrap: 'wrap' },
-  vitrina: { backgroundColor: palette.bg, borderColor: color.feedbackBorder.brand },
   fila: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },
   texto: { flex: 1, gap: 2 },
   marca: { width: 24, height: 24, borderRadius: radius.pill, borderWidth: 1.5, borderColor: color.border.strong, alignItems: 'center', justifyContent: 'center' },

@@ -431,6 +431,11 @@ export const motion = {
    * sesion: la referencia son los ~800 ms de las aperturas de app del sistema.
    */
   brandCut: 900,
+  /**
+   * La celebración de un logro (`ui/celebracion-logro.tsx`): el otro movimiento que se sale del cuarto de segundo, y
+   * también ocurre una vez por logro. Caída del trofeo, ráfaga de partículas y barrido de luz.
+   */
+  celebracion: { caida: 560, rafaga: 2600, barrido: 800, rayos: 16000 },
 } as const;
 
 /**
@@ -472,6 +477,11 @@ export const spring = {
   settle: { damping: 24, stiffness: 260, mass: 0.9 } as const,
   /** Recorridos amplios que deben sentirse conducidos, no disparados. */
   glide: { damping: 30, stiffness: 170, mass: 1 } as const,
+  /**
+   * El golpe de un trofeo al caer. Es el ÚNICO muelle subamortiguado de la app, a propósito: rebasa el destino y vuelve,
+   * que es lo que se siente como peso y como premio. En una celebración, no en un control.
+   */
+  logro: { damping: 9, stiffness: 190, mass: 0.9 } as const,
 } as const;
 
 /** Escala del elemento presionado. Suficiente para notarse en el pulgar, no para saltar a la vista. */

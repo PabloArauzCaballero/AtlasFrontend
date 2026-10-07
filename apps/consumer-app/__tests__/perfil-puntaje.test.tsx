@@ -75,10 +75,10 @@ beforeEach(() => {
 
 it('SIN línea de crédito, Perfil muestra igual el nivel y los puntos', async () => {
   await montar();
-  expect(screen.getByText('NIVEL 1 DE 5')).toBeTruthy();
+  expect(screen.getByText('NIVEL 1 DE 12')).toBeTruthy();
   expect(screen.getByText('Nuevo')).toBeTruthy();
   // Sin compras pagadas: 0 puntos, aunque la calificación sea 12. El nivel se mide en puntos.
-  expect(screen.getByText('Faltan 500 para «En crecimiento»')).toBeTruthy();
+  expect(screen.getByText('Faltan 100 para «Explorador»')).toBeTruthy();
 });
 
 it('SIN línea, explica por qué falta el puntaje (no es un hueco que parezca un fallo) y ofrece el extracto', async () => {
@@ -111,7 +111,7 @@ it('si el nivel falla, lo dice con reintento', async () => {
 it('si el libro de créditos falla, el nivel se sigue viendo y el fallo del puntaje se dice aparte', async () => {
   mockLibro.error = 'No pudimos cargar tus créditos.';
   await montar();
-  expect(screen.getByText('NIVEL 1 DE 5')).toBeTruthy();
+  expect(screen.getByText('NIVEL 1 DE 12')).toBeTruthy();
   expect(screen.getByText('No pudimos cargar tu índice de crédito')).toBeTruthy();
 });
 
@@ -119,7 +119,7 @@ it('lo primero de Perfil es el saldo de crédito, antes de la tarjeta y del nive
   await montar();
   const textos = screen.getAllByText(/\S/).map((nodo) => [nodo.props.children].flat().join(''));
   const credito = textos.findIndex((t) => t.includes('Crédito habilitado'));
-  const nivel = textos.findIndex((t) => t.includes('NIVEL 1 DE 5'));
+  const nivel = textos.findIndex((t) => t.includes('NIVEL 1 DE 12'));
   expect(credito).toBeGreaterThan(-1);
   expect(credito).toBeLessThan(nivel);
 });
