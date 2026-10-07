@@ -68,6 +68,17 @@ describe('Button · brillo', () => {
     expect(screen.getByTestId('boton-brillo')).toBeTruthy();
   });
 
+  it('el acabado de cristal es estático: está en el principal aunque no haya movimiento', async () => {
+    autonomia.activa = false;
+    await montar(<Button label="Continuar" onPress={() => undefined} />);
+    expect(screen.getByTestId('boton-cristal')).toBeTruthy();
+  });
+
+  it('un botón bloqueado no lleva el acabado de cristal: un apagado que brilla invita a pulsarlo', async () => {
+    await montar(<Button label="Continuar" disabled blockedReason="Falta un dato." onPress={() => undefined} />);
+    expect(screen.queryByTestId('boton-cristal')).toBeNull();
+  });
+
   it('un botón bloqueado NO brilla ni se mueve: invitaría a pulsarlo', async () => {
     await montar(<Button label="Continuar" disabled blockedReason="Falta un dato." onPress={() => undefined} />);
     await medir();

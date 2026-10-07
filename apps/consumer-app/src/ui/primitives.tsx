@@ -37,7 +37,7 @@ import Reanimated, {
 import { color, palette, press, radius, shadow, space, spring, stroke, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { iconoDeAccion } from './icono-de-accion';
-import { BarridoDeLuz, CICLO_MS, DestelloDeToque, RESPIRACION, useFaseDelBoton, vivaPorSiSola } from './button-shine';
+import { BarridoDeLuz, BrilloDeCristal, CICLO_MS, DestelloDeToque, RESPIRACION, useFaseDelBoton, vivaPorSiSola } from './button-shine';
 import { AnimatedPressable, PressSurface, suavidad } from './motion';
 import { AnilloAtlas, BarraDeCarga } from './cargador-atlas';
 import { webData } from '../web/estilo';
@@ -280,7 +280,13 @@ export function Button({
     return {
       transform: [{ scale: (1 - pressProgress.value * (1 - press.scale)) * (1 + t * RESPIRACION) }],
       opacity: 1 - pressProgress.value * 0.12,
-      ...(isLitPrimary ? { shadowOpacity: shadow.brandGlow.shadowOpacity + t * 0.17 + pressProgress.value * 0.2 } : null),
+      // El halo respira con fuerza —opacidad y radio— y se enciende más al tocar: es lo que hace que el botón parezca emitir luz.
+      ...(isLitPrimary
+        ? {
+            shadowOpacity: Math.min(1, shadow.brandGlow.shadowOpacity + t * 0.38 + pressProgress.value * 0.25),
+            shadowRadius: shadow.brandGlow.shadowRadius + t * 14 + pressProgress.value * 6,
+          }
+        : null),
     };
   });
 
@@ -336,6 +342,7 @@ export function Button({
           style={StyleSheet.absoluteFill}
         />
       ) : null}
+      {isLitPrimary ? <BrilloDeCristal /> : null}
       {viva && ancho > 0 ? <BarridoDeLuz fase={fase} desfase={desfase} ancho={ancho} /> : null}
       {isBlocked ? null : <DestelloDeToque progreso={pressProgress} principal={variant === 'primary'} />}
       {/*
