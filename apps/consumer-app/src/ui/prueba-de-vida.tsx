@@ -158,7 +158,7 @@ export function PruebaDeVida({
     <View style={styles.pantalla} testID="prueba-de-vida">
       <CameraView ref={camara} style={StyleSheet.absoluteFill} facing="front" mirror animateShutter={false} onCameraReady={() => setLista(true)} />
 
-      {/* La silueta donde va la cabeza y los hombros (de frente o girando), no un óvalo. */}
+      {/* La silueta donde va la CARA (de frente o girando), no el cuerpo. */}
       {pose ? <SiluetaDeCara pose={silutaDe(pose.kind)} color={bordeOvalo} grosor={quieto ? 5 : 3 + avance * 2} testID="prueba-de-vida-ovalo" /> : null}
       {fase === 'midiendo' && cuenta > 0 ? (
         <View style={styles.cuentaCaja} pointerEvents="none">

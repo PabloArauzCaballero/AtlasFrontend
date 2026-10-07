@@ -39,6 +39,7 @@ import { LO_QUE_NO_HACEMOS_CON_LA_UBICACION, USOS_DE_LA_UBICACION } from '../../
 import { space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { type IconName } from '../../src/ui/icons';
+import { IndicadorDeToque } from '../../src/ui/indicador-de-toque';
 import { AtlasText, Button, Card, CardHeader } from '../../src/ui/primitives';
 
 /**
@@ -294,6 +295,8 @@ export default function Permisos() {
       <Screen
         footer={
           <View style={{ gap: space.sm }}>
+            {/* Dónde tocar: la mano baja sobre el botón que continúa, no sobre «No, gracias». */}
+            <IndicadorDeToque testID="indicador-de-toque-siempre" />
             <Button
               label={enAndroid ? 'Abrir ajustes' : 'Permitir siempre'}
               onPress={() => void pedirSiempre()}
@@ -333,6 +336,8 @@ export default function Permisos() {
     <Screen
       footer={
         <View style={{ gap: space.sm }}>
+          {/* Dónde tocar: la mano baja sobre «Permitir», que es el botón que sigue el flujo. */}
+          <IndicadorDeToque />
           <Button label="Permitir" bitacora="permitir" onPress={() => void aceptar()} loading={pidiendo} />
           <Button label="Ahora no" bitacora="ahora_no" variant="ghost" onPress={() => ahoraNo()} disabled={pidiendo} />
         </View>
