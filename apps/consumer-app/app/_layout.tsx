@@ -22,6 +22,7 @@ import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useAplicarActualizacionAlAbrir } from '../src/device/aplicar-actualizacion';
 import { prepararAvisos } from '../src/device/push';
 import { useAbrirAvisoTocado } from '../src/device/push-navigation';
 import { SandboxProvider } from '../src/sandbox/store';
@@ -139,6 +140,8 @@ function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
 }
 
 export default function RootLayout() {
+  // Pregunta por un update nuevo al abrir y lo aplica ya, sin pedir abrir la app dos veces.
+  useAplicarActualizacionAlAbrir();
   // `error` se trata como «listo» a proposito: si una fuente no llega, la app arranca con la del
   // sistema. Quedarse en el splash indefinidamente por un problema tipografico dejaria al cliente
   // sin poder pagar su cuota, que importa bastante mas que la fuente.
