@@ -41,7 +41,7 @@ import {
   ProgressBar,
   Skeleton,
 } from '../../../src/ui/primitives';
-import { DelinquencyImpact, ScoringPanel } from '../../../src/ui/scoring-panel';
+import { DelinquencyImpact } from '../../../src/ui/scoring-panel';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { color, radius, space } from '../../../src/theme/tokens';
 
@@ -228,48 +228,7 @@ export default function Profile() {
         <ErrorState title="No pudimos cargar tu nivel" detail="Revisa tu conexión y vuelve a intentar." onRetry={() => void nivel.recargar()} />
       )}
 
-      {creditLine ? (
-        <Card>
-          <ScoringPanel line={creditLine} />
-        </Card>
-      ) : !book.ready ? (
-        // Mientras llega, el hueco del puntaje se ve como lo que es: algo que viene. Sin esto la
-        // tarjeta simplemente no existía y aparecía de golpe, y si fallaba, nunca aparecía y nadie sabía por qué.
-        <Card>
-          <Skeleton height={11} width="40%" />
-          <Skeleton height={36} width="55%" />
-          <Skeleton height={10} />
-        </Card>
-      ) : book.error ? (
-        <ErrorState title="No pudimos cargar tu índice de crédito" detail={book.error} onRetry={() => void book.reload()} />
-      ) : (
-        /*
-          Sin línea calculada y sin error: se DICE. Un hueco sin explicación se lee como un fallo de la app.
-          El puntaje Atlas (0-1000) sale de la línea de crédito; hasta que el motor la calcule, lo que sí
-          existe es el nivel de arriba.
-        */
-        <Card>
-          <CardHeader icon="grafico" title="Tu índice de crédito" detail="Todavía no calculamos tu línea de crédito." divider={false} />
-          <AtlasText variant="body" tone="secondary">
-            {estadoExtracto.tipo === 'pendiente'
-              ? estadoExtracto.detalle
-              : estadoExtracto.tipo === 'rechazado'
-                ? `Tu último extracto no se pudo usar: ${estadoExtracto.motivo} Sube otro para calcular tu línea.`
-                : 'Este índice (de 0 a 1000) lo calcula el motor de decisión y aparece aquí en cuanto se calcule tu línea. Subir tu extracto bancario ayuda a que se calcule y a que sea más alta.'}
-          </AtlasText>
-          {estadoExtracto.tipo === 'pendiente' ? (
-            <Button label="Ver mis extractos" icon="documento" variant="secondary" onPress={() => router.push('/(app)/mis-datos')} />
-          ) : (
-            <Button
-              label={estadoExtracto.tipo === 'rechazado' ? 'Subir otro extracto' : 'Subir mi extracto bancario'}
-              icon="documento"
-              variant="secondary"
-              onPress={() => router.push('/(app)/extracto-bancario')}
-            />
-          )}
-        </Card>
-      )}
-
+      {/* El índice de crédito (0-1000) y su porqué viven sólo en «Tu nivel Atlas → Calificación»: aquí se repetían y agobiaban (Pablo, 2026-10-07). */}
       <SurfaceContent entries={piezasDeCredito} />
 
       {creditLine && overdue > 0 ? (
