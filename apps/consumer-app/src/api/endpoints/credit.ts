@@ -96,6 +96,14 @@ export type CreditApplicationSummary = {
    */
   businessAcceptance?: 'pending' | 'accepted' | 'declined' | null;
   businessAcceptanceAt?: string | null;
+  /**
+   * El pago inicial (el 60 % que se paga directo al comercio): `null` = todavía no avisó; `submitted` =
+   * esperando que el comercio confirme; `confirmed` = el comercio vio entrar el dinero; `rejected` = lo
+   * rechazó y dice por qué (`downPaymentRejectionReason`), y se puede avisar de nuevo.
+   */
+  downPaymentStatus?: 'submitted' | 'confirmed' | 'rejected' | null;
+  downPaymentAmount?: string | null;
+  downPaymentRejectionReason?: string | null;
 };
 
 export const listCreditApplications = (customerId: string, origen: Pick<RequestOptions, 'sinPantalla'> = {}) =>
