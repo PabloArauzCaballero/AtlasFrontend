@@ -13,7 +13,7 @@ import type { CreditLine, Progress } from '../api/endpoints/credit-line';
 import { space } from '../theme/tokens';
 import { VitrinaDeLogros } from './vitrina-de-logros';
 import { Gap } from './layout';
-import { ListaDePasos, resumirMisiones, resumirNiveles } from './lista-de-pasos';
+import { ListaDePasos } from './lista-de-pasos';
 import { formatoPuntos, idDeEscalon, nivelPorPuntos } from '../features/nivel';
 import { Appear } from './motion';
 import { NivelCard } from './nivel-card';
@@ -93,8 +93,7 @@ export function PestanaLogros({ progress }: { progress: Progress }) {
         <SectionHeader title="Misiones" detail="Lo que sube tu calificación." />
         <ListaDePasos
           testID="misiones"
-          resumir={resumirMisiones}
-          verTodos={(n) => `Ver las ${n} que faltan`}
+          porPagina={3}
           pasos={progress.missions.map((m) => ({
             clave: m.code,
             titulo: m.label,
@@ -123,8 +122,7 @@ export function PestanaHistoria({ progress }: { progress: Progress }) {
         <ListaDePasos
           testID="niveles"
           ascender
-          resumir={resumirNiveles}
-          verTodos={(n) => `Ver los ${n} niveles que faltan`}
+          porPagina={4}
           pasos={[...levelLadder].reverse().map((e) => {
             const actual = idDeEscalon(e) === idDeEscalon(level);
             return {

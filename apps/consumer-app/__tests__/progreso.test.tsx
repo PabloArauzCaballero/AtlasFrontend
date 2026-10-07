@@ -118,15 +118,22 @@ describe("pantalla «Tu nivel Atlas»", () => {
   it("lista las misiones y marca las cumplidas", async () => {
     await render(envolver(<Progreso />));
     await abrir("Logros");
-    // De entrada se ven las pendientes; las cumplidas quedan tras «Ver las N que faltan».
+    // Paginadas: están todas, a un deslizamiento; nada queda escondido tras un botón.
     expect(
       screen.getByLabelText(/Termina de pagar una compra\. Pendiente/),
     ).toBeTruthy();
-    expect(screen.queryByLabelText(/Verifica tu identidad\. Cumplida/)).toBeNull();
-    await fireEvent.press(screen.getByTestId("misiones-ver-todos"));
     expect(
       screen.getByLabelText(/Verifica tu identidad\. Cumplida/),
     ).toBeTruthy();
+  });
+
+  it("los niveles van paginados: están todos, en páginas de 4, con un punto por página", async () => {
+    await render(envolver(<Progreso />));
+    await abrir("Historia");
+    expect(screen.getByTestId("niveles-pagina-1")).toBeTruthy();
+    expect(screen.getByTestId("niveles-pagina-3")).toBeTruthy();
+    expect(screen.queryByText(/niveles que faltan/)).toBeNull();
+    expect(screen.getAllByLabelText(/^Ir a la página/).length).toBeGreaterThanOrEqual(3);
   });
 
   it("dice que pedir crédito no suma puntos", async () => {

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import type { Badge, Progress } from "../src/api/endpoints/credit-line";
 import * as bus from "../src/features/celebraciones-bus";
-import { aLaVista, masCercano, porColeccion, VitrinaDeLogros } from "../src/ui/vitrina-de-logros";
+import { masCercano, porColeccion, VitrinaDeLogros } from "../src/ui/vitrina-de-logros";
 import { PROGRESO_DE_PRUEBA } from "./progreso-datos";
 
 const b = (code: string, extra: Partial<Badge> = {}): Badge => ({
@@ -101,20 +101,11 @@ describe("VitrinaDeLogros", () => {
   });
 });
 
-describe("aLaVista", () => {
-  const muchas = [
-    b("g1", { earned: true, current: 10 }),
-    ...["p1", "p2", "p3", "p4", "p5"].map((c, i) => b(c, { current: i })),
-    b("s", { secret: true, current: 9 }),
-  ];
-
-  it("enseña lo ganado y las 3 pendientes más cercanas; las secretas, al final", () => {
-    const { visibles, ocultas } = aLaVista(muchas, false);
-    expect(visibles.map((x) => x.code)).toEqual(["g1", "p3", "p4", "p5"]);
-    expect(ocultas).toBe(3);
-  });
-
-  it("abierta, enseña todo", () => {
-    expect(aLaVista(muchas, true)).toEqual({ visibles: muchas, ocultas: 0 });
+describe("la vitrina no esconde insignias", () => {
+  it("una colección con muchas pendientes las enseña TODAS, sin «Ver las que faltan»", async () => {
+    const muchas = ["a", "b", "c", "d", "e", "f"].map((c, i) => b(c, { category: "pagos", current: i }));
+    await render(<VitrinaDeLogros progress={con(muchas)} />);
+    for (const c of ["a", "b", "c", "d", "e", "f"]) expect(screen.getByTestId(`insignia-${c}`)).toBeTruthy();
+    expect(screen.queryByText(/que faltan/)).toBeNull();
   });
 });
