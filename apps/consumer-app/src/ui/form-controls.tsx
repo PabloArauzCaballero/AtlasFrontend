@@ -473,7 +473,12 @@ export function SelectField<T extends string = string>({
         hint={bloqueado ? (deshabilitadoPorque ?? undefined) : (hint ?? elegida?.detalle)}
       />
 
-      <BottomSheet visible={abierto} titulo={label} onClose={cerrar}>
+      {/*
+        Con buscador la hoja EVITA EL TECLADO. Sin esto, en iOS el teclado sube delante del Modal y tapa la lista entera:
+        quien tocaba «Buscar» en Ciudad veía el teclado y ninguna opción (Pablo, 2026-10-07). Sin buscador no hace falta:
+        no hay nada que escribir y el envoltorio cambia cómo se reparte el alto.
+      */}
+      <BottomSheet visible={abierto} titulo={label} onClose={cerrar} evitarTeclado={conBuscador}>
         {/*
           La ayuda del campo, tambien DENTRO de la hoja.
 
