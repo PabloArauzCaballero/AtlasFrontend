@@ -6,11 +6,13 @@
  * propia cuenta.
  */
 import * as Clipboard from 'expo-clipboard';
-import { useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 import * as contentApi from '../../../src/api/endpoints/app-content';
 import { setMfaPreference } from '../../../src/api/endpoints/auth';
+import * as creditLineApi from '../../../src/api/endpoints/credit-line';
+import { estadoDelExtracto, subtituloDeRecalcular } from '../../../src/features/extracto-estado';
 import { ContentActionButton } from '../../../src/ui/content';
 import { SurfaceContent, useSurfaceContent } from '../../../src/ui/surface-content';
 import { SESION_GUARDADA_MOVIL, SESION_GUARDADA_WEB } from '../../../src/features/trust-copy';
@@ -80,6 +82,23 @@ export default function Profile() {
 
   const book = useCreditBook(session.customerId);
   const nivel = useProgress(session.customerId);
+  // El extracto más reciente: decide si se PIDE el extracto o se dice que está pendiente de evaluar.
+  const [ultimoExtracto, setUltimoExtracto] = useState<creditLineApi.BankStatementReview | null | undefined>(undefined);
+  useFocusEffect(
+    useCallback(() => {
+      if (!session.customerId) return;
+      let vigente = true;
+      creditLineApi
+        .getLatestBankStatement(session.customerId)
+        .then((r) => vigente && setUltimoExtracto(r))
+        .catch(() => vigente && setUltimoExtracto(undefined));
+      return () => {
+        vigente = false;
+      };
+    }, [session.customerId]),
+  );
+  // `undefined` = aún no se sabe (o falló la lectura): no se afirma que falte, se mantiene el texto neutro de siempre.
+  const estadoExtracto = estadoDelExtracto(ultimoExtracto ?? null);
   const rating = book.rating;
   const creditLine = book.creditLine;
   const t = useCopy();
@@ -232,9 +251,22 @@ export default function Profile() {
         <Card>
           <CardHeader icon="grafico" title="Tu índice de crédito" detail="Todavía no calculamos tu línea de crédito." divider={false} />
           <AtlasText variant="body" tone="secondary">
-            Este índice (de 0 a 1000) lo calcula el motor de decisión y aparece aquí en cuanto se calcule tu línea. No es tu puntaje ni tu calificación. Subir tu extracto bancario ayuda a que se calcule y a que sea más alta.
+            {estadoExtracto.tipo === 'pendiente'
+              ? estadoExtracto.detalle
+              : estadoExtracto.tipo === 'rechazado'
+                ? `Tu último extracto no se pudo usar: ${estadoExtracto.motivo} Sube otro para calcular tu línea.`
+                : 'Este índice (de 0 a 1000) lo calcula el motor de decisión y aparece aquí en cuanto se calcule tu línea. Subir tu extracto bancario ayuda a que se calcule y a que sea más alta.'}
           </AtlasText>
-          <Button label="Subir mi extracto bancario" icon="documento" variant="secondary" onPress={() => router.push('/(app)/extracto-bancario')} />
+          {estadoExtracto.tipo === 'pendiente' ? (
+            <Button label="Ver mis extractos" icon="documento" variant="secondary" onPress={() => router.push('/(app)/mis-datos')} />
+          ) : (
+            <Button
+              label={estadoExtracto.tipo === 'rechazado' ? 'Subir otro extracto' : 'Subir mi extracto bancario'}
+              icon="documento"
+              variant="secondary"
+              onPress={() => router.push('/(app)/extracto-bancario')}
+            />
+          )}
         </Card>
       )}
 
@@ -344,7 +376,7 @@ export default function Profile() {
         <ListRow
           icon="documento"
           title="Recalcular mi línea"
-          subtitle="Sube tu extracto bancario y la recalculamos en un máximo de 24 h"
+          subtitle={subtituloDeRecalcular(estadoExtracto)}
           onPress={() => router.push('/(app)/extracto-bancario')}
           accessibilityHint="Abrir para subir tu extracto bancario"
         />

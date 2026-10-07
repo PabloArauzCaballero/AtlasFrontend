@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import Perfil from '../app/(app)/(tabs)/perfil';
 
@@ -11,6 +11,13 @@ const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn(), canGoBack: () => true }),
   usePathname: () => '/perfil',
+  // En la prueba «tomar el foco» es montar: basta con ejecutar el efecto una vez.
+  useFocusEffect: (efecto: () => void | (() => void)) => (require('react') as typeof import('react')).useEffect(efecto, []),
+}));
+const mockUltimoExtracto = jest.fn(async (): Promise<unknown> => null);
+jest.mock('../src/api/endpoints/credit-line', () => ({
+  ...jest.requireActual('../src/api/endpoints/credit-line'),
+  getLatestBankStatement: () => mockUltimoExtracto(),
 }));
 jest.mock('../src/ui/tour', () => ({ useTour: () => ({ start: jest.fn(), activo: false }), resetTour: jest.fn(), TourTarget: ({ children }: { children: unknown }) => children }));
 jest.mock('expo-clipboard', () => ({ setStringAsync: jest.fn() }));
@@ -49,10 +56,10 @@ const NIVEL = {
   hasCreditLine: false,
   score: 12,
   tier: { code: 'NUEVO', label: 'Nuevo', index: 1, of: 5, multiplier: 1 },
-  nextTier: { code: 'EN_CONSTRUCCION', label: 'En construcción', from: 25, pointsMissing: 13, multiplier: 1.5 },
+  nextTier: { code: 'EN_CONSTRUCCION', label: 'En crecimiento', from: 25, pointsMissing: 13, multiplier: 1.5 },
   ladder: [
     { code: 'NUEVO', label: 'Nuevo', from: 0, multiplier: 1, reached: true },
-    { code: 'EN_CONSTRUCCION', label: 'En construcción', from: 25, multiplier: 1.5, reached: false },
+    { code: 'EN_CONSTRUCCION', label: 'En crecimiento', from: 25, multiplier: 1.5, reached: false },
   ],
   components: [],
   missions: [],
@@ -71,7 +78,7 @@ it('SIN línea de crédito, Perfil muestra igual el nivel y los puntos', async (
   expect(screen.getByText('NIVEL 1 DE 5')).toBeTruthy();
   expect(screen.getByText('Nuevo')).toBeTruthy();
   // Sin compras pagadas: 0 puntos, aunque la calificación sea 12. El nivel se mide en puntos.
-  expect(screen.getByText('Faltan 500 para «En construcción»')).toBeTruthy();
+  expect(screen.getByText('Faltan 500 para «En crecimiento»')).toBeTruthy();
 });
 
 it('SIN línea, explica por qué falta el puntaje (no es un hueco que parezca un fallo) y ofrece el extracto', async () => {
@@ -115,4 +122,26 @@ it('lo primero de Perfil es el saldo de crédito, antes de la tarjeta y del nive
   const nivel = textos.findIndex((t) => t.includes('NIVEL 1 DE 5'));
   expect(credito).toBeGreaterThan(-1);
   expect(credito).toBeLessThan(nivel);
+});
+
+describe('el extracto bancario en Perfil, sin línea calculada', () => {
+  beforeEach(() => {
+    Object.assign(mockLibro, { creditLine: null, error: null, ready: true });
+    mockUltimoExtracto.mockReset();
+  });
+
+  it('con un extracto recibido NO se vuelve a pedir: dice «pendiente de evaluar»', async () => {
+    mockUltimoExtracto.mockResolvedValue({ status: 'received', rejectionReason: null });
+    await montar();
+    await waitFor(() => expect(screen.getAllByText(/pendiente de evaluar/).length).toBeGreaterThan(0));
+    expect(screen.queryByText('Subir mi extracto bancario')).toBeNull();
+    expect(screen.getByText('Ver mis extractos')).toBeTruthy();
+  });
+
+  it('sin nada subido sí lo pide', async () => {
+    mockUltimoExtracto.mockResolvedValue(null);
+    await montar();
+    expect(await screen.findByText('Subir mi extracto bancario')).toBeTruthy();
+    expect(screen.queryByText(/pendiente de evaluar/)).toBeNull();
+  });
 });

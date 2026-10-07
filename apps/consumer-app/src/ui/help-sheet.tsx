@@ -193,6 +193,29 @@ export function HelpButton({ ayuda, etiqueta }: { ayuda: string; etiqueta: strin
   );
 }
 
+/**
+ * El mismo ⓘ, pero que abre lo que le diga quien lo usa (una hoja con contenido largo, `InfoSheet`).
+ *
+ * Existe para las tarjetas de la portada: antes llevaban un botón «Más info» de ancho completo que pesaba
+ * lo mismo que la acción de la tarjeta (Pablo, 2026-10-07: «un miniboton de i que explique ese detalle en un
+ * modal»). El tamaño de toque es el de `HelpButton`: 26 dibujados, 48 tocados.
+ */
+export function BotonInfo({ etiqueta, onPress, testID }: { etiqueta: string; onPress: () => void; testID?: string }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Más información: ${etiqueta}`}
+      hitSlop={HIT_SLOP}
+      {...toqueWeb(HIT_SLOP)}
+      style={styles.helpTarget}
+      testID={testID}
+    >
+      <Icon name="info" size={18} tint={color.text.tertiary} />
+    </Pressable>
+  );
+}
+
 /** 26 dibujados + 11 por lado = los 48 de `touch.minSize`. */
 const DIBUJADO = 26;
 const HIT_SLOP = (touch.minSize - DIBUJADO) / 2;

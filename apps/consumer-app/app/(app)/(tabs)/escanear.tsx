@@ -21,7 +21,8 @@ import { useSandbox } from '../../../src/sandbox/store';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { firstBlocker } from '../../../src/ui/blocked';
 import { CameraFrame } from '../../../src/ui/camera-frame';
-import { Field } from '../../../src/ui/fields';
+import { CodigoCajaField } from '../../../src/ui/codigo-caja-field';
+import { LARGO_CODIGO_CAJA } from '../../../src/features/codigo-caja';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Button, Card, CardHeader, ErrorState } from '../../../src/ui/primitives';
 import { useCopy } from '../../../src/features/use-contenido-remoto';
@@ -60,6 +61,8 @@ export default function ScanScreen() {
   const [rejection, setRejection] = useState<string | null>(null);
   // Mientras el servidor confirma el código la pantalla lo dice: sin esto, leer un QR no hacía NADA visible.
   const [verificando, setVerificando] = useState(false);
+  // El código técnico de la respuesta (p. ej. «404 QR_NOT_RECOGNIZED»), para que quien prueba y soporte vean POR QUÉ.
+  const [referencia, setReferencia] = useState<string | null>(null);
   // Un QR permanece en cuadro varios fotogramas: sin este cerrojo se abririan varias sesiones.
   const locked = useRef(false);
   // Y sin este, un QR rechazado se reenviaria cada 1,5 s mientras siga delante. Ver `qr-rechazado.ts`.
@@ -125,6 +128,7 @@ export default function ScanScreen() {
 
       let resolved: Awaited<ReturnType<typeof resolveMerchantQr>> | null = null;
       setRejection(null);
+      setReferencia(null);
       setVerificando(true);
       void Haptics.selectionAsync();
       try {
@@ -139,6 +143,7 @@ export default function ScanScreen() {
         const isDemoFixture = token === DEMO_TOKEN || token === REVOKED_DEMO_TOKEN;
         if (!(isSandboxPurchase && isDemoFixture)) {
           setVerificando(false);
+          if (error instanceof AtlasApiError) setReferencia(`${error.status ?? 'sin respuesta'} · ${error.code}`);
           const delCamino = fallaDelCamino(error);
           if (delCamino) {
             // No se anota como rechazo: el mismo QR, un segundo después, puede funcionar.
@@ -211,7 +216,7 @@ export default function ScanScreen() {
         </Card>
       ) : null}
 
-      {copy ? <ErrorState title={copy.title} detail={copy.detail} /> : null}
+      {copy ? <ErrorState title={copy.title} detail={copy.detail} reference={referencia} /> : null}
 
       {permission?.granted ? (
         <CameraFrame ratio={1}>
@@ -248,27 +253,26 @@ export default function ScanScreen() {
           icon="editar"
           iconTone="neutral"
           title="Ingresar el código a mano"
-          detail="Si el QR no se lee, el comercio puede dictarte el código que aparece debajo del QR."
+          detail="Si el QR no se lee, escribe el código que está debajo."
         />
-        <Field
-          label="Código del comercio"
+        <CodigoCajaField
+          label="Código de la caja"
           value={manual}
           onChangeText={setManual}
-          placeholder="K7M2-9QXD"
-          autoCapitalize="characters"
-          autoCorrect={false}
-          ayuda="El código de 8 caracteres impreso debajo del QR de la caja (por ejemplo K7M2-9QXD); no importa si lo escribes en minúsculas o sin el guion. Pídeselo al comercio si la cámara no lee el QR; identifica la caja exacta donde estás comprando."
+          onComplete={(codigo) => {
+            locked.current = false;
+            void handleToken(codigo);
+          }}
+          ayuda="El código de 8 caracteres impreso debajo del QR de la caja (por ejemplo K7M2-9QXD). Sólo lleva letras y números sin confusión: no hay 0, O, 1, I, L, U ni V. Pídeselo al comercio si la cámara no lee el QR; identifica la caja exacta donde estás comprando."
         />
         <Button
           label="Continuar"
           variant="secondary"
-          disabled={manual.trim().length < 3}
-          blockedReason={firstBlocker([
-            [manual.trim().length >= 3, 'El código del comercio tiene al menos 3 caracteres.'],
-          ])}
+          disabled={manual.length < LARGO_CODIGO_CAJA}
+          blockedReason={firstBlocker([[manual.length >= LARGO_CODIGO_CAJA, 'El código de la caja tiene 8 caracteres.']])}
           onPress={() => {
             locked.current = false;
-            handleToken(manual.trim());
+            void handleToken(manual);
           }}
         />
       </Card>

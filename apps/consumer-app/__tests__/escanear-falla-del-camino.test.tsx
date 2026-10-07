@@ -117,13 +117,20 @@ it('si el servidor dice que la caja no está activa, lo explica con su código',
   await waitFor(() => expect(screen.getByText('QR vencido')).toBeTruthy());
 });
 
-it('el código a mano se manda tal cual lo escribió la persona; el servidor lo normaliza', async () => {
+it('el código a mano se escribe en casillas: sólo entran los símbolos permitidos y al completarse se manda solo', async () => {
   resolver.mockResolvedValue({ partnerProfileId: '1', branchId: '1', posTerminalId: '1', displayName: 'Tienda Sol', businessCategory: null, verified: true });
   await pantalla();
 
-  await fireEvent.changeText(screen.getByLabelText('Código del comercio'), 'k7m2-9qxd');
-  await fireEvent.press(screen.getByText('Continuar'));
-
-  await waitFor(() => expect(resolver).toHaveBeenCalledWith('k7m2-9qxd'));
+  // «0», «O», «1», «I», «L», «U» y «V» no existen en el código: se descartan al escribir, como el PIN descarta las letras.
+  await fireEvent.changeText(screen.getByLabelText('Código de la caja'), 'k0o7m2-9qxd');
+  await waitFor(() => expect(resolver).toHaveBeenCalledWith('K7M29QXD'));
   await waitFor(() => expect(mockPush).toHaveBeenCalled());
+});
+
+it('con el código incompleto no se manda y «Continuar» está bloqueado', async () => {
+  await pantalla();
+
+  await fireEvent.changeText(screen.getByLabelText('Código de la caja'), 'K7M2');
+  expect(resolver).not.toHaveBeenCalled();
+  expect(screen.getByText('El código de la caja tiene 8 caracteres.')).toBeTruthy();
 });

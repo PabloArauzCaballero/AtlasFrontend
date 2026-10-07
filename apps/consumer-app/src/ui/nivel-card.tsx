@@ -13,7 +13,7 @@ import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
 import { formatoPuntos, fraseDeLoQueFalta, ICONO_DE_NIVEL, nivelPorPuntos, porcentajeDeBarra } from '../features/nivel';
 import { color, radius, space, stroke } from '../theme/tokens';
-import { InfoSheet } from './help-sheet';
+import { BotonInfo, InfoSheet } from './help-sheet';
 import { Icon } from './icons';
 import { Vivo } from './motion';
 import { AtlasText, Button, Divider, ProgressBar } from './primitives';
@@ -41,9 +41,12 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
           </View>
         </Vivo>
         <View style={styles.titulos}>
-          <AtlasText variant="overline" tone="secondary">
-            {`NIVEL ${level.index} DE ${level.of}`}
-          </AtlasText>
+          <View style={styles.sobretitulo}>
+            <AtlasText variant="overline" tone="secondary">
+              {`NIVEL ${level.index} DE ${level.of}`}
+            </AtlasText>
+            <BotonInfo etiqueta="tus puntos y tu nivel" onPress={() => setInfo(true)} testID="nivel-mas-info" />
+          </View>
           <AtlasText variant="h2" numberOfLines={1}>
             {level.label}
           </AtlasText>
@@ -53,7 +56,7 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
             {formatoPuntos(level.points)}
           </AtlasText>
           <AtlasText variant="caption" tone="secondary">
-            {`${puntos} XP`}
+            {puntos}
           </AtlasText>
         </View>
       </View>
@@ -72,7 +75,6 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
         ) : null}
       </View>
       <View style={styles.acciones}>
-        <Button label="Más info" icon="info" variant="secondary" haptic="none" onPress={() => setInfo(true)} style={styles.accion} testID="nivel-mas-info" />
         {onVerLogros ? <Button label="Mis logros" icon="estrella" variant="secondary" onPress={onVerLogros} style={styles.accion} testID="nivel-logros" /> : null}
       </View>
 
@@ -132,6 +134,7 @@ const styles = StyleSheet.create({
     borderColor: color.feedbackBorder.brand,
   },
   titulos: { flex: 1 },
+  sobretitulo: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   puntos: { alignItems: 'flex-end' },
   pie: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
   falta: { flex: 1 },

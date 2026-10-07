@@ -87,8 +87,8 @@ describe('TarjetaAtlas (la pieza)', () => {
 
 describe('frases de la tarjeta', () => {
   it('la ganada por nivel lo dice y promete que cambia sola', async () => {
-    const f = fraseDeOrigen(tarjetaDePrueba('SILVER'), 'En construcción');
-    expect(f).toMatch(/La ganaste por tu nivel En construcción/);
+    const f = fraseDeOrigen(tarjetaDePrueba('SILVER'), 'En crecimiento');
+    expect(f).toMatch(/La ganaste por tu nivel En crecimiento/);
     expect(f).toMatch(/cambia sola/);
   });
 
@@ -119,7 +119,7 @@ describe('frases de la tarjeta', () => {
   it('la siguiente tarjeta sale del escalón y dice qué nivel la desbloquea; la última no tiene', async () => {
     const s = siguienteTarjeta(tarjetaDePrueba('NORMAL'), PROGRESO_DE_PRUEBA.ladder);
     expect(s?.tier.code).toBe('SILVER');
-    expect(s?.nivelLabel).toBe('En construcción');
+    expect(s?.nivelLabel).toBe('En crecimiento');
     expect(siguienteTarjeta(tarjetaDePrueba('BLACK'), PROGRESO_DE_PRUEBA.ladder)).toBeNull();
   });
 
