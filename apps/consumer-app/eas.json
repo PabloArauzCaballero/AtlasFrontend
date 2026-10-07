@@ -64,7 +64,7 @@
       "channel": "testflight-test",
       "environment": "production",
       "env": {
-        "EXPO_PUBLIC_ATLAS_API_URL": "http://161.97.85.216/api/v1",
+        "EXPO_PUBLIC_ATLAS_API_URL": "https://atlas.consumerweb.test.arauzsoftware.com/api/v1",
         "EXPO_PUBLIC_ATLAS_ESCANER_DOCUMENTO": "true"
       }
     },
