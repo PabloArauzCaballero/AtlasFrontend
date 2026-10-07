@@ -18,7 +18,8 @@ import { abrirCartaDeInsignia } from '../features/celebraciones-bus';
 import { avanceDeInsignia } from '../features/puntaje-explicado';
 import { color, palette, space } from '../theme/tokens';
 import { Insignia } from './insignia';
-import { AtlasText, Card, ProgressBar, SectionHeader } from './primitives';
+import { AtlasText, Card, SectionHeader } from './primitives';
+import { BarraViva } from './cuenta-arriba';
 
 /** El trofeo sin ganar, no secreto, con más avance proporcional: lo que está a un paso. */
 export function masCercano(badges: readonly Badge[]): Badge | null {
@@ -81,7 +82,7 @@ export function VitrinaDeLogros({ progress }: { progress: Progress }) {
   return (
     <View style={styles.vitrina}>
       <SectionHeader title="Tus insignias" detail={`${ganadas} de ${badges.length} ganadas · de bronce a diamante`} />
-      <ProgressBar value={badges.length > 0 ? Math.round((ganadas / badges.length) * 100) : 0} label={`${ganadas} de ${badges.length} insignias ganadas`} />
+      <BarraViva value={badges.length > 0 ? Math.round((ganadas / badges.length) * 100) : 0} label={`${ganadas} de ${badges.length} insignias ganadas`} />
       {cercano ? (
         <Card tone="brand" testID="logro-mas-cercano">
           <AtlasText variant="overline" tone="brand">
@@ -89,7 +90,7 @@ export function VitrinaDeLogros({ progress }: { progress: Progress }) {
           </AtlasText>
           <AtlasText variant="bodyStrong">{cercano.label}</AtlasText>
           <AtlasText variant="caption" tone="secondary">{`${cercano.detail} Llevas ${avanceDeInsignia(cercano)}.`}</AtlasText>
-          <ProgressBar value={Math.round((cercano.current / cercano.target) * 100)} label={`Avance de ${cercano.label}`} />
+          <BarraViva value={Math.round((cercano.current / cercano.target) * 100)} label={`Avance de ${cercano.label}`} />
         </Card>
       ) : null}
 

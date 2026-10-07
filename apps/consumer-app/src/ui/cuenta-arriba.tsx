@@ -57,7 +57,7 @@ export function CuentaArriba({
   avance: SharedValue<number>;
   hasta: number;
   formato: (n: number) => string;
-  tamano?: 'display' | 'h2';
+  tamano?: 'display' | 'h2' | 'amount';
   color?: string;
 }) {
   /*
@@ -114,10 +114,18 @@ export function Barra({ valor, avance, etiqueta }: { valor: number; avance: Shar
 }
 
 
+/** La barra de siempre (`ProgressBar`) con el movimiento: sube al llegar y lleva el punto vivo. Mismo rol y etiqueta para los lectores de pantalla. */
+export function BarraViva({ value, label }: { value: number; label?: string }) {
+  const avance = useAvance(true);
+  const v = Math.max(0, Math.min(100, value));
+  return <Barra valor={v} avance={avance} etiqueta={label ?? `Avance ${v}%`} />;
+}
+
 const styles = StyleSheet.create({
   numero: { color: color.text.primary, fontVariant: ['tabular-nums'] },
 
-  barra: { height: PUNTO + 6, justifyContent: 'center', marginVertical: space.xs },
+  // Sangrado de medio punto a cada lado: con el valor en 0 o en 100 el punto y su halo no se salen del margen de la tarjeta.
+  barra: { height: PUNTO + 6, justifyContent: 'center', marginVertical: space.xs, marginHorizontal: PUNTO / 2 },
 
   pista: { height: 6, borderRadius: radius.pill, backgroundColor: color.surface.raisedStrong, overflow: 'hidden' },
 

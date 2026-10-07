@@ -10,10 +10,10 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import type { CreditLine, Progress } from '../api/endpoints/credit-line';
-import { color, radius, space } from '../theme/tokens';
-import { Icon } from './icons';
+import { space } from '../theme/tokens';
 import { VitrinaDeLogros } from './vitrina-de-logros';
 import { Gap } from './layout';
+import { ListaDePasos, resumirMisiones, resumirNiveles } from './lista-de-pasos';
 import { formatoPuntos, idDeEscalon, nivelPorPuntos } from '../features/nivel';
 import { Appear } from './motion';
 import { NivelCard } from './nivel-card';
@@ -91,29 +91,19 @@ export function PestanaLogros({ progress }: { progress: Progress }) {
       </Appear>
       <Appear index={1} style={styles.seccion}>
         <SectionHeader title="Misiones" detail="Lo que sube tu calificación." />
-        <Card padding="none">
-          {progress.missions.map((mision, indice) => (
-            <View key={mision.code}>
-              {indice > 0 ? <Divider inset /> : null}
-              <View style={styles.fila} accessibilityLabel={`${mision.label}. ${mision.done ? 'Cumplida' : 'Pendiente'}. ${mision.detail}`}>
-                <View style={[styles.marca, mision.done && styles.marcaHecha]}>
-                  {mision.done ? <Icon name="check" size={16} tint={color.text.onBrand} /> : null}
-                </View>
-                <View style={styles.texto}>
-                  <AtlasText variant="bodyStrong" tone={mision.done ? 'secondary' : 'primary'}>
-                    {mision.label}
-                  </AtlasText>
-                  <AtlasText variant="caption" tone="secondary">
-                    {mision.detail}
-                  </AtlasText>
-                </View>
-                <AtlasText variant="caption" tone={mision.done ? 'brand' : 'tertiary'}>
-                  {mision.points}
-                </AtlasText>
-              </View>
-            </View>
-          ))}
-        </Card>
+        <ListaDePasos
+          testID="misiones"
+          resumir={resumirMisiones}
+          verTodos={(n) => `Ver las ${n} que faltan`}
+          pasos={progress.missions.map((m) => ({
+            clave: m.code,
+            titulo: m.label,
+            detalle: m.detail,
+            derecha: m.points,
+            hecho: m.done,
+            etiqueta: `${m.label}. ${m.done ? 'Cumplida' : 'Pendiente'}. ${m.detail}`,
+          }))}
+        />
         <AtlasText variant="caption" tone="tertiary" style={styles.nota}>
           Pedir más crédito no sube tu calificación ni tus puntos: subes cuando cumples, no cuando te endeudas.
         </AtlasText>
@@ -130,28 +120,23 @@ export function PestanaHistoria({ progress }: { progress: Progress }) {
     <>
       <Appear index={0} style={styles.seccion}>
         <SectionHeader title="Los niveles" detail="Se suben con los puntos que ganas pagando a tiempo." />
-        <Card padding="none">
-          {[...levelLadder].reverse().map((escalon, indice) => (
-            <View key={idDeEscalon(escalon)}>
-              {indice > 0 ? <Divider inset /> : null}
-              <View
-                style={styles.fila}
-                accessibilityLabel={`${escalon.label}, desde ${formatoPuntos(escalon.from)} puntos. ${escalon.reached ? 'Alcanzado' : 'Por alcanzar'}`}
-              >
-                <View style={[styles.marca, escalon.reached && styles.marcaHecha]}>
-                  {escalon.reached ? <Icon name="check" size={16} tint={color.text.onBrand} /> : null}
-                </View>
-                <View style={styles.texto}>
-                  <AtlasText variant="bodyStrong" tone={idDeEscalon(escalon) === idDeEscalon(level) ? 'brand' : 'primary'}>
-                    {escalon.label}
-                    {idDeEscalon(escalon) === idDeEscalon(level) ? ' · estás aquí' : ''}
-                  </AtlasText>
-                </View>
-                <AtlasText variant="caption" tone="secondary">{`desde ${formatoPuntos(escalon.from)} puntos`}</AtlasText>
-              </View>
-            </View>
-          ))}
-        </Card>
+        <ListaDePasos
+          testID="niveles"
+          ascender
+          resumir={resumirNiveles}
+          verTodos={(n) => `Ver los ${n} niveles que faltan`}
+          pasos={[...levelLadder].reverse().map((e) => {
+            const actual = idDeEscalon(e) === idDeEscalon(level);
+            return {
+              clave: idDeEscalon(e),
+              titulo: `${e.label}${actual ? ' · estás aquí' : ''}`,
+              derecha: `desde ${formatoPuntos(e.from)} puntos`,
+              hecho: e.reached,
+              actual,
+              etiqueta: `${e.label}, desde ${formatoPuntos(e.from)} puntos. ${e.reached ? 'Alcanzado' : 'Por alcanzar'}`,
+            };
+          })}
+        />
       </Appear>
       <Appear index={1} style={styles.seccion}>
         <SectionHeader title="Tu evolución" detail="Cómo ha cambiado tu línea con el tiempo." />
@@ -217,8 +202,6 @@ const styles = StyleSheet.create({
   seccion: { gap: space.sm },
   fila: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md },
   texto: { flex: 1, gap: 2 },
-  marca: { width: 24, height: 24, borderRadius: radius.pill, borderWidth: 1.5, borderColor: color.border.strong, alignItems: 'center', justifyContent: 'center' },
-  marcaHecha: { backgroundColor: color.action.primary, borderColor: color.action.primary },
   nota: { paddingHorizontal: space.xs, paddingTop: space.sm },
   derecha: { alignItems: 'flex-end' },
 });

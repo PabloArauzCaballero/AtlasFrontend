@@ -12,7 +12,8 @@ import { calificacionDe, fraseDeCalificacion } from '../features/calificacion';
 import { space } from '../theme/tokens';
 import { BotonInfo, InfoSheet } from './help-sheet';
 import { PressSurface } from './motion';
-import { AtlasText, Card, CardHeader, ProgressBar } from './primitives';
+import { AtlasText, Card, CardHeader } from './primitives';
+import { BarraViva, CuentaArriba, useAvance } from './cuenta-arriba';
 import { PuntajeDesglose } from './puntaje-desglose';
 
 /**
@@ -49,16 +50,17 @@ export function CalificacionCard({ progress, onPress, masInfo = false }: { progr
 }
 
 function Cuerpo({ valor, frase, info }: { valor: number; frase: string; info?: React.ReactNode }) {
+  const avance = useAvance(true);
   return (
     <>
       <CardHeader icon="grafico" eyebrow="Qué tan buen pagador eres" title="Tu calificación" trailing={info} divider={false} />
       <View style={styles.cifra}>
-        <AtlasText variant="amount">{String(valor)}</AtlasText>
+        <CuentaArriba avance={avance} hasta={valor} formato={(n) => String(Math.round(n))} tamano="amount" />
         <AtlasText variant="caption" tone="secondary">
           de 100
         </AtlasText>
       </View>
-      <ProgressBar value={valor} label={`Calificación ${valor} de 100`} />
+      <BarraViva value={valor} label={`Calificación ${valor} de 100`} />
       <AtlasText variant="caption" tone="secondary">
         {frase}
       </AtlasText>
