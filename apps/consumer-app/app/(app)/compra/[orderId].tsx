@@ -17,6 +17,7 @@ import { useSandbox } from '../../../src/sandbox/store';
 import { space } from '../../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { ROTULO_SIMULACION } from '../../../src/features/demo-copy';
+import { explicarFallaDeDecision } from '../../../src/features/falla-de-decision';
 import { DataSourceBadge } from '../../../src/ui/brand';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, KeyValue, ListRow, Overline, Skeleton } from '../../../src/ui/primitives';
 import { useCopy } from '../../../src/features/use-contenido-remoto';
@@ -159,10 +160,7 @@ export default function PurchaseDetail() {
 
       {/* Un motor que no contesta NO es un rechazo, y la pantalla no puede insinuar que lo sea. */}
       {!order.decision && origin?.source === 'backend-unavailable' ? (
-        <ErrorState
-          title="No pudimos evaluar tu compra"
-          detail={`El servicio de decisión no respondió (${origin.code}). Tu compra sigue abierta y nadie la rechazó. Vuelve a intentarlo en un momento.`}
-        />
+        <ErrorState title={explicarFallaDeDecision(origin.code).titulo} detail={explicarFallaDeDecision(origin.code).detalle} />
       ) : null}
 
       {schedule ? (
