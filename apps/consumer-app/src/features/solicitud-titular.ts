@@ -6,6 +6,9 @@
  * enviarse qué se borra y qué la ley obliga a conservar. Mismas claves que el backend (`RECTIFICATION_FIELDS`).
  */
 import type { OpcionSelect } from '../ui/form-controls';
+import { ACTIVIDADES, OTRA_ACTIVIDAD } from './actividades';
+import { DEPARTAMENTOS, OTRA_ZONA, zonasDe } from './geografia';
+import { BANDAS } from './ingresos';
 
 export type CampoCorregible =
   | 'address'
@@ -63,37 +66,97 @@ export const QUE_IMPLICA_BORRAR = {
   plazo: 'Te respondemos en un máximo de 15 días.',
 };
 
+/**
+ * Los datos que tienen lista cerrada en el resto de la app, con las MISMAS listas que el alta: así lo corregido es
+ * comparable con lo declarado y nadie escribe «Sta Cruz» donde antes se eligió «Santa Cruz de la Sierra».
+ *
+ * `valor` es el texto que viaja como valor correcto: el servidor lo guarda cifrado y una persona lo lee al revisar, así que
+ * es la etiqueta («Comercio y ventas»), no un código interno. Lo «otro» de cada lista no se ofrece: para eso está «Otro
+ * dato», que pide contarlo. Los campos que no salen aquí (dirección, referencia, empleador, nombres, carnet) son texto
+ * libre y la fecha de nacimiento usa el calendario.
+ */
+export const OPCIONES_POR_CAMPO: Partial<Record<CampoCorregible, OpcionSelect[]>> = {
+  occupation: ACTIVIDADES.filter((a) => a.codigo !== OTRA_ACTIVIDAD).map((a) => ({
+    valor: a.nombre,
+    etiqueta: a.nombre,
+    detalle: a.detalle,
+  })),
+  city: DEPARTAMENTOS.flatMap((d) =>
+    d.ciudades.map((c) => ({ valor: c.nombre, etiqueta: c.nombre, detalle: `Ciudad del departamento de ${d.nombre}.` })),
+  ),
+  zone: DEPARTAMENTOS.flatMap((d) =>
+    d.ciudades.flatMap((c) =>
+      zonasDe(c.codigo)
+        .filter((z) => z.codigo !== OTRA_ZONA.codigo)
+        .map((z) => ({ valor: `${z.nombre}, ${c.nombre}`, etiqueta: z.nombre, detalle: `Zona de ${c.nombre}, en el departamento de ${d.nombre}.` })),
+    ),
+  ),
+  declared_income: BANDAS.map((b) => ({ valor: b.etiqueta, etiqueta: b.etiqueta, detalle: b.detalle })),
+};
+
+/** Los que se eligen con el calendario y viajan como `AAAA-MM-DD`. */
+export const esFecha = (campo: CampoCorregible) => campo === 'birth_date';
+
 export type FormularioSolicitud = {
   tipo: 'rectification' | 'deletion' | null;
-  campo: CampoCorregible | null;
-  valor: string;
+  /** Todos los datos marcados, en cualquier orden: se envían uno por solicitud, cada uno con su valor. */
+  campos: CampoCorregible[];
+  valores: Partial<Record<CampoCorregible, string>>;
   comentario: string;
 };
 
-export const FORMULARIO_VACIO: FormularioSolicitud = { tipo: null, campo: null, valor: '', comentario: '' };
+export const FORMULARIO_VACIO: FormularioSolicitud = { tipo: null, campos: [], valores: {}, comentario: '' };
+
+const etiquetaDe = (campo: CampoCorregible) => CAMPOS_CORREGIBLES.find((o) => o.valor === campo)?.etiqueta ?? campo;
+
+/** Marca o desmarca un dato; al desmarcar se olvida lo que se había escrito para él. */
+export function alternarCampo(f: FormularioSolicitud, campo: CampoCorregible, marcado: boolean): FormularioSolicitud {
+  const campos = marcado ? (f.campos.includes(campo) ? f.campos : [...f.campos, campo]) : f.campos.filter((c) => c !== campo);
+  const { [campo]: _quitado, ...valores } = f.valores;
+  return { ...f, campos, valores: marcado ? f.valores : valores };
+}
+
+/** Lo que de verdad se envía como corrección, en el orden de la lista: teléfono y correo van por Perfil, no por aquí. */
+export const camposAEnviar = (f: FormularioSolicitud): CampoCorregible[] =>
+  CAMPOS_CORREGIBLES.map((o) => o.valor).filter((c) => f.campos.includes(c) && !esAutoservicio(c));
 
 /** El primer motivo por el que todavía no se puede enviar, o null si se puede. Lo enseña el botón. */
 export function motivoParaNoEnviar(f: FormularioSolicitud): string | null {
   if (!f.tipo) return 'Elige qué quieres pedir.';
   if (f.tipo === 'deletion') return null;
-  if (!f.campo) return 'Elige qué dato quieres corregir.';
-  if (esAutoservicio(f.campo)) return 'El teléfono y el correo los cambias tú mismo desde Perfil.';
-  if (f.campo === 'other') return f.comentario.trim().length >= 5 ? null : 'Cuéntanos qué dato quieres corregir.';
-  if (!f.valor.trim()) return 'Escribe el dato correcto.';
+  if (f.campos.length === 0) return 'Elige qué datos quieres corregir.';
+  const enviables = camposAEnviar(f);
+  if (enviables.length === 0) return 'El teléfono y el correo los cambias tú mismo desde Perfil.';
+  for (const campo of enviables) {
+    if (campo === 'other') {
+      if (f.comentario.trim().length < 5) return 'Cuéntanos qué dato quieres corregir.';
+    } else if (!f.valores[campo]?.trim()) {
+      return enviables.length === 1 ? 'Escribe el dato correcto.' : `Falta el dato correcto de «${etiquetaDe(campo)}».`;
+    }
+  }
   return null;
 }
 
-/** El cuerpo que se manda al servidor. Sólo lo que hace falta: nada de campos vacíos. */
-export function cuerpoDeSolicitud(f: FormularioSolicitud): {
+export type CuerpoSolicitud = {
   requestType: 'rectification' | 'deletion';
   description?: string;
   field?: CampoCorregible;
   proposedValue?: string;
-} {
+};
+
+/**
+ * Las solicitudes que se mandan al servidor. Sólo lo que hace falta: nada de campos vacíos.
+ *
+ * El servidor recibe UN dato por solicitud (su cola, su revisión y su cifrado son por campo), así que marcar varios manda
+ * varias, cada una con su valor y con el mismo comentario.
+ */
+export function cuerposDeSolicitud(f: FormularioSolicitud): CuerpoSolicitud[] {
   if (!f.tipo) throw new Error('Falta el tipo de solicitud.');
   const comentario = f.comentario.trim();
   const base = { requestType: f.tipo, ...(comentario.length >= 5 ? { description: comentario } : {}) };
-  if (f.tipo === 'deletion' || !f.campo) return base;
-  const valor = f.valor.trim();
-  return { ...base, field: f.campo, ...(valor ? { proposedValue: valor } : {}) };
+  if (f.tipo === 'deletion') return [base];
+  return camposAEnviar(f).map((campo) => {
+    const valor = f.valores[campo]?.trim();
+    return { ...base, field: campo, ...(valor ? { proposedValue: valor } : {}) };
+  });
 }

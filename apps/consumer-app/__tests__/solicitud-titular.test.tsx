@@ -3,11 +3,12 @@ import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-c
 import * as privacyApi from '../src/api/endpoints/privacy';
 import {
   CAMPOS_CORREGIBLES,
-  cuerpoDeSolicitud,
+  cuerposDeSolicitud,
   esAutoservicio,
   esIdentidad,
   FORMULARIO_VACIO,
   motivoParaNoEnviar,
+  OPCIONES_POR_CAMPO,
   QUE_IMPLICA_BORRAR,
 } from '../src/features/solicitud-titular';
 import { SolicitudTitularForm } from '../src/features/solicitud-titular-form';
@@ -53,9 +54,10 @@ const montar = () =>
     </SafeAreaProvider>,
   );
 const elegirTipo = (label: string) => fireEvent.press(screen.getByRole('radio', { name: new RegExp(label) }));
-async function elegirCampo(etiqueta: string) {
-  await fireEvent.press(screen.getByLabelText('¿Qué dato quieres corregir?. Tocar para elegir'));
-  await fireEvent.press(screen.getByLabelText(new RegExp(`^${etiqueta}\\.`)));
+const marcarCampo = (etiqueta: string) => fireEvent.press(screen.getByRole('checkbox', { name: etiqueta }));
+async function elegirOpcion(campo: string, opcion: string) {
+  await fireEvent.press(screen.getByLabelText(new RegExp(`^Dato correcto: ${campo}\\. Tocar para elegir`)));
+  await fireEvent.press(screen.getByLabelText(new RegExp(`^${opcion}\\.`)));
 }
 
 beforeEach(() => {
@@ -84,27 +86,45 @@ describe('reglas de la solicitud', () => {
   });
 
   it('dice por qué todavía no se puede enviar', () => {
+    const rect = { ...FORMULARIO_VACIO, tipo: 'rectification' as const };
     expect(motivoParaNoEnviar(FORMULARIO_VACIO)).toBe('Elige qué quieres pedir.');
-    expect(motivoParaNoEnviar({ ...FORMULARIO_VACIO, tipo: 'rectification' })).toBe('Elige qué dato quieres corregir.');
-    expect(motivoParaNoEnviar({ ...FORMULARIO_VACIO, tipo: 'rectification', campo: 'zone' })).toBe('Escribe el dato correcto.');
-    expect(motivoParaNoEnviar({ ...FORMULARIO_VACIO, tipo: 'rectification', campo: 'other' })).toBe('Cuéntanos qué dato quieres corregir.');
-    expect(motivoParaNoEnviar({ ...FORMULARIO_VACIO, tipo: 'rectification', campo: 'phone' })).toMatch(/desde Perfil/);
-    expect(motivoParaNoEnviar({ ...FORMULARIO_VACIO, tipo: 'rectification', campo: 'zone', valor: 'Equipetrol' })).toBeNull();
+    expect(motivoParaNoEnviar(rect)).toBe('Elige qué datos quieres corregir.');
+    expect(motivoParaNoEnviar({ ...rect, campos: ['zone'] })).toBe('Escribe el dato correcto.');
+    expect(motivoParaNoEnviar({ ...rect, campos: ['zone', 'city'], valores: { zone: 'Equipetrol, Santa Cruz de la Sierra' } })).toBe('Falta el dato correcto de «Ciudad».');
+    expect(motivoParaNoEnviar({ ...rect, campos: ['other'] })).toBe('Cuéntanos qué dato quieres corregir.');
+    expect(motivoParaNoEnviar({ ...rect, campos: ['phone'] })).toMatch(/desde Perfil/);
+    expect(motivoParaNoEnviar({ ...rect, campos: ['phone', 'zone'], valores: { zone: 'Equipetrol' } })).toBeNull();
     expect(motivoParaNoEnviar({ ...FORMULARIO_VACIO, tipo: 'deletion' })).toBeNull();
   });
 
-  it('el cuerpo lleva sólo lo necesario: sin vacíos y un borrado sin campo', () => {
-    expect(cuerpoDeSolicitud({ tipo: 'rectification', campo: 'zone', valor: ' Equipetrol ', comentario: '' })).toEqual({
-      requestType: 'rectification',
-      field: 'zone',
-      proposedValue: 'Equipetrol',
-    });
-    expect(cuerpoDeSolicitud({ tipo: 'deletion', campo: 'zone', valor: 'x', comentario: 'ya no la uso, gracias' })).toEqual({
-      requestType: 'deletion',
-      description: 'ya no la uso, gracias',
-    });
+  it('el cuerpo lleva sólo lo necesario: una solicitud por dato, sin vacíos, y un borrado sin campo', () => {
+    expect(cuerposDeSolicitud({ tipo: 'rectification', campos: ['zone'], valores: { zone: ' Equipetrol ' }, comentario: '' })).toEqual([
+      { requestType: 'rectification', field: 'zone', proposedValue: 'Equipetrol' },
+    ]);
+    // Varios datos: uno por solicitud, en el orden de la lista; teléfono y correo no se mandan.
+    expect(
+      cuerposDeSolicitud({ tipo: 'rectification', campos: ['city', 'phone', 'occupation'], valores: { city: 'Montero', occupation: 'Transporte' }, comentario: 'me mudé hace poco' }),
+    ).toEqual([
+      { requestType: 'rectification', description: 'me mudé hace poco', field: 'city', proposedValue: 'Montero' },
+      { requestType: 'rectification', description: 'me mudé hace poco', field: 'occupation', proposedValue: 'Transporte' },
+    ]);
+    expect(cuerposDeSolicitud({ tipo: 'deletion', campos: ['zone'], valores: { zone: 'x' }, comentario: 'ya no la uso, gracias' })).toEqual([
+      { requestType: 'deletion', description: 'ya no la uso, gracias' },
+    ]);
     // Un comentario de menos de 5 letras el servidor lo rechazaría: no se manda.
-    expect(cuerpoDeSolicitud({ tipo: 'deletion', campo: null, valor: '', comentario: 'no' })).toEqual({ requestType: 'deletion' });
+    expect(cuerposDeSolicitud({ tipo: 'deletion', campos: [], valores: {}, comentario: 'no' })).toEqual([{ requestType: 'deletion' }]);
+  });
+
+  it('ocupación, ciudad, zona e ingreso ofrecen sus listas cerradas, sin «otro» ni valores repetidos', () => {
+    expect(Object.keys(OPCIONES_POR_CAMPO).sort()).toEqual(['city', 'declared_income', 'occupation', 'zone']);
+    for (const opciones of Object.values(OPCIONES_POR_CAMPO)) {
+      expect(opciones!.length).toBeGreaterThan(3);
+      expect(new Set(opciones!.map((o) => o.valor)).size).toBe(opciones!.length);
+      for (const o of opciones!) expect(o.detalle?.length).toBeGreaterThan(5);
+    }
+    expect(OPCIONES_POR_CAMPO.occupation!.map((o) => o.valor)).toContain('Comercio y ventas');
+    expect(OPCIONES_POR_CAMPO.occupation!.map((o) => o.valor)).not.toContain('Otra actividad');
+    expect(OPCIONES_POR_CAMPO.zone!.map((o) => o.valor)).toContain('Equipetrol, Santa Cruz de la Sierra');
   });
 
   it('el aviso de borrado cita la norma y el plazo de 10 años desde el cierre', () => {
@@ -115,24 +135,74 @@ describe('reglas de la solicitud', () => {
 });
 
 describe('el formulario', () => {
+  it('se pueden marcar varios datos: cada uno pide su valor y sale una solicitud por dato', async () => {
+    await montar();
+    await elegirTipo('Corregir un dato');
+    await marcarCampo('Ocupación');
+    await marcarCampo('Ciudad');
+    await marcarCampo('Dirección');
+    await elegirOpcion('Ocupación', 'Transporte');
+    await elegirOpcion('Ciudad', 'Montero');
+    // Falta la dirección: no se puede enviar y dice cuál falta.
+    expect(screen.getByText('Falta el dato correcto de «Dirección».')).toBeTruthy();
+    await fireEvent.changeText(screen.getByLabelText('Dato correcto: Dirección'), 'Calle 5 número 10');
+    await fireEvent.press(screen.getByRole('button', { name: /Enviar solicitud/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar PIN' }));
+    await waitFor(() => expect(solicitarDerecho).toHaveBeenCalledTimes(3));
+    expect(solicitarDerecho).toHaveBeenCalledWith('53', { requestType: 'rectification', field: 'address', proposedValue: 'Calle 5 número 10' });
+    expect(solicitarDerecho).toHaveBeenCalledWith('53', { requestType: 'rectification', field: 'city', proposedValue: 'Montero' });
+    expect(solicitarDerecho).toHaveBeenCalledWith('53', { requestType: 'rectification', field: 'occupation', proposedValue: 'Transporte' });
+    expect(await screen.findByTestId('solicitud-enviada')).toBeTruthy();
+  });
+
+  it('si una falla, lo enviado no se repite: queda sólo el dato que falló', async () => {
+    const { AtlasApiError } = jest.requireActual('../src/api/errors');
+    solicitarDerecho
+      .mockResolvedValueOnce({ dataSubjectRequestId: '1', status: 'received' })
+      .mockRejectedValueOnce(new AtlasApiError({ kind: 'validation', code: 'BAD_REQUEST', message: 'No se pudo.', status: 400 }));
+    await montar();
+    await elegirTipo('Corregir un dato');
+    await marcarCampo('Ciudad');
+    await marcarCampo('Dirección');
+    await elegirOpcion('Ciudad', 'Montero');
+    await fireEvent.changeText(screen.getByLabelText('Dato correcto: Dirección'), 'Calle 5 número 10');
+    await fireEvent.press(screen.getByRole('button', { name: /Enviar solicitud/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar PIN' }));
+    await waitFor(() => expect(solicitarDerecho).toHaveBeenCalledTimes(2));
+    // Se envía en el orden de la lista: la dirección salió; la ciudad falló y sigue en el formulario, con lo elegido.
+    await waitFor(() => expect(screen.queryByLabelText(/^Dato correcto: Dirección/)).toBeNull());
+    expect(screen.getByLabelText(/^Dato correcto: Ciudad/)).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'Ciudad' }).props.accessibilityState.checked).toBe(true);
+  });
+
+  it('ocupación se elige de la lista de actividades', async () => {
+    await montar();
+    await elegirTipo('Corregir un dato');
+    await marcarCampo('Ocupación');
+    await elegirOpcion('Ocupación', 'Salud');
+    await fireEvent.press(screen.getByRole('button', { name: /Enviar solicitud/ }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Confirmar PIN' }));
+    await waitFor(() => expect(solicitarDerecho).toHaveBeenCalledWith('53', { requestType: 'rectification', field: 'occupation', proposedValue: 'Salud' }));
+  });
+
   it('una corrección pide el campo y el valor, confirma el PIN y manda las dos cosas', async () => {
     await montar();
     await elegirTipo('Corregir un dato');
-    await elegirCampo('Zona o barrio');
-    await fireEvent.changeText(screen.getByLabelText('Dato correcto'), 'Equipetrol');
+    await marcarCampo('Dirección');
+    await fireEvent.changeText(screen.getByLabelText('Dato correcto: Dirección'), 'Calle Los Pinos 123');
     await fireEvent.press(screen.getByRole('button', { name: /Enviar solicitud/ }));
     // Nada sale antes de confirmar el PIN.
     expect(solicitarDerecho).not.toHaveBeenCalled();
     expect(screen.getByText(/Vas a pedir que corrijamos un dato/)).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Confirmar PIN' }));
-    await waitFor(() => expect(solicitarDerecho).toHaveBeenCalledWith('53', { requestType: 'rectification', field: 'zone', proposedValue: 'Equipetrol' }));
+    await waitFor(() => expect(solicitarDerecho).toHaveBeenCalledWith('53', { requestType: 'rectification', field: 'address', proposedValue: 'Calle Los Pinos 123' }));
     expect(await screen.findByTestId('solicitud-enviada')).toBeTruthy();
   });
 
   it('sin el dato correcto no se puede enviar y lo dice', async () => {
     await montar();
     await elegirTipo('Corregir un dato');
-    await elegirCampo('Ciudad');
+    await marcarCampo('Dirección');
     const boton = screen.getByRole('button', { name: /Enviar solicitud/ });
     expect(boton.props.accessibilityState.disabled).toBe(true);
     expect(screen.getByText('Escribe el dato correcto.')).toBeTruthy();
@@ -141,7 +211,7 @@ describe('el formulario', () => {
   it('teléfono o correo no se piden por aquí: lleva a Perfil y no ofrece enviar', async () => {
     await montar();
     await elegirTipo('Corregir un dato');
-    await elegirCampo('Teléfono');
+    await marcarCampo('Teléfono');
     expect(screen.getByTestId('aviso-autoservicio')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /Enviar solicitud/ })).toBeNull();
     await fireEvent.press(screen.getByRole('button', { name: /Ir a cambiar mis datos de contacto/ }));
@@ -151,7 +221,8 @@ describe('el formulario', () => {
   it('un dato del carnet avisa que lo revisa una persona con el documento', async () => {
     await montar();
     await elegirTipo('Corregir un dato');
-    await elegirCampo('Nombres');
+    await marcarCampo('Nombres');
+    await marcarCampo('Número de carnet');
     expect(screen.getByTestId('aviso-identidad')).toBeTruthy();
   });
 

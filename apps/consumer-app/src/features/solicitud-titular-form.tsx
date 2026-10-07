@@ -15,20 +15,24 @@ import * as privacyApi from '../api/endpoints/privacy';
 import { describeError } from '../api/errors';
 import { marcarPinConfirmado } from './pin-verificado';
 import {
+  alternarCampo,
+  camposAEnviar,
   CAMPOS_CORREGIBLES,
-  cuerpoDeSolicitud,
+  cuerposDeSolicitud,
   esAutoservicio,
+  esFecha,
   esIdentidad,
   FORMULARIO_VACIO,
   motivoParaNoEnviar,
+  OPCIONES_POR_CAMPO,
   QUE_IMPLICA_BORRAR,
-  type CampoCorregible,
   type FormularioSolicitud,
 } from './solicitud-titular';
 import { space } from '../theme/tokens';
 import { ConfirmarPinSheet } from '../ui/confirmar-pin-sheet';
-import { Field, OptionGroup } from '../ui/fields';
-import { SelectField } from '../ui/form-controls';
+import { CheckRow, Field, OptionGroup } from '../ui/fields';
+import { DateField, SelectField } from '../ui/form-controls';
+import { FieldLabel } from '../ui/help-sheet';
 import { AtlasText, Button, Card, CardHeader, ErrorState } from '../ui/primitives';
 
 type Copy = {
@@ -55,17 +59,28 @@ export function SolicitudTitularForm({ customerId, copy }: { customerId: string 
   const bloqueo = motivoParaNoEnviar(form);
   const detalle = error ? describeError(error) : null;
 
+  /**
+   * Una solicitud por dato. Lo que el servidor acepta sale del formulario; lo que falla se queda para reintentar sin volver a
+   * pedir lo ya enviado (y sin duplicarlo en la cola).
+   */
   async function enviar() {
     if (!customerId) return;
     setEnviando(true);
     setError(null);
+    let pendiente = form;
+    let algunaEnviada = false;
     try {
-      await privacyApi.solicitarDerecho(customerId, cuerpoDeSolicitud(form));
-      setEnviada(true);
-      setForm(FORMULARIO_VACIO);
+      for (const cuerpo of cuerposDeSolicitud(form)) {
+        await privacyApi.solicitarDerecho(customerId, cuerpo);
+        algunaEnviada = true;
+        pendiente = cuerpo.field ? alternarCampo(pendiente, cuerpo.field, false) : FORMULARIO_VACIO;
+      }
+      pendiente = FORMULARIO_VACIO;
     } catch (capturado) {
       setError(capturado);
     } finally {
+      setForm(pendiente);
+      setEnviada(algunaEnviada);
       setEnviando(false);
     }
   }
@@ -85,45 +100,85 @@ export function SolicitudTitularForm({ customerId, copy }: { customerId: string 
 
       {form.tipo === 'rectification' ? (
         <View style={{ gap: space.base }}>
-          <SelectField<CampoCorregible>
-            label="¿Qué dato quieres corregir?"
-            ayuda="Elige el dato que está mal. Si no está en la lista, elige «Otro dato» y cuéntanos cuál."
-            opciones={CAMPOS_CORREGIBLES}
-            value={form.campo}
-            onChange={(campo) => cambiar({ campo, valor: '' })}
-            required
-          />
-          {esAutoservicio(form.campo) ? (
+          <View style={{ gap: space.xs }}>
+            <FieldLabel
+              label="¿Qué datos quieres corregir?"
+              required
+              ayuda="Marca todos los datos que están mal; puedes elegir más de uno. Para cada uno te pedimos el valor correcto. Si no está en la lista, marca «Otro dato» y cuéntanos cuál."
+            />
+            {CAMPOS_CORREGIBLES.map((opcion) => (
+              <CheckRow
+                key={opcion.valor}
+                label={opcion.etiqueta}
+                detail={opcion.detalle}
+                ayuda={`Marca esto si «${opcion.etiqueta}» está mal en tu ficha. ${opcion.detalle ?? ''}`}
+                checked={form.campos.includes(opcion.valor)}
+                onToggle={(marcado) => cambiar(alternarCampo(form, opcion.valor, marcado))}
+              />
+            ))}
+          </View>
+          {form.campos.some(esAutoservicio) ? (
             <View style={{ gap: space.sm }} testID="aviso-autoservicio">
               <AtlasText variant="body" tone="secondary">
                 El teléfono y el correo los cambias tú mismo desde Perfil: te mandamos un código al nuevo para confirmar que es tuyo.
               </AtlasText>
               <Button label="Ir a cambiar mis datos de contacto" icon="editar" variant="secondary" onPress={() => router.push('/(app)/editar-perfil')} />
             </View>
-          ) : form.campo && form.campo !== 'other' ? (
-            <Field
-              label="Dato correcto"
-              ayuda="Escríbelo tal como debería figurar. Ej.: «Equipetrol» para la zona. No lo cambiamos hasta revisar tu solicitud."
-              value={form.valor}
-              onChangeText={(valor) => cambiar({ valor })}
-              maxLength={300}
-              required
-            />
           ) : null}
-          {esIdentidad(form.campo) ? (
+          {camposAEnviar(form)
+            .filter((campo) => campo !== 'other')
+            .map((campo) => {
+              const nombre = CAMPOS_CORREGIBLES.find((o) => o.valor === campo)?.etiqueta ?? campo;
+              const opciones = OPCIONES_POR_CAMPO[campo];
+              const valor = form.valores[campo] ?? '';
+              const poner = (nuevo: string) => cambiar({ valores: { ...form.valores, [campo]: nuevo } });
+              return opciones ? (
+                <SelectField
+                  key={campo}
+                  label={`Dato correcto: ${nombre}`}
+                  ayuda="Elige la opción que corresponde. No lo cambiamos hasta revisar tu solicitud."
+                  opciones={opciones}
+                  value={valor || null}
+                  onChange={poner}
+                  required
+                />
+              ) : esFecha(campo) ? (
+                <DateField
+                  key={campo}
+                  label={`Dato correcto: ${nombre}`}
+                  ayuda="Elige la fecha tal como figura en tu carnet. No la cambiamos hasta revisar tu solicitud."
+                  value={valor}
+                  onChange={poner}
+                  maximumDate={new Date()}
+                  initialDate={new Date(1990, 0, 1)}
+                  required
+                />
+              ) : (
+                <Field
+                  key={campo}
+                  label={`Dato correcto: ${nombre}`}
+                  ayuda="Escríbelo tal como debería figurar. Ej.: «Calle Los Pinos 123» para la dirección. No lo cambiamos hasta revisar tu solicitud."
+                  value={valor}
+                  onChangeText={poner}
+                  maxLength={300}
+                  required
+                />
+              );
+            })}
+          {form.campos.some(esIdentidad) ? (
             <AtlasText variant="caption" tone="secondary" testID="aviso-identidad">
               Cambiar un dato de tu carnet lo revisa una persona con tu documento: te escribiremos para pedirte una foto.
             </AtlasText>
           ) : null}
-          {!esAutoservicio(form.campo) && form.campo ? (
+          {camposAEnviar(form).length > 0 ? (
             <Field
-              label={form.campo === 'other' ? '¿Qué dato quieres corregir?' : 'Algo más que debamos saber (opcional)'}
+              label={form.campos.includes('other') ? '¿Qué otro dato quieres corregir?' : 'Algo más que debamos saber (opcional)'}
               ayuda="Cuéntanos qué está mal y por qué, en una o dos frases. Ayuda a quien revisa tu solicitud."
               value={form.comentario}
               onChangeText={(comentario) => cambiar({ comentario })}
               multiline
               maxLength={1000}
-              required={form.campo === 'other'}
+              required={form.campos.includes('other')}
             />
           ) : null}
         </View>
@@ -147,7 +202,7 @@ export function SolicitudTitularForm({ customerId, copy }: { customerId: string 
         </View>
       ) : null}
 
-      {!esAutoservicio(form.campo) ? (
+      {form.tipo !== 'rectification' || camposAEnviar(form).length > 0 || form.campos.length === 0 ? (
         <Button
           label={enviando ? 'Enviando…' : 'Enviar solicitud'}
           icon="enviar"
