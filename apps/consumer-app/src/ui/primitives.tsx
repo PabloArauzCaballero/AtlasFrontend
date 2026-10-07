@@ -37,7 +37,8 @@ import Reanimated, {
 import { color, palette, press, radius, shadow, space, spring, stroke, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { iconoDeAccion } from './icono-de-accion';
-import { AnimatedPressable, PressSurface } from './motion';
+import { BarridoDeLuz, CICLO_MS, DestelloDeToque, RESPIRACION, useFaseDelBoton, vivaPorSiSola } from './button-shine';
+import { AnimatedPressable, PressSurface, suavidad } from './motion';
 import { AnilloAtlas, BarraDeCarga } from './cargador-atlas';
 import { webData } from '../web/estilo';
 import { toqueWeb } from './hit-slop';
@@ -266,10 +267,22 @@ export function Button({
   */
   const reduced = useReducedMotion();
   const pressProgress = useSharedValue(0);
-  const pressStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: 1 - pressProgress.value * (1 - press.scale) }],
-    opacity: 1 - pressProgress.value * 0.12,
-  }));
+  /*
+    Vida propia, SOLO la acción principal (ver `button-shine.tsx`): el halo respira y el botón crece un 1,2 % con él. La
+    respiración se MULTIPLICA con el hundimiento en la misma transformación —dos `transform` separados se pisarían— y el
+    destello del toque sube también la sombra, así que el botón se enciende por fuera además de por dentro.
+  */
+  const viva = vivaPorSiSola({ principal: isLitPrimary, bloqueado: isBlocked, reducido: reduced });
+  const { fase, desfase } = useFaseDelBoton(viva);
+  const [ancho, setAncho] = React.useState(0);
+  const pressStyle = useAnimatedStyle(() => {
+    const t = viva ? suavidad(fase.value, desfase * CICLO_MS, CICLO_MS) : 0;
+    return {
+      transform: [{ scale: (1 - pressProgress.value * (1 - press.scale)) * (1 + t * RESPIRACION) }],
+      opacity: 1 - pressProgress.value * 0.12,
+      ...(isLitPrimary ? { shadowOpacity: shadow.brandGlow.shadowOpacity + t * 0.17 + pressProgress.value * 0.2 } : null),
+    };
+  });
 
   const setPressed = (down: boolean) => {
     if (reduced || isBlocked) return;
@@ -286,6 +299,7 @@ export function Button({
       disabled={isBlocked}
       onPress={handlePress}
       onLayout={(event) => {
+        setAncho(event.nativeEvent.layout.width);
         disposicion.onLayout(event);
         rest.onLayout?.(event);
       }}
@@ -305,6 +319,8 @@ export function Button({
         variant === 'secondary' && styles.buttonSecondary,
         variant === 'ghost' && styles.buttonGhost,
         variant === 'destructive' && styles.buttonDestructive,
+        // Recorta el destello del toque al radio de la píldora; el principal ya lo lleva en `buttonLit`.
+        styles.buttonClip,
         isLitPrimary && styles.buttonLit,
         isBlocked && styles.buttonDisabled,
         showReason ? undefined : style,
@@ -320,6 +336,8 @@ export function Button({
           style={StyleSheet.absoluteFill}
         />
       ) : null}
+      {viva && ancho > 0 ? <BarridoDeLuz fase={fase} desfase={desfase} ancho={ancho} /> : null}
+      {isBlocked ? null : <DestelloDeToque progreso={pressProgress} principal={variant === 'primary'} />}
       {/*
         Cargando: el spinner SUSTITUYE al icono, no a todo el contenido. Antes el boton entero se
         quedaba en un circulo suelto y la persona perdia el rotulo de lo que acababa de pulsar.
@@ -1312,6 +1330,7 @@ const styles = StyleSheet.create({
   buttonGhost: { backgroundColor: 'transparent' },
   buttonDestructive: { backgroundColor: 'transparent', borderWidth: 1, borderColor: color.feedback.danger },
   // `overflow: hidden` recorta el degradado al radio de la pildora; sin el, asoma por las esquinas.
+  buttonClip: { overflow: 'hidden' },
   buttonLit: { backgroundColor: color.action.primary, overflow: 'hidden', ...shadow.brandGlow },
   buttonDisabled: { backgroundColor: color.action.disabled },
   /*
