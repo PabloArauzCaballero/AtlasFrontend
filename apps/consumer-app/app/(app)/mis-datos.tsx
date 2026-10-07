@@ -28,6 +28,7 @@ import { NivelCard } from '../../src/ui/nivel-card';
 import { marcarPinConfirmado, pinConfirmadoReciente } from '../../src/features/pin-verificado';
 import { useSession } from '../../src/session/session';
 import { ConfirmarPinSheet } from '../../src/ui/confirmar-pin-sheet';
+import { OrigenDeDatosCard } from '../../src/ui/origen-de-datos-card';
 import { ExtractosSubidosCard } from '../../src/ui/extractos-subidos-card';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, SkeletonLista } from '../../src/ui/primitives';
@@ -40,20 +41,6 @@ const FINALIDADES: Record<string, string> = {
   marketing: 'Ofertas y novedades',
 };
 const finalidad = (codigo: string) => FINALIDADES[codigo] ?? codigo.replace(/_/g, ' ');
-
-const ORIGEN: Record<string, string> = {
-  expediente: 'Lo declaraste tú',
-  derivado: 'Lo calculó Atlas',
-  ausente: 'Falta',
-};
-const VARIABLE: Record<string, string> = {
-  monthlyIncome: 'Ingreso mensual',
-  incomeSource: 'Fuente de ingreso',
-  employmentType: 'Tipo de empleo',
-  monthlyExpenses: 'Gastos mensuales',
-  dependents: 'Dependientes',
-};
-const variable = (codigo: string) => VARIABLE[codigo] ?? codigo.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').toLowerCase();
 
 type Datos = { me: customerApi.CustomerMe; respuestas: onboardingApi.OnboardingAnswers | null };
 
@@ -204,14 +191,7 @@ export default function MisDatos() {
       {/* Los documentos que la persona entregó también son «lo que Atlas sabe de ti»: se ven y se descargan aquí. */}
       {customerId ? <ExtractosSubidosCard customerId={customerId} /> : null}
 
-      {Object.keys(inputs).length > 0 ? (
-        <Card>
-          <CardHeader icon="grafico" title="De dónde salió cada dato de tu línea" divider={false} />
-          {Object.entries(inputs).map(([clave, origen]) => (
-            <KeyValue key={clave} label={variable(clave)} value={ORIGEN[origen] ?? origen} />
-          ))}
-        </Card>
-      ) : null}
+      <OrigenDeDatosCard inputs={inputs} />
 
       <Gap />
       <Button label="Corregir un dato" icon="editar" variant="secondary" onPress={() => router.replace('/(app)/privacidad')} />
