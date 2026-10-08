@@ -280,13 +280,29 @@ export function Button({
     return {
       transform: [{ scale: (1 - pressProgress.value * (1 - press.scale)) * (1 + t * RESPIRACION) }],
       opacity: 1 - pressProgress.value * 0.12,
-      // El halo respira con fuerza —opacidad y radio— y se enciende más al tocar: es lo que hace que el botón parezca emitir luz.
-      ...(isLitPrimary
-        ? {
-            shadowOpacity: Math.min(1, shadow.brandGlow.shadowOpacity + t * 0.38 + pressProgress.value * 0.25),
-            shadowRadius: shadow.brandGlow.shadowRadius + t * 14 + pressProgress.value * 6,
-          }
-        : null),
+    };
+  });
+  /*
+    El NEÓN (Pablo, 2026-10-08: «que se vean como luces de neón, como si emitieran calor»). Iba como sombra del propio
+    botón, que recorta su contenido (`overflow: hidden`) para el degradado y el barrido: en el iPhone ese recorte se
+    come la sombra, y el halo casi no salía. Ahora vive en un marco por FUERA del botón, sin recorte, en dos capas: un
+    núcleo de luz pegado al borde y un aura ancha y tenue alrededor, las dos del verde de la marca y centradas (sin
+    desplazar hacia abajo: la luz sale del tubo, no proyecta una sombra). Respiran con la misma fase que el botón y se
+    encienden más al tocarlo. Con movimiento reducido quedan encendidas y quietas.
+  */
+  const neonStyle = useAnimatedStyle(() => {
+    const t = viva ? suavidad(fase.value, desfase * CICLO_MS, CICLO_MS) : 0;
+    return {
+      transform: [{ scale: (1 - pressProgress.value * (1 - press.scale)) * (1 + t * RESPIRACION) }],
+      shadowOpacity: Math.min(1, 0.85 + t * 0.15 + pressProgress.value * 0.15),
+      shadowRadius: 14 + t * 8 + pressProgress.value * 6,
+    };
+  });
+  const auraStyle = useAnimatedStyle(() => {
+    const t = viva ? suavidad(fase.value, desfase * CICLO_MS, CICLO_MS) : 0;
+    return {
+      opacity: 0.55 + t * 0.35 + pressProgress.value * 0.1,
+      shadowRadius: 28 + t * 16,
     };
   });
 
@@ -329,8 +345,9 @@ export function Button({
         styles.buttonClip,
         isLitPrimary && styles.buttonLit,
         isBlocked && styles.buttonDisabled,
-        showReason ? undefined : style,
-        pressStyle,
+        // Con neón, el marco de fuera lleva la disposición (ancho, margen) y la escala; el botón sólo lo llena.
+        showReason || isLitPrimary ? undefined : style,
+        isLitPrimary ? styles.buttonLlenaMarco : pressStyle,
       ]}
     >
       {isLitPrimary ? (
@@ -372,11 +389,20 @@ export function Button({
     </AnimatedPressable>
   );
 
-  if (!showReason) return pressable;
+  const conNeon = isLitPrimary ? (
+    <Reanimated.View style={[styles.neonMarco, showReason ? undefined : style, neonStyle]}>
+      <Reanimated.View pointerEvents="none" style={[styles.neonAura, auraStyle]} />
+      {pressable}
+    </Reanimated.View>
+  ) : (
+    pressable
+  );
+
+  if (!showReason) return conNeon;
 
   return (
     <View style={[styles.buttonBlock, style]}>
-      {pressable}
+      {conNeon}
       {/*
         El motivo va DEBAJO y no dentro: dentro obligaria a que la etiqueta cambiara de longitud y el
         boton diera un salto cada vez que se completa un campo. Debajo, el boton se queda quieto y el
@@ -1338,7 +1364,32 @@ const styles = StyleSheet.create({
   buttonDestructive: { backgroundColor: 'transparent', borderWidth: 1, borderColor: color.feedback.danger },
   // `overflow: hidden` recorta el degradado al radio de la pildora; sin el, asoma por las esquinas.
   buttonClip: { overflow: 'hidden' },
-  buttonLit: { backgroundColor: color.action.primary, overflow: 'hidden', ...shadow.brandGlow },
+  buttonLit: { backgroundColor: color.action.primary, overflow: 'hidden' },
+  buttonLlenaMarco: { alignSelf: 'stretch' },
+  // El núcleo del neón: el marco lleva fondo (una sombra de iOS necesita algo opaco que la proyecte) y luz centrada.
+  neonMarco: {
+    borderRadius: radius.pill,
+    backgroundColor: palette.brand400,
+    shadowColor: palette.brand300,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 16,
+    elevation: 14,
+  },
+  // El aura: más ancha y tenue, el «calor» alrededor del tubo.
+  neonAura: {
+    position: 'absolute',
+    top: -6,
+    bottom: -6,
+    left: -6,
+    right: -6,
+    borderRadius: radius.pill,
+    backgroundColor: 'rgba(43,224,168,0.16)',
+    shadowColor: palette.brand400,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 32,
+  },
   buttonDisabled: { backgroundColor: color.action.disabled },
   /*
     La etiqueta de un boton apagado es texto que HAY que poder leer: dice que accion espera ahi

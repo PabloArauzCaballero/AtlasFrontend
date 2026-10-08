@@ -95,3 +95,28 @@ export function fraseDelSiguienteSalto(c: CrecimientoDeCredito): string {
   const falta = n <= 0 ? 'Ya tienes la calificación' : n === 1 ? 'Te falta 1 punto de calificación' : `Te faltan ${n} puntos de calificación`;
   return `${falta} para «${c.siguiente.label}». Se sube pagando a tiempo.`;
 }
+
+/** Una fila de la escalera con números: «De 40 a 59 → hasta Bs 2.000». */
+export type FilaDeEscalon = { code: string; label: string; rango: string; tope: string; actual: boolean };
+
+/**
+ * La escalera en cifras para la hoja «Cómo crece tu crédito» (Pablo, 2026-10-08: «mejoremos esta pantalla con números»).
+ * Cada escalón dice desde qué calificación hasta cuál vale y cuál es su tope; el último no tiene techo de calificación.
+ */
+export function filasDeEscalones(c: CrecimientoDeCredito): FilaDeEscalon[] {
+  const cifra = c.conImportes ? formatoBs : formatoVeces;
+  const ordenados = [...c.peldanos].sort((a, b) => a.from - b.from);
+  return ordenados.map((p, i) => {
+    const siguiente = ordenados[i + 1];
+    const rango = siguiente ? `De ${p.from} a ${siguiente.from - 1}` : `Desde ${p.from}`;
+    return { code: p.code, label: p.label, rango, tope: `hasta ${cifra(p.techo ?? p.veces)}`, actual: p.actual };
+  });
+}
+
+/** Un ejemplo con números de «como mucho el doble en cada revisión», partiendo del tope de hoy. */
+export function ejemploDeRevision(c: CrecimientoDeCredito): string | null {
+  if (c.techoHoy === null || c.techoHoy <= 0) return null;
+  const doble = c.techoHoy * 2;
+  const limite = c.techoMaximo !== null ? Math.min(doble, c.techoMaximo) : doble;
+  return `Ejemplo: si hoy tu límite es ${formatoBs(c.techoHoy)}, en la próxima revisión puede llegar como mucho a ${formatoBs(limite)}, siempre que tu calificación y lo que puedes pagar cada mes lo permitan.`;
+}

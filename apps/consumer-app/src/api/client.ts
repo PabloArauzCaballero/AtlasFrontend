@@ -14,6 +14,7 @@
  * dispositivo lo implementa SecureStore; en tests, memoria. El cliente no sabe donde vive el token.
  */
 import { apiConfig } from './config';
+import { avisarFalloDeRed, avisarRespuesta } from './conexion';
 import { getCurrentScreen } from './current-screen';
 import { AtlasApiError, kindFromStatus } from './errors';
 import { conReintentos, repeticionDe } from './reintentos';
@@ -140,6 +141,8 @@ async function rawRequest<T>(
   } catch (error) {
     clearTimeout(timeout);
     const aborted = (error as Error).name === 'AbortError';
+    // Sin respuesta y sin que nadie la cancelara: puede ser que no haya internet. `conexion.ts` lo confirma.
+    if (!aborted) avisarFalloDeRed();
     throw new AtlasApiError({
       kind: aborted ? 'timeout' : 'network',
       code: aborted ? 'REQUEST_TIMEOUT' : 'NETWORK_UNREACHABLE',
@@ -147,6 +150,8 @@ async function rawRequest<T>(
     });
   }
   clearTimeout(timeout);
+  // Contestó el servidor (bien o mal): hay conexión.
+  avisarRespuesta();
 
   const text = await response.text();
   let envelope: Envelope<T> = {};

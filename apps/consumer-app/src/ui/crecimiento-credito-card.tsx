@@ -11,7 +11,15 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
-import { crecimientoDeCredito, formatoBs, formatoVeces, fraseDelSiguienteSalto, type PeldanoDeCredito } from '../features/crecimiento-credito';
+import {
+  crecimientoDeCredito,
+  ejemploDeRevision,
+  filasDeEscalones,
+  formatoBs,
+  formatoVeces,
+  fraseDelSiguienteSalto,
+  type PeldanoDeCredito,
+} from '../features/crecimiento-credito';
 import { color, motion, radius, space, stroke } from '../theme/tokens';
 import { BarraViva, CuentaArriba, useAvance } from './cuenta-arriba';
 import { BotonInfo, InfoSheet } from './help-sheet';
@@ -95,6 +103,33 @@ export function CrecimientoCreditoCard({ progress }: { progress: Progress }) {
       </View>
 
       <InfoSheet visible={info} titulo="Cómo crece tu crédito" onClose={() => setInfo(false)} testID="crecimiento-info">
+        <AtlasText variant="bodyStrong">Los escalones, con números</AtlasText>
+        <AtlasText variant="caption" tone="secondary">
+          {`Tu calificación hoy: ${progress.rating?.value ?? Math.round(progress.score)} de 100. ${frase}`}
+        </AtlasText>
+        <View style={styles.tablaEscalones} testID="crecimiento-tabla">
+          {filasDeEscalones(c).map((fila) => (
+            <View key={fila.code} style={[styles.filaTabla, fila.actual && styles.filaTablaActual]} testID={`crecimiento-fila-${fila.code}`}>
+              <View style={styles.textoFila}>
+                <AtlasText variant="captionStrong" tone={fila.actual ? 'brand' : 'primary'}>
+                  {fila.actual ? `${fila.label} · estás aquí` : fila.label}
+                </AtlasText>
+                <AtlasText variant="caption" tone="secondary">
+                  {`${fila.rango} de calificación`}
+                </AtlasText>
+              </View>
+              <AtlasText variant="bodyStrong" tone={fila.actual ? 'brand' : 'primary'}>
+                {fila.tope}
+              </AtlasText>
+            </View>
+          ))}
+        </View>
+        {ejemploDeRevision(c) ? (
+          <AtlasText variant="caption" tone="secondary">
+            {ejemploDeRevision(c)}
+          </AtlasText>
+        ) : null}
+        <Divider />
         <AtlasText variant="bodyStrong">Lo sube tu calificación</AtlasText>
         <AtlasText variant="body" tone="secondary">
           Tu calificación de 1 a 100 dice qué tan buen pagador eres. Cada escalón que alcanzas sube el tope de crédito que
@@ -152,6 +187,20 @@ function Peldano({ peldano, indice, cifra }: { peldano: PeldanoDeCredito; indice
 }
 
 const styles = StyleSheet.create({
+  tablaEscalones: { gap: space.xs, marginVertical: space.sm },
+  filaTabla: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.md,
+    paddingVertical: space.sm,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: color.border.subtle,
+  },
+  filaTablaActual: { borderColor: color.action.primary, backgroundColor: color.feedbackSoft.success },
+  textoFila: { flex: 1, gap: space.xxs },
   // El salto va en un hueco propio: es la parte de la tarjeta que se puede mover, y se lee aparte de la escalera.
   salto: {
     flexDirection: 'row',
