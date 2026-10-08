@@ -1,13 +1,14 @@
 /**
  * Los niveles como una LÍNEA DE PROGRESO vertical (Pablo, 2026-10-07: «scroll hacia arriba… como una línea de progreso»).
  *
- * El nivel más alto arriba y «Nuevo» abajo, unidos por una línea que se llena DESDE ABAJO hasta donde estás; lo que sigue
- * queda arriba, apagado, y se llega a ello deslizando hacia arriba. La lista abre mostrando tu nivel en la parte baja.
+ * «Nuevo» arriba y el nivel más alto abajo (Pablo, 2026-10-08: «acá debería ser al revés»), unidos por una línea que se
+ * llena DESDE ARRIBA hasta donde estás; lo que sigue queda debajo, apagado, y se llega a ello deslizando hacia abajo. La
+ * lista abre con tu nivel cerca de la parte alta, con lo que viene a continuación debajo.
  *
  * ## Movimiento (contesta «¿de dónde salió esto?»)
  *
- * Al abrir, la línea sube desde «Nuevo» hasta tu nivel y los puntos de lo alcanzado se encienden en ese mismo orden, de
- * abajo arriba: se ve el camino recorrido. Sólo se anima `transform` y `opacity`. Con movimiento reducido todo aparece puesto.
+ * Al abrir, la línea baja desde «Nuevo» hasta tu nivel y los puntos de lo alcanzado se encienden en ese mismo orden, de
+ * arriba abajo: se ve el camino recorrido. Sólo se anima `transform` y `opacity`. Con movimiento reducido todo aparece puesto.
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -20,18 +21,18 @@ import { AtlasText, Card } from './primitives';
 
 const FILA = 68;
 const NODO = 28;
-/** Cuántas filas se ven a la vez: la última asoma a medias para que se note que hay más arriba. */
+/** Cuántas filas se ven a la vez: la última asoma a medias para que se note que hay más debajo. */
 const FILAS_A_LA_VISTA = 4.6;
 const CURVA = Easing.bezier(easing.emphasized[0], easing.emphasized[1], easing.emphasized[2], easing.emphasized[3]);
 const ESCALON_MS = 110;
 const MS_POR_FILA = 140;
 
-/** Dónde dejar el scroll al abrir: tu nivel en la parte baja de lo visible, con lo que viene encima. */
+/** Dónde dejar el scroll al abrir: tu nivel arriba de lo visible (con el anterior asomando), y lo que viene debajo. */
 export function desplazamientoInicial(indiceActual: number, total: number, alto: number): number {
-  // Sin nivel, o con tu nivel entre las dos últimas filas: abre abajo del todo, para que «Nuevo» no asome cortado.
-  if (indiceActual < 0 || indiceActual >= total - 2) return Math.max(0, total * FILA - alto);
-  const y = (indiceActual + 1) * FILA + FILA * 0.4 - alto;
-  return Math.max(0, Math.min(total * FILA - alto, y));
+  // Sin nivel, o en las dos primeras filas: abre arriba del todo, para que «Nuevo» no asome cortado.
+  if (indiceActual < 2) return 0;
+  const y = (indiceActual - 1) * FILA + FILA * 0.6;
+  return Math.max(0, Math.min(Math.max(0, total * FILA - alto), y));
 }
 
 function Nodo({ paso, retardo }: { paso: Paso; retardo: number }) {
@@ -58,15 +59,15 @@ export function LineaDeNiveles({ pasos, testID }: { pasos: readonly Paso[]; test
   const [ancho, setAncho] = useState(0);
   const alMedir = useCallback((e: LayoutChangeEvent) => setAncho(e.nativeEvent.layout.width), []);
 
-  // La línea llena va de tu nivel hasta «Nuevo» (el final de la lista).
-  const filas = actual < 0 ? 0 : total - 1 - actual;
+  // La línea llena va de «Nuevo» (el principio de la lista) hasta tu nivel.
+  const filas = actual < 0 ? 0 : actual;
   const largoLleno = filas * FILA;
   const sube = useSharedValue(reducido ? 1 : 0);
   useEffect(() => {
     if (reducido) return;
     sube.value = withDelay(motion.base, withTiming(1, { duration: Math.max(600, filas * MS_POR_FILA), easing: CURVA }));
   }, [filas, reducido, sube]);
-  const estiloLleno = useAnimatedStyle(() => ({ transform: [{ translateY: (1 - sube.value) * largoLleno }] }));
+  const estiloLleno = useAnimatedStyle(() => ({ transform: [{ translateY: -(1 - sube.value) * largoLleno }] }));
 
   useEffect(() => {
     const y = desplazamientoInicial(actual, total, alto);
@@ -78,19 +79,19 @@ export function LineaDeNiveles({ pasos, testID }: { pasos: readonly Paso[]; test
     <Card padding="none" testID={testID}>
       <View onLayout={alMedir} style={{ height: alto }}>
         <ScrollView ref={scroll} nestedScrollEnabled showsVerticalScrollIndicator={false} contentContainerStyle={{ height: total * FILA }}>
-          {/* La pista gris, de punta a punta, y encima la que se llena desde abajo hasta tu nivel. */}
+          {/* La pista gris, de punta a punta, y encima la que se llena desde arriba hasta tu nivel. */}
           <View style={[styles.pista, { top: centro, height: (total - 1) * FILA }]} />
           {largoLleno > 0 ? (
-            <View style={[styles.llenoMarco, { top: centro + actual * FILA, height: largoLleno }]}>
+            <View style={[styles.llenoMarco, { top: centro, height: largoLleno }]}>
               <Animated.View style={[StyleSheet.absoluteFill, estiloLleno]}>
-                <LinearGradient colors={[palette.brand300, palette.brand500, palette.brand700]} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={[palette.brand700, palette.brand500, palette.brand300]} style={StyleSheet.absoluteFill} />
               </Animated.View>
             </View>
           ) : null}
           {pasos.map((paso, i) => (
             <View key={paso.clave} style={[styles.fila, { top: i * FILA }]} accessibilityLabel={paso.etiqueta}>
               <View style={styles.colNodo}>
-                <Nodo paso={paso} retardo={motion.base + (total - 1 - i) * ESCALON_MS} />
+                <Nodo paso={paso} retardo={motion.base + i * ESCALON_MS} />
               </View>
               <View style={styles.texto}>
                 <AtlasText variant="bodyStrong" tone={paso.actual ? 'brand' : paso.hecho ? 'primary' : 'secondary'}>

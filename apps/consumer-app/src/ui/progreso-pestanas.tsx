@@ -126,7 +126,8 @@ export function PestanaHistoria({ progress }: { progress: Progress }) {
         <SectionHeader title="Los niveles" detail="Se suben con los puntos que ganas pagando a tiempo." />
         <LineaDeNiveles
           testID="niveles"
-          pasos={[...levelLadder].reverse().map((e) => {
+          // De «Nuevo» (arriba) al nivel más alto (abajo): Pablo, 2026-10-08.
+          pasos={levelLadder.map((e) => {
             const actual = idDeEscalon(e) === idDeEscalon(level);
             return {
               clave: idDeEscalon(e),
