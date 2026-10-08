@@ -20,6 +20,7 @@ import { StyleSheet, View } from 'react-native';
 import { space } from '../../src/theme/tokens';
 import { useState } from 'react';
 import { useCreditBook } from '../../src/features/use-credit-book';
+import { useAlVolver } from '../../src/features/al-volver';
 import { useProgress } from '../../src/features/use-progress';
 import { useSession } from '../../src/session/session';
 import { Screen, ScreenHeader } from '../../src/ui/layout';
@@ -43,6 +44,8 @@ export default function Progreso() {
   const session = useSession();
   const { fase, progress, recargar } = useProgress(session.customerId);
   const book = useCreditBook(session.customerId);
+  // Al volver: puntos y calificación al día, y la pestaña abierta vuelve a contar sus cifras.
+  const vuelta = useAlVolver(() => Promise.all([recargar(), book.reload()]));
   const [pestana, setPestana] = useState<Pestana>('puntaje');
 
   if (fase === 'cargando') {
@@ -74,8 +77,8 @@ export default function Progreso() {
 
       {/* `key` reinicia la entrada escalonada de cada pestaña al cambiar. */}
       <View key={pestana} style={styles.contenido}>
-        {pestana === 'puntaje' ? <PestanaPuntaje progress={progress} /> : null}
-        {pestana === 'calificacion' ? <PestanaCalificacion progress={progress} creditLine={book.creditLine ?? null} /> : null}
+        {pestana === 'puntaje' ? <PestanaPuntaje key={`puntaje-${vuelta}`} progress={progress} /> : null}
+        {pestana === 'calificacion' ? <PestanaCalificacion key={`calificacion-${vuelta}`} progress={progress} creditLine={book.creditLine ?? null} /> : null}
         {pestana === 'logros' ? <PestanaLogros progress={progress} /> : null}
         {pestana === 'historia' ? <PestanaHistoria progress={progress} /> : null}
       </View>

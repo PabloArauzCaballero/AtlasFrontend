@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   /*
     Tan alto como el boton de volver, con la accion CENTRADA dentro.
 
-    Un boton redondo mide eso mismo y no cambia nada; una insignia —«Entorno sandbox» en Escanear—
+    Un boton redondo mide eso mismo y no cambia nada; una insignia
     es mas baja, y con la fila alineada arriba quedaba flotando por encima del titulo en vez de a su
     altura.
   */

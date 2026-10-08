@@ -18,6 +18,7 @@ import {
 } from '../../src/features/historial-compras';
 import { categoryLook, formatAmount } from '../../src/features/spending-copy';
 import { useCreditBook } from '../../src/features/use-credit-book';
+import { useAlVolver } from '../../src/features/al-volver';
 import { useSession } from '../../src/session/session';
 import { Field } from '../../src/ui/fields';
 import type { IconName } from '../../src/ui/icons';
@@ -37,6 +38,8 @@ export default function Compras() {
   const router = useRouter();
   const session = useSession();
   const book = useCreditBook(session.customerId);
+  // Al volver a la pantalla: lo que cambió mientras tanto (un pago confirmado, una compra nueva) se ve sin cerrar la app.
+  useAlVolver(book.reload);
   const [filtro, setFiltro] = useState<FiltroCompras>('todas');
   const [busqueda, setBusqueda] = useState('');
 

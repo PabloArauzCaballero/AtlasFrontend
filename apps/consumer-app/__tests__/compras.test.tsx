@@ -8,6 +8,7 @@ import Compras from '../app/(app)/compras';
  */
 const mockPush = jest.fn();
 jest.mock('expo-router', () => ({
+  useFocusEffect: () => undefined,
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn(), canGoBack: () => true }),
   usePathname: () => '/compras',
 }));

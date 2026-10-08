@@ -30,20 +30,31 @@ const CURVA = Easing.bezier(easing.emphasized[0], easing.emphasized[1], easing.e
 const PUNTO = 14;
 
 /**
- * El valor compartido 0→1 que mueven a la vez la barra y la cifra. Arranca la primera vez que `activa` es verdadero;
- * con movimiento reducido vale 1 desde el principio. `retardo` escalona varias en una misma tarjeta (una escalera de
- * barras que se llenan una tras otra); se lee al arrancar y no se vuelve a mirar.
+ * El valor compartido 0→1 que mueven a la vez la barra y la cifra. Arranca CADA VEZ que `activa` pasa a verdadero:
+ * volver a una página del desglose la vuelve a contar desde cero. Antes arrancaba una sola vez por componente, y como
+ * las páginas quedan montadas al pasar de una a otra, la segunda visita no hacía nada (Pablo, 2026-10-08). Con
+ * movimiento reducido vale 1 desde el principio. `retardo` escalona varias en una misma tarjeta (una escalera de
+ * barras que se llenan una tras otra).
  */
 export function useAvance(activa: boolean, retardo: number = motion.base): SharedValue<number> {
   const reducido = useReducedMotion();
   const avance = useSharedValue(reducido ? 1 : 0);
-  const arrancado = useRef(false);
+  const estabaActiva = useRef(false);
   // En un efecto y no en el render: escribir un valor compartido mientras se renderiza es lo que Reanimated 4 desaconseja.
   useEffect(() => {
-    if (!activa || arrancado.current) return;
-    arrancado.current = true;
-    avance.value = reducido ? 1 : withDelay(retardo, withTiming(1, { duration: SUBIDA, easing: CURVA }));
-    // `retardo` fuera a propósito: es el desfase del ARRANQUE, y el arranque ocurre una sola vez.
+    if (!activa) {
+      estabaActiva.current = false;
+      return;
+    }
+    if (estabaActiva.current) return;
+    estabaActiva.current = true;
+    if (reducido) {
+      avance.value = 1;
+      return;
+    }
+    avance.value = 0;
+    avance.value = withDelay(retardo, withTiming(1, { duration: SUBIDA, easing: CURVA }));
+    // `retardo` fuera a propósito: es el desfase de cada ARRANQUE, no un motivo para volver a arrancar.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activa, avance, reducido]);
   return avance;

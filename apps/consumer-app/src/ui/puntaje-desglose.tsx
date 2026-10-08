@@ -44,7 +44,6 @@ export function PuntajeDesglose({
   const { width: ventana } = useWindowDimensions();
   const [ancho, setAncho] = useState(Math.max(240, ventana - 80));
   const [pagina, setPagina] = useState(0);
-  const vistas = useRef(new Set<number>([0])).current;
   const progresoScroll = useSharedValue(0);
   const scroll = useRef<Animated.ScrollView>(null);
 
@@ -53,13 +52,7 @@ export function PuntajeDesglose({
     if (w > 0) setAncho(w);
   }, []);
 
-  const marcar = useCallback(
-    (n: number) => {
-      vistas.add(n);
-      setPagina(n);
-    },
-    [vistas],
-  );
+  const marcar = useCallback((n: number) => setPagina(n), []);
 
   // En el hilo de UI: el avance de los puntos del pie sigue al dedo sin pasar por React. A JS sólo vuelve el número de página.
   const alDesplazar = useAnimatedScrollHandler({
@@ -87,7 +80,7 @@ export function PuntajeDesglose({
           testID="por-que-puntaje-paginas"
         >
           {partes.map((parte, i) => (
-            <PaginaDeParte key={parte.code} parte={parte} indice={i} de={partes.length} ancho={ancho} activa={pagina === i} vista={vistas.has(i)} />
+            <PaginaDeParte key={parte.code} parte={parte} indice={i} de={partes.length} ancho={ancho} activa={pagina === i} />
           ))}
           <PaginaDeResultado progress={progress} ancho={ancho} activa={pagina === partes.length} />
         </Animated.ScrollView>
@@ -111,9 +104,10 @@ export function PuntajeDesglose({
 
 /* ------------------------------------------------------------------ páginas */
 
-function PaginaDeParte({ parte, indice, de, ancho, activa, vista }: { parte: Parte; indice: number; de: number; ancho: number; activa: boolean; vista: boolean }) {
+function PaginaDeParte({ parte, indice, de, ancho, activa }: { parte: Parte; indice: number; de: number; ancho: number; activa: boolean }) {
   const maximo = Math.round(parte.weight * 100);
-  const avance = useAvance(activa || vista);
+  // Sólo la página a la vista: al volver a ella cuenta otra vez (las demás no se ven, da igual dónde estén).
+  const avance = useAvance(activa);
   return (
     <View style={[styles.pagina, { width: ancho }]} accessibilityLabel={`${parte.label}. ${cuentaDeUnaParte(parte)}. ${parte.why}`}>
       <AtlasText variant="caption" tone="tertiary" style={styles.sobretitulo}>

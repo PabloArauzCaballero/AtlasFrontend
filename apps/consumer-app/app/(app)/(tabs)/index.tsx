@@ -7,12 +7,10 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Linking, StyleSheet, View } from 'react-native';
-import { isSandboxPurchase } from '../../../src/api/config';
 import { formatMoney } from '../../../src/domain/money';
 import { useSandbox } from '../../../src/sandbox/store';
 import { useSession } from '../../../src/session/session';
 import { space } from '../../../src/theme/tokens';
-import { DataSourceBadge } from '../../../src/ui/brand';
 import { Gap, Screen } from '../../../src/ui/layout';
 import {
   AtlasText,
@@ -37,6 +35,7 @@ import { PartnerBanner, usePartnerBanner } from '../../../src/ui/partner-banner'
 import { downloadSpendingReport } from '../../../src/features/spending-report';
 import { categoryLook, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
+import { useAlVolver } from '../../../src/features/al-volver';
 import { useProgress } from '../../../src/features/use-progress';
 import { CalificacionCard } from '../../../src/ui/calificacion-card';
 import { CrecimientoCreditoCard } from '../../../src/ui/crecimiento-credito-card';
@@ -61,6 +60,8 @@ export default function Home() {
    */
   const book = useCreditBook(session.customerId);
   const nivel = useProgress(session.customerId);
+  // Al volver a Inicio: puntos, calificación y créditos al día, y las cifras cuentan otra vez.
+  const vuelta = useAlVolver(() => Promise.all([nivel.recargar(), book.reload()]));
   const partnerBanner = usePartnerBanner();
   // Avisos y mensajes que negocio escribe para el inicio; los del banner de partner salen aparte.
   const avisosDeInicio = useSurfaceContent('home', esBannerDePartner);
@@ -148,7 +149,6 @@ export default function Home() {
           </AtlasText>
           <AtlasText variant="h1">Tu línea Atlas</AtlasText>
         </View>
-        {isSandboxPurchase ? <DataSourceBadge /> : null}
       </View>
 
       <SurfaceContent entries={avisosDeInicio} />
@@ -217,15 +217,15 @@ export default function Home() {
         Salen de la base de datos y no del motor, así que se ven aunque la línea aún no esté calculada.
       */}
       {nivel.fase === 'lista' ? (
-        <NivelCard progress={nivel.progress} onVerLogros={() => router.push('/(app)/progreso')} />
+        <NivelCard key={`nivel-${vuelta}`} progress={nivel.progress} onVerLogros={() => router.push('/(app)/progreso')} />
       ) : nivel.fase === 'fallo' ? (
         <ErrorState title="No pudimos cargar tu nivel y tu calificación" detail="Revisa tu conexión y vuelve a intentar." onRetry={() => void nivel.recargar()} />
       ) : (
         <SkeletonLista filas={2} alto={96} pantalla />
       )}
-      {nivel.fase === 'lista' ? <CalificacionCard progress={nivel.progress} masInfo /> : null}
+      {nivel.fase === 'lista' ? <CalificacionCard key={`calificacion-${vuelta}`} progress={nivel.progress} masInfo /> : null}
       {/* Hijo directo de `Screen`, no dentro de un fragmento: `Screen` separa a sus hijos, y un fragmento los deja pegados. */}
-      {nivel.fase === 'lista' ? <CrecimientoCreditoCard progress={nivel.progress} /> : null}
+      {nivel.fase === 'lista' ? <CrecimientoCreditoCard key={`crecimiento-${vuelta}`} progress={nivel.progress} /> : null}
 
       <TourTarget id={TOUR_INICIO_TARGETS.pagos}>
         {proximaCuotaReal ? (
