@@ -39,6 +39,7 @@ import { categoryLook, formatAmount } from '../../../src/features/spending-copy'
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useProgress } from '../../../src/features/use-progress';
 import { CalificacionCard } from '../../../src/ui/calificacion-card';
+import { CrecimientoCreditoCard } from '../../../src/ui/crecimiento-credito-card';
 import { CreditoHabilitadoCard } from '../../../src/ui/credito-habilitado-card';
 import { NivelCard } from '../../../src/ui/nivel-card';
 import { dueLabel, statusTone, statusLabel } from '../../../src/features/payment-copy';
@@ -223,6 +224,8 @@ export default function Home() {
         <SkeletonLista filas={2} alto={96} pantalla />
       )}
       {nivel.fase === 'lista' ? <CalificacionCard progress={nivel.progress} masInfo /> : null}
+      {/* Hijo directo de `Screen`, no dentro de un fragmento: `Screen` separa a sus hijos, y un fragmento los deja pegados. */}
+      {nivel.fase === 'lista' ? <CrecimientoCreditoCard progress={nivel.progress} /> : null}
 
       <TourTarget id={TOUR_INICIO_TARGETS.pagos}>
         {proximaCuotaReal ? (

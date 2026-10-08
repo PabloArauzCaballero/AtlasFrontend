@@ -237,7 +237,11 @@ export type Experience = {
 export type CardTierCode = 'NORMAL' | 'SILVER' | 'GOLD' | 'PREMIUM' | 'BLACK';
 
 /** Cómo se pinta una tarjeta. Viene del catálogo editable del backend: la app no tiene los colores escritos. */
-export type CardTheme = { gradient: string[]; ink: string; accent: string; finish: string };
+/**
+ * `glow`: el fulgor de la tarjeta, de 0 a 1, de menos a más con la categoría (Normal → Black). Lo decide el backend;
+ * ausente con uno anterior al 2026-10-07, y entonces la tarjeta se pinta como siempre, sin fulgor añadido.
+ */
+export type CardTheme = { gradient: string[]; ink: string; accent: string; finish: string; glow?: number };
 
 export type CardTier = {
   code: CardTierCode;
@@ -276,9 +280,14 @@ export type Progress = {
   /** Puntuación de relación 0-100, la base de la Calificación (`rating`). No es el score 0-1000 del motor. */
   score: number;
   /** Escalón de la RELACIÓN (sobre la calificación): lo usa la capacidad de pago. El que se enseña es `level`. */
-  tier: { code: TierCode; label: string; index: number; of: number; multiplier: number };
-  nextTier: { code: TierCode; label: string; from: number; pointsMissing: number; multiplier: number } | null;
-  ladder: { code: TierCode; label: string; from: number; multiplier: number; reached: boolean }[];
+  /**
+   * `creditCeiling`: hasta cuánto crédito (en la moneda de la línea) admite ese escalón. Es un TOPE por confianza, no el
+   * límite: el límite real es además lo que la persona puede pagar y lo decide el motor. Ausente con un backend anterior
+   * al 2026-10-07: la app enseña entonces cuántas veces crece (`multiplier`), nunca un importe inventado.
+   */
+  tier: { code: TierCode; label: string; index: number; of: number; multiplier: number; creditCeiling?: number };
+  nextTier: { code: TierCode; label: string; from: number; pointsMissing: number; multiplier: number; creditCeiling?: number } | null;
+  ladder: { code: TierCode; label: string; from: number; multiplier: number; reached: boolean; creditCeiling?: number }[];
   /**
    * La cuenta de ESTA persona: valor 0-100 de cada parte, su peso, los puntos que aporta (valor × peso) y la razón en
    * una frase. Los `points` suman `rawScore`; si un tope recortó el resultado, `score` es menor y `caps` dice cuál.

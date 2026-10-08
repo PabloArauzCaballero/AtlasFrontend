@@ -86,6 +86,9 @@ export function nivelPorPuntos(progress: Pick<Progress, 'level' | 'nextLevel' | 
 /** Puntos con separador de miles, como se leen en Bolivia: 2.000, no 2000. */
 export const formatoPuntos = (n: number) => Math.max(0, Math.round(n)).toLocaleString('es-BO').replace(/,/g, '.');
 
+/** Los puntos en los que empieza el escalón actual: el extremo izquierdo de la barra. */
+export const desdeDelNivel = (nivel: NivelPorPuntos): number => [...nivel.levelLadder].reverse().find((e) => e.reached)?.from ?? 0;
+
 /**
  * Cuánto de la barra está llena, DENTRO del escalón actual (no sobre el total).
  *
@@ -94,7 +97,7 @@ export const formatoPuntos = (n: number) => Math.max(0, Math.round(n)).toLocaleS
  */
 export function porcentajeDeBarra(nivel: NivelPorPuntos): number {
   if (!nivel.nextLevel) return 100;
-  const desde = [...nivel.levelLadder].reverse().find((e) => e.reached)?.from ?? 0;
+  const desde = desdeDelNivel(nivel);
   const hasta = nivel.nextLevel.from;
   if (hasta <= desde) return 100;
   return Math.max(0, Math.min(100, Math.round(((nivel.level.points - desde) / (hasta - desde)) * 100)));

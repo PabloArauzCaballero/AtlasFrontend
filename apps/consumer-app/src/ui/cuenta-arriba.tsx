@@ -31,9 +31,10 @@ const PUNTO = 14;
 
 /**
  * El valor compartido 0→1 que mueven a la vez la barra y la cifra. Arranca la primera vez que `activa` es verdadero;
- * con movimiento reducido vale 1 desde el principio.
+ * con movimiento reducido vale 1 desde el principio. `retardo` escalona varias en una misma tarjeta (una escalera de
+ * barras que se llenan una tras otra); se lee al arrancar y no se vuelve a mirar.
  */
-export function useAvance(activa: boolean): SharedValue<number> {
+export function useAvance(activa: boolean, retardo: number = motion.base): SharedValue<number> {
   const reducido = useReducedMotion();
   const avance = useSharedValue(reducido ? 1 : 0);
   const arrancado = useRef(false);
@@ -41,7 +42,9 @@ export function useAvance(activa: boolean): SharedValue<number> {
   useEffect(() => {
     if (!activa || arrancado.current) return;
     arrancado.current = true;
-    avance.value = reducido ? 1 : withDelay(motion.base, withTiming(1, { duration: SUBIDA, easing: CURVA }));
+    avance.value = reducido ? 1 : withDelay(retardo, withTiming(1, { duration: SUBIDA, easing: CURVA }));
+    // `retardo` fuera a propósito: es el desfase del ARRANQUE, y el arranque ocurre una sola vez.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activa, avance, reducido]);
   return avance;
 }
@@ -53,12 +56,15 @@ export function CuentaArriba({
   formato,
   tamano = 'display',
   color: tinta,
+  testID,
 }: {
   avance: SharedValue<number>;
   hasta: number;
   formato: (n: number) => string;
-  tamano?: 'display' | 'h2' | 'amount';
+  /** `amountHero` es la cifra protagonista de una tarjeta: una sola por tarjeta. */
+  tamano?: 'display' | 'h1' | 'h2' | 'amount' | 'amountHero';
   color?: string;
+  testID?: string;
 }) {
   /*
     A JS sólo vuelve el NÚMERO. `formato` es una función normal de JS: llamarla desde la reacción (hilo de UI) funciona
@@ -73,7 +79,16 @@ export function CuentaArriba({
   );
   const texto = formato(valor);
   return (
-    <AtlasText variant={tamano} style={[styles.numero, tinta ? { color: tinta } : null]} accessibilityLabel={formato(hasta)}>
+    // En una línea y encogiendo si no cabe: una cifra larga (un tope de crédito) nunca se parte ni empuja a su vecina.
+    <AtlasText
+      variant={tamano}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.6}
+      style={[styles.numero, tinta ? { color: tinta } : null]}
+      accessibilityLabel={formato(hasta)}
+      testID={testID}
+    >
       {texto}
     </AtlasText>
   );
@@ -83,9 +98,28 @@ export function CuentaArriba({
  * La barra: un relleno de degradado que ENTRA desde la izquierda (transform, no ancho) y un punto vivo en la punta.
  * El punto es la lectura: dónde está la persona en esta parte. Lleva halo; el halo no se anima solo.
  */
-export function Barra({ valor, avance, etiqueta }: { valor: number; avance: SharedValue<number>; etiqueta: string }) {
+export function Barra({
+  valor,
+  avance,
+  etiqueta,
+  grosor = 'md',
+  tono = 'marca',
+  punto: conPunto = true,
+}: {
+  valor: number;
+  avance: SharedValue<number>;
+  etiqueta: string;
+  /** `lg` es la barra protagonista de una tarjeta: más alta y con un filo de luz, para que se lea como un material. */
+  grosor?: 'md' | 'lg';
+  /** `apagado` es un tramo que todavía no se alcanzó: sin degradado y sin punto vivo, que es la marca de «estás aquí». */
+  tono?: 'marca' | 'apagado';
+  /** El punto vivo de la punta. Fuera cuando varias barras comparten tarjeta y sólo una es «aquí estás». */
+  punto?: boolean;
+}) {
   const [pista, setPista] = useState(0);
   const fraccion = Math.max(0, Math.min(100, valor)) / 100;
+  const grande = grosor === 'lg';
+  const apagado = tono === 'apagado';
   const relleno = useAnimatedStyle(() => ({ transform: [{ translateX: (avance.value * fraccion - 1) * pista }] }));
   const punto = useAnimatedStyle(() => ({
     opacity: interpolate(avance.value, [0, 0.08], [0, 1], Extrapolation.CLAMP),
@@ -100,25 +134,47 @@ export function Barra({ valor, avance, etiqueta }: { valor: number; avance: Shar
       style={styles.barra}
       onLayout={(e) => setPista(e.nativeEvent.layout.width)}
     >
-      <View style={styles.pista}>
+      <View style={[styles.pista, grande && styles.pistaGrande]}>
         <Animated.View style={[styles.relleno, relleno]}>
-          <LinearGradient colors={[palette.brand700, palette.brand500, palette.brand300]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+          {apagado ? (
+            <View style={[StyleSheet.absoluteFill, styles.rellenoApagado]} />
+          ) : (
+            <LinearGradient colors={[palette.brand700, palette.brand500, palette.brand300]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+          )}
+          {/* El filo de luz: la mitad de arriba un punto más clara, como el canto de una pieza iluminada desde arriba. */}
+          {grande && !apagado ? <View style={styles.filo} /> : null}
         </Animated.View>
       </View>
-      <Animated.View pointerEvents="none" style={[styles.punto, punto]}>
-        <View style={styles.halo} />
-        <View style={styles.nucleo} />
-      </Animated.View>
+      {apagado || !conPunto ? null : (
+        <Animated.View pointerEvents="none" style={[styles.punto, punto]}>
+          <View style={styles.halo} />
+          <View style={styles.nucleo} />
+        </Animated.View>
+      )}
     </View>
   );
 }
 
 
 /** La barra de siempre (`ProgressBar`) con el movimiento: sube al llegar y lleva el punto vivo. Mismo rol y etiqueta para los lectores de pantalla. */
-export function BarraViva({ value, label }: { value: number; label?: string }) {
-  const avance = useAvance(true);
+export function BarraViva({
+  value,
+  label,
+  grosor,
+  tono,
+  retardo,
+  punto,
+}: {
+  value: number;
+  label?: string;
+  grosor?: 'md' | 'lg';
+  tono?: 'marca' | 'apagado';
+  retardo?: number;
+  punto?: boolean;
+}) {
+  const avance = useAvance(true, retardo);
   const v = Math.max(0, Math.min(100, value));
-  return <Barra valor={v} avance={avance} etiqueta={label ?? `Avance ${v}%`} />;
+  return <Barra valor={v} avance={avance} etiqueta={label ?? `Avance ${v}%`} grosor={grosor} tono={tono} punto={punto} />;
 }
 
 const styles = StyleSheet.create({
@@ -128,6 +184,12 @@ const styles = StyleSheet.create({
   barra: { height: PUNTO + 6, justifyContent: 'center', marginVertical: space.xs, marginHorizontal: PUNTO / 2 },
 
   pista: { height: 6, borderRadius: radius.pill, backgroundColor: color.surface.raisedStrong, overflow: 'hidden' },
+
+  pistaGrande: { height: 10 },
+
+  rellenoApagado: { backgroundColor: color.border.strong },
+
+  filo: { position: 'absolute', top: 0, left: 0, right: 0, height: '45%', backgroundColor: palette.white, opacity: 0.22 },
 
   relleno: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: radius.pill, overflow: 'hidden' },
 

@@ -11,13 +11,13 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
-import { formatoPuntos, fraseDeLoQueFalta, iconoDeEscalon, idDeEscalon, nivelPorPuntos, porcentajeDeBarra } from '../features/nivel';
+import { desdeDelNivel, formatoPuntos, fraseDeLoQueFalta, iconoDeEscalon, idDeEscalon, nivelPorPuntos, porcentajeDeBarra } from '../features/nivel';
 import { color, radius, space, stroke } from '../theme/tokens';
 import { BotonInfo, InfoSheet } from './help-sheet';
 import { Icon } from './icons';
 import { Vivo } from './motion';
-import { AtlasText, Button, Divider } from './primitives';
-import { BarraViva, CuentaArriba, useAvance } from './cuenta-arriba';
+import { AtlasText, Badge, Button, Divider } from './primitives';
+import { Barra, CuentaArriba, useAvance } from './cuenta-arriba';
 
 export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVerLogros?: () => void }) {
   const [info, setInfo] = useState(false);
@@ -53,27 +53,38 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
             {level.label}
           </AtlasText>
         </View>
-        <View style={styles.puntos}>
-          <CuentaArriba avance={avance} hasta={level.points} formato={formatoPuntos} tamano="amount" />
-          <AtlasText variant="caption" tone="secondary">
-            {puntos}
+        {currentStreak > 0 ? <Badge label={`Racha ${currentStreak}`} tone="success" /> : null}
+      </View>
+      {/*
+        Los puntos son LA cifra de la tarjeta: van solos y en grande, cuentan desde cero y la barra de debajo sube con
+        ellos (Pablo, 2026-10-07). Antes iban arrinconados a la derecha del nombre del nivel, al tamaño de un importe más.
+      */}
+      <View style={styles.cifra}>
+        <CuentaArriba avance={avance} hasta={level.points} formato={formatoPuntos} tamano="amountHero" color={color.action.primary} testID="nivel-puntos" />
+        <AtlasText variant="bodyStrong" tone="secondary">
+          {puntos}
+        </AtlasText>
+      </View>
+      <Barra
+        valor={porcentajeDeBarra(nivel)}
+        avance={avance}
+        grosor="lg"
+        etiqueta={nextLevel ? `${formatoPuntos(level.points)} puntos; ${nextLevel.label} empieza en ${formatoPuntos(nextLevel.from)}` : 'Nivel máximo'}
+      />
+      {/* Los extremos de la barra: sin ellos se ve cuánto está llena, pero no de dónde a dónde va. */}
+      {nextLevel ? (
+        <View style={styles.extremos}>
+          <AtlasText variant="micro" tone="tertiary">
+            {formatoPuntos(desdeDelNivel(nivel))}
+          </AtlasText>
+          <AtlasText variant="micro" tone="tertiary">
+            {`${nextLevel.label} · ${formatoPuntos(nextLevel.from)}`}
           </AtlasText>
         </View>
-      </View>
-      <BarraViva
-        value={porcentajeDeBarra(nivel)}
-        label={nextLevel ? `${formatoPuntos(level.points)} puntos; ${nextLevel.label} empieza en ${formatoPuntos(nextLevel.from)}` : 'Nivel máximo'}
-      />
-      <View style={styles.pie}>
-        <AtlasText variant="caption" tone="secondary" style={styles.falta}>
-          {nextLevel ? `Faltan ${formatoPuntos(nextLevel.pointsMissing)} para «${nextLevel.label}»` : 'Nivel máximo'}
-        </AtlasText>
-        {currentStreak > 0 ? (
-          <AtlasText variant="captionStrong" tone="brand">
-            {`Racha ${currentStreak}`}
-          </AtlasText>
-        ) : null}
-      </View>
+      ) : null}
+      <AtlasText variant="caption" tone="secondary">
+        {nextLevel ? `Faltan ${formatoPuntos(nextLevel.pointsMissing)} para «${nextLevel.label}»` : 'Nivel máximo'}
+      </AtlasText>
       <View style={styles.acciones}>
         {onVerLogros ? <Button label="Mis logros" icon="estrella" variant="secondary" onPress={onVerLogros} style={styles.accion} testID="nivel-logros" /> : null}
       </View>
@@ -135,8 +146,8 @@ const styles = StyleSheet.create({
   },
   titulos: { flex: 1 },
   sobretitulo: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
-  puntos: { alignItems: 'flex-end' },
-  pie: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
+  cifra: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
+  extremos: { flexDirection: 'row', justifyContent: 'space-between', gap: space.sm },
   falta: { flex: 1 },
   acciones: { flexDirection: 'row', gap: space.sm, marginTop: space.xs },
   accion: { flex: 1 },
