@@ -21,6 +21,7 @@ import { PROGRESO_DE_PRUEBA } from "./progreso-datos";
  */
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
+  useFocusEffect: () => undefined,
   useRouter: () => ({
     push: mockPush,
     replace: jest.fn(),

@@ -7,7 +7,7 @@
  */
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { color, palette, radius, space } from '../theme/tokens';
+import { palette, space } from '../theme/tokens';
 import { AtlasText, Overline } from './primitives';
 import { webData } from '../web/estilo';
 import { DegradadosLetraA, LETRA_A } from './marca-letra';
@@ -93,38 +93,8 @@ export function AtlasLogo({ size = 44, style }: { size?: number; style?: ViewSty
   );
 }
 
-/**
- * Distintivo del origen de datos de compra.
- *
- * Se muestra siempre que la pantalla no este hablando con el backend real. Es una exigencia del
- * propio metodo de trabajo: nunca presentar datos simulados como si fueran de produccion.
- */
-export function DataSourceBadge({ label = 'Entorno sandbox' }: { label?: string }) {
-  return (
-    <View style={styles.sandbox}>
-      <View style={styles.sandboxDot} />
-      <AtlasText variant="micro" tone="warning">
-        {label}
-      </AtlasText>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   logo: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   logoText: { gap: space.xxs },
   wordmark: { letterSpacing: 2.4 },
-  sandbox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.sm,
-    alignSelf: 'flex-start',
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: color.feedbackBorder.warning,
-    backgroundColor: color.feedbackSoft.warning,
-    paddingHorizontal: space.md,
-    paddingVertical: space.xs,
-  },
-  sandboxDot: { width: 6, height: 6, borderRadius: radius.pill, backgroundColor: color.feedback.warning },
 });

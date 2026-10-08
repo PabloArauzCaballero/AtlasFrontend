@@ -20,6 +20,7 @@ import { StyleSheet, View } from 'react-native';
 import type { LoanSummary, PaymentCalendar, SpendingByCategory } from '../../../src/api/endpoints/loans';
 import { amountTone, categoryLook, dueCopy, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
+import { useAlVolver } from '../../../src/features/al-volver';
 import { useSession } from '../../../src/session/session';
 import { color, radius, space } from '../../../src/theme/tokens';
 import type { IconName } from '../../../src/ui/icons';
@@ -186,6 +187,8 @@ export default function Payments() {
   const router = useRouter();
   const session = useSession();
   const book = useCreditBook(session.customerId);
+  // Al volver a la pantalla: lo que cambió mientras tanto (un pago confirmado, una compra nueva) se ve sin cerrar la app.
+  useAlVolver(book.reload);
 
   const [filter, setFilter] = useState<Filter>('todos');
   const [layout, setLayout] = useState<Layout>('lista');

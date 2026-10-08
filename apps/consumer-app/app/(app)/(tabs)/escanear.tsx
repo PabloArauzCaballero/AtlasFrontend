@@ -18,7 +18,6 @@ import { resolveMerchantQr } from '../../../src/api/endpoints/loans';
 import { rechazoVigente, type RechazoDeQr } from '../../../src/features/qr-rechazado';
 import { DEMO_TOKEN, REVOKED_DEMO_TOKEN } from '../../../src/sandbox/fixtures';
 import { useSandbox } from '../../../src/sandbox/store';
-import { DataSourceBadge } from '../../../src/ui/brand';
 import { firstBlocker } from '../../../src/ui/blocked';
 import { CameraFrame } from '../../../src/ui/camera-frame';
 import { CodigoCajaField } from '../../../src/ui/codigo-caja-field';
@@ -204,11 +203,7 @@ export default function ScanScreen() {
   return (
     <Screen>
       <Gap size="sm" />
-      <ScreenHeader
-        title="Escanear"
-        subtitle="Apunta al código QR de Atlas del comercio."
-        action={<DataSourceBadge />}
-      />
+      <ScreenHeader title="Escanear" subtitle="Apunta al código QR de Atlas del comercio." />
 
       {verificando ? (
         <Card>

@@ -12,6 +12,7 @@ import { PROGRESO_DE_PRUEBA } from "./progreso-datos";
  * Ni el aviso de mora va por encima de la línea.
  */
 jest.mock("expo-router", () => ({
+  useFocusEffect: () => undefined,
   useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
   usePathname: () => "/",
 }));
