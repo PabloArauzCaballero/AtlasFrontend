@@ -15,18 +15,25 @@
  * ## La coreografia
  *
  * ```
- *   0 ms  ┃ un globo de puntos se enciende y gira, a pantalla completa
- * 1020ms  ┃ el globo frena de frente a Bolivia y un pulso marca el punto (`ui/globo-arranque.tsx`)
- * 1150ms  ┃ el globo se recoge hacia ese punto
- * 1380ms  ┃ de ahi la «A» SE DIBUJA sola, trazo a trazo, con una luz en la punta del trazo
- * 2020ms  ┃ el relleno de marca aparece por debajo del trazo y el travesano cierra la letra
- * 2340ms  ┃ barrido especular: una banda de luz cruza el metal en diagonal
- * 2500ms  ┃ ▶ IMPACTO — destello, onda expansiva, el resplandor de fondo se abre · suena el ta-dum
- * 2560ms  ┃ un punto da una vuelta alrededor de la «A» dejando la orbita dibujada (`ui/orbita-arranque.tsx`)
- * 2660ms  ┃ A·T·L·A·S aparecen una a una y el tracking se cierra hacia el centro
- * 3300ms  ┃ el respiro: todo quieto. Es el fotograma en el que se reconoce la marca
- * 3560ms  ┃ (si la app esta lista) la camara acelera hacia la marca y la atraviesa
+ *    0 ms  ┃ polvo de luz: veinticuatro chispas dispersas por la pantalla giran en espiral hacia el centro
+ *  560 ms  ┃ al llegar encienden un núcleo de luz: el punto exacto donde nace la letra
+ *  700 ms  ┃ de ahí la «A» SE DIBUJA sola, trazo a trazo
+ * 1340 ms  ┃ el relleno de marca aparece por debajo del trazo y el travesaño cierra la letra
+ * 1640 ms  ┃ barrido especular: una banda de luz cruza el metal en diagonal
+ * 1800 ms  ┃ ▶ IMPACTO — destello, rayos de luz que se abren girando, DOS ondas expansivas · suena el ta-dum
+ * 1860 ms  ┃ un punto da una vuelta alrededor de la «A» dejando la órbita dibujada (`ui/orbita-arranque.tsx`)
+ * 1960 ms  ┃ A·T·L·A·S aparecen una a una y el tracking se cierra hacia el centro
+ * 2600 ms  ┃ el respiro: todo quieto salvo los rayos, que siguen girando despacio
+ * 2900 ms  ┃ (si la app está lista) la cámara acelera hacia la marca y la atraviesa
  * ```
+ *
+ * ## Por qué ya no hay globo (2026-10-08)
+ *
+ * Pablo: «quitemos la animación del mundo y que sólo quede la de Atlas, ultra HD, que impacte». El globo
+ * ocupaba el primer segundo y medio con algo que no era la marca, y en los iPhone viejos era lo más caro
+ * de dibujar (cientos de puntos con su propia opacidad por fotograma). Ahora todo el arranque es la
+ * marca: la luz se junta, la letra nace de ella y estalla. Es más corto (2,9 s contra 3,56 s) y cada
+ * capa nueva se anima con transformaciones y opacidad, que el compositor resuelve sin volver a dibujar.
  *
  * ## Por que el intro NO espera a que la app este lista
  *
@@ -70,7 +77,6 @@ import { color, palette } from '../theme/tokens';
 import { useSonidoMarca } from './brand-sound';
 import { acelera, frena, frenaMucho, suave, tramo } from './curvas-arranque';
 import { DegradadosLetraA, LETRA_A } from './brand';
-import { GloboDeArranque } from './globo-arranque';
 import { OrbitaDelante, OrbitaDetras } from './orbita-arranque';
 import { AtlasText } from './primitives';
 
@@ -87,26 +93,55 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
  * tocar uno para que dos tramos se solapen sin que nadie lo note hasta verlo en el telefono.
  */
 const GUION = {
-  globo: {
-    aparece: [0, 420],
-    giro: [0, 1200],
-    pulso: [1020, 1400],
-    recoge: [1150, 1450],
-  },
-  trazo: [1380, 2060],
-  relleno: [2020, 2360],
-  barrido: [2340, 3000],
-  impacto: 2500,
-  onda: [2500, 3160],
-  rotulo: [2660, 3300],
+  /** El polvo de luz que converge al centro, y el núcleo que enciende al llegar. */
+  polvo: [0, 760],
+  nucleo: [560, 1000],
+  trazo: [700, 1340],
+  relleno: [1300, 1640],
+  barrido: [1640, 2300],
+  impacto: 1800,
+  onda: [1800, 2460],
+  /** La segunda onda sale un poco después y más ancha: el eco del golpe. */
+  eco: [1940, 2760],
+  /** Los rayos se abren con el impacto y quedan girando, tenues, hasta la salida. */
+  rayos: [1780, 2300],
+  rotulo: [1960, 2600],
   /** El punto da una vuelta alrededor de la letra mientras se forma el rotulo, y se para. */
-  orbita: [2560, 3380],
-  respiro: [3300, 3560],
+  orbita: [1860, 2680],
+  respiro: [2600, 2900],
 } as const;
 
 /** Lo que dura el intro completo. La salida se encadena DESPUES, y solo si la app esta lista. */
-const INTRO = 3560;
+const INTRO = 2900;
 const SALIDA = 640;
+
+/**
+ * Las chispas del polvo de luz: ángulo y distancia de partida, tamaño y retardo. Con semilla fija,
+ * como el grano: dos arranques son el mismo plano.
+ */
+const CHISPAS = (() => {
+  let semilla = 20261008;
+  const siguiente = () => {
+    semilla = (semilla * 1664525 + 1013904223) % 4294967296;
+    return semilla / 4294967296;
+  };
+  return Array.from({ length: 24 }, (_, i) => ({
+    angulo: (i / 24) * Math.PI * 2 + siguiente() * 0.5,
+    distancia: 150 + siguiente() * 190,
+    tamano: 3 + siguiente() * 5,
+    retardo: siguiente() * 220,
+    giro: 0.9 + siguiente() * 0.8,
+  }));
+})();
+
+/** Los rayos de luz del impacto: haces finos alrededor del centro, en un lienzo de 100×100. */
+const RAYOS = Array.from({ length: 14 }, (_, i) => {
+  const a = (i / 14) * Math.PI * 2;
+  const ancho = i % 2 === 0 ? 0.075 : 0.045;
+  const largo = i % 2 === 0 ? 50 : 38;
+  const punto = (ang: number, r: number) => `${(50 + Math.cos(ang) * r).toFixed(2)} ${(50 + Math.sin(ang) * r).toFixed(2)}`;
+  return `M50 50 L${punto(a - ancho, largo)} L${punto(a + ancho, largo)} Z`;
+});
 
 /**
  * Longitud del contorno de la «A», en unidades del `viewBox`.
@@ -124,6 +159,8 @@ const LETRA = LETRA_A.silueta;
 const MARCA_PX = 132;
 /** El lienzo del impacto: onda expansiva y resplandor. Mas grande que la marca, para que quepa lo que sale de ella. */
 const ESCENA_PX = 360;
+/** El lienzo de los rayos: más que la escena, para que los haces salgan de la marca y se pierdan. */
+const RAYOS_PX = 520;
 
 /**
  * El grano de pelicula.
@@ -247,7 +284,7 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
     bloqueado es el peor fallo posible de una app de dinero, porque no se distingue de que la app
     este rota. A los ocho segundos se descubre la interfaz: si debajo hay un error, al menos se lee.
 
-    Ocho y no seis: el intro solo ya ocupa 3,6 s, y el margen tiene que seguir siendo para la RED,
+    Ocho y no seis: el intro solo ya ocupa 2,9 s, y el margen tiene que seguir siendo para la RED,
     no para la animacion.
   */
   React.useEffect(() => {
@@ -382,6 +419,42 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
     opacity: 0.5 * (1 - tramo(reloj.value, GUION.impacto, GUION.impacto + 150)) * tramo(reloj.value, GUION.impacto - 40, GUION.impacto),
   }));
 
+  /** El eco: una segunda onda más ancha y más lenta, que hace que el golpe «suene» en la imagen. */
+  const ecoProps = useAnimatedProps(() => {
+    const avance = frena(tramo(reloj.value, GUION.eco[0], GUION.eco[1]));
+    const nacida = tramo(reloj.value, GUION.eco[0] - 30, GUION.eco[0]);
+    return {
+      r: 20 + avance * 135,
+      strokeWidth: Math.max(0.3, 1.6 * (1 - avance)),
+      opacity: 0.5 * (1 - avance) * nacida,
+    };
+  });
+
+  /**
+   * Los rayos de luz. Se abren con el impacto —escala de 0,3 a 1 con un muelle corto— y se quedan
+   * girando despacio y tenues mientras se forma el rótulo: el fondo sigue vivo en el respiro sin que
+   * nada compita con la letra. Un solo dibujo que gira: el compositor lo mueve sin redibujar.
+   */
+  const rayos = useAnimatedStyle(() => {
+    const abre = frenaMucho(tramo(reloj.value, GUION.rayos[0], GUION.rayos[1]));
+    const pico = Math.sin(Math.PI * tramo(reloj.value, GUION.rayos[0], GUION.rayos[0] + 520));
+    const visible = Math.max(abre * 0.32, pico * 0.85);
+    return {
+      opacity: visible * (1 - acelera(tramo(salida.value, 0, 0.7))),
+      transform: [{ rotate: `${reloj.value * 0.012 + salida.value * 40}deg` }, { scale: 0.3 + abre * 0.7 + salida.value * 1.2 }],
+    };
+  });
+
+  /** El núcleo: la luz que juntan las chispas y de la que nace el trazo. Se apaga cuando hay letra. */
+  const nucleo = useAnimatedStyle(() => {
+    const enciende = frenaMucho(tramo(reloj.value, GUION.nucleo[0], GUION.nucleo[0] + 200));
+    const apaga = suave(tramo(reloj.value, GUION.nucleo[0] + 200, GUION.nucleo[1]));
+    return {
+      opacity: enciende * (1 - apaga * 0.85) * (1 - tramo(reloj.value, GUION.relleno[0], GUION.relleno[1])),
+      transform: [{ scale: 0.4 + enciende * 0.9 - apaga * 0.3 }],
+    };
+  });
+
   return (
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.capa, capa]}>
       <Animated.View style={[styles.centrado, resplandor]}>
@@ -421,6 +494,15 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
       <Animated.View style={[StyleSheet.absoluteFill, styles.centro, escenario]}>
         <View style={styles.escena}>
           <Svg width={ESCENA_PX} height={ESCENA_PX} viewBox="0 0 300 300" style={StyleSheet.absoluteFill}>
+            <AnimatedCircle
+              cx={150}
+              cy={150}
+              r={0}
+              opacity={0}
+              fill="none"
+              stroke={palette.brand400}
+              animatedProps={ecoProps}
+            />
             {/*
               `r` y `opacity` en cero de partida, aunque `ondaProps` los sobreescriba.
 
@@ -442,8 +524,26 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
           </Svg>
 
           <View style={styles.marcaCaja}>
-            {/* Detras de la marca y centrado en ella: el globo se recoge hacia el punto donde nace la letra. */}
-            <GloboDeArranque reloj={reloj} guion={GUION.globo} />
+            {/* Los rayos, centrados en la letra y detrás de todo lo demás de la marca. */}
+            <Animated.View pointerEvents="none" style={[styles.rayos, rayos]}>
+              <Svg width={RAYOS_PX} height={RAYOS_PX} viewBox="0 0 100 100">
+                <Defs>
+                  <RadialGradient id="arranque-rayo" cx="50%" cy="50%" r="50%">
+                    <Stop offset="0" stopColor={palette.white} stopOpacity="0.9" />
+                    <Stop offset="0.25" stopColor={palette.brand300} stopOpacity="0.55" />
+                    <Stop offset="1" stopColor={palette.brand400} stopOpacity="0" />
+                  </RadialGradient>
+                </Defs>
+                {RAYOS.map((d, i) => (
+                  <Path key={i} d={d} fill="url(#arranque-rayo)" />
+                ))}
+              </Svg>
+            </Animated.View>
+            {/* El polvo de luz converge al centro de la letra y enciende el núcleo del que nace el trazo. */}
+            {CHISPAS.map((chispa, indice) => (
+              <Chispa key={indice} chispa={chispa} reloj={reloj} />
+            ))}
+            <Animated.View pointerEvents="none" style={[styles.nucleo, nucleo]} />
             <Animated.View style={marca}>
               <OrbitaDetras reloj={reloj} guion={GUION.orbita} tamano={MARCA_PX} />
               <Svg width={MARCA_PX} height={MARCA_PX} viewBox="0 0 48 48" accessibilityLabel="Logotipo de Atlas">
@@ -529,6 +629,37 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
 }
 
 /**
+ * Una chispa del polvo de luz. Parte de lejos, gira en espiral hacia el centro acelerando —como algo que
+ * cae en un remolino— y se apaga justo al llegar, cuando se enciende el núcleo. Una vista con
+ * `translate`/`scale`/`opacity`: veinticuatro de éstas cuestan menos que un solo trazo SVG animado.
+ */
+function Chispa({ chispa, reloj }: { chispa: (typeof CHISPAS)[number]; reloj: SharedValue<number> }) {
+  const estilo = useAnimatedStyle(() => {
+    const [desde, hasta] = GUION.polvo;
+    const t = tramo(reloj.value, desde + chispa.retardo, hasta);
+    const cae = acelera(t);
+    const radio = chispa.distancia * (1 - cae);
+    const angulo = chispa.angulo + cae * chispa.giro * Math.PI;
+    const enciende = suave(Math.min(1, t * 4));
+    const apaga = tramo(t, 0.82, 1);
+    return {
+      opacity: enciende * (1 - apaga),
+      transform: [
+        { translateX: Math.cos(angulo) * radio },
+        { translateY: Math.sin(angulo) * radio },
+        { scale: 0.6 + (1 - cae) * 0.6 },
+      ],
+    };
+  });
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.chispa, { width: chispa.tamano, height: chispa.tamano, borderRadius: chispa.tamano / 2 }, estilo]}
+    />
+  );
+}
+
+/**
  * Una letra del rotulo.
  *
  * ## Por que cada letra es su propio componente
@@ -598,4 +729,30 @@ const styles = StyleSheet.create({
   // El interletrado base del rotulo ya formado. El resto del recorrido lo pone `translateX`.
   letra: { letterSpacing: 6, textAlign: 'center' },
   destello: { backgroundColor: palette.white },
+  rayos: {
+    position: 'absolute',
+    width: RAYOS_PX,
+    height: RAYOS_PX,
+    top: (MARCA_PX - RAYOS_PX) / 2,
+    left: (MARCA_PX - RAYOS_PX) / 2,
+  },
+  nucleo: {
+    position: 'absolute',
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: palette.brand300,
+    shadowColor: palette.brand400,
+    shadowOpacity: 1,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  chispa: {
+    position: 'absolute',
+    backgroundColor: palette.brand300,
+    shadowColor: palette.brand400,
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+  },
 });

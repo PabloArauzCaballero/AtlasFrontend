@@ -7,8 +7,7 @@
   fotograma: con seis animaciones independientes, cada una con su retardo, basta un fotograma perdido
   en el arranque para que el golpe visual y el sonoro se separen — y separados dejan de ser un golpe.
 
-  Viven aparte porque las leen dos ficheros: la secuencia (`splash.tsx`) y el globo con el que empieza
-  (`globo-arranque.tsx`).
+  Viven aparte porque las lee la secuencia de arranque (`splash.tsx`) y se prueban sin pantalla.
 */
 
 /** Cuanto del tramo `[desde, hasta]` lleva recorrido el reloj, de 0 a 1. */
