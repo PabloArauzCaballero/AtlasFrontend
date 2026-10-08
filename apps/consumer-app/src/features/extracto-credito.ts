@@ -42,7 +42,8 @@ export function armarExtracto(creditos: readonly LoanDetail[], hoy: string = new
         id: `compra-${credito.loanId}`,
         fecha: credito.disbursedAt,
         tipo: 'compra',
-        concepto: `Compra en ${comercio} · ${credito.loanCode}`,
+        // Sin el código interno del préstamo: es un identificador largo que no le dice nada a la persona.
+        concepto: `Compra en ${comercio}`,
         importe: numero(credito.principalAmount),
       });
     }

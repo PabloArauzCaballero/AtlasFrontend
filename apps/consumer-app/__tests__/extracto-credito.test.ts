@@ -28,7 +28,7 @@ describe('extracto de crédito', () => {
       ['pago', -245, 235],
       ['compra', 480, 480],
     ]);
-    expect(e.movimientos[1]?.concepto).toBe('Compra en Multicenter · LOAN-1');
+    expect(e.movimientos[1]?.concepto).toBe('Compra en Multicenter');
     expect(e).toMatchObject({ totalFinanciado: 480, totalPagado: 245, saldo: 235 });
   });
 

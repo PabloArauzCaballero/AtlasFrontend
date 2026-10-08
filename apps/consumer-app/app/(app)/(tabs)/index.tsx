@@ -10,7 +10,7 @@ import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { formatMoney } from '../../../src/domain/money';
 import { useSandbox } from '../../../src/sandbox/store';
 import { useSession } from '../../../src/session/session';
-import { color, palette, radius, space } from '../../../src/theme/tokens';
+import { color, radius, space } from '../../../src/theme/tokens';
 import { AtlasMark } from '../../../src/ui/brand';
 import { Gap, Screen } from '../../../src/ui/layout';
 import {
@@ -158,7 +158,7 @@ export default function Home() {
           style={({ pressed }) => [styles.botonAtlas, pressed && styles.botonAtlasPulsado]}
           testID="inicio-conoce-atlas"
         >
-          <AtlasMark size={26} />
+          <AtlasMark size={22} />
           <AtlasText variant="captionStrong">Atlas</AtlasText>
         </Pressable>
       </View>
@@ -419,21 +419,23 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   greeting: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space.md },
+  /*
+    El botón de la marca (Pablo, 2026-10-08: «el padding de Atlas está bugueado»): el logo iba pegado al borde izquierdo
+    (relleno asimétrico), el resplandor se salía de la píldora y quedaba arriba del todo en vez de a la altura del
+    título. Ahora relleno simétrico, centrado con el saludo y un borde de marca en vez de sombra.
+  */
   botonAtlas: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.xs,
+    alignSelf: 'center',
+    gap: space.sm,
+    minHeight: 44,
     paddingVertical: space.xs,
-    paddingLeft: space.xs,
-    paddingRight: space.md,
+    paddingHorizontal: space.md,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: color.feedbackBorder.brand,
     backgroundColor: color.surface.raised,
-    shadowColor: palette.brand400,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.55,
-    shadowRadius: 12,
   },
   botonAtlasPulsado: { opacity: 0.85, transform: [{ scale: 0.97 }] },
   greetingText: { gap: space.xxs },

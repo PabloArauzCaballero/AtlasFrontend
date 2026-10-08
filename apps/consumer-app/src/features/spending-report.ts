@@ -57,3 +57,26 @@ export async function downloadSpendingReport(customerId: string, now = new Date(
     return { ok: false, reason: 'No pudimos generar tu informe. Inténtalo de nuevo.' };
   }
 }
+
+/**
+ * El extracto de crédito en PDF (Pablo, 2026-10-08: «se debe poder descargar el PDF»). Mismo camino que el informe:
+ * se baja con la sesión, se guarda en la caché y se entrega al visor del sistema para guardarlo o enviarlo.
+ */
+export async function downloadCreditStatement(customerId: string, now = new Date()): Promise<ReportOutcome> {
+  try {
+    const token = await readAccessToken();
+    if (!token) return { ok: false, reason: 'Tu sesión expiró. Vuelve a ingresar.' };
+    const nombre = `atlas-extracto-${now.toISOString().slice(0, 10)}.pdf`;
+    const uri = await descargarConSesion({
+      url: `${apiConfig.baseUrl}/customers/${customerId}/credit-statement.pdf`,
+      headers: { authorization: `Bearer ${token}`, 'x-tenant-id': apiConfig.tenantId },
+      nombre,
+    });
+    if (guardarEnNavegador(uri, nombre)) return { ok: true };
+    if (!(await Sharing.isAvailableAsync())) return { ok: false, reason: 'Este dispositivo no puede abrir el extracto.' };
+    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Extracto de crédito Atlas' });
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: 'No pudimos generar tu extracto. Inténtalo de nuevo.' };
+  }
+}

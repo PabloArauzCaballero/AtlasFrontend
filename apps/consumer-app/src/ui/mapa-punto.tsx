@@ -37,7 +37,7 @@
  * domicilio son unas coordenadas, y el mapa es una forma de conseguirlas, no la única.
  */
 import * as Location from 'expo-location';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { esExpoGo } from '../device/entorno';
 import { etiquetaDeSitio, RADIO_MISMO_SITIO_M, type SitioFrecuente } from '../features/sitios-frecuentes';
@@ -116,10 +116,26 @@ export function MapaPunto({
   const sitioPrincipal = sitios[0] ? { lat: sitios[0].lat, lng: sitios[0].lng } : null;
   const arranque = inicial ?? centro ?? sitioPrincipal ?? CENTRO_POR_DEFECTO;
   const [punto, setPunto] = useState<Punto | null>(inicial ?? centro ?? null);
+  /*
+    El PIN FIJO en el centro (Pablo, 2026-10-08: «que se pueda seleccionar el lugar exacto, no solo el que viene por
+    defecto»). Antes el punto sólo cambiaba tocando el mapa, y la cámara se recalculaba en cada render volviendo al
+    punto de arranque: el mapa «saltaba» de vuelta y en Apple Maps el toque no siempre llegaba. Ahora la cámara se fija
+    al abrir y sólo la mueve la persona; el punto elegido es el CENTRO del mapa, bajo el pin, como en las apps de
+    transporte. Tocar el mapa o un sitio frecuente lleva la cámara ahí.
+  */
+  const [camaraFijada, setCamaraFijada] = useState<Punto>(arranque);
   // El modal vive montado: cada apertura vuelve a partir de lo último elegido o de la posición actual.
   useEffect(() => {
-    if (visible) setPunto(inicial ?? centro ?? null);
+    if (!visible) return;
+    setPunto(inicial ?? centro ?? null);
+    setCamaraFijada(inicial ?? centro ?? sitioPrincipal ?? CENTRO_POR_DEFECTO);
+    // `sitioPrincipal` es derivado de `sitios`: sólo importa al abrir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, inicial, centro]);
+  const llevarA = (p: Punto) => {
+    setPunto(p);
+    setCamaraFijada(p);
+  };
   const mapas = cargarMapas();
 
   const marcadoresDeSitios = sitios.map((sitio, indice) => ({
@@ -135,15 +151,22 @@ export function MapaPunto({
     lineColor: '#2BD9A1',
     lineWidth: 1,
   }));
-  const marcadores = [
-    ...marcadoresDeSitios,
-    ...(punto ? [{ id: 'casa', coordinates: { latitude: punto.lat, longitude: punto.lng }, title: 'Tu casa' }] : []),
-  ];
+  // «Tu casa» ya no es un marcador: es el pin fijo del centro, que no se desfasa del punto elegido.
+  const marcadores = marcadoresDeSitios;
   // Con varios sitios se aleja la camara para que quepan los que estan cerca del primero.
-  const camara = { coordinates: { latitude: arranque.lat, longitude: arranque.lng }, zoom: sitios.length > 1 ? 14 : 16 };
+  const camara = useMemo(
+    () => ({ coordinates: { latitude: camaraFijada.lat, longitude: camaraFijada.lng }, zoom: sitios.length > 1 ? 15 : 17 }),
+    [camaraFijada, sitios.length],
+  );
 
   /* El evento trae `coordinates` con latitud y longitud opcionales: sin las dos no hay punto. */
   const alTocar = (evento: { coordinates?: { latitude?: number; longitude?: number } }) => {
+    const { latitude, longitude } = evento.coordinates ?? {};
+    if (typeof latitude !== 'number' || typeof longitude !== 'number') return;
+    llevarA({ lat: latitude, lng: longitude });
+  };
+  /* Al mover el mapa, el punto es el centro: lo que queda bajo el pin. */
+  const alMoverCamara = (evento: { coordinates?: { latitude?: number; longitude?: number } }) => {
     const { latitude, longitude } = evento.coordinates ?? {};
     if (typeof latitude !== 'number' || typeof longitude !== 'number') return;
     setPunto({ lat: latitude, lng: longitude });
@@ -161,8 +184,8 @@ export function MapaPunto({
             <AtlasText variant="caption" tone="secondary">
               {mapas
                 ? sitios.length > 0
-                  ? 'Marcamos los sitios que más frecuentas. Toca uno de la lista o el mapa donde vives.'
-                  : 'Toca el mapa donde vives. Puedes corregirlo tocando otra vez.'
+                  ? 'Mueve el mapa hasta que el pin quede justo sobre tu casa, o toca uno de tus sitios.'
+                  : 'Mueve el mapa hasta que el pin quede justo sobre tu casa. Puedes acercarte con dos dedos.'
                 : 'Aquí no hay mapa, pero podemos tomar tu ubicación actual.'}
             </AtlasText>
           </View>
@@ -177,6 +200,7 @@ export function MapaPunto({
                 markers={marcadores}
                 circles={circulos}
                 onMapClick={alTocar}
+                onCameraMove={alMoverCamara}
               />
             ) : (
               <mapas.GoogleMaps.View
@@ -185,11 +209,19 @@ export function MapaPunto({
                 markers={marcadores}
                 circles={circulos}
                 onMapClick={alTocar}
+                onCameraMove={alMoverCamara}
               />
             )
           ) : (
             <SinMapa onPunto={setPunto} />
           )}
+          {mapas ? (
+            // El pin: la punta cae exactamente en el centro del mapa, que es el punto que se guarda.
+            <View pointerEvents="none" style={styles.pinFijo} testID="mapa-pin-fijo">
+              <Icon name="ubicacion" size={44} tint={color.action.primary} />
+              <View style={styles.pinSombra} />
+            </View>
+          ) : null}
         </View>
 
         {sitios.length > 0 ? (
@@ -201,7 +233,7 @@ export function MapaPunto({
               {sitios.map((sitio, indice) => (
                 <Pressable
                   key={`${sitio.lat}-${sitio.lng}`}
-                  onPress={() => setPunto({ lat: sitio.lat, lng: sitio.lng })}
+                  onPress={() => llevarA({ lat: sitio.lat, lng: sitio.lng })}
                   accessibilityRole="button"
                   accessibilityLabel={`Usar como mi casa: ${etiquetaDeSitio(sitio)}`}
                   style={styles.sitio}
@@ -295,6 +327,9 @@ function SinMapa({ onPunto }: { onPunto: (punto: Punto) => void }) {
 }
 
 const styles = StyleSheet.create({
+  // El icono mide 44: se sube la mitad para que su punta, y no su centro, quede sobre el centro del mapa.
+  pinFijo: { position: 'absolute', top: '50%', left: '50%', marginLeft: -22, marginTop: -44, alignItems: 'center' },
+  pinSombra: { width: 10, height: 4, borderRadius: 5, backgroundColor: 'rgba(0,0,0,0.35)', marginTop: -2 },
   pantalla: { flex: 1, backgroundColor: color.surface.primary },
   cabecera: {
     flexDirection: 'row',
