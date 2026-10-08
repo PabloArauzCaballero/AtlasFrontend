@@ -97,9 +97,13 @@ export function CrecimientoCreditoCard({ progress }: { progress: Progress }) {
         </AtlasText>
       </View>
       <View style={styles.escalera}>
-        {c.peldanos.map((peldano, indice) => (
-          <Peldano key={peldano.code} peldano={peldano} indice={indice} cifra={cifra} />
-        ))}
+        {/* El escalón más alto ARRIBA, como en «Tu nivel» (Pablo, 2026-10-08); se llena de abajo hacia arriba. */}
+        {c.peldanos
+          .map((peldano, indice) => ({ peldano, indice }))
+          .reverse()
+          .map(({ peldano, indice }) => (
+            <Peldano key={peldano.code} peldano={peldano} indice={indice} cifra={cifra} />
+          ))}
       </View>
 
       <InfoSheet visible={info} titulo="Cómo crece tu crédito" onClose={() => setInfo(false)} testID="crecimiento-info">
@@ -108,7 +112,7 @@ export function CrecimientoCreditoCard({ progress }: { progress: Progress }) {
           {`Tu calificación hoy: ${progress.rating?.value ?? Math.round(progress.score)} de 100. ${frase}`}
         </AtlasText>
         <View style={styles.tablaEscalones} testID="crecimiento-tabla">
-          {filasDeEscalones(c).map((fila) => (
+          {[...filasDeEscalones(c)].reverse().map((fila) => (
             <View key={fila.code} style={[styles.filaTabla, fila.actual && styles.filaTablaActual]} testID={`crecimiento-fila-${fila.code}`}>
               <View style={styles.textoFila}>
                 <AtlasText variant="captionStrong" tone={fila.actual ? 'brand' : 'primary'}>

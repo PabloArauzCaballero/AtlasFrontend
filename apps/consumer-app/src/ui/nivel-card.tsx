@@ -127,7 +127,8 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
           ) : null}
           <Divider />
           <AtlasText variant="bodyStrong">Los niveles</AtlasText>
-          {nivel.levelLadder.map((escalon) => (
+          {/* El nivel más alto ARRIBA y «Nuevo» abajo, como la línea de niveles de Progreso (Pablo, 2026-10-08). */}
+          {[...nivel.levelLadder].reverse().map((escalon) => (
             <View key={idDeEscalon(escalon)} style={styles.escalon}>
               <Icon name={escalon.reached ? 'check' : iconoDeEscalon(escalon)} size={18} tint={escalon.reached ? color.action.primary : color.text.tertiary} />
               <AtlasText variant="body" tone={idDeEscalon(escalon) === idDeEscalon(level) ? 'brand' : escalon.reached ? 'primary' : 'secondary'} style={styles.falta}>
