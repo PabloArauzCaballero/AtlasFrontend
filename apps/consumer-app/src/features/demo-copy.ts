@@ -9,13 +9,10 @@
  * intereses» al lado de un numero de demostracion.
  */
 
-/** Rotulo corto para el distintivo (`DataSourceBadge`). */
-export const ROTULO_SIMULACION = 'Simulación de demostración';
-
 /** Lo que se le dice al cliente cuando la compra es simulada y toca un botón de dinero. */
 export const AVISO_DEMOSTRACION =
   'Esta compra es de demostración: el aviso no se envía a ningún comercio. Los pagos reales se avisan desde Pagos, abriendo la cuota.';
 
 /** Debajo de cualquier desglose de cuotas de la simulacion. */
 export const AVISO_PLAN_SIMULADO =
-  'Simulación de demostración: no es una oferta ni un cobro. En un crédito real, el plazo, las cuotas y la tasa los fija Atlas al aprobar tu solicitud, y los ves en la pantalla de tu crédito.';
+  'Pagas el 60 % directo al comercio y financias el 40 % con Atlas. El plazo, las cuotas y la tasa definitivos los fija Atlas al aprobar tu solicitud, y los ves en la pantalla de tu crédito.';

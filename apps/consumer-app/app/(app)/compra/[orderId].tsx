@@ -16,9 +16,7 @@ import { dueLabel, itemTitle, orderStatusCopy, reasonCopy, statusLabel, statusTo
 import { useSandbox } from '../../../src/sandbox/store';
 import { space } from '../../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { ROTULO_SIMULACION } from '../../../src/features/demo-copy';
 import { explicarFallaDeDecision } from '../../../src/features/falla-de-decision';
-import { DataSourceBadge } from '../../../src/ui/brand';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, KeyValue, ListRow, Overline, Skeleton } from '../../../src/ui/primitives';
 import { useCopy } from '../../../src/features/use-contenido-remoto';
 
@@ -84,7 +82,6 @@ export default function PurchaseDetail() {
       }
     >
       <ScreenHeader title={order.context.tradeName} subtitle={`${order.context.branchName} · ${order.orderCode}`} onBack="auto" />
-      <DataSourceBadge label={ROTULO_SIMULACION} />
 
       <Card tone={copy.tone === 'danger' ? 'danger' : 'default'}>
         <View style={styles.rowBetween}>
@@ -112,7 +109,7 @@ export default function PurchaseDetail() {
       ) : null}
 
       <Card>
-        <CardHeader icon="lista" iconTone="neutral" title="¿Cómo se divide?" trailing={<DataSourceBadge label={ROTULO_SIMULACION} />} />
+        <CardHeader icon="lista" iconTone="neutral" title="¿Cómo se divide?" />
         <KeyValue label="Pago inicial (60 %)">
           <AtlasText variant="amountSmall">{formatMoney(order.initialPaymentAmount)}</AtlasText>
         </KeyValue>

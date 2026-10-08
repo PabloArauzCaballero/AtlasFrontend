@@ -106,7 +106,7 @@ export const COPY = {
   },
   'demo.plan_simulado': {
     pantalla: 'Compra',
-    donde: 'Bajo el plan de pago simulado, al comprar',
+    donde: 'Bajo el plan de pago estimado, al comprar',
     texto: AVISO_PLAN_SIMULADO,
   },
   'cuota.vencida': {
