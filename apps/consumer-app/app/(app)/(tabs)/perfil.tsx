@@ -27,10 +27,10 @@ import { NivelCard } from '../../../src/ui/nivel-card';
 import { CreditoHabilitadoCard } from '../../../src/ui/credito-habilitado-card';
 import { TarjetaAtlas } from '../../../src/ui/tarjeta-atlas';
 import { MedallaDeRiesgo } from '../../../src/ui/medalla-de-riesgo';
+import { AvatarEditable } from '../../../src/ui/avatar-editable';
 import { useProgress } from '../../../src/features/use-progress';
 import {
   AtlasText,
-  Avatar,
   Badge,
   Button,
   Card,
@@ -156,7 +156,13 @@ export default function Profile() {
         Ajustes.
       */}
       <View style={styles.identidad}>
-        <Avatar name={fullName} />
+        {/* La foto de perfil: se toca para poner, cambiar o quitarla (Pablo, 2026-10-08). */}
+        <AvatarEditable
+          nombre={fullName}
+          customerId={me?.customer.customerId ?? null}
+          actualizada={me?.customer.profilePhotoUpdatedAt}
+          onCambio={() => session.refresh()}
+        />
         <View style={styles.identidadTexto}>
           <AtlasText variant="h1" numberOfLines={2}>
             {fullName}
