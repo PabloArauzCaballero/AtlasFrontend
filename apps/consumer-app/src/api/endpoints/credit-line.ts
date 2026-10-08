@@ -225,9 +225,22 @@ export type Badge = {
   earnedAt?: string | null;
 };
 
-/** Puntos de experiencia: 1 por cada boliviano PAGADO a tiempo (comprar no suma). */
+/** De dónde salen los puntos (AtlasBackend `experience.xpBreakdown`, 2026-10-08). */
+export type XpBreakdown = {
+  purchases: { count: number; points: number };
+  onTimeInstallments: { count: number; points: number };
+  earlyInstallments: { count: number; points: number };
+  settledPurchases: { count: number; points: number };
+};
+
+/**
+ * Puntos de experiencia (Pablo, 2026-10-08, al estilo Farmaclub pero premiando cumplir): 1 por cada Bs 10 comprados con
+ * tope de 100 por compra, 50 por cuota pagada a tiempo, 25 más si fue con 3 días de adelanto y 200 por compra terminada.
+ */
 export type Experience = {
   xp: number;
+  /** Opcional: un backend anterior al 2026-10-08 no lo manda. */
+  xpBreakdown?: XpBreakdown;
   onTimeInstallments: number;
   currentStreak: number;
   bestStreak: number;

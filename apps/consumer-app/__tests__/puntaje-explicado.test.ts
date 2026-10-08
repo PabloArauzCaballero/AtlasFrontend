@@ -3,8 +3,7 @@ import {
   cuentaDeUnaParte,
   formatoPuntos,
   fraseDeExperiencia,
-  fraseDelResultado,
-} from "../src/features/puntaje-explicado";
+  fraseDelResultado, filasDeMisPuntos } from "../src/features/puntaje-explicado";
 import { PROGRESO_DE_PRUEBA } from "./progreso-datos";
 
 /** Lo que se escribe aquí es lo que la persona lee como la razón de su nivel: una cuenta mal dicha destruye la confianza. */
@@ -70,12 +69,33 @@ describe("fraseDelResultado", () => {
 });
 
 describe("fraseDeExperiencia", () => {
-  it("sin compras dice cómo se ganan: 1 por boliviano comprado", () =>
-    expect(fraseDeExperiencia(0)).toMatch(/Cada boliviano que compras con Atlas suma 1 punto/));
-  it("con compras dice de dónde salen", () =>
-    expect(fraseDeExperiencia(1250)).toMatch(
-      /1 por cada boliviano que compraste con Atlas/,
-    ));
+  it("sin puntos dice cómo se ganan: comprando y, sobre todo, pagando a tiempo", () =>
+    expect(fraseDeExperiencia(0)).toMatch(/pagando tus cuotas a tiempo/));
+  it("con puntos dice de dónde salen, sin la regla vieja de 1 por boliviano", () => {
+    expect(fraseDeExperiencia(1250)).toMatch(/comprando y pagando a tiempo/);
+    expect(fraseDeExperiencia(1250)).not.toMatch(/cada boliviano/);
+  });
+});
+
+describe("filasDeMisPuntos", () => {
+  it("cuenta cada concepto con su cantidad y sus puntos", () => {
+    const filas = filasDeMisPuntos({
+      xpBreakdown: {
+        purchases: { count: 1, points: 48 },
+        onTimeInstallments: { count: 2, points: 100 },
+        earlyInstallments: { count: 1, points: 25 },
+        settledPurchases: { count: 0, points: 0 },
+      },
+    });
+    expect(filas.map((f) => [f.motivo, f.detalle, f.puntos])).toEqual([
+      ["Compras", "1 compra", 48],
+      ["Cuotas a tiempo", "2 cuotas", 100],
+      ["Pagos adelantados", "1 cuota", 25],
+      ["Compras terminadas", "0 compras", 0],
+    ]);
+  });
+  it("sin desglose (backend viejo) no inventa filas", () =>
+    expect(filasDeMisPuntos({})).toEqual([]));
 });
 
 describe("avanceDeInsignia", () => {

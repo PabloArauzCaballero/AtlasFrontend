@@ -31,8 +31,29 @@ export function fraseDelResultado(progress: Pick<Progress, 'score' | 'rawScore' 
 
 /** La experiencia en una línea: lo que suma y de dónde sale. */
 export function fraseDeExperiencia(xp: number): string {
-  if (xp === 0) return 'Cada boliviano que compras con Atlas suma 1 punto de experiencia.';
-  return `${xp.toLocaleString('es-BO')} puntos: 1 por cada boliviano que compraste con Atlas.`;
+  if (xp === 0) return 'Ganas puntos comprando y, sobre todo, pagando tus cuotas a tiempo.';
+  return `${xp.toLocaleString('es-BO')} puntos ganados comprando y pagando a tiempo.`;
+}
+
+/** La regla, en filas: lo que se le enseña a la persona en «Tus puntos y tu nivel». */
+export const COMO_SE_GANAN: readonly { motivo: string; puntos: string }[] = [
+  { motivo: 'Cada compra', puntos: '1 por cada Bs 10 (hasta 100)' },
+  { motivo: 'Cada cuota pagada a tiempo', puntos: '50' },
+  { motivo: 'Pagarla 3 días antes o más', puntos: '+25' },
+  { motivo: 'Terminar de pagar una compra', puntos: '200' },
+];
+
+/** De dónde salen los puntos de la persona, con sus números. Sin desglose (backend viejo), nada. */
+export function filasDeMisPuntos(experiencia: Pick<Progress['experience'], 'xpBreakdown'> | undefined): { motivo: string; detalle: string; puntos: number }[] {
+  const d = experiencia?.xpBreakdown;
+  if (!d) return [];
+  const veces = (n: number, una: string, varias: string) => `${n} ${n === 1 ? una : varias}`;
+  return [
+    { motivo: 'Compras', detalle: veces(d.purchases.count, 'compra', 'compras'), puntos: d.purchases.points },
+    { motivo: 'Cuotas a tiempo', detalle: veces(d.onTimeInstallments.count, 'cuota', 'cuotas'), puntos: d.onTimeInstallments.points },
+    { motivo: 'Pagos adelantados', detalle: veces(d.earlyInstallments.count, 'cuota', 'cuotas'), puntos: d.earlyInstallments.points },
+    { motivo: 'Compras terminadas', detalle: veces(d.settledPurchases.count, 'compra', 'compras'), puntos: d.settledPurchases.points },
+  ];
 }
 
 /** Cuánto falta para una insignia, en texto. */

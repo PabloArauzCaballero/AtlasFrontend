@@ -5,12 +5,13 @@
  * y la cuenta— con un párrafo de explicación en cada una. Los puntos de experiencia SON lo que da el nivel, así que
  * van juntos; la explicación de cómo se calcula vive en «Más info», una hoja que se abre cuando alguien la pide.
  *
- * Los puntos de experiencia salen de lo COMPRADO: 1 por cada boliviano. Qué tan buen pagador es la persona es otra
- * cosa —la Calificación de 1 a 100— y tiene su propia tarjeta.
+ * Los puntos de experiencia se ganan comprando y, sobre todo, pagando a tiempo (`COMO_SE_GANAN`). Qué tan buen pagador
+ * es la persona es otra cosa —la Calificación de 1 a 100— y tiene su propia tarjeta.
  */
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
+import { COMO_SE_GANAN, filasDeMisPuntos } from '../features/puntaje-explicado';
 import { desdeDelNivel, formatoPuntos, fraseDeLoQueFalta, iconoDeEscalon, idDeEscalon, nivelPorPuntos, porcentajeDeBarra } from '../features/nivel';
 import { color, radius, space, stroke } from '../theme/tokens';
 import { BotonInfo, InfoSheet } from './help-sheet';
@@ -92,9 +93,38 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
       <InfoSheet visible={info} titulo="Tus puntos y tu nivel" onClose={() => setInfo(false)} testID="nivel-info">
           <AtlasText variant="bodyStrong">Cómo se ganan</AtlasText>
           <AtlasText variant="body" tone="secondary">
-            Cada boliviano que compras con Atlas te da 1 punto de experiencia. Tus puntos nunca bajan, y con ellos subes de
-            nivel y de tarjeta.
+            Como en un programa de puntos, pero aquí pesa más cumplir que comprar. Tus puntos nunca bajan, y con ellos subes
+            de nivel y de tarjeta.
           </AtlasText>
+          {COMO_SE_GANAN.map((fila) => (
+            <View key={fila.motivo} style={styles.escalon}>
+              <AtlasText variant="body" style={styles.falta}>
+                {fila.motivo}
+              </AtlasText>
+              <AtlasText variant="captionStrong" tone="brand">
+                {fila.puntos}
+              </AtlasText>
+            </View>
+          ))}
+          {filasDeMisPuntos(progress.experience).length > 0 ? (
+            <>
+              <Divider />
+              <AtlasText variant="bodyStrong">De dónde salen tus puntos</AtlasText>
+              {filasDeMisPuntos(progress.experience).map((fila) => (
+                <View key={fila.motivo} style={styles.escalon} testID={`mis-puntos-${fila.motivo}`}>
+                  <AtlasText variant="body" style={styles.falta}>
+                    {fila.motivo}
+                  </AtlasText>
+                  <AtlasText variant="caption" tone="secondary">
+                    {fila.detalle}
+                  </AtlasText>
+                  <AtlasText variant="bodyStrong" tone="brand">
+                    {formatoPuntos(fila.puntos)}
+                  </AtlasText>
+                </View>
+              ))}
+            </>
+          ) : null}
           <Divider />
           <AtlasText variant="bodyStrong">Los niveles</AtlasText>
           {nivel.levelLadder.map((escalon) => (

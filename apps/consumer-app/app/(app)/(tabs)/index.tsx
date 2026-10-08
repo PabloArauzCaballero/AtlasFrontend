@@ -6,11 +6,12 @@
  */
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Alert, Linking, StyleSheet, View } from 'react-native';
+import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { formatMoney } from '../../../src/domain/money';
 import { useSandbox } from '../../../src/sandbox/store';
 import { useSession } from '../../../src/session/session';
-import { space } from '../../../src/theme/tokens';
+import { color, palette, radius, space } from '../../../src/theme/tokens';
+import { AtlasMark } from '../../../src/ui/brand';
 import { Gap, Screen } from '../../../src/ui/layout';
 import {
   AtlasText,
@@ -149,6 +150,17 @@ export default function Home() {
           </AtlasText>
           <AtlasText variant="h1">Tu línea Atlas</AtlasText>
         </View>
+        {/* El botón de la marca: abre «Conoce Atlas», las pantallas de presentación de antes (Pablo, 2026-10-08). */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Conoce Atlas"
+          onPress={() => router.push('/(app)/conoce-atlas')}
+          style={({ pressed }) => [styles.botonAtlas, pressed && styles.botonAtlasPulsado]}
+          testID="inicio-conoce-atlas"
+        >
+          <AtlasMark size={26} />
+          <AtlasText variant="captionStrong">Atlas</AtlasText>
+        </Pressable>
       </View>
 
       <SurfaceContent entries={avisosDeInicio} />
@@ -407,6 +419,23 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   greeting: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space.md },
+  botonAtlas: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    paddingVertical: space.xs,
+    paddingLeft: space.xs,
+    paddingRight: space.md,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: color.feedbackBorder.brand,
+    backgroundColor: color.surface.raised,
+    shadowColor: palette.brand400,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.55,
+    shadowRadius: 12,
+  },
+  botonAtlasPulsado: { opacity: 0.85, transform: [{ scale: 0.97 }] },
   greetingText: { gap: space.xxs },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
   categoryRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.xs },

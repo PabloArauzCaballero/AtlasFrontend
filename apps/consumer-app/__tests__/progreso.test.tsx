@@ -90,11 +90,12 @@ describe("NivelCard", () => {
     expect(screen.getByText("Faltan 150 para «En crecimiento»")).toBeTruthy();
   });
 
-  it("«Más info» abre cómo se ganan los puntos: 1 por boliviano comprado, con la escalera de niveles", async () => {
+  it("«Más info» abre cómo se ganan los puntos (pesa más cumplir que comprar), con la escalera de niveles", async () => {
     await render(envolver(<NivelCard progress={PROGRESO} />));
     expect(screen.queryByText("Los niveles")).toBeNull();
     await fireEvent.press(screen.getByTestId("nivel-mas-info"));
-    expect(screen.getByText(/Cada boliviano que compras con Atlas te da 1 punto de experiencia/)).toBeTruthy();
+    expect(screen.getByText(/pesa más cumplir que comprar/)).toBeTruthy();
+    expect(screen.getByText("Cada cuota pagada a tiempo")).toBeTruthy();
     expect(screen.getByText("Los niveles")).toBeTruthy();
     expect(screen.getByText("desde 500")).toBeTruthy();
   });

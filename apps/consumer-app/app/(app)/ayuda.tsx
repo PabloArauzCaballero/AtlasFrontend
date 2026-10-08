@@ -20,21 +20,25 @@
  * Quien abre esta pantalla ya tiene un problema. Obligarle a leer seis respuestas antes de encontrar
  * como hablar con alguien es hacerle pagar por nuestra organizacion del contenido.
  */
-import { useEffect, useRef, useState } from 'react';
-import { Linking, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import * as contentApi from '../../src/api/endpoints/app-content';
 import { ContentActionButton, ContentBullets } from '../../src/ui/content';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Markdown } from '../../src/ui/markdown';
-import { Accordion, AtlasText, Button, Card, CardHeader, Divider, EmptyState, SectionHeader, Skeleton } from '../../src/ui/primitives';
+import { Accordion, AtlasText, Button, Card, CardHeader, EmptyState, IconChip, SectionHeader, Skeleton } from '../../src/ui/primitives';
+import { Field } from '../../src/ui/fields';
+import { Icon, type IconName } from '../../src/ui/icons';
+import { color, palette, radius, space, stroke } from '../../src/theme/tokens';
+import { filtrarPreguntas } from '../../src/features/preguntas-frecuentes';
 import { resetTour, useTour } from '../../src/ui/tour';
 import { urlDeLaGuia } from '../../src/features/guia-pdf';
 import { TOUR_INICIO_KEY } from '../../src/features/tour-inicio';
-import { useCopy, useTourInicio } from '../../src/features/use-contenido-remoto';
+import { useTourInicio } from '../../src/features/use-contenido-remoto';
 
 export default function Ayuda() {
-  const t = useCopy();
   const router = useRouter();
   const tour = useTour();
   // El texto del recorrido sale del portal; el de fábrica queda de respaldo (sin red, o sin pieza).
@@ -44,6 +48,8 @@ export default function Ayuda() {
   const [help, setHelp] = useState<contentApi.ContentEntry[]>([]);
   const [faq, setFaq] = useState<contentApi.ContentEntry[]>([]);
   const [ready, setReady] = useState(false);
+  const [busqueda, setBusqueda] = useState('');
+  const preguntas = useMemo(() => filtrarPreguntas(faq, busqueda), [faq, busqueda]);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,13 +78,41 @@ export default function Ayuda() {
     });
   };
 
+  /*
+    Rediseño (Pablo, 2026-10-08: «la estética se ve pésima en comparación a las demás»). Antes: tres tarjetas con un
+    botón cada una y una lista plegada sin jerarquía. Ahora sigue a las demás pantallas: una cabecera de marca con el
+    buscador, tres accesos en cuadrícula y cada pregunta en su propia pieza, numerada, que se busca mientras se escribe.
+  */
   return (
     <Screen>
-      <ScreenHeader
-        title="Ayuda y preguntas frecuentes"
-        subtitle="Lo que más nos preguntan, contestado en serio."
-        onBack="auto"
-      />
+      <ScreenHeader title="Ayuda" onBack="auto" />
+
+      <View style={styles.portada}>
+        <LinearGradient
+          colors={[palette.brand700, color.surface.raised]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <IconChip name="ayuda" size="lg" />
+        <AtlasText variant="h2">¿En qué te ayudamos?</AtlasText>
+        <AtlasText variant="body" tone="secondary">
+          Lo que más nos preguntan, contestado en serio. Busca tu duda o habla con una persona.
+        </AtlasText>
+        <Field
+          label="Buscar una pregunta"
+          value={busqueda}
+          onChangeText={setBusqueda}
+          placeholder="Ej.: cuota, comprobante, límite"
+          ayuda="Escribe una palabra de tu duda y la lista de preguntas se filtra mientras escribes."
+        />
+      </View>
+
+      <View style={styles.accesos}>
+        <Acceso icono="telefono" titulo="Hablar con Atlas" detalle="Soporte y tus casos" onPress={() => router.push('/(app)/soporte' as never)} />
+        <Acceso icono="documento" titulo="Guía en PDF" detalle="Paso a paso" onPress={() => void Linking.openURL(urlDeLaGuia())} />
+        <Acceso icono="chispa" titulo="Ver el recorrido" detalle="Otra vez" onPress={replayTour} />
+      </View>
 
       {!ready ? (
         <Card>
@@ -89,40 +123,6 @@ export default function Ayuda() {
           <Skeleton height={23} width="64%" />
         </Card>
       ) : null}
-
-      {/*
-        Hablar con una persona, arriba del todo.
-
-        Quien abre esta pantalla ya tiene un problema; obligarle a leer seis respuestas antes de
-        encontrar como hablar con alguien es hacerle pagar por nuestra organizacion del contenido.
-        Lleva al centro de soporte, donde ademas puede buscar y ver sus casos abiertos.
-      */}
-      <Card>
-        <CardHeader icon="ayuda" title={t.titulo('ayuda.hablar')} detail={t.texto('ayuda.hablar')} divider={false} />
-        <Button label="Ir a soporte" icon="telefono" onPress={() => router.push('/(app)/soporte' as never)} />
-      </Card>
-
-      {/*
-        La guía completa, para llevársela.
-
-        Las preguntas de abajo responden una duda; la guía enseña el camino entero —crear la cuenta,
-        comprar, pagar— con la captura de cada pantalla y el sitio exacto donde tocar. Va en PDF porque
-        quien la necesita suele querer tenerla a mano fuera de la app, o pasársela a alguien.
-      */}
-      <Card>
-        <CardHeader
-          icon="documento"
-          title="Guía paso a paso"
-          detail="Toda la app, pantalla por pantalla, con imágenes de dónde tocar."
-          divider={false}
-        />
-        <Button
-          label="Descargar la guía en PDF"
-          icon="descargar"
-          variant="secondary"
-          onPress={() => void Linking.openURL(urlDeLaGuia())}
-        />
-      </Card>
 
       {help.map((entry) => (
         <Card key={entry.contentKey}>
@@ -138,35 +138,36 @@ export default function Ayuda() {
 
       {faq.length > 0 ? (
         <>
-          <SectionHeader title="Preguntas frecuentes" detail="Toca una para ver la respuesta." />
+          <SectionHeader
+            title="Preguntas frecuentes"
+            detail={busqueda ? `${preguntas.length} ${preguntas.length === 1 ? 'resultado' : 'resultados'} para «${busqueda}»` : 'Toca una para ver la respuesta.'}
+          />
+          {preguntas.length === 0 ? (
+            <EmptyState icon="ayuda" title="No encontramos esa pregunta" detail="Prueba con otra palabra o escríbenos desde «Hablar con Atlas»." />
+          ) : null}
           {/*
-            Las seis preguntas viven en UNA tarjeta, plegadas, y no en seis tarjetas abiertas.
-
-            Seis tarjetas con seis respuestas completas convierten la ayuda en un documento que hay
-            que recorrer entero; una sola lista de preguntas es un indice, que es lo que alguien con
-            una duda concreta necesita. La tarjeta ademas las agrupa: dice que las seis son la misma
-            clase de cosa.
+            Una pregunta sin titulo no se pinta (`filtrarPreguntas`): el contenido lo edita una persona desde el portal y
+            un desplegable sin encabezado sería una flecha suelta que abre un párrafo.
           */}
-          <Card>
-            {/*
-              Una pregunta sin titulo no se pinta. El contenido lo edita una persona desde el portal
-              y el titulo puede llegar vacio; un desplegable sin encabezado seria una flecha suelta
-              que abre un parrafo, y nadie sabria que estaba abriendo.
-            */}
-            {faq.filter((entry) => Boolean(entry.title)).map((entry, index) => (
-              <View key={entry.contentKey}>
-                {index > 0 ? <Divider /> : null}
+          {preguntas.map((entry, index) => (
+            <View key={entry.contentKey} style={styles.pregunta} testID={`faq-${entry.contentKey}`}>
+              <View style={styles.numero}>
+                <AtlasText variant="captionStrong" tone="brand">
+                  {String(index + 1).padStart(2, '0')}
+                </AtlasText>
+              </View>
+              <View style={styles.cuerpo}>
                 <Accordion title={entry.title ?? ''}>
                   {entry.body ? <Markdown variant="body">{entry.body}</Markdown> : null}
-
                   {entry.bullets.length > 0 ? <ContentBullets bullets={entry.bullets} /> : null}
-
-                  {entry.action ? (
-                    <ContentActionButton action={entry.action} onScreen={openScreen} onTour={replayTour} />
-                  ) : null}
+                  {entry.action ? <ContentActionButton action={entry.action} onScreen={openScreen} onTour={replayTour} /> : null}
                 </Accordion>
               </View>
-            ))}
+            </View>
+          ))}
+          <Card tone="brand">
+            <CardHeader icon="chat" title="¿No encontraste tu respuesta?" detail="Una persona de Atlas te contesta desde Soporte." divider={false} />
+            <Button label="Escribir a soporte" icon="chat" onPress={() => router.push('/(app)/soporte' as never)} />
           </Card>
         </>
       ) : null}
@@ -184,3 +185,56 @@ export default function Ayuda() {
   );
 }
 
+function Acceso({ icono, titulo, detalle, onPress }: { icono: IconName; titulo: string; detalle: string; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={titulo} onPress={onPress} style={({ pressed }) => [styles.acceso, pressed && styles.accesoPulsado]}>
+      <IconChip name={icono} />
+      <AtlasText variant="captionStrong">{titulo}</AtlasText>
+      <AtlasText variant="micro" tone="secondary">
+        {detalle}
+      </AtlasText>
+      <Icon name="adelante" size={14} tint={color.text.tertiary} />
+    </Pressable>
+  );
+}
+
+const styles = StyleSheet.create({
+  portada: {
+    gap: space.sm,
+    padding: space.lg,
+    borderRadius: radius.xxl,
+    overflow: 'hidden',
+    borderWidth: stroke.hairline,
+    borderColor: color.feedbackBorder.brand,
+  },
+  accesos: { flexDirection: 'row', gap: space.sm, marginTop: space.md },
+  acceso: {
+    flex: 1,
+    gap: space.xs,
+    padding: space.md,
+    borderRadius: radius.xl,
+    borderWidth: stroke.hairline,
+    borderColor: color.border.subtle,
+    backgroundColor: color.surface.raised,
+  },
+  accesoPulsado: { opacity: 0.85, transform: [{ scale: 0.98 }] },
+  pregunta: {
+    flexDirection: 'row',
+    gap: space.md,
+    padding: space.md,
+    marginBottom: space.sm,
+    borderRadius: radius.xl,
+    borderWidth: stroke.hairline,
+    borderColor: color.border.subtle,
+    backgroundColor: color.surface.raised,
+  },
+  numero: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: color.feedbackSoft.success,
+  },
+  cuerpo: { flex: 1 },
+});

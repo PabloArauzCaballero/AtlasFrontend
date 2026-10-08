@@ -288,6 +288,14 @@ export default function Payments() {
               label={LAYOUT_LABEL[siguienteVista]}
               onPress={() => setLayout(siguienteVista)}
             />
+      {/* El extracto de crédito: todo lo pagado y lo que se debe, como el de un banco (Pablo, 2026-10-08). */}
+      <Button
+        label="Mi extracto de crédito"
+        icon="documento"
+        variant="secondary"
+        onPress={() => router.push('/(app)/extracto-credito')}
+        testID="pagos-extracto-credito"
+      />
           </View>
         }
       />

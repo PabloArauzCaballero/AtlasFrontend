@@ -334,6 +334,14 @@ export default function Profile() {
         <Divider inset />
         <ListRow
           icon="documento"
+          title="Mi extracto de crédito"
+          subtitle="Tus compras, tus pagos y lo que debes hoy"
+          onPress={() => router.push('/(app)/extracto-credito')}
+          accessibilityHint="Abrir el extracto de tu crédito"
+        />
+        <Divider inset />
+        <ListRow
+          icon="documento"
           title="Recalcular mi línea"
           subtitle={subtituloDeRecalcular(estadoExtracto)}
           onPress={() => router.push('/(app)/extracto-bancario')}

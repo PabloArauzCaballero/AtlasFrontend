@@ -1,5 +1,5 @@
 /**
- * El Nivel Atlas, sin pantalla: se mide en PUNTOS de experiencia, 1 por cada boliviano comprado con Atlas.
+ * El Nivel Atlas, sin pantalla: se mide en PUNTOS de experiencia, que se ganan comprando y, sobre todo, pagando a tiempo.
  *
  * Antes salía de la calificación 0-100 y la tarjeta decía «24 de 100» como si fuera un nivel. El nivel es la
  * escalera de los puntos; la Calificación (qué tan buen pagador) es otra cosa y tiene su propia pestaña.
@@ -107,5 +107,5 @@ export function porcentajeDeBarra(nivel: NivelPorPuntos): number {
 export function fraseDeLoQueFalta(nivel: NivelPorPuntos): string {
   if (!nivel.nextLevel) return 'Estás en el nivel más alto.';
   const n = nivel.nextLevel.pointsMissing;
-  return `Te ${n === 1 ? 'falta 1 punto' : `faltan ${formatoPuntos(n)} puntos`} para «${nivel.nextLevel.label}». Sumas 1 por cada boliviano que compras.`;
+  return `Te ${n === 1 ? 'falta 1 punto' : `faltan ${formatoPuntos(n)} puntos`} para «${nivel.nextLevel.label}». Sumas pagando tus cuotas a tiempo.`;
 }

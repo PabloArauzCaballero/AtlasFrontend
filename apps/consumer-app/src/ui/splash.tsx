@@ -15,7 +15,7 @@
  * ## La coreografia
  *
  * ```
- *   0 ms  ┃ barras cinematograficas entran · un globo de puntos se enciende y gira
+ *   0 ms  ┃ un globo de puntos se enciende y gira, a pantalla completa
  * 1020ms  ┃ el globo frena de frente a Bolivia y un pulso marca el punto (`ui/globo-arranque.tsx`)
  * 1150ms  ┃ el globo se recoge hacia ese punto
  * 1380ms  ┃ de ahi la «A» SE DIBUJA sola, trazo a trazo, con una luz en la punta del trazo
@@ -87,7 +87,6 @@ const AnimatedCircle = Animated.createAnimatedComponent(Circle);
  * tocar uno para que dos tramos se solapen sin que nadie lo note hasta verlo en el telefono.
  */
 const GUION = {
-  barras: [0, 320],
   globo: {
     aparece: [0, 420],
     giro: [0, 1200],
@@ -287,19 +286,11 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
     opacity: 0.5 * suave(tramo(reloj.value, 0, 600)) * (1 - tramo(salida.value, 0, 0.6)),
   }));
 
-  /**
-   * Las barras cinematograficas.
-   *
-   * Entran al principio y se RETIRAN al atravesar. Ese gesto —el encuadre ancho que se abre a
-   * pantalla completa— es la forma mas corta de decir «se acabo la secuencia, empieza la
-   * aplicacion» sin escribirlo. Si se quedaran hasta el final, la app aparecería recortada durante
-   * un fotograma.
+  /*
+   * Sin barras cinematográficas (Pablo, 2026-10-08: «que no se corte abajo en negro»). Eran dos franjas negras del 11 %
+   * arriba y abajo; en un iPhone con la barra de inicio se leían como la pantalla recortada. El encuadre lo da la viñeta,
+   * y la escena ocupa la pantalla entera desde el primer fotograma hasta que se atraviesa.
    */
-  const barras = useAnimatedStyle(() => {
-    const entrada = frena(tramo(reloj.value, GUION.barras[0], GUION.barras[1]));
-    const apertura = acelera(tramo(salida.value, 0.15, 1));
-    return { transform: [{ scaleY: Math.max(0, entrada - apertura) }] };
-  });
 
   /**
    * El escenario: la camara.
@@ -533,8 +524,6 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
 
       <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.destello, destello]} />
 
-      <Animated.View pointerEvents="none" style={[styles.barra, styles.barraArriba, barras]} />
-      <Animated.View pointerEvents="none" style={[styles.barra, styles.barraAbajo, barras]} />
     </Animated.View>
   );
 }
@@ -609,14 +598,4 @@ const styles = StyleSheet.create({
   // El interletrado base del rotulo ya formado. El resto del recorrido lo pone `translateX`.
   letra: { letterSpacing: 6, textAlign: 'center' },
   destello: { backgroundColor: palette.white },
-  /*
-    Las barras se animan con `scaleY` y no con la altura.
-
-    La altura obliga a remaquetar la vista en cada fotograma; `scaleY` lo resuelve el compositor.
-    Con `transformOrigin` en el borde de la pantalla, escalar de 0 a 1 se ve exactamente igual que
-    una barra que baja, y cuesta lo que cuesta mover una capa ya dibujada.
-  */
-  barra: { position: 'absolute', left: 0, right: 0, height: '11%', backgroundColor: palette.black },
-  barraArriba: { top: 0, transformOrigin: 'top' },
-  barraAbajo: { bottom: 0, transformOrigin: 'bottom' },
 });
