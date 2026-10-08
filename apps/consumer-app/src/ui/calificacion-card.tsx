@@ -13,7 +13,7 @@ import { space } from '../theme/tokens';
 import { BotonInfo, InfoSheet } from './help-sheet';
 import { PressSurface } from './motion';
 import { AtlasText, Card, CardHeader } from './primitives';
-import { BarraViva, CuentaArriba, useAvance } from './cuenta-arriba';
+import { Barra, CuentaArriba, useAvance } from './cuenta-arriba';
 import { PuntajeDesglose } from './puntaje-desglose';
 
 /**
@@ -55,12 +55,13 @@ function Cuerpo({ valor, frase, info }: { valor: number; frase: string; info?: R
     <>
       <CardHeader icon="grafico" eyebrow="Qué tan buen pagador eres" title="Tu calificación" trailing={info} divider={false} />
       <View style={styles.cifra}>
-        <CuentaArriba avance={avance} hasta={valor} formato={(n) => String(Math.round(n))} tamano="amount" />
-        <AtlasText variant="caption" tone="secondary">
+        <CuentaArriba avance={avance} hasta={valor} formato={(n) => String(Math.round(n))} tamano="amountHero" testID="calificacion-valor" />
+        <AtlasText variant="bodyStrong" tone="secondary">
           de 100
         </AtlasText>
       </View>
-      <BarraViva value={valor} label={`Calificación ${valor} de 100`} />
+      {/* La misma barra que la cifra: comparten `avance`, así que llegan juntas. */}
+      <Barra valor={valor} avance={avance} grosor="lg" etiqueta={`Calificación ${valor} de 100`} />
       <AtlasText variant="caption" tone="secondary">
         {frase}
       </AtlasText>
@@ -69,5 +70,5 @@ function Cuerpo({ valor, frase, info }: { valor: number; frase: string; info?: R
 }
 
 const styles = StyleSheet.create({
-  cifra: { flexDirection: 'row', alignItems: 'baseline', gap: space.xs },
+  cifra: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
 });

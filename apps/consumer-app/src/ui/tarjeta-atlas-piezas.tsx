@@ -105,3 +105,22 @@ export function ReflejoEspecular({ diametro }: { diametro: number }) {
     </Svg>
   );
 }
+
+/**
+ * Un destello de cuatro puntas: el brillo que salta de un metal pulido. Dibujo puro; quién lo hace titilar es la tarjeta.
+ */
+export function Chispa({ tamano, color }: { tamano: number; color: string }) {
+  return (
+    <Svg width={tamano} height={tamano} viewBox="0 0 24 24" pointerEvents="none">
+      <Defs>
+        <RadialGradient id="chispa-aura" cx="50%" cy="50%" r="50%">
+          <Stop offset="0" stopColor={color} stopOpacity={0.55} />
+          <Stop offset="1" stopColor={color} stopOpacity={0} />
+        </RadialGradient>
+      </Defs>
+      <Circle cx={12} cy={12} r={9} fill="url(#chispa-aura)" />
+      {/* Cuatro puntas muy afiladas: el cuerpo es estrecho para que se lea como luz y no como una estrella dibujada. */}
+      <Path d="M12 0 L13.3 10.7 L24 12 L13.3 13.3 L12 24 L10.7 13.3 L0 12 L10.7 10.7 Z" fill="#FFFFFF" />
+    </Svg>
+  );
+}

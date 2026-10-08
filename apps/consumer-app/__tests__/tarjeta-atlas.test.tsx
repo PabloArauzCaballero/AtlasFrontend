@@ -1,6 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
-import { AVISO_SIN_LIMITE, estaDesbloqueada, fraseDeOrigen, siguienteTarjeta } from '../src/features/tarjeta';
+import { AVISO_SIN_LIMITE, estaDesbloqueada, fraseDeOrigen, fulgorDe, siguienteTarjeta } from '../src/features/tarjeta';
 import { TarjetaAtlas } from '../src/ui/tarjeta-atlas';
 import { TarjetaSeccion } from '../src/ui/tarjeta-seccion';
 import { PROGRESO_DE_PRUEBA, tarjetaDePrueba } from './progreso-datos';
@@ -18,6 +18,40 @@ const envolver = (hijo: React.ReactElement) => <SafeAreaProvider initialMetrics=
 const conTarjeta = (card: ReturnType<typeof tarjetaDePrueba>) => ({
   ...PROGRESO_DE_PRUEBA,
   card,
+});
+
+describe('el fulgor de la tarjeta', () => {
+  // Lo que publica el backend para Normal, Silver, Gold, Premium y Black.
+  const ESCALERA = [0.2, 0.4, 0.6, 0.8, 1].map((glow) => fulgorDe({ glow }));
+
+  it('cada tarjeta brilla más que la anterior: más halo, más luz y el barrido vuelve antes', () => {
+    for (let i = 1; i < ESCALERA.length; i += 1) {
+      const antes = ESCALERA[i - 1]!;
+      const ahora = ESCALERA[i]!;
+      expect(ahora.halo.opacidad).toBeGreaterThan(antes.halo.opacidad);
+      expect(ahora.halo.radio).toBeGreaterThan(antes.halo.radio);
+      expect(ahora.ambiente).toBeGreaterThan(antes.ambiente);
+      expect(ahora.barrido.opacidad).toBeGreaterThan(antes.barrido.opacidad);
+      expect(ahora.chispas).toBeGreaterThan(antes.chispas);
+    }
+    expect(ESCALERA.map((f) => f.chispas)).toEqual([0, 1, 2, 3, 4]);
+    expect(ESCALERA.slice(1).map((f) => f.barrido.pausaMs)).toEqual([6400, 5100, 3800, 2500]);
+  });
+
+  it('la primera de la escalera es sobria: barrido una sola vez y ninguna chispa', () => {
+    expect(ESCALERA[0]!.barrido.pausaMs).toBeNull();
+    expect(ESCALERA[0]!.chispas).toBe(0);
+  });
+
+  it('sin número del backend no añade nada: ni halo ni chispas, y el barrido de siempre', () => {
+    expect(fulgorDe({})).toEqual({ nivel: 0, halo: { opacidad: 0, radio: 8 }, ambiente: 0.2, barrido: { opacidad: 0.34, pausaMs: null }, chispas: 0 });
+  });
+
+  it('un número fuera de rango se acota: nunca más fulgor que el máximo', () => {
+    expect(fulgorDe({ glow: 9 })).toEqual(fulgorDe({ glow: 1 }));
+    expect(fulgorDe({ glow: -3 }).nivel).toBe(0);
+    expect(fulgorDe({ glow: Number.NaN }).nivel).toBe(0);
+  });
 });
 
 describe('TarjetaAtlas (la pieza)', () => {
@@ -39,6 +73,26 @@ describe('TarjetaAtlas (la pieza)', () => {
     await rerender(envolver(<TarjetaAtlas tier={gold} bloqueada />));
     expect(screen.queryByTestId('tarjeta-destello')).toBeNull();
     expect(screen.getByLabelText('Tarjeta Gold, acabado oro, todavía bloqueada')).toBeTruthy();
+  });
+
+  it('pinta el fulgor que manda el backend: halo y chispas en la Black, nada en una sin número ni en una bloqueada', async () => {
+    const medir = () => fireEvent(screen.getByTestId('t'), 'layout', { nativeEvent: { layout: { width: 340, height: 214, x: 0, y: 0 } } });
+    const black = { ...gold, theme: { ...gold.theme, glow: 1 } };
+    const { rerender } = await render(envolver(<TarjetaAtlas tier={black} testID="t" />));
+    await medir();
+    expect(screen.getByTestId('tarjeta-halo')).toBeTruthy();
+    expect(screen.getAllByTestId('tarjeta-chispa')).toHaveLength(4);
+
+    await rerender(envolver(<TarjetaAtlas tier={{ ...gold, theme: { ...gold.theme, glow: 0.4 } }} testID="t" />));
+    expect(screen.getAllByTestId('tarjeta-chispa')).toHaveLength(1);
+
+    await rerender(envolver(<TarjetaAtlas tier={{ ...gold, theme: { ...gold.theme, glow: undefined } }} testID="t" />));
+    expect(screen.queryByTestId('tarjeta-halo')).toBeNull();
+    expect(screen.queryByTestId('tarjeta-chispa')).toBeNull();
+
+    await rerender(envolver(<TarjetaAtlas tier={black} bloqueada testID="t" />));
+    expect(screen.queryByTestId('tarjeta-halo')).toBeNull();
+    expect(screen.queryByTestId('tarjeta-chispa')).toBeNull();
   });
 
   it('con onPress es un botón que avisa a quien la toca', async () => {

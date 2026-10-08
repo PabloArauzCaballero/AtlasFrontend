@@ -20,6 +20,7 @@ import { Appear } from './motion';
 import { NivelCard } from './nivel-card';
 import { AtlasText, Button, Card, Divider, EmptyState, SectionHeader } from './primitives';
 import { CalificacionCard } from './calificacion-card';
+import { CrecimientoCreditoCard } from './crecimiento-credito-card';
 import { PuntajeDesglose } from './puntaje-desglose';
 import { ScoringPanel } from './scoring-panel';
 import { TarjetaSeccion } from './tarjeta-seccion';
@@ -62,9 +63,12 @@ export function PestanaCalificacion({ progress, creditLine }: { progress: Progre
         <CalificacionCard progress={progress} />
       </Appear>
       <Appear index={1}>
+        <CrecimientoCreditoCard progress={progress} />
+      </Appear>
+      <Appear index={2}>
         <PuntajeDesglose progress={progress} />
       </Appear>
-      <Appear index={2} style={styles.seccion}>
+      <Appear index={3} style={styles.seccion}>
         <SectionHeader title="Lo que miró el motor para tu crédito" detail="Un índice de 0 a 1000, aparte de tu calificación." />
         {creditLine ? (
           <Card>

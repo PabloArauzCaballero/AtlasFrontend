@@ -5,7 +5,7 @@
  * nivel Atlas, o la puede dar el personal. NUNCA cambia el límite de crédito, y las frases lo dicen para que nadie
  * espere dinero de un color.
  */
-import type { CardTier, CardView } from '../api/endpoints/credit-line';
+import type { CardTheme, CardTier, CardView } from '../api/endpoints/credit-line';
 
 export const AVISO_SIN_LIMITE = 'La tarjeta es tu estatus en Atlas: no cambia tu límite de crédito.';
 
@@ -39,4 +39,35 @@ export const estaDesbloqueada = (tier: CardTier, card: CardView): boolean => tie
 
 export function etiquetaAccesible(tier: Pick<CardTier, 'label' | 'theme'>): string {
   return `Tarjeta ${tier.label}, acabado ${tier.theme.finish}`;
+}
+
+/**
+ * Cuánto brilla una tarjeta, traducido a lo que se pinta (Pablo, 2026-10-07: «de menos a más fulgor… eso que brilla y
+ * la hace ver ultra exclusiva»). El número 0-1 viene del backend (`theme.glow`); aquí sólo se reparte entre los efectos.
+ * Sin número (backend anterior) todo vale lo de antes: sin halo, sin chispas y con el barrido una sola vez.
+ */
+export type Fulgor = {
+  nivel: number;
+  /** Halo del color de la tarjeta alrededor de ella. */
+  halo: { opacidad: number; radio: number };
+  /** La luz de ambiente de arriba a la izquierda. */
+  ambiente: number;
+  /** La banda de luz que cruza la tarjeta: qué tan blanca es y cada cuánto vuelve (`null` = sólo al aparecer). */
+  barrido: { opacidad: number; pausaMs: number | null };
+  /** Cuántos destellos pequeños titilan sobre el metal. */
+  chispas: number;
+};
+
+export function fulgorDe(theme: Pick<CardTheme, 'glow'>): Fulgor {
+  const bruto = theme.glow;
+  const nivel = typeof bruto === 'number' && Number.isFinite(bruto) ? Math.min(1, Math.max(0, bruto)) : 0;
+  // Por debajo de este fulgor la tarjeta no se mueve sola: la primera de la escalera queda sobria, y eso hace que las demás se noten.
+  const vivo = nivel >= 0.3;
+  return {
+    nivel,
+    halo: { opacidad: nivel === 0 ? 0 : 0.18 + nivel * 0.62, radio: 8 + nivel * 26 },
+    ambiente: 0.2 + nivel * 0.16,
+    barrido: { opacidad: 0.34 + nivel * 0.36, pausaMs: vivo ? Math.round(9000 - nivel * 6500) : null },
+    chispas: vivo ? Math.max(0, Math.round(nivel * 5) - 1) : 0,
+  };
 }
