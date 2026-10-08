@@ -25,6 +25,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useAplicarActualizacionAlAbrir } from '../src/device/aplicar-actualizacion';
 import { prepararAvisos } from '../src/device/push';
 import { useAbrirAvisoTocado } from '../src/device/push-navigation';
+import { CapaSinConexion } from '../src/ui/sin-conexion';
 import { SandboxProvider } from '../src/sandbox/store';
 import { SonidoMarcaProvider } from '../src/ui/brand-sound';
 import { AnimatedSplash } from '../src/ui/splash';
@@ -200,6 +201,8 @@ export default function RootLayout() {
                 */}
                 <BrandCutProvider>
                   <NavigationTree fontsReady={fontsLoaded || Boolean(fontError)} />
+                  {/* Sin internet: el logo girando sobre toda la ventana, hasta que vuelve la conexión. */}
+                  <CapaSinConexion />
                 </BrandCutProvider>
               </TourProvider>
             </SandboxProvider>
