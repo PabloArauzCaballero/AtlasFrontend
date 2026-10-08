@@ -13,6 +13,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React from 'react';
 import {
   ActivityIndicator,
+  Image,
+  type ImageSourcePropType,
   Platform,
   Pressable,
   type PressableProps,
@@ -955,7 +957,7 @@ export function Accordion({
  * El degradado es el de la marca a la inversa del boton principal: el circulo pesa poco y no
  * compite con la accion, pero pertenece al mismo sistema.
  */
-export function Avatar({ name, size = 56 }: { name: string; size?: number }) {
+export function Avatar({ name, size = 56, foto }: { name: string; size?: number; foto?: ImageSourcePropType | null }) {
   const initials = name
     .split(/\s+/)
     .filter(Boolean)
@@ -979,6 +981,18 @@ export function Avatar({ name, size = 56 }: { name: string; size?: number }) {
       >
         {initials || '·'}
       </Text>
+      {/*
+        La foto, si la hay, va ENCIMA de las iniciales: mientras carga (o si falla) se siguen viendo las iniciales y no
+        un círculo vacío.
+      */}
+      {foto ? (
+        <Image
+          source={foto}
+          accessibilityIgnoresInvertColors
+          style={[StyleSheet.absoluteFill, { width: size, height: size, borderRadius: size / 2 }]}
+          testID="avatar-foto"
+        />
+      ) : null}
     </LinearGradient>
   );
 }
@@ -1460,7 +1474,7 @@ const styles = StyleSheet.create({
   accordionTitle: { flex: 1 },
   accordionBody: { gap: space.md, paddingBottom: space.xs },
 
-  avatar: { alignItems: 'center', justifyContent: 'center' },
+  avatar: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
 
   chipBar: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   chip: {

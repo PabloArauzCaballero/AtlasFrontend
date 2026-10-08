@@ -6,7 +6,15 @@ import { request, type RequestOptions } from '../client';
 import type { Blocker, OnboardingSection } from './onboarding';
 
 export type CustomerMe = {
-  customer: { customerId: string; customerCode: string; status: string; phoneLast4: string | null; emailDomain: string | null };
+  customer: {
+    customerId: string;
+    customerCode: string;
+    status: string;
+    phoneLast4: string | null;
+    emailDomain: string | null;
+    /** Cuándo cambió la foto de perfil; `null` o ausente = sin foto (o un backend anterior a la foto). */
+    profilePhotoUpdatedAt?: string | null;
+  };
   profile: { firstName: string | null; lastName: string | null; birthDate: string | null; preferredLanguage: string | null };
   onboarding: { onboardingFlowId: string; completionStatus: string; startedAt: string; completedAt: string | null } | null;
   eligibility: { eligible: boolean; completionPercentage: number; blockerCodes: string[] };
@@ -29,6 +37,26 @@ export type OrigenDeLlamada = Pick<RequestOptions, 'sinPantalla'>;
 
 export const getMe = (customerId: string, origen: OrigenDeLlamada = {}) =>
   request<CustomerMe>(`/customers/${customerId}/me`, origen);
+
+/** El permiso firmado para subir la foto de perfil al almacén. */
+export type FotoTicket = { storageKey: string; uploadUrl: string; method: 'PUT'; requiredHeaders: Record<string, string>; expiresAt: string };
+
+export const pedirPermisoDeFoto = (customerId: string, input: { contentType: 'image/jpeg' | 'image/png'; sizeBytes: number }) =>
+  request<FotoTicket>(`/customers/${encodeURIComponent(customerId)}/profile-photo/upload-url`, { method: 'POST', body: input });
+
+/** Fija como foto el objeto recién subido; el servidor comprueba que sea una imagen sana. */
+export const confirmarFoto = (customerId: string, storageKey: string) =>
+  request<{ hasPhoto: true; updatedAt: string }>(`/customers/${encodeURIComponent(customerId)}/profile-photo`, {
+    method: 'PUT',
+    body: { storageKey },
+  });
+
+export const quitarFoto = (customerId: string) =>
+  request<{ hasPhoto: false }>(`/customers/${encodeURIComponent(customerId)}/profile-photo`, { method: 'DELETE' });
+
+/** Dónde se lee la foto: por la API, con el token. `v` cambia con la foto y deja atrás la caché. */
+export const rutaDeFoto = (customerId: string, actualizada: string) =>
+  `/customers/${encodeURIComponent(customerId)}/profile-photo?v=${encodeURIComponent(actualizada)}`;
 
 export type Eligibility = {
   eligible: boolean;
