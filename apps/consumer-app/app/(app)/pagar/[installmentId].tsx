@@ -30,11 +30,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import {
   getPaymentInstruction,
-  requestProofTicket,
   submitPaymentClaim,
-  uploadProof,
   type PaymentInstruction,
 } from '../../../src/api/endpoints/payment-claims';
+import { subirComprobante } from '../../../src/features/comprobante-de-pago';
 import { formatAmount } from '../../../src/features/spending-copy';
 import { useSession } from '../../../src/session/session';
 import { color, palette, radius, space } from '../../../src/theme/tokens';
@@ -160,16 +159,13 @@ export default function PayInstallmentScreen() {
     setEnviando(true);
     setFallo(null);
     try {
-      const contentType = 'image/jpeg';
-      const blob = await (await fetch(proofUri)).blob();
-      const ticket = await requestProofTicket(session.customerId, { contentType, sizeBytes: blob.size });
-      await uploadProof(ticket, proofUri, contentType);
+      const { storageKey, contentType } = await subirComprobante(session.customerId, proofUri);
 
       await submitPaymentClaim(session.customerId, {
         installmentId: instruction.installmentId,
         amount: instruction.amountOutstanding,
         payerReference: reference.trim() || undefined,
-        storageKey: ticket.storageKey,
+        storageKey,
         contentType,
       });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

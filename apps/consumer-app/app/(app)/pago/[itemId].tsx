@@ -25,7 +25,8 @@ import { ESPERA_ENTRE_CONSULTAS_MS, estadoDelPagoInicial, type EstadoPagoInicial
 import { useSandbox } from '../../../src/sandbox/store';
 import { POS_QRS } from '../../../src/sandbox/fixtures';
 import { useSession } from '../../../src/session/session';
-import { requestProofTicket, submitDownPayment, submitPaymentClaim, uploadProof } from '../../../src/api/endpoints/payment-claims';
+import { submitDownPayment, submitPaymentClaim } from '../../../src/api/endpoints/payment-claims';
+import { subirComprobante } from '../../../src/features/comprobante-de-pago';
 import { color, palette, radius, space } from '../../../src/theme/tokens';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
@@ -196,14 +197,11 @@ export default function PaymentScreen() {
       setEnviando(true);
       setFallo(null);
       try {
-        const contentType = 'image/jpeg';
-        const blob = await (await fetch(proofUri)).blob();
-        const ticket = await requestProofTicket(session.customerId, { contentType, sizeBytes: blob.size });
-        await uploadProof(ticket, proofUri, contentType);
+        const { storageKey, contentType } = await subirComprobante(session.customerId, proofUri);
         await submitDownPayment(session.customerId, applicationId, {
           amount: toMajorNumber(item.amount).toFixed(2),
           payerReference: reference.trim() || undefined,
-          storageKey: ticket.storageKey,
+          storageKey,
           contentType,
         });
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -235,19 +233,11 @@ export default function PaymentScreen() {
     setEnviando(true);
     setFallo(null);
     try {
-      const contentType = 'image/jpeg';
-      let storageKey: string | null = null;
-
-      if (proofUri) {
-        const blob = await (await fetch(proofUri)).blob();
-        const ticket = await requestProofTicket(session.customerId, { contentType, sizeBytes: blob.size });
-        await uploadProof(ticket, proofUri, contentType);
-        storageKey = ticket.storageKey;
-      }
-      if (!storageKey) {
+      if (!proofUri) {
         setFallo(t.texto('pago.comprobante_falta'));
         return;
       }
+      const { storageKey, contentType } = await subirComprobante(session.customerId, proofUri);
 
       await submitPaymentClaim(session.customerId, {
         installmentId: String(item.id),

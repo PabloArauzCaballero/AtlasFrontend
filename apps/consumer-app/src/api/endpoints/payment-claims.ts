@@ -96,15 +96,21 @@ export const requestProofTicket = (customerId: string, input: { contentType: str
     body: input,
   });
 
-/** Sube la imagen al almacén con la URL firmada. No pasa por la API. */
-export async function uploadProof(ticket: ProofTicket, fileUri: string, contentType: string): Promise<void> {
-  const blob = await (await fetch(fileUri)).blob();
-  // Las cabeceras van EXACTAMENTE como las firmó el backend; `content-type` sólo se añade si el
-  // ticket no lo trae (nunca debería pasar, pero un PUT sin tipo lo rechaza el almacén).
+/**
+ * Sube el comprobante al almacén con la URL firmada. No pasa por la API.
+ *
+ * Recibe los BYTES que se midieron para pedir el ticket, y las cabeceras van exactamente como las
+ * firmó el backend. NUNCA un `Blob` como cuerpo: el `fetch` global es el de Expo
+ * (`expo/src/winter`), y con un blob PISA el `Content-Type` con `blob.type`. El backend había
+ * firmado `image/jpeg`, viajaba el tipo del archivo leído, y el almacén respondía 403
+ * `SignatureDoesNotMatch` (medido en TEST el 2026-10-07, build 38): ningún comprobante llegaba al
+ * comercio. Con bytes no hay pisado; es el camino del carnet, el extracto y el chat.
+ */
+export async function uploadProof(ticket: ProofTicket, bytes: Uint8Array): Promise<void> {
   const respuesta = await fetchAlAlmacen(ticket.uploadUrl, {
     method: ticket.method ?? 'PUT',
-    headers: { 'content-type': contentType, ...ticket.requiredHeaders },
-    body: blob,
+    headers: ticket.requiredHeaders,
+    body: bytes as unknown as BodyInit,
   });
   if (!respuesta.ok) {
     throw new Error(`No se pudo subir el comprobante (HTTP ${respuesta.status}).`);
