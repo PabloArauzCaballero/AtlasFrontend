@@ -10,6 +10,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { type Minor, minor } from '../domain/money';
 import { POS_QRS, findPosQrByToken, type PosQr } from './fixtures';
 import {
@@ -34,6 +35,7 @@ import { isBackendDecision } from '../api/config';
 import { useSession } from '../session/session';
 import { requestLiveDecision } from '../features/credit-evaluation';
 import { listCreditApplications } from '../api/endpoints/credit';
+import { descartarComprasSinSolicitud } from './conciliacion';
 import type { UploadedPaymentQr } from '../api/endpoints/loans';
 
 /**
@@ -544,6 +546,34 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
       clearInterval(intervalo);
     };
   }, [customerId, merchantReject, merchantAccept, state.orders]);
+
+  /**
+   * Descarta las compras cuya solicitud ya no existe en el servidor (ver `conciliacion.ts`).
+   *
+   * Al arrancar y cada vez que la app vuelve al frente. Sólo con una lectura buena: sin red no se
+   * borra nada, porque «no pude preguntar» no es «no existe».
+   */
+  useEffect(() => {
+    if (!ready || !isBackendDecision || !customerId) return;
+    let vivo = true;
+    const conciliar = async () => {
+      const consultadoEn = Date.now();
+      try {
+        const { applications } = await listCreditApplications(customerId, { sinPantalla: true });
+        if (vivo) setState((current) => descartarComprasSinSolicitud(current, applications, consultadoEn));
+      } catch {
+        // Se vuelve a intentar la próxima vez que la app pase al frente.
+      }
+    };
+    void conciliar();
+    const suscripcion = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') void conciliar();
+    });
+    return () => {
+      vivo = false;
+      suscripcion.remove();
+    };
+  }, [ready, customerId]);
 
   /** Expira sesiones y ordenes vencidas: el TTL debe verse, no solo existir en el modelo. */
   useEffect(() => {
