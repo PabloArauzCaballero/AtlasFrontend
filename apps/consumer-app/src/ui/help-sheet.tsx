@@ -24,9 +24,21 @@
  * declara el contenedor de la hoja, no el `Modal`, porque es la vista que debe atrapar el foco.
  */
 import { useEffect, useRef, useState } from 'react';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { ANCHO_COLUMNA, useTramo } from './responsive';
-import { color, radius, shadow, space, stroke, touch } from '../theme/tokens';
+import { color, palette, radius, shadow, space, stroke, touch } from '../theme/tokens';
 import { toqueWeb } from './hit-slop';
 import { Icon } from './icons';
 import { AtlasText, IconButton, Overline } from './primitives';
@@ -194,7 +206,7 @@ export function HelpButton({ ayuda, etiqueta }: { ayuda: string; etiqueta: strin
         style={styles.helpTarget}
         testID={`ayuda-${etiqueta}`}
       >
-        <Icon name="info" size={18} tint={color.text.tertiary} />
+        {({ pressed }) => <InfoVivo pulsado={pressed} />}
       </Pressable>
       <HelpSheet visible={abierta} titulo={etiqueta} texto={ayuda} onClose={() => setAbierta(false)} />
     </>
@@ -219,8 +231,66 @@ export function BotonInfo({ etiqueta, onPress, testID }: { etiqueta: string; onP
       style={styles.helpTarget}
       testID={testID}
     >
-      <Icon name="info" size={18} tint={color.text.tertiary} />
+      {({ pressed }) => <InfoVivo pulsado={pressed} />}
     </Pressable>
+  );
+}
+
+/**
+ * La «i» de los botones de información, con vida.
+ *
+ * Era un ⓘ gris terciario de 18 px: en una tarjeta con cifras grandes no se veía, y nadie tocaba lo que
+ * explica de dónde salen los puntos o el límite (Pablo, 2026-10-08: «que los botones de información sean
+ * más vistosos y sobre todo que tengan una animación»). Ahora es una pastilla de marca con un halo que
+ * sale de ella cada pocos segundos, como un sonar: llama la atención sin moverse de su sitio ni tapar
+ * nada, y al tocarla se hunde un poco. Con «reducir movimiento» se queda la pastilla, sin halo.
+ *
+ * El halo se anima con transformaciones y opacidad (hilo de UI): una docena en un formulario no cuesta.
+ * Cada uno arranca con un desfase al azar para que no laten todos a la vez como un semáforo.
+ */
+function InfoVivo({ pulsado }: { pulsado: boolean }) {
+  const reducido = useReducedMotion();
+  const onda = useSharedValue(0);
+  const presion = useSharedValue(1);
+  const desfase = useRef(Math.round(Math.random() * 1400)).current;
+
+  useEffect(() => {
+    if (reducido) return;
+    onda.value = withDelay(
+      desfase,
+      withRepeat(
+        withSequence(
+          withTiming(1, { duration: 1500, easing: Easing.out(Easing.cubic) }),
+          withTiming(1, { duration: 1300 }),
+          withTiming(0, { duration: 0 }),
+        ),
+        -1,
+        false,
+      ),
+    );
+    return () => cancelAnimation(onda);
+  }, [onda, reducido, desfase]);
+
+  useEffect(() => {
+    presion.value = withSpring(pulsado ? 0.86 : 1, { damping: 14, stiffness: 320 });
+  }, [pulsado, presion]);
+
+  const halo = useAnimatedStyle(() => ({
+    opacity: 0.55 * (1 - onda.value),
+    transform: [{ scale: 1 + onda.value * 0.9 }],
+  }));
+  const pastilla = useAnimatedStyle(() => ({
+    // Un latido leve mientras sale la onda: la pastilla «empuja» el halo.
+    transform: [{ scale: presion.value * (1 + 0.08 * Math.sin(Math.min(1, onda.value * 3) * Math.PI)) }],
+  }));
+
+  return (
+    <View style={styles.infoCaja}>
+      {reducido ? null : <Animated.View pointerEvents="none" style={[styles.infoHalo, halo]} />}
+      <Animated.View style={[styles.infoPastilla, pastilla]}>
+        <Icon name="info" size={16} tint={palette.brand300} />
+      </Animated.View>
+    </View>
   );
 }
 
@@ -315,7 +385,30 @@ const styles = StyleSheet.create({
   infoContenido: { gap: space.sm, paddingHorizontal: space.lg, paddingBottom: space.xl },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   labelSpacer: { flex: 1 },
-  helpTarget: { padding: 4, alignItems: 'center', justifyContent: 'center' },
+  helpTarget: { alignItems: 'center', justifyContent: 'center' },
+  infoCaja: { width: DIBUJADO, height: DIBUJADO, alignItems: 'center', justifyContent: 'center' },
+  infoHalo: {
+    position: 'absolute',
+    width: DIBUJADO,
+    height: DIBUJADO,
+    borderRadius: DIBUJADO / 2,
+    borderWidth: 1.5,
+    borderColor: palette.brand400,
+  },
+  infoPastilla: {
+    width: DIBUJADO,
+    height: DIBUJADO,
+    borderRadius: DIBUJADO / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(43,224,168,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(92,240,204,0.55)',
+    shadowColor: palette.brand400,
+    shadowOpacity: 0.55,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+  },
 
   // El envoltorio que reparte el alto entre velo y hoja. Es lo que `KeyboardAvoidingView`
   // encoge cuando sube el teclado; sin `flex: 1` la hoja no tendria contra que empujar.

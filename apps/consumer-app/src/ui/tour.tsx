@@ -364,14 +364,33 @@ function TourOverlay({
   */
   const techo = insets.top + space.base;
   const suelo = screenHeight - insets.bottom - space.base;
-  const posicion = (() => {
-    if (!focus) return { top: Math.max(techo, screenHeight / 2 - ALTO_TARJETA / 2) };
+  /*
+    El alto REAL de la tarjeta, medido. Con un alto supuesto (260) en un iPhone de 4,7" —donde el título
+    y el texto ocupan más renglones— la tarjeta medía más de lo previsto, se colocaba «debajo» y su pie
+    caía fuera de la pantalla: sin «Siguiente» ni «Saltar», el recorrido parecía colgado (Pablo, 2026-10-08:
+    «en algunos iOS, en especial los antiguos, se buguea el tutorial»).
+  */
+  const [altoTarjeta, setAltoTarjeta] = React.useState(ALTO_TARJETA);
+  const top = (() => {
+    const alto = Math.min(altoTarjeta, suelo - techo);
+    if (!focus) return Math.max(techo, screenHeight / 2 - alto / 2);
     const debajo = focus.y + focus.height + space.base;
-    if (debajo + ALTO_TARJETA <= suelo) return { top: debajo };
-    const encima = focus.y - space.base;
-    if (encima - ALTO_TARJETA >= techo) return { bottom: screenHeight - encima };
-    return { bottom: screenHeight - suelo };
+    if (debajo + alto <= suelo) return debajo;
+    const encima = focus.y - space.base - alto;
+    if (encima >= techo) return encima;
+    // No cabe ni encima ni debajo: pegada al pie, siempre entera dentro del área segura.
+    return Math.max(techo, suelo - alto);
   })();
+  /*
+    El ancho NO es el del objetivo. Antes la tarjeta copiaba el ancho del elemento señalado, y con un
+    objetivo estrecho —una pestaña, un botón— quedaba una columna de 70 px con una palabra por renglón,
+    altísima, que se salía por abajo. Ahora mide la columna de lectura y se centra sobre el foco sin
+    salirse de la pantalla.
+  */
+  const anchoTarjeta = Math.min(screenWidth - space.lg * 2, ANCHO_COLUMNA - space.lg * 2);
+  const left = focus
+    ? Math.max(space.lg, Math.min(screenWidth - space.lg - anchoTarjeta, focus.x + focus.width / 2 - anchoTarjeta / 2))
+    : (screenWidth - anchoTarjeta) / 2;
 
   const buscando = rect === undefined;
 
@@ -400,36 +419,29 @@ function TourOverlay({
         tarjeta; sólo el velo, una fracción de segundo.
       */}
       {buscando ? null : (
-        <Appear
-          key={index}
-          style={{
-            ...styles.cardHolder,
-            ...posicion,
-            // Sobre el elemento senalado, no sobre el centro de la ventana: con el carril lateral de
-            // escritorio la columna ya no esta en el medio, y la nota tiene que caer donde cae el foco.
-            ...(focus ? { left: focus.x, right: undefined, width: focus.width } : null),
-          }}
-        >
-          <Card style={styles.card}>
-            <View style={styles.cardHead}>
-              {step.icon ? <IconChip name={step.icon} size="sm" /> : null}
-              {/* Las versalitas las pone `Overline`, no un literal en mayusculas: ver `primitives.tsx`. */}
-              <Overline tone="brand">{`Paso ${index + 1} de ${total}`}</Overline>
-            </View>
-            <AtlasText variant="h2">{step.title}</AtlasText>
-            <AtlasText variant="body" tone="secondary">
-              {step.body}
-            </AtlasText>
-            <View style={styles.cardActions}>
-              <Button label="Saltar" variant="ghost" onPress={onSkip} style={styles.action} haptic="none" testID="tour-saltar" />
-              <Button
-                label={index + 1 === total ? 'Entendido' : 'Siguiente'}
-                onPress={onNext}
-                style={styles.action}
-                testID="tour-siguiente"
-              />
-            </View>
-          </Card>
+        <Appear key={index} style={{ ...styles.cardHolder, top, left, width: anchoTarjeta }}>
+          <View onLayout={(e) => setAltoTarjeta(Math.ceil(e.nativeEvent.layout.height))}>
+            <Card style={styles.card}>
+              <View style={styles.cardHead}>
+                {step.icon ? <IconChip name={step.icon} size="sm" /> : null}
+                {/* Las versalitas las pone `Overline`, no un literal en mayusculas: ver `primitives.tsx`. */}
+                <Overline tone="brand">{`Paso ${index + 1} de ${total}`}</Overline>
+              </View>
+              <AtlasText variant="h2">{step.title}</AtlasText>
+              <AtlasText variant="body" tone="secondary">
+                {step.body}
+              </AtlasText>
+              <View style={styles.cardActions}>
+                <Button label="Saltar" variant="ghost" onPress={onSkip} style={styles.action} haptic="none" testID="tour-saltar" />
+                <Button
+                  label={index + 1 === total ? 'Entendido' : 'Siguiente'}
+                  onPress={onNext}
+                  style={styles.action}
+                  testID="tour-siguiente"
+                />
+              </View>
+            </Card>
+          </View>
         </Appear>
       )}
     </View>
@@ -451,8 +463,8 @@ const styles = StyleSheet.create({
     con dos frases dentro deja de leerse como una nota y se lee como una franja. Se centra y se
     limita a la columna de lectura, que es lo que senala.
   */
-  cardHolder: { position: 'absolute', left: space.lg, right: space.lg, alignItems: 'center' },
-  card: { backgroundColor: color.surface.sheet, width: '100%', maxWidth: ANCHO_COLUMNA - space.lg * 2 },
+  cardHolder: { position: 'absolute' },
+  card: { backgroundColor: color.surface.sheet, width: '100%' },
   cardHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   cardActions: { flexDirection: 'row', gap: space.sm, marginTop: space.xs },
   action: { flex: 1 },

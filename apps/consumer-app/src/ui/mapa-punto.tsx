@@ -41,8 +41,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { esExpoGo } from '../device/entorno';
 import { etiquetaDeSitio, RADIO_MISMO_SITIO_M, type SitioFrecuente } from '../features/sitios-frecuentes';
+import { iosSinMapaNativo } from '../features/teselas';
 import { color, radius, space } from '../theme/tokens';
 import { Icon } from './icons';
+import { MapaTeselas } from './mapa-teselas';
 import { AtlasText, Button } from './primitives';
 
 export type Punto = { lat: number; lng: number };
@@ -193,7 +195,18 @@ export function MapaPunto({
 
         <View style={styles.mapa}>
           {mapas ? (
-            Platform.OS === 'ios' ? (
+            /*
+              iOS 16 o anterior: el mapa de Apple de `expo-maps` (SwiftUI `Map`) no existe ahí y la vista
+              sale NEGRA. Se usa el mapa de teselas propio, que hace lo mismo con el pin del centro.
+            */
+            Platform.OS === 'ios' && iosSinMapaNativo(Platform.Version) ? (
+              <MapaTeselas
+                camara={camaraFijada}
+                zoomInicial={sitios.length > 1 ? 15 : 17}
+                marcadores={sitios}
+                onCentro={setPunto}
+              />
+            ) : Platform.OS === 'ios' ? (
               <mapas.AppleMaps.View
                 style={StyleSheet.absoluteFill}
                 cameraPosition={camara}
