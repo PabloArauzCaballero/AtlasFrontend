@@ -22,11 +22,9 @@ import { useRouter } from 'expo-router';
 import * as supportApi from '../../../src/api/endpoints/support';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { Markdown } from '../../../src/ui/markdown';
+import { PreguntaFrecuente } from '../../../src/ui/pregunta-frecuente';
 import {
-  Accordion,
   AtlasText,
-  Badge,
   Button,
   Cargando,
   Card,
@@ -36,10 +34,8 @@ import {
   ErrorState,
   ListRow,
   SectionHeader,
-  Skeleton,
   SkeletonLista,
 } from '../../../src/ui/primitives';
-import { space } from '../../../src/theme/tokens';
 import { useCopy } from '../../../src/features/use-contenido-remoto';
 
 export default function Soporte() {
@@ -288,30 +284,18 @@ export default function Soporte() {
       {faq.length > 0 && resultados === null ? (
         <>
           <SectionHeader title="Preguntas frecuentes" detail="Lo que más nos preguntan." />
-          <Card>
-            {faq.map((articulo, index) => (
-              <View key={articulo.articleId}>
-                {index > 0 ? <Divider /> : null}
-                <Accordion title={articulo.question ?? articulo.title}>
-                  {articulo.shortAnswer ? <Markdown variant="body" tone="primary">{articulo.shortAnswer}</Markdown> : null}
-                  <Gap size="xs" />
-                  <Markdown variant="caption">{articulo.body}</Markdown>
-                  {/*
-                    Cuando escalar va aparte y destacado: un articulo que no dice donde termina su
-                    utilidad deja a la persona insistiendo con una guia que ya no aplica a su caso.
-                  */}
-                  {articulo.escalateWhen ? (
-                    <View style={{ marginTop: space.sm }}>
-                      <Badge label="Cuándo escribirnos" tone="info" />
-                      <AtlasText variant="caption" tone="secondary">
-                        {articulo.escalateWhen}
-                      </AtlasText>
-                    </View>
-                  ) : null}
-                </Accordion>
-              </View>
-            ))}
-          </Card>
+          {faq.map((articulo, index) => (
+            <PreguntaFrecuente
+              key={articulo.articleId}
+              numero={index + 1}
+              pregunta={articulo.question ?? articulo.title}
+              respuestaCorta={articulo.shortAnswer}
+              detalle={articulo.body}
+              cuandoEscribirnos={articulo.escalateWhen}
+              onEscribir={empezar}
+              testID={`soporte-faq-${articulo.articleId}`}
+            />
+          ))}
         </>
       ) : null}
 
