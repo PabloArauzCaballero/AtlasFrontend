@@ -26,6 +26,7 @@ import { Gap, Screen } from '../../../src/ui/layout';
 import { NivelCard } from '../../../src/ui/nivel-card';
 import { CreditoHabilitadoCard } from '../../../src/ui/credito-habilitado-card';
 import { TarjetaAtlas } from '../../../src/ui/tarjeta-atlas';
+import { MedallaDeRiesgo } from '../../../src/ui/medalla-de-riesgo';
 import { useProgress } from '../../../src/features/use-progress';
 import {
   AtlasText,
@@ -43,7 +44,7 @@ import {
 } from '../../../src/ui/primitives';
 import { DelinquencyImpact } from '../../../src/ui/scoring-panel';
 import { useCreditBook } from '../../../src/features/use-credit-book';
-import { color, radius, space } from '../../../src/theme/tokens';
+import { space } from '../../../src/theme/tokens';
 
 export default function Profile() {
   const router = useRouter();
@@ -251,9 +252,7 @@ export default function Profile() {
           />
 
           <View style={styles.gradeRow}>
-            <View style={styles.gradeBox}>
-              <AtlasText variant="amount">{rating.grade}</AtlasText>
-            </View>
+            <MedallaDeRiesgo letra={rating.grade} alerta={rating.worstDaysPastDue > 0} />
             <View style={styles.gradeText}>
               <AtlasText variant="title">
                 {rating.position && rating.scaleSize
@@ -482,22 +481,5 @@ const styles = StyleSheet.create({
   identidad: { flexDirection: 'row', alignItems: 'center', gap: space.base },
   identidadTexto: { flex: 1, gap: space.xs },
   gradeRow: { flexDirection: 'row', alignItems: 'center', gap: space.base },
-  /*
-    La letra de la calificacion, en su propia caja.
-
-    Lleva contorno y no solo fondo: sobre la tarjeta, un cuadrado un 7 % mas claro no se distingue
-    lo bastante como para leerse como una insignia, y esa letra es el resumen de todo el bloque.
-  */
-  gradeBox: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: color.surface.sunken,
-    borderWidth: 1,
-    borderColor: color.border.subtle,
-    borderTopColor: color.surface.edge,
-  },
   gradeText: { flex: 1, gap: space.sm },
 });

@@ -294,15 +294,16 @@ export function Button({
     const t = viva ? suavidad(fase.value, desfase * CICLO_MS, CICLO_MS) : 0;
     return {
       transform: [{ scale: (1 - pressProgress.value * (1 - press.scale)) * (1 + t * RESPIRACION) }],
-      shadowOpacity: Math.min(1, 0.85 + t * 0.15 + pressProgress.value * 0.15),
-      shadowRadius: 14 + t * 8 + pressProgress.value * 6,
+      // Bajado a la mitad (Pablo, 2026-10-08: «quitémosle un poco la intensidad al efecto de neón»).
+      shadowOpacity: 0.4 + t * 0.12 + pressProgress.value * 0.15,
+      shadowRadius: 8 + t * 4 + pressProgress.value * 4,
     };
   });
   const auraStyle = useAnimatedStyle(() => {
     const t = viva ? suavidad(fase.value, desfase * CICLO_MS, CICLO_MS) : 0;
     return {
-      opacity: 0.55 + t * 0.35 + pressProgress.value * 0.1,
-      shadowRadius: 28 + t * 16,
+      opacity: 0.25 + t * 0.15 + pressProgress.value * 0.1,
+      shadowRadius: 16 + t * 6,
     };
   });
 
@@ -1372,9 +1373,9 @@ const styles = StyleSheet.create({
     backgroundColor: palette.brand400,
     shadowColor: palette.brand300,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 16,
-    elevation: 14,
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
   },
   // El aura: más ancha y tenue, el «calor» alrededor del tubo.
   neonAura: {
@@ -1384,11 +1385,11 @@ const styles = StyleSheet.create({
     left: -6,
     right: -6,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(43,224,168,0.16)',
+    backgroundColor: 'rgba(43,224,168,0.07)',
     shadowColor: palette.brand400,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.9,
-    shadowRadius: 32,
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
   },
   buttonDisabled: { backgroundColor: color.action.disabled },
   /*

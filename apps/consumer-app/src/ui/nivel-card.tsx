@@ -36,14 +36,18 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
       accessibilityLabel={`Tu nivel Atlas: ${level.label}, nivel ${level.index} de ${level.of}, ${formatoPuntos(level.points)} ${puntos} de experiencia. ${fraseDeLoQueFalta(nivel)}`}
       testID="nivel-card"
     >
+      {/*
+        Los puntos ARRIBA A LA IZQUIERDA (Pablo, 2026-10-08): son LA cifra de la tarjeta y lo primero que se lee. La
+        insignia del nivel va a su derecha, y el nombre del nivel debajo, como subtítulo de la cifra.
+      */}
       <View style={styles.cabecera}>
-        {/* La insignia del nivel respira: es lo que se ha ganado y lo primero que se mira. */}
-        <Vivo tipo="flota" periodo={3200}>
-          <View style={styles.insignia}>
-            <Icon name={iconoDeEscalon(level)} size={26} tint={color.action.primary} />
+        <View style={styles.cifraBloque}>
+          <View style={styles.cifra}>
+            <CuentaArriba avance={avance} hasta={level.points} formato={formatoPuntos} tamano="amountHero" color={color.action.primary} testID="nivel-puntos" />
+            <AtlasText variant="bodyStrong" tone="secondary">
+              {puntos}
+            </AtlasText>
           </View>
-        </Vivo>
-        <View style={styles.titulos}>
           <View style={styles.sobretitulo}>
             <AtlasText variant="overline" tone="secondary">
               {`NIVEL ${level.index} DE ${level.of}`}
@@ -54,17 +58,15 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
             {level.label}
           </AtlasText>
         </View>
-        {currentStreak > 0 ? <Badge label={`Racha ${currentStreak}`} tone="success" /> : null}
-      </View>
-      {/*
-        Los puntos son LA cifra de la tarjeta: van solos y en grande, cuentan desde cero y la barra de debajo sube con
-        ellos (Pablo, 2026-10-07). Antes iban arrinconados a la derecha del nombre del nivel, al tamaño de un importe más.
-      */}
-      <View style={styles.cifra}>
-        <CuentaArriba avance={avance} hasta={level.points} formato={formatoPuntos} tamano="amountHero" color={color.action.primary} testID="nivel-puntos" />
-        <AtlasText variant="bodyStrong" tone="secondary">
-          {puntos}
-        </AtlasText>
+        <View style={styles.lateral}>
+          {/* La insignia del nivel respira: es lo que se ha ganado. */}
+          <Vivo tipo="flota" periodo={3200}>
+            <View style={styles.insignia}>
+              <Icon name={iconoDeEscalon(level)} size={26} tint={color.action.primary} />
+            </View>
+          </Vivo>
+          {currentStreak > 0 ? <Badge label={`Racha ${currentStreak}`} tone="success" /> : null}
+        </View>
       </View>
       <Barra
         valor={porcentajeDeBarra(nivel)}
@@ -164,7 +166,9 @@ const styles = StyleSheet.create({
     borderColor: color.feedbackBorder.brand,
     backgroundColor: color.surface.raised,
   },
-  cabecera: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  cabecera: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md },
+  cifraBloque: { flex: 1, gap: space.xxs },
+  lateral: { alignItems: 'flex-end', gap: space.sm },
   insignia: {
     width: 52,
     height: 52,
@@ -175,7 +179,6 @@ const styles = StyleSheet.create({
     borderWidth: stroke.hairline,
     borderColor: color.feedbackBorder.brand,
   },
-  titulos: { flex: 1 },
   sobretitulo: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   cifra: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
   extremos: { flexDirection: 'row', justifyContent: 'space-between', gap: space.sm },
