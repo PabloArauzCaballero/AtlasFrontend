@@ -9,6 +9,7 @@
  * Nada de esto salda la cuota: la salda el comercio cuando ve el dinero en su cuenta.
  */
 import { request } from '../client';
+import { AtlasApiError } from '../errors';
 import { fetchAlAlmacen } from '../almacen';
 
 /**
@@ -131,6 +132,9 @@ export const submitPaymentClaim = (
   request<PaymentClaim>(`/mobile/customers/${encodeURIComponent(customerId)}/payment-claims`, {
     method: 'POST',
     body: input,
+    // R75. El backend todavía no lee la clave en esta ruta (lo frena el estado: 409 al segundo aviso);
+    // se manda igual para que, el día que la lea, el reintento ya viaje con ella. Ver `avisoYaEnviado`.
+    idempotent: true,
   });
 
 /**
@@ -145,6 +149,22 @@ export const submitDownPayment = (
 ) =>
   request<{ applicationId: string; downPaymentStatus: string | null; downPaymentAmount: string | null }>(
     `/customers/${encodeURIComponent(customerId)}/credit-applications/${encodeURIComponent(applicationId)}/down-payment`,
-    { method: 'POST', body: input },
+    // R75, igual que el aviso de una cuota: ver `avisoYaEnviado`.
+    { method: 'POST', body: input, idempotent: true },
   );
+
+/*
+  El aviso ya estaba en el servidor: es éxito, no fallo (APP-15).
+
+  Con `idempotent: true` el cliente REPITE el POST si se agota el plazo (`reintentos.ts`). Si el
+  primer intento sí llegó, el backend —que hoy no lee `x-idempotency-key` en estas dos rutas— contesta
+  al segundo con 409 `*_ALREADY_PENDING`: el aviso que la persona mandó está guardado y esperando al
+  comercio. Pintarlo como error la haría reintentar un aviso que ya existe. Lo mismo si tocó dos
+  veces el botón desde dos pantallas: hay un aviso pendiente, que es lo que quería.
+*/
+const YA_PENDIENTE = new Set(['DOWN_PAYMENT_ALREADY_PENDING', 'PAYMENT_CLAIM_ALREADY_PENDING']);
+
+export function avisoYaEnviado(error: unknown): boolean {
+  return error instanceof AtlasApiError && error.status === 409 && YA_PENDIENTE.has(error.code);
+}
 

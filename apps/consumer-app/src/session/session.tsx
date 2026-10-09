@@ -20,6 +20,7 @@ import { olvidarPinConfirmado } from '../features/pin-verificado';
 import { useRastreoEnPrimerPlano } from './use-rastreo-primer-plano';
 import { cerrarSesionEnServidor } from './cierre-de-sesion';
 import { useLatidoDeSesion, type ContextoDeLatido } from './use-latido-de-sesion';
+import { limpiarDatosLocales } from './datos-locales';
 
 export type SessionStatus = 'restoring' | 'anonymous' | 'authenticated';
 
@@ -270,6 +271,13 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
 
       const actor = await authApi.me();
       const customerId = actor.customerId ?? actor.actorId;
+      /*
+        Entra un cliente DISTINTO del último que hubo en este teléfono (APP-09). Si el anterior salió
+        con `signOut` ya está limpio; si su sesión CADUCÓ, `onSessionExpired` no borró nada y sus
+        compras de prueba, la lectura de su carnet y sus fotos seguirían ahí. Ver `datos-locales.ts`.
+      */
+      const anterior = await profileStorage.read().catch(() => null);
+      if (anterior && anterior.customerId !== customerId) await limpiarDatosLocales();
       const stored: StoredProfile = { customerId, displayName: null, identifier };
       await profileStorage.write(stored);
       setProfile(stored);
@@ -348,6 +356,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       await authApi.logout(tokens.refreshToken).catch(() => undefined);
     }
     await Promise.all([secureTokenStore.clear(), profileStorage.clear()]);
+    // Compras de prueba, lectura del carnet, fotos y descargas: quien entre después no las hereda.
+    await limpiarDatosLocales();
     setProfile(null);
     setOnboarding(null);
     setMe(null);

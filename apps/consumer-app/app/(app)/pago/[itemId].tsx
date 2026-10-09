@@ -25,7 +25,7 @@ import { ESPERA_ENTRE_CONSULTAS_MS, estadoDelPagoInicial, type EstadoPagoInicial
 import { useSandbox } from '../../../src/sandbox/store';
 import { POS_QRS } from '../../../src/sandbox/fixtures';
 import { useSession } from '../../../src/session/session';
-import { submitDownPayment, submitPaymentClaim } from '../../../src/api/endpoints/payment-claims';
+import { avisoYaEnviado, submitDownPayment, submitPaymentClaim } from '../../../src/api/endpoints/payment-claims';
 import { subirComprobante } from '../../../src/features/comprobante-de-pago';
 import { color, radius, space } from '../../../src/theme/tokens';
 import { Field } from '../../../src/ui/fields';
@@ -203,6 +203,9 @@ export default function PaymentScreen() {
           payerReference: reference.trim() || undefined,
           storageKey,
           contentType,
+        }).catch((error: unknown) => {
+          // Un reintento tras un plazo agotado: el primer intento ya dejó el aviso. Ver `avisoYaEnviado`.
+          if (!avisoYaEnviado(error)) throw error;
         });
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setRemoto({ tipo: 'esperando_al_comercio' });
@@ -245,6 +248,8 @@ export default function PaymentScreen() {
         payerReference: reference.trim() || undefined,
         storageKey,
         contentType,
+      }).catch((error: unknown) => {
+        if (!avisoYaEnviado(error)) throw error;
       });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setReported(true);

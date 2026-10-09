@@ -15,7 +15,8 @@
  *
  * ## Se puede decir que no, y se dice que se puede
  *
- * «Ahora no» esta a la vista y no cuesta mas toques que aceptar. Quien lo pulsa abre su cuenta
+ * Cada permiso tiene su tarjeta, su «Permitir» y su «Ahora no» (APP-12): el consentimiento es por
+ * finalidad, no uno para las dos. «Ahora no» esta a la vista y no cuesta mas toques que aceptar. Quien lo pulsa abre su cuenta
  * igual: lo unico que cambia es que su expediente tiene menos evidencia, y el motor pondera la
  * ausencia como menos informacion, nunca como informacion en contra. Una pantalla de permisos sin
  * salida no es una pantalla de permisos, es un peaje.
@@ -35,6 +36,7 @@ import { pedirPermisoDeSegundoPlano, pedirPermisoDeUbicacion, permisosDeUbicacio
 import { guardarDecisionDeArranque, leerDecisionDeArranque } from '../../src/session/permisos-de-arranque';
 import { useSession } from '../../src/session/session';
 import { bitacora } from '../../src/features/bitacora';
+import { decisionFinal, faltaPorDecidir, SIN_ELEGIR, type Eleccion, type Elecciones } from '../../src/features/decision-de-permisos';
 import { LO_QUE_NO_HACEMOS_CON_LA_UBICACION, USOS_DE_LA_UBICACION } from '../../src/features/consentimiento-ubicacion';
 import { space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
@@ -49,7 +51,7 @@ import { AtlasText, Button, Card, CardHeader } from '../../src/ui/primitives';
  * pueda creer. «Guardamos tus contactos» sin «no les escribimos» es justo lo que la gente teme, y
  * callarlo no lo hace menos cierto — lo hace mas sospechoso.
  */
-type PiezaDePermiso = { icono: IconName; titulo: string; para: string[]; queNoHacemos: string };
+type PiezaDePermiso = { clave: 'ubicacion' | 'contactos'; icono: IconName; titulo: string; para: string[]; queNoHacemos: string };
 
 /**
  * La CLAVE con la que cada pieza vive en el catálogo (`app_content_entries`, superficie `legal`).
@@ -87,12 +89,14 @@ const SIEMPRE_POR_DEFECTO = {
 
 const [UBICACION_POR_DEFECTO, CONTACTOS_POR_DEFECTO]: [PiezaDePermiso, PiezaDePermiso] = [
   {
+    clave: 'ubicacion',
     icono: 'ubicacion',
     titulo: 'Tu ubicación',
     para: [...USOS_DE_LA_UBICACION],
     queNoHacemos: LO_QUE_NO_HACEMOS_CON_LA_UBICACION,
   },
   {
+    clave: 'contactos',
     icono: 'telefono',
     titulo: 'Tus contactos',
     para: [
@@ -115,6 +119,7 @@ function aplicar(pieza: PiezaDePermiso, entrada: contentApi.ContentEntry | undef
   if (!entrada) return pieza;
   const vinetas = entrada.bullets.map((vineta) => vineta.text).filter((texto) => texto.trim() !== '');
   return {
+    clave: pieza.clave,
     icono: pieza.icono,
     titulo: entrada.title?.trim() || pieza.titulo,
     para: vinetas.length > 0 ? vinetas : pieza.para,
@@ -126,6 +131,28 @@ export default function Permisos() {
   const router = useRouter();
   const session = useSession();
   const [pidiendo, setPidiendo] = useState(false);
+  /*
+    Una elección POR PERMISO (APP-12): cada tarjeta tiene su «Permitir» y su «Ahora no». Ver
+    `features/decision-de-permisos.ts`. `ubicacionPrevia`: ya consentida antes (desde el domicilio),
+    no se vuelve a preguntar ni se retira desde aquí —retirar tiene su sitio: «Privacidad»—.
+  */
+  const [elecciones, setElecciones] = useState<Elecciones>(SIN_ELEGIR);
+  const [pidiendoCual, setPidiendoCual] = useState<keyof Elecciones | null>(null);
+  const [ubicacionPrevia, setUbicacionPrevia] = useState(false);
+
+  useEffect(() => {
+    let vivo = true;
+    void Promise.all([leerDecisionDeArranque(), permisosDeUbicacion()])
+      .then(([previa, vigentes]) => {
+        if (!vivo || previa?.ubicacion !== true || !vigentes.primerPlano) return;
+        setUbicacionPrevia(true);
+        setElecciones((actual) => (actual.ubicacion === 'pendiente' ? { ...actual, ubicacion: 'concedido' } : actual));
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, []);
   /*
     El segundo paso: ofrecer el «siempre» APARTE, y solo a quien concedio la ubicacion.
 
@@ -200,25 +227,46 @@ export default function Permisos() {
   }, []);
 
   /**
-   * Los dos dialogos que SI son dialogos, en orden, y lo que salga se guarda.
+   * El diálogo del sistema de UN permiso, y lo que conteste se queda como la elección de esa tarjeta.
    *
-   * No se comprueba si concedio para seguir: conceder uno y negar el otro es una decision legitima y
-   * frecuente, y la app funciona en los cuatro casos. Lo que se guarda es lo que el sistema
-   * contesto, no lo que la persona pulso aqui — que son cosas distintas cuando alguien acepta en
-   * esta pantalla y luego niega el dialogo.
+   * Se guarda lo que el sistema contestó, no lo que la persona pulsó aquí —que son cosas distintas
+   * cuando alguien acepta en esta pantalla y luego niega el diálogo—. Nada se registra todavía: la
+   * decisión se guarda y viaja al servidor al pulsar «Continuar», una fila por finalidad.
    */
-  async function aceptar() {
+  async function permitir(cual: keyof Elecciones) {
+    setPidiendoCual(cual);
+    try {
+      const concedio = cual === 'ubicacion' ? await pedirPermisoDeUbicacion() : await pedirPermisoDeContactos();
+      bitacora.permiso(cual, concedio ? 'concedido' : 'denegado');
+      setElecciones((actual) => ({ ...actual, [cual]: concedio ? 'concedido' : 'denegado' }));
+    } finally {
+      setPidiendoCual(null);
+    }
+  }
+
+  function omitir(cual: keyof Elecciones) {
+    bitacora.permiso(cual, 'omitido');
+    setElecciones((actual) => ({ ...actual, [cual]: 'omitido' }));
+  }
+
+  /**
+   * Guarda las dos decisiones —la negativa también: es lo que cierra la sección— y sigue.
+   *
+   * No se comprueba si concedió para seguir: conceder uno y negar el otro es una decisión legítima y
+   * frecuente, y la app funciona en los cuatro casos. El «siempre» se ofrece aparte y sólo a quien
+   * tiene la ubicación concedida y todavía no el segundo plano.
+   */
+  async function continuar() {
+    if (faltaPorDecidir(elecciones)) return;
     setPidiendo(true);
     try {
-      const ubicacion = await pedirPermisoDeUbicacion();
-      const contactos = await pedirPermisoDeContactos();
-      bitacora.permiso('ubicacion', ubicacion ? 'concedido' : 'denegado');
-      bitacora.permiso('contactos', contactos ? 'concedido' : 'denegado');
-      await guardarDecisionDeArranque({ ubicacion, ubicacionSiempre: false, contactos });
-      setConcedido({ ubicacion, contactos });
+      const vigentes = await permisosDeUbicacion();
+      const decision = decisionFinal(elecciones, vigentes.segundoPlano);
+      await guardarDecisionDeArranque(decision);
+      setConcedido({ ubicacion: decision.ubicacion, contactos: decision.contactos });
       // Dentro del alta hay sesion: la decision viaja al servidor AHORA, no en el proximo inicio.
       if (session.status === 'authenticated') await session.reactivarSeñales();
-      if (ubicacion) {
+      if (decision.ubicacion && !vigentes.segundoPlano) {
         setPaso('siempre');
         return;
       }
@@ -257,29 +305,6 @@ export default function Permisos() {
   */
   function salir() {
     router.replace('/');
-  }
-
-  async function ahoraNo() {
-    bitacora.permiso('contactos', 'omitido');
-    /*
-      «Ahora no» niega lo que se pide AQUI, no lo que ya se concedio antes.
-
-      La ubicacion puede venir consentida del domicilio, con su texto y su «siempre». Guardar aqui
-      `ubicacion: false` registraba un `declined` encima de esa decision —una retirada que la persona
-      no pidio— y retirar un consentimiento tiene su sitio: «Privacidad».
-    */
-    const previa = await leerDecisionDeArranque();
-    const vigentes = await permisosDeUbicacion();
-    const ubicacionYaConcedida = previa?.ubicacion === true && vigentes.primerPlano;
-    if (!ubicacionYaConcedida) bitacora.permiso('ubicacion', 'omitido');
-    await guardarDecisionDeArranque({
-      ubicacion: ubicacionYaConcedida,
-      ubicacionSiempre: ubicacionYaConcedida && vigentes.segundoPlano,
-      contactos: false,
-    });
-    // La negativa tambien se registra como consentimiento `declined`: es lo que cierra la seccion.
-    if (session.status === 'authenticated') await session.reactivarSeñales();
-    salir();
   }
 
   if (paso === 'siempre') {
@@ -332,40 +357,74 @@ export default function Permisos() {
     );
   }
 
+  const falta = faltaPorDecidir(elecciones);
+
   return (
     <Screen
       footer={
-        <View style={{ gap: space.sm }}>
-          {/* Dónde tocar: la mano baja sobre «Permitir», que es el botón que sigue el flujo. */}
-          <IndicadorDeToque />
-          <Button label="Permitir" bitacora="permitir" onPress={() => void aceptar()} loading={pidiendo} />
-          <Button label="Ahora no" bitacora="ahora_no" variant="ghost" onPress={() => ahoraNo()} disabled={pidiendo} />
-        </View>
+        <Button
+          label="Continuar"
+          bitacora="continuar"
+          onPress={() => void continuar()}
+          loading={pidiendo}
+          disabled={pidiendo || pidiendoCual !== null || falta !== null}
+          blockedReason={falta}
+        />
       }
     >
       <ScreenHeader eyebrow={cabecera.antetitulo} title={cabecera.titulo} subtitle={cabecera.subtitulo} />
 
-      {permisos.map((permiso) => (
-        <Card key={permiso.titulo}>
-          <CardHeader title={permiso.titulo} icon={permiso.icono} />
-          <View style={{ gap: space.xs, marginTop: space.sm }}>
-            {permiso.para.map((linea) => (
-              <View key={linea} style={{ flexDirection: 'row', gap: space.sm }}>
-                <AtlasText variant="body" tone="secondary">
-                  ·
-                </AtlasText>
-                <AtlasText variant="body" tone="secondary" style={{ flex: 1 }}>
-                  {linea}
-                </AtlasText>
+      {permisos.map((permiso) => {
+        const eleccion = elecciones[permiso.clave];
+        return (
+          <Card key={permiso.clave} testID={`permiso-${permiso.clave}`}>
+            <CardHeader title={permiso.titulo} icon={permiso.icono} />
+            <View style={{ gap: space.xs, marginTop: space.sm }}>
+              {permiso.para.map((linea) => (
+                <View key={linea} style={{ flexDirection: 'row', gap: space.sm }}>
+                  <AtlasText variant="body" tone="secondary">
+                    ·
+                  </AtlasText>
+                  <AtlasText variant="body" tone="secondary" style={{ flex: 1 }}>
+                    {linea}
+                  </AtlasText>
+                </View>
+              ))}
+            </View>
+            <Gap size="sm" />
+            <AtlasText variant="caption" tone="tertiary">
+              {permiso.queNoHacemos}
+            </AtlasText>
+            <Gap size="sm" />
+            {eleccion === 'pendiente' ? (
+              <View style={{ gap: space.xs }}>
+                {/* Dónde tocar: la mano baja sobre el primer «Permitir» que falta. */}
+                {permiso.clave === permisos.find((p) => elecciones[p.clave] === 'pendiente')?.clave ? (
+                  <IndicadorDeToque testID={`indicador-de-toque-${permiso.clave}`} />
+                ) : null}
+                <Button
+                  label={permiso.clave === 'ubicacion' ? 'Permitir mi ubicación' : 'Permitir mis contactos'}
+                  bitacora="permitir"
+                  onPress={() => void permitir(permiso.clave)}
+                  loading={pidiendoCual === permiso.clave}
+                  disabled={pidiendo || pidiendoCual !== null}
+                />
+                <Button
+                  label="Ahora no"
+                  bitacora="ahora_no"
+                  variant="ghost"
+                  onPress={() => omitir(permiso.clave)}
+                  disabled={pidiendo || pidiendoCual !== null}
+                />
               </View>
-            ))}
-          </View>
-          <Gap size="sm" />
-          <AtlasText variant="caption" tone="tertiary">
-            {permiso.queNoHacemos}
-          </AtlasText>
-        </Card>
-      ))}
+            ) : (
+              <AtlasText variant="body" tone="secondary" testID={`permiso-${permiso.clave}-estado`}>
+                {textoDeEleccion(permiso.clave, eleccion, ubicacionPrevia)}
+              </AtlasText>
+            )}
+          </Card>
+        );
+      })}
 
       <Card tone="brand">
         <AtlasText variant="body" tone="secondary">
@@ -374,4 +433,12 @@ export default function Permisos() {
       </Card>
     </Screen>
   );
+}
+
+/** Lo que queda escrito en la tarjeta una vez decidida: qué se eligió y que se puede cambiar. */
+function textoDeEleccion(clave: keyof Elecciones, eleccion: Eleccion, previa: boolean): string {
+  const que = clave === 'ubicacion' ? 'tu ubicación' : 'tus contactos';
+  if (eleccion === 'concedido') return previa && clave === 'ubicacion' ? 'Ya nos lo habías permitido.' : `Permitiste ${que}.`;
+  if (eleccion === 'denegado') return `Tu teléfono no dio acceso a ${que}. Puedes cambiarlo en sus ajustes.`;
+  return `No usaremos ${que}. Puedes cambiarlo en «Privacidad».`;
 }

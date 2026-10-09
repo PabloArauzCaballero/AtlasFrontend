@@ -37,6 +37,7 @@ import { requestLiveDecision } from '../features/credit-evaluation';
 import { listCreditApplications } from '../api/endpoints/credit';
 import { descartarComprasSinSolicitud } from './conciliacion';
 import type { UploadedPaymentQr } from '../api/endpoints/loans';
+import { alLimpiarDatosLocales, CLAVE_COMPRAS_DE_PRUEBA } from '../session/datos-locales';
 
 /**
  * De donde salio la decision que se esta mostrando.
@@ -49,7 +50,8 @@ export type DecisionOrigin =
   | { source: 'backend'; applicationCode: string; executionId: string | null; decisionMode: string | null }
   | { source: 'backend-unavailable'; code: string; message: string };
 
-const STORAGE_KEY = 'atlas.sandbox.purchase.v1';
+/* La clave vive en `session/datos-locales.ts`, que la borra al cerrar sesión o al cambiar de cliente. */
+const STORAGE_KEY = CLAVE_COMPRAS_DE_PRUEBA;
 /** Limite de la linea con la que arranca el entorno de demostracion. Bs 5.000,00. */
 const DEFAULT_LIMIT: Minor = minor(500_000);
 
@@ -142,6 +144,21 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
     if (!ready) return;
     void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [ready, state]);
+
+  /*
+    Al cerrar sesión o entrar otro cliente, el estado en MEMORIA también se vacía (APP-09): si sólo se
+    borrara el disco, el efecto de arriba volvería a escribir las compras del anterior.
+  */
+  useEffect(
+    () =>
+      alLimpiarDatosLocales(() => {
+        Object.values(timers.current).forEach(clearTimeout);
+        timers.current = {};
+        setState(emptyState(DEFAULT_LIMIT));
+        setDecisionOrigin(null);
+      }),
+    [],
+  );
 
   const scan = useCallback<SandboxContextValue['scan']>((token) => {
     const result = openScanSession(token, Date.now());

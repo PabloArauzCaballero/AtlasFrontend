@@ -28,6 +28,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { borrarCopiaLocal } from '../device/archivos';
 import type { IdentityEvidenceKind } from '../features/evidence-upload';
 import { avanceDeQuietud, estaQuieto } from '../features/quietud';
 import { alpha, color, luz, radius, space, stroke } from '../theme/tokens';
@@ -126,6 +127,8 @@ export function PruebaDeVida({
         try {
           const muestra = await camara.current.takePictureAsync({ quality: 0.05, base64: true, skipProcessing: true, shutterSound: false });
           if (muestra?.base64) tamanos.push(muestra.base64.length);
+          // El fotograma solo se mide: su JPEG no se queda en la cache del telefono (APP-10).
+          if (muestra?.uri) borrarCopiaLocal(muestra.uri);
         } catch {
           // Un fotograma que no sale no rompe la medida: se sigue con el siguiente.
         }

@@ -31,6 +31,7 @@ import { Image, StyleSheet, View } from 'react-native';
 import {
   getPaymentInstruction,
   submitPaymentClaim,
+  avisoYaEnviado,
   type PaymentInstruction,
 } from '../../../src/api/endpoints/payment-claims';
 import { subirComprobante } from '../../../src/features/comprobante-de-pago';
@@ -167,6 +168,9 @@ export default function PayInstallmentScreen() {
         payerReference: reference.trim() || undefined,
         storageKey,
         contentType,
+      }).catch((error: unknown) => {
+        // El aviso ya estaba (reintento tras un plazo agotado): ver `avisoYaEnviado`.
+        if (!avisoYaEnviado(error)) throw error;
       });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setReportado(true);

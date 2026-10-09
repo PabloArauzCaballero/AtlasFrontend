@@ -351,10 +351,16 @@ await paso('economía', async () => {
   const r = await esperarLlamada(`PUT /customer-onboarding/${customerId}/financial-profile`, 40_000);
   if (!/ 20\d$/.test(r)) throw new Error(`economía rechazada: ${r}`);
 });
-await paso('permisos del teléfono: «ahora no» cierra la sección', async () => {
+await paso('permisos del teléfono: «ahora no» en cada tarjeta cierra la sección', async () => {
   await page.goto(`${BASE}/permisos`, { waitUntil: 'load' });
-  await texto('Ahora no').waitFor({ timeout: 20000 });
-  await boton('Ahora no').first().click();
+  await texto('Ahora no').first().waitFor({ timeout: 20000 });
+  // Un consentimiento por finalidad (APP-12): la ubicación y los contactos se deciden cada uno en su tarjeta.
+  // Si la ubicación ya venía concedida desde el domicilio, su tarjeta no pregunta: sólo se omite lo pendiente.
+  for (const tarjeta of ['permiso-ubicacion', 'permiso-contactos']) {
+    const ahoraNo = page.getByTestId(tarjeta).getByRole('button', { name: 'Ahora no' });
+    if (await ahoraNo.count()) await ahoraNo.click();
+  }
+  await boton('Continuar').first().click();
   await page.waitForTimeout(3000);
   const decision = await esperarLlamada(`POST /customers/${customerId}/privacy/consent-decisions`, 40_000);
   if (!/ 20\d$/.test(decision)) throw new Error(`«ahora no» no quedó registrado: ${decision}`);

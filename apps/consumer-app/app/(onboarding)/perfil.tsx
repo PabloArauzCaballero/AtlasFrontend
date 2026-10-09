@@ -18,7 +18,7 @@ import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { DateField, IconField } from '../../src/ui/form-controls';
 import { bitacora } from '../../src/features/bitacora';
-import { leerLecturaDelCarnet } from '../../src/features/lectura-del-carnet';
+import { borrarLecturaDelCarnet, leerLecturaDelCarnet } from '../../src/features/lectura-del-carnet';
 import { Gap, Screen, useScrollToError } from '../../src/ui/layout';
 import { StepHeader } from '../../src/ui/step-header';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
@@ -82,6 +82,8 @@ export default function PersonalData() {
           birthDate: birthDate || undefined,
         }),
       );
+      // Lo que prometía `lectura-del-carnet.ts` y no hacía nadie (APP-08): confirmado, ya no hace falta.
+      await borrarLecturaDelCarnet();
       await session.refresh();
       router.replace('/(onboarding)/progreso');
     } catch (caught) {
