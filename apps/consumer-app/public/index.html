@@ -9,16 +9,10 @@
       La apariencia que eligió la persona (Perfil › Apariencia), ANTES del primer pintado: si eligió
       oscuro, el documento nace oscuro y no hay destello blanco mientras llega el bundle. La clave y
       los valores son los de `src/theme/preferencia.ts` y los fondos de arranque de `src/theme/temas.ts`.
+      En un archivo aparte, no en línea: la CSP del nginx de la web (`nginx.cabeceras-seguridad.conf`)
+      sólo admite scripts del propio origen. Síncrono a propósito, para que corra antes de pintar.
     -->
-    <script>
-      try {
-        if (localStorage.getItem('atlas.apariencia') === 'oscuro') {
-          document.documentElement.setAttribute('data-apariencia', 'oscuro');
-          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0A0A0B');
-          document.querySelector('meta[name="color-scheme"]').setAttribute('content', 'dark');
-        }
-      } catch (e) {}
-    </script>
+    <script src="/apariencia.js"></script>
     <meta name="description" content="Atlas: compra hoy en los comercios afiliados y paga después, desde el navegador o desde la app." />
     <title>Atlas</title>
     <style>
