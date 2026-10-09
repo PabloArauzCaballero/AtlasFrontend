@@ -85,8 +85,8 @@ export const variables = `
   --g-deep:linear-gradient(145deg,var(--navy),var(--b1) 55%,var(--b3));
   --g-soft:linear-gradient(150deg,rgba(var(--b2-rgb),.08),rgba(var(--b3-rgb),.04));
   /* La tarjeta 3D es un OBJETO: navy en cualquier tema, con la rampa original del escenario de marca. */
-  --card-navy:${color.stage.brand.navy};--card-deep:${color.stage.brand.navyProfundo};--card-b1:${color.stage.brand.b700};
-  --card-accent:${color.stage.brand.b400};--card-ink:${luz.blanco};
+  --card-navy:${color.brand.navy};--card-deep:${color.brand.navyProfundo};--card-b1:${color.brand.b700};
+  --card-accent:${color.fixed.brandOnDark};--card-ink:${luz.blanco};
   --chip-claro:${metal.chip.claro};--chip-medio:${metal.chip.medio};--chip-brillo:${metal.chip.brillo};
   --phone:${color.stage.bg};--phone-frame:${color.stage.bgElevated};
   --display:${SISTEMA_WEB};--display-bold:${SISTEMA_WEB};

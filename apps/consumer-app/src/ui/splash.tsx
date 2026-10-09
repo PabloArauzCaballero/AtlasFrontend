@@ -426,8 +426,8 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
         <Svg width={ESCENA_PX * 2.4} height={ESCENA_PX * 2.4} viewBox="0 0 100 100">
           <Defs>
             <RadialGradient id="arranque-resplandor" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor={color.stage.brand.b400} stopOpacity="0.55" />
-              <Stop offset="0.4" stopColor={color.stage.brand.b500} stopOpacity="0.18" />
+              <Stop offset="0" stopColor={color.stage.brand.b400} stopOpacity={0.55 * color.stage.glow} />
+              <Stop offset="0.4" stopColor={color.stage.brand.b500} stopOpacity={0.18 * color.stage.glow} />
               <Stop offset="1" stopColor={color.stage.brand.b500} stopOpacity="0" />
             </RadialGradient>
           </Defs>
@@ -440,8 +440,8 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
         <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
           <Defs>
             <RadialGradient id="arranque-vineta" cx="50%" cy="50%" r="72%">
-              <Stop offset="0.35" stopColor={color.fixed.black} stopOpacity="0" />
-              <Stop offset="1" stopColor={color.fixed.black} stopOpacity="0.55" />
+              <Stop offset="0.35" stopColor={color.stage.vignette} stopOpacity="0" />
+              <Stop offset="1" stopColor={color.stage.vignette} stopOpacity="0.55" />
             </RadialGradient>
           </Defs>
           <Rect x="0" y="0" width="100" height="100" fill="url(#arranque-vineta)" />
@@ -487,7 +487,7 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
               <Svg width={RAYOS_PX} height={RAYOS_PX} viewBox="0 0 100 100">
                 <Defs>
                   <RadialGradient id="arranque-rayo" cx="50%" cy="50%" r="50%">
-                    <Stop offset="0" stopColor={color.fixed.white} stopOpacity="0.9" />
+                    <Stop offset="0" stopColor={color.stage.glint} stopOpacity="0.9" />
                     <Stop offset="0.25" stopColor={color.stage.brand.b300} stopOpacity="0.55" />
                     <Stop offset="1" stopColor={color.stage.brand.b400} stopOpacity="0" />
                   </RadialGradient>
@@ -509,13 +509,13 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
                   <DegradadosLetraA prefijo="arranque-marca" />
                   {/* La sombra en el suelo: sin ella la letra flota; con ella, esta apoyada en algo. */}
                   <RadialGradient id="arranque-suelo" cx="50%" cy="50%" r="50%">
-                    <Stop offset="0" stopColor={color.stage.brand.b400} stopOpacity="0.45" />
+                    <Stop offset="0" stopColor={color.stage.brand.b400} stopOpacity={0.45 * color.stage.glow} />
                     <Stop offset="1" stopColor={color.stage.brand.b400} stopOpacity="0" />
                   </RadialGradient>
                   <LinearGradient id="arranque-brillo" x1="0" y1="0" x2="1" y2="0">
-                    <Stop offset="0" stopColor={color.fixed.white} stopOpacity="0" />
-                    <Stop offset="0.5" stopColor={color.fixed.white} stopOpacity="0.85" />
-                    <Stop offset="1" stopColor={color.fixed.white} stopOpacity="0" />
+                    <Stop offset="0" stopColor={color.stage.glint} stopOpacity="0" />
+                    <Stop offset="0.5" stopColor={color.stage.glint} stopOpacity="0.85" />
+                    <Stop offset="1" stopColor={color.stage.glint} stopOpacity="0" />
                   </LinearGradient>
                   <ClipPath id="arranque-recorte">
                     <Path d={LETRA} />
@@ -540,7 +540,7 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
                   <Path d={LETRA_A.caraSombra} fill="url(#arranque-marca-sombra)" />
                   <Path
                     d={LETRA_A.filo}
-                    stroke={color.fixed.white}
+                    stroke={color.stage.glint}
                     strokeWidth={0.35}
                     strokeLinecap="round"
                     opacity={0.55}
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
   rotulo: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   // El interletrado base del rotulo ya formado. El resto del recorrido lo pone `translateX`.
   letra: { letterSpacing: 6, textAlign: 'center', color: color.stage.ink, fontFamily: font.brand, fontWeight: undefined },
-  destello: { backgroundColor: color.fixed.white },
+  destello: { backgroundColor: color.stage.flash },
   rayos: {
     position: 'absolute',
     width: RAYOS_PX,
@@ -701,7 +701,7 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     backgroundColor: color.stage.brand.b300,
     shadowColor: color.stage.brand.b400,
-    shadowOpacity: 1,
+    shadowOpacity: color.stage.glow,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 0 },
   },

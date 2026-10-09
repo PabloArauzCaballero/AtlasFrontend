@@ -153,7 +153,7 @@ export function PruebaDeVida({
 
   const quieto = fase === 'tomada';
   // Sobre la imagen en vivo: la menta del escenario (oscuro en los dos temas), no el navy de la accion, que ahi no se ve.
-  const bordeOvalo = quieto ? color.stage.brand.b400 : avance > 0 ? color.stage.brand.b300 : color.camera.guide;
+  const bordeOvalo = quieto ? color.fixed.brandOnDark : avance > 0 ? color.fixed.brandOnDarkSoft : color.camera.guide;
 
   return (
     <View style={styles.pantalla} testID="prueba-de-vida">

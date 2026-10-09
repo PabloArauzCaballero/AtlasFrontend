@@ -1,40 +1,48 @@
 /**
- * Tokens de diseno de ATLAS.
+ * Tokens de diseno.
  *
- * Rediseno 2026-10: sobrio y minimalista, a la manera de las apps de Apple, porque ATLAS es una
- * entidad financiera. Fondo agrupado gris, tarjetas blancas, la tipografia del sistema (SF Pro en
- * iPhone), un solo color de accion y sombras cortas. La identidad navy original sigue entera en el
- * tema `oscuro` (`temas.ts`). El MOVIMIENTO —duraciones, curvas, muelles— no cambio: es el mismo.
+ * Tres capas, y solo la primera es de la marca:
+ *  1. `marca.ts` — el nombre, el color principal, el acento y la tipografia. Cambiar de marca es
+ *     cambiar ESE archivo (procedimiento en `docs/marca-y-temas.md`).
+ *  2. `temas.ts` — los roles (fondo, texto, accion, acento, estado…) calculados desde la marca para
+ *     claro y oscuro, con el contraste corregido por el motor de `color.ts`.
+ *  3. Este archivo — lo que no es color: espacio, radios, tipografia, movimiento, sombras.
+ *
+ * Criterio visual (2026-10): sobrio y minimalista, a la manera de las apps de Apple, porque es una
+ * entidad financiera. El MOVIMIENTO —duraciones, curvas, muelles— es el de siempre: no se toca en un
+ * retoque visual.
  *
  * Regla: ningun componente escribe un color literal. Si un color no esta aqui, no existe.
  */
 
 import { Platform, StyleSheet } from 'react-native';
-import { blanco, marca, negro } from './palette';
-import { type Esquema, type Tema, temas } from './temas';
+import { marca } from './marca';
+import { blanco, negro } from './palette';
+import { leerEsquemaGuardado } from './preferencia';
+import { crearTema, type Esquema, type Tema } from './temas';
 
 /**
- * El esquema ACTIVO. `claro` es el rediseno sobrio estilo Apple; `oscuro`, la identidad navy original.
+ * El esquema ACTIVO: el que eligio la persona en Perfil › Apariencia, o claro si nunca eligio.
  *
- * Es una constante y no un estado porque las pantallas construyen sus estilos con
- * `StyleSheet.create` al cargar el modulo: el tema se decide al arrancar, no a mitad de sesion.
+ * Se decide al arrancar y no cambia a mitad de sesion: las pantallas construyen sus estilos con
+ * `StyleSheet.create` al cargar el modulo. Cambiarlo guarda la eleccion y recarga (`preferencia.ts`).
  */
-export const esquema: Esquema = 'claro';
+export const esquema: Esquema = leerEsquemaGuardado() ?? 'claro';
 
 /**
  * Tokens semanticos de color: lo que las pantallas consumen.
  *
- * El nombre describe el ROL, no el color. Los valores viven en `temas.ts` (roles) y `palette.ts`
- * (valores crudos); ningun otro archivo escribe un color. Ver `__tests__/sin-colores-sueltos.test.ts`.
+ * El nombre describe el ROL, no el color. Ver `__tests__/sin-colores-sueltos.test.ts`.
  */
-export const color: Tema = temas[esquema];
+export const color: Tema = crearTema(esquema);
 
 /** Valores que no son de interfaz sino de OBJETOS ilustrados (trofeos, medallas, el chip dorado). */
 export { metal } from './palette';
 export { ilustracion } from './ilustracion';
 export { objeto } from './objetos';
+export { marca } from './marca';
 export { alpha } from './temas';
-export type { Degradado, Tema } from './temas';
+export type { Degradado, Esquema, Tema } from './temas';
 
 /** Escala de espaciado en multiplos de 4. Evita el "casi alineado". */
 export const space = {
@@ -93,31 +101,38 @@ export const radius = {
  * llevan los dos.
  */
 const SISTEMA = Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }) as string;
+const texto = marca.tipografia.texto;
+const titulares = marca.tipografia.titulares;
 
 export const font = {
-  displaySemi: SISTEMA,
-  displayBold: SISTEMA,
-  displayBlack: SISTEMA,
-  bodyRegular: SISTEMA,
-  bodyMedium: SISTEMA,
-  bodySemi: SISTEMA,
-  bodyBold: SISTEMA,
-  bodyBlack: SISTEMA,
-  /** El logotipo y el escenario de marca: la identidad publicada, en Sora. */
-  brand: 'Sora_800ExtraBold',
-  brandBold: 'Sora_700Bold',
+  displaySemi: titulares?.semi ?? SISTEMA,
+  displayBold: titulares?.negrita ?? SISTEMA,
+  displayBlack: titulares?.negrita ?? SISTEMA,
+  bodyRegular: texto?.regular ?? SISTEMA,
+  bodyMedium: texto?.medio ?? SISTEMA,
+  bodySemi: texto?.semi ?? SISTEMA,
+  bodyBold: texto?.negrita ?? SISTEMA,
+  bodyBlack: texto?.negrita ?? SISTEMA,
+  /** El logotipo escrito y el escenario de marca. */
+  brand: marca.tipografia.logotipo,
+  brandBold: marca.tipografia.logotipo,
 } as const;
 
 /** El grosor de cada `font.*`. Con la fuente del sistema, el peso va aqui y no en el nombre. */
+/*
+  Con una fuente PROPIA el grosor viaja en el nombre de la familia (un archivo por grosor) y el peso va
+  vacio: en Android `fontWeight` sobre una fuente cargada finge la negrita engordando los trazos.
+*/
+const pesoSistema = <P extends '400' | '600' | '700'>(propia: unknown, p: P) => (propia ? undefined : p);
 export const weight = {
-  displaySemi: '600',
-  displayBold: '700',
-  displayBlack: '700',
-  bodyRegular: '400',
-  bodyMedium: '400',
-  bodySemi: '600',
-  bodyBold: '600',
-  bodyBlack: '700',
+  displaySemi: pesoSistema(titulares, '600'),
+  displayBold: pesoSistema(titulares, '700'),
+  displayBlack: pesoSistema(titulares, '700'),
+  bodyRegular: pesoSistema(texto, '400'),
+  bodyMedium: pesoSistema(texto, '400'),
+  bodySemi: pesoSistema(texto, '600'),
+  bodyBold: pesoSistema(texto, '600'),
+  bodyBlack: pesoSistema(texto, '700'),
   brand: undefined,
   brandBold: undefined,
 } as const;
@@ -354,29 +369,30 @@ export const touch = {
 
 type Sombra = { shadowColor: string; shadowOpacity: number; shadowRadius: number; shadowOffset: { width: number; height: number }; elevation: number };
 
+/**
+ * En oscuro una sombra no separa nada (negro sobre casi negro): la tarjeta se separa por TONO, como
+ * en iOS. La sombra queda corta y solo da un poco de peso; el neon del boton se apaga.
+ */
 const sombrasOscuras: Record<'card' | 'brandGlow' | 'sheet' | 'neon' | 'neonAura', Sombra> = {
-  /** Profunda y muy difusa: sobre navy, lo que separa la tarjeta del papel es el TAMANO del desenfoque. */
-  card: { shadowColor: negro, shadowOpacity: 0.55, shadowRadius: 32, shadowOffset: { width: 0, height: 16 }, elevation: 10 },
-  /** Halo de marca bajo la accion principal. UNA por pantalla: si brillan dos, no brilla ninguna. */
-  brandGlow: { shadowColor: marca.b400, shadowOpacity: 0.45, shadowRadius: 22, shadowOffset: { width: 0, height: 10 }, elevation: 10 },
-  sheet: { shadowColor: negro, shadowOpacity: 0.5, shadowRadius: 32, shadowOffset: { width: 0, height: -8 }, elevation: 16 },
-  /** El nucleo y el aura del boton principal «de neon». */
-  neon: { shadowColor: marca.b300, shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
-  neonAura: { shadowColor: marca.b400, shadowOpacity: 0.45, shadowRadius: 16, shadowOffset: { width: 0, height: 0 }, elevation: 0 },
+  card: { shadowColor: negro, shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
+  brandGlow: { shadowColor: negro, shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  sheet: { shadowColor: negro, shadowOpacity: 0.5, shadowRadius: 24, shadowOffset: { width: 0, height: -4 }, elevation: 16 },
+  neon: { shadowColor: negro, shadowOpacity: 0.24, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  neonAura: { shadowColor: negro, shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 }, elevation: 0 },
 };
 
 /**
  * En claro las sombras son CORTAS y casi transparentes, como en iOS: la tarjeta blanca ya se separa
  * del fondo gris por tono, y la sombra solo confirma que esta por encima. Una sombra larga sobre
  * blanco es lo primero que hace que una interfaz se vea «de plantilla». El neon se apaga: un banco
- * no brilla; el boton principal se reconoce por ser el unico navy solido de la pantalla.
+ * no brilla; el boton principal se reconoce por ser el unico solido de color de la pantalla.
  */
 const sombrasClaras: typeof sombrasOscuras = {
-  card: { shadowColor: negro, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
-  brandGlow: { shadowColor: marca.navy, shadowOpacity: 0.16, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  card: { shadowColor: negro, shadowOpacity: 0.04, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  brandGlow: { shadowColor: color.action.primary, shadowOpacity: 0.14, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
   sheet: { shadowColor: negro, shadowOpacity: 0.1, shadowRadius: 24, shadowOffset: { width: 0, height: -4 }, elevation: 12 },
-  neon: { shadowColor: marca.navy, shadowOpacity: 0.14, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
-  neonAura: { shadowColor: marca.navy, shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 }, elevation: 0 },
+  neon: { shadowColor: color.action.primary, shadowOpacity: 0.12, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  neonAura: { shadowColor: color.action.primary, shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 }, elevation: 0 },
 };
 
 export const shadow = esquema === 'claro' ? sombrasClaras : sombrasOscuras;
