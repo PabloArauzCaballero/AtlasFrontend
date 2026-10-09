@@ -89,8 +89,11 @@ Existen y quedan listos para conectar cuando el producto los necesite:
 
 ## Enlaces profundos
 
-El esquema es `atlas://` y el enlace universal `https://app.atlas.bo/pos/...`, declarados en
-`app.json`. Todo enlace profundo debe validar sesión, permisos y existencia del recurso antes de
+El esquema es `atlas://`, declarado en `app.json`. No hay enlace universal: el App Link de Android
+`https://app.atlas.bo/pos/...` se retiró (auditoría 2026-10-09, APP-24) porque no tenía ruta en la
+app —abría `+not-found`— y pedía `autoVerify` sobre un dominio sin `assetlinks.json`. El QR del
+comercio se lee con el escáner de la app (`(tabs)/escanear`). Si vuelve, entra junto con su ruta y
+con el `assetlinks.json` publicado; `__tests__/eas-distribucion.test.ts` lo vigila. Todo enlace profundo debe validar sesión, permisos y existencia del recurso antes de
 mostrar nada; un enlace vencido termina en `/+not-found`, nunca en una pantalla en blanco.
 
 ---

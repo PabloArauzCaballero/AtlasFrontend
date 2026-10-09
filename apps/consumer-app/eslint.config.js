@@ -24,7 +24,7 @@ module.exports = defineConfig([
      * de desarrollo o generar recursos. Sin declarar sus globales, `Buffer` y `process` salian como
      * «no definido» — un fallo del entorno declarado, no del codigo.
      */
-    files: ['tools/**/*.{js,mjs,cjs}', 'app.config.js', 'babel.config.js', 'jest.config.js', 'jest.setup.js'],
+    files: ['tools/**/*.{js,mjs,cjs}', 'app.config.js', 'babel.config.js', 'jest.config.js', 'jest.setup.js', 'jest.env.js'],
     languageOptions: {
       globals: {
         Buffer: 'readonly',

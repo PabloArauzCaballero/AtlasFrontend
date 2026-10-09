@@ -24,6 +24,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { borrarHistorial } from './historial-ubicaciones';
+import { borrarPreferenciaDeRastreo } from './preferencia-rastreo';
 
 const KEY = 'atlas.tracking.context';
 
@@ -56,4 +57,6 @@ export async function borrarContextoDeRastreo(): Promise<void> {
   await AsyncStorage.removeItem(KEY).catch(() => undefined);
   // Quien cierra sesion no deja su rastro en un telefono que puede ser de otro.
   await borrarHistorial();
+  // Y su decision sobre la ubicacion con la app cerrada: el siguiente empieza con la suya.
+  await borrarPreferenciaDeRastreo();
 }

@@ -17,6 +17,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AtlasApiError } from '../api/errors';
 import { verifyPin } from '../api/endpoints/auth';
+import { useSinCapturas } from '../device/sin-capturas';
 import { space, marca } from '../theme/tokens';
 import { BottomSheet } from './help-sheet';
 import { PinField } from './pin-field';
@@ -37,6 +38,8 @@ export function ConfirmarPinSheet({
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [verificando, setVerificando] = useState(false);
+  // Mientras la hoja esta a la vista: sin capturas ni grabaciones del PIN (APP-18).
+  useSinCapturas('confirmar-pin', visible);
 
   // Cada vez que se abre, empieza limpia: un PIN escrito antes no debe quedarse a la vista.
   useEffect(() => {

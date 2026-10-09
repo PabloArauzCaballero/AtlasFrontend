@@ -54,6 +54,7 @@ import { TRUST_IDENTIDAD } from '../../src/features/trust-copy';
 import { TrustCardRemoto } from '../../src/features/use-contenido-remoto';
 import { bitacora } from '../../src/features/bitacora';
 import type { Captura } from '../../src/features/bitacora/tipos';
+import { useSinCapturas } from '../../src/device/sin-capturas';
 
 /** `que` es como se nombra la captura en una frase: «Subiendo el anverso…». */
 const STEPS: { kind: EvidenceKind; title: string; hint: string; facing: 'back' | 'front'; que: string }[] = [
@@ -141,6 +142,8 @@ const dentroDeCincoAnos = (() => {
 })();
 
 export default function Identity() {
+  // PIN, carnet o datos bancarios: sin capturas ni grabaciones de pantalla (APP-18).
+  useSinCapturas('identidad-carnet');
   const router = useRouter();
   const session = useSession();
 

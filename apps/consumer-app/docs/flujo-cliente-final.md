@@ -293,7 +293,8 @@ implementación del store: **las pantallas no cambian**.
    `payment_instruction`, `payment_claim`, `payment_status_resolution`).
 2. Notificaciones push reales: registro de token (`POST /customers/:id/device-tokens` ya existe) y
    enrutamiento a la pantalla correcta.
-3. Enlaces universales para el QR (`https://app.atlas.bo/pos/...`) verificados en ambas tiendas.
+3. Enlaces universales para el QR (`https://app.atlas.bo/pos/...`): hoy NO están declarados (APP-24);
+   volverán con su ruta en la app y su `assetlinks.json` / `apple-app-site-association` publicados.
 4. Verificación de identidad automática contra el proveedor externo, hoy diferida.
 5. E2E móvil sobre app instalada (Maestro o Detox) para los flujos P0.
 6. Fuentes Sora y Manrope empaquetadas; hoy se usa la pila del sistema con los mismos pesos.

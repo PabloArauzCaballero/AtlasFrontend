@@ -28,6 +28,7 @@ import { TarjetaAtlas } from '../../../src/ui/tarjeta-atlas';
 import { MedallaDeRiesgo } from '../../../src/ui/medalla-de-riesgo';
 import { AvatarEditable } from '../../../src/ui/avatar-editable';
 import { SelectorApariencia } from '../../../src/ui/selector-apariencia';
+import { FilaBloqueoLocal, FilaUbicacionDeFondo } from '../../../src/ui/ajustes-de-seguridad';
 import { useProgress } from '../../../src/features/use-progress';
 import {
   AtlasText,
@@ -407,6 +408,9 @@ export default function Profile() {
           subtitle="Con tu PIN actual y un código al correo"
           onPress={() => router.push('/(app)/cambiar-pin')}
         />
+        {/* Sólo en el teléfono: Face ID / huella al volver (APP-13) y la ubicación de fondo (APP-11). */}
+        <FilaBloqueoLocal />
+        <FilaUbicacionDeFondo />
         <Divider inset />
         <ListRow title="Sesión" subtitle={Platform.OS === 'web' ? SESION_GUARDADA_WEB : SESION_GUARDADA_MOVIL} />
       </Card>
