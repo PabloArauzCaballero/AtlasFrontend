@@ -17,6 +17,7 @@
 import { useState } from 'react';
 import { Image, Linking, StyleSheet, View } from 'react-native';
 import type { ContentAction, ContentBullet } from '../api/endpoints/app-content';
+import { accionPermitida } from '../features/accion-de-contenido';
 import { color, press, radius, space, touch } from '../theme/tokens';
 import { Icon, ICON_NAMES, type IconName } from './icons';
 import { PressSurface } from './motion';
@@ -102,7 +103,21 @@ export function ContentActionButton({
   onScreen?: (path: string) => void;
   onTour?: (tourKey: string) => void;
 }) {
-  if (!action) return null;
+  // Sólo `https:` y rutas internas: ver `accion-de-contenido.ts`. Lo demás no pinta botón.
+  const segura = accionPermitida(action);
+  if (!segura) return null;
+  return <BotonDeAccion action={segura} onScreen={onScreen} onTour={onTour} />;
+}
+
+function BotonDeAccion({
+  action,
+  onScreen,
+  onTour,
+}: {
+  action: ContentAction;
+  onScreen?: (path: string) => void;
+  onTour?: (tourKey: string) => void;
+}) {
   if (action.kind === 'screen' && !onScreen) return null;
   if (action.kind === 'tour' && !onTour) return null;
 

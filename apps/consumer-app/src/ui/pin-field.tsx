@@ -20,7 +20,7 @@
  * Poder mirarlo es lo que evita el bloqueo por un dedo torpe.
  */
 import { useRef, useState } from 'react';
-import { Platform, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { bitacora as bitacoraDelAlta, esCampo } from '../features/bitacora/bitacora';
 import { ganchosDeCampo } from '../features/bitacora/ganchos';
 import { color, inputChrome, radius, space } from '../theme/tokens';
@@ -61,6 +61,28 @@ export type PinFieldProps = {
   testID?: string;
   editable?: boolean;
 };
+
+/**
+ * Lo que decide si el sistema puede ver, aprender o guardar lo tecleado. Aparte para poder probarlo.
+ *
+ * - `secureTextEntry` en todas las plataformas mientras sea secreto y no se haya pulsado el ojo.
+ * - Sin `autoComplete` explícito, un PIN no se ofrece al autocompletado (`off` y, en Android,
+ *   `importantForAutofill="no"`). El login sí lo pide (`current-password`): ahí es el gestor de
+ *   contraseñas de la persona quien lo guarda, a propósito. Un código de un solo uso conserva el
+ *   relleno desde el SMS.
+ */
+export function entradaDelPin(input: {
+  secret: boolean;
+  visible: boolean;
+  autoComplete?: PinFieldProps['autoComplete'];
+}): { secureTextEntry: boolean; autoComplete?: PinFieldProps['autoComplete']; importantForAutofill: 'auto' | 'no' } {
+  const autoComplete = input.autoComplete ?? (input.secret ? 'off' : undefined);
+  return {
+    secureTextEntry: input.secret && !input.visible,
+    autoComplete,
+    importantForAutofill: autoComplete && autoComplete !== 'off' ? 'auto' : 'no',
+  };
+}
 
 export function PinField({
   label,
@@ -184,9 +206,15 @@ export function PinField({
           editable={editable}
           autoFocus={autoFocus}
           caretHidden
-          secureTextEntry={secret && !visible && Platform.OS === 'ios'}
+          /*
+            Oculto en TODAS las plataformas (APP-22), no sólo en iOS: en Android un teclado de terceros
+            aprende —o registra— lo que se teclea en un campo normal, y en el navegador un `type=text`
+            lo guarda el autocompletado. Con `secureTextEntry` Android pide la variante de contraseña
+            del teclado numérico y la web pinta `type=password` (el campo es invisible: los puntitos
+            los dibujan las casillas). Ver `entradaDelPin`.
+          */
+          {...entradaDelPin({ secret, visible, autoComplete })}
           textContentType={textContentType}
-          autoComplete={autoComplete}
           onFocus={() => {
             setFocused(true);
             anotar.onFocus();

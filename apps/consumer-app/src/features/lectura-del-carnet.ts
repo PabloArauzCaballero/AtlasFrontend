@@ -12,7 +12,7 @@
  * ## Que se guarda
  *
  * Solo los campos que se van a prellenar: nombres, apellidos y nacimiento. Nada mas, y se borra al
- * confirmar. Un nombre en disco es lo mismo que en cualquier formulario a medio rellenar: es de la
+ * confirmar (`perfil.tsx`) y al cerrar sesion o entrar otro cliente (`session/datos-locales.ts`). Un nombre en disco es lo mismo que en cualquier formulario a medio rellenar: es de la
  * persona que lo esta escribiendo.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';

@@ -24,6 +24,7 @@ import { CARNET_DE_PRUEBA, capturaSimulada, estaDisponible as hayCamaraDePrueba 
 import { hashSensitiveText } from '../../src/device/device';
 import { escanearDocumento, escanerHabilitado } from '../../src/device/escaner-documento';
 import { comprobarCaptura, PROPORCION_CARNET, siguientePendiente } from '../../src/features/captura-del-carnet';
+import { CapturasLocales } from '../../src/features/capturas-locales';
 import {
   esSubidaCancelada,
   leerBase64,
@@ -167,6 +168,27 @@ export default function Identity() {
   /** Al volver de la camara, la pantalla se monta de nuevo: hay que llevarla hasta las capturas. */
   const llevarALasCapturas = useRef(false);
 
+  /*
+    Las fotos de esta visita que hay que borrar del telefono (APP-10): ver `capturas-locales.ts`.
+    `uriVigente` es la foto subida AHORA en cada lamina, para saber cual reemplaza a cual sin
+    depender del estado capturado en el cierre de una subida que tardo.
+  */
+  const capturas = useRef<CapturasLocales | null>(null);
+  capturas.current ??= new CapturasLocales();
+  const uriVigente = useRef<Partial<Record<EvidenceKind, string>>>({});
+  /** El envio del paquete en curso: al salir de la pantalla, las fotos se borran cuando termine. */
+  const envioEnCurso = useRef<Promise<void> | null>(null);
+  useEffect(() => {
+    const locales = capturas.current;
+    return () => {
+      void (envioEnCurso.current ?? Promise.resolve()).finally(() => locales?.borrarTodas());
+    };
+  }, []);
+  const reemplazarCaptura = (kind: EvidenceKind, nueva: string) => {
+    capturas.current?.reemplazar(uriVigente.current[kind], nueva);
+    uriVigente.current[kind] = nueva;
+  };
+
   const subiendo = subida?.vista.fase === 'subiendo';
 
   const activeStep = STEPS.find((step) => step.kind === capturing) ?? null;
@@ -231,6 +253,7 @@ export default function Identity() {
         signal: controlador.signal,
         plazo: plazoDeSubidaMs,
       });
+      reemplazarCaptura(kind, localUri);
       setEvidence((current) => ({ ...current, [kind]: prepared }));
       setEnfocar((anterior) => ({
         clave: siguientePendiente(ORDEN, { ...evidence, [kind]: prepared }, kind),
@@ -264,6 +287,7 @@ export default function Identity() {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
       if (!photo?.uri) throw new Error('CAPTURE_FAILED');
       uri = photo.uri;
+      capturas.current?.anotar(uri);
     } catch (caught) {
       setError(caught);
       return;
@@ -317,6 +341,7 @@ export default function Identity() {
         setCapturing(step.kind);
         return;
       }
+      capturas.current?.anotar(resultado.uri);
       bitacora.captura(que, evidence[step.kind] ? 'repite' : 'toma');
       const comprobacion = comprobarCaptura(resultado);
       if (!comprobacion.ok) {
@@ -359,8 +384,10 @@ export default function Identity() {
   /** Una foto de la prueba de vida: se sube aparte, sin bloquear la pose siguiente. */
   const subirFotoDeVida = async (kind: EvidenceKind, uri: string) => {
     if (!session.customerId) throw new Error('SIN_SESION');
+    capturas.current?.anotar(uri);
     bitacora.captura(CAPTURA_DE[kind], evidence[kind] ? 'repite' : 'toma');
     const prepared = await uploadEvidence({ customerId: session.customerId, kind, localUri: uri, captureSource: 'camera', plazo: plazoDeSubidaMs });
+    reemplazarCaptura(kind, uri);
     setEvidence((current) => ({ ...current, [kind]: prepared }));
   };
 
@@ -452,6 +479,10 @@ export default function Identity() {
 
   const submit = async () => {
     if (!session.customerId || !canSubmit) return;
+    let terminar: () => void = () => undefined;
+    envioEnCurso.current = new Promise<void>((resolver) => {
+      terminar = resolver;
+    });
     setBusy(true);
     setError(null);
     try {
@@ -474,6 +505,8 @@ export default function Identity() {
       // El expediente ya esta guardado: ahora la pregunta. En este orden porque el registro no
       // puede depender de que el motor conteste.
       const verificationId = await arrancarVerificacion(session.customerId);
+      // El paquete y el Motor ya tienen las fotos: ninguna se vuelve a leer. Fuera del telefono (APP-10).
+      capturas.current?.borrarTodas();
       await session.refresh();
 
       /*
@@ -491,6 +524,8 @@ export default function Identity() {
       setError(caught);
     } finally {
       setBusy(false);
+      envioEnCurso.current = null;
+      terminar();
     }
   };
 

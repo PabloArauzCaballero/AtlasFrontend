@@ -6,7 +6,8 @@
  *  - propagar `x-tenant-id`;
  *  - generar `x-idempotency-key` en TODA operacion critica reintentable (R75);
  *  - timeout y cancelacion (nunca una request sin limite);
- *  - refrescar el access token una sola vez ante 401 y reintentar (sin bucles);
+ *  - refrescar el access token una sola vez ante 401 y reintentar (sin bucles), con UN refresco en vuelo
+ *    compartido por los 401 simultaneos;
  *  - repetir, con presupuesto acotado, lo que falla porque el API no estaba (ver `reintentos.ts`);
  *  - NO reintentar de forma infinita ni silenciar errores.
  *
@@ -262,42 +263,85 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
     let refreshed: TokenPair;
     try {
-      const result = await conReintentos(
-        () =>
-          rawRequest<{ accessToken: string; refreshToken: string }>(
-            '/auth/refresh',
-            { method: 'POST', body: { refreshToken: tokens.refreshToken }, anonymous: true },
-            null,
-            // El refresco lleva la correlacion de la operacion que lo provoco: sin eso, en el log
-            // aparece un `/auth/refresh` suelto que no se sabe de donde salio.
-            correlationId,
-            pantalla,
-            null,
-          ),
-        // Un refresco que SI llego no se repite: el backend rota el token y el viejo ya no vale.
-        { repeticion: 'solo-si-no-llego', signal: options.signal },
-      );
-      refreshed = { accessToken: result.data.accessToken, refreshToken: result.data.refreshToken };
+      refreshed = await tokenRenovado(tokens, correlationId, pantalla);
     } catch (refreshError) {
-      /*
-        La sesion se cierra SOLO si el backend rechazo el refresco.
-
-        Antes se cerraba ante cualquier fallo, y un refresco que coincidia con un despliegue —el API
-        sin servir, la pasarela contestando— echaba a la persona de la app con un token de refresco
-        perfectamente valido. Si el API no contesto, el token sigue siendo bueno: se conserva y se
-        informa del fallo, que la siguiente operacion resolvera sola.
-      */
-      if (sesionRechazada(refreshError)) {
-        await tokenStore.clear();
-        onSessionExpired?.();
-        throw error;
-      }
+      // La sesion ya la cerro el refresco compartido (ver `tokenRenovado`): aqui solo se elige que contar.
+      if (refreshError instanceof SesionCaducada || sesionRechazada(refreshError)) throw error;
       throw refreshError;
     }
 
-    await tokenStore.write(refreshed);
     const retried = await intentar(refreshed.accessToken);
     return retried.data;
+  }
+}
+
+/** El almacen ya no tiene sesion: otra operacion la cerro mientras esta esperaba su 401. */
+class SesionCaducada extends Error {}
+
+/*
+  UN refresco en vuelo, compartido por todos los 401 que lleguen a la vez (APP-16).
+
+  Al abrir la portada salen varias peticiones juntas y, con el token de acceso vencido, todas vuelven
+  con 401. Cada una refrescaba por su cuenta con el MISMO token de refresco; el backend lo rota en el
+  primer uso, asi que el segundo refresco recibia «token no valido», `sesionRechazada` vaciaba el
+  almacen y la persona salia de la app sin haber hecho nada. Y si el servidor detecta la reutilizacion,
+  puede revocar la familia entera de sesiones.
+
+  Ahora el primero refresca y los demas esperan su resultado. Quien llega tarde —el refresco ya
+  termino— encuentra en el almacen un par distinto del que uso y reintenta con el, sin refrescar.
+*/
+let refrescoEnVuelo: { de: string; promesa: Promise<TokenPair> } | null = null;
+
+async function tokenRenovado(usados: TokenPair, correlationId: string, pantalla: string | null): Promise<TokenPair> {
+  if (refrescoEnVuelo?.de === usados.refreshToken) return refrescoEnVuelo.promesa;
+  const actuales = (await tokenStore?.read()) ?? null;
+  // Mientras se leia el almacen pudo arrancar el refresco de otro 401.
+  if (refrescoEnVuelo?.de === usados.refreshToken) return refrescoEnVuelo.promesa;
+  if (!actuales) throw new SesionCaducada();
+  if (actuales.refreshToken !== usados.refreshToken) return actuales;
+
+  const promesa = refrescar(usados.refreshToken, correlationId, pantalla).finally(() => {
+    if (refrescoEnVuelo?.promesa === promesa) refrescoEnVuelo = null;
+  });
+  refrescoEnVuelo = { de: usados.refreshToken, promesa };
+  return promesa;
+}
+
+async function refrescar(refreshToken: string, correlationId: string, pantalla: string | null): Promise<TokenPair> {
+  try {
+    const result = await conReintentos(
+      () =>
+        rawRequest<{ accessToken: string; refreshToken: string }>(
+          '/auth/refresh',
+          { method: 'POST', body: { refreshToken }, anonymous: true },
+          null,
+          // El refresco lleva la correlacion de la operacion que lo provoco: sin eso, en el log
+          // aparece un `/auth/refresh` suelto que no se sabe de donde salio.
+          correlationId,
+          pantalla,
+          null,
+        ),
+      // Un refresco que SI llego no se repite: el backend rota el token y el viejo ya no vale.
+      // Sin `signal`: lo comparten varias operaciones y cancelar una no puede dejar sin token a las demas.
+      { repeticion: 'solo-si-no-llego' },
+    );
+    const refreshed = { accessToken: result.data.accessToken, refreshToken: result.data.refreshToken };
+    await tokenStore?.write(refreshed);
+    return refreshed;
+  } catch (refreshError) {
+    /*
+      La sesion se cierra SOLO si el backend rechazo el refresco, y una sola vez aunque esperen varios.
+
+      Antes se cerraba ante cualquier fallo, y un refresco que coincidia con un despliegue —el API
+      sin servir, la pasarela contestando— echaba a la persona de la app con un token de refresco
+      perfectamente valido. Si el API no contesto, el token sigue siendo bueno: se conserva y se
+      informa del fallo, que la siguiente operacion resolvera sola.
+    */
+    if (sesionRechazada(refreshError)) {
+      await tokenStore?.clear();
+      onSessionExpired?.();
+    }
+    throw refreshError;
   }
 }
 

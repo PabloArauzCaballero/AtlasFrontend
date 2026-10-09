@@ -7,9 +7,13 @@
  */
 const RUTA_INTERNA = /^\/[A-Za-z0-9/_\-()[\].?=&]{0,299}$/;
 
+/** Una ruta de la propia app: empieza por una sola `/`, sin `..` ni caracteres fuera de la lista. */
+export function esRutaInterna(enlace: unknown): enlace is string {
+  return typeof enlace === 'string' && RUTA_INTERNA.test(enlace) && !enlace.includes('..') && !enlace.startsWith('//');
+}
+
 export function rutaDelAviso(data: unknown): string | null {
   if (!data || typeof data !== 'object') return null;
   const enlace = (data as Record<string, unknown>).deepLink;
-  if (typeof enlace !== 'string' || !RUTA_INTERNA.test(enlace) || enlace.includes('..') || enlace.startsWith('//')) return null;
-  return enlace;
+  return esRutaInterna(enlace) ? enlace : null;
 }
