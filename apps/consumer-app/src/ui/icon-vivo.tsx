@@ -116,12 +116,18 @@ function Barrido({ size, acento }: { size: number; acento: string }) {
   );
 }
 
-/** El destello de cuatro puntas en la esquina: lo que hace «divertido» a un icono serio. */
+/**
+ * El destello de cuatro puntas en la esquina: lo que hace «divertido» a un icono serio.
+ *
+ * Un DETALLE, no un adorno (Pablo, 2026-10-08: «más sutil todavía»): a un cuarto del icono, medio transparente, pegado a
+ * la esquina y con un latido lento. Antes medía el 42 % del icono, opaco y latiendo cada 1,7 s: competía con el propio
+ * icono y con su etiqueta.
+ */
 function Brillo({ size, acento, retardo }: { size: number; acento: string; retardo: number }) {
-  const lado = Math.round(size * 0.42);
+  const lado = Math.round(size * 0.24);
   return (
-    <View pointerEvents="none" style={[styles.brillo, { top: -size * 0.14, right: -size * 0.14 }]} testID="icono-brillo">
-      <Vivo tipo="late" periodo={1700} retardo={retardo}>
+    <View pointerEvents="none" style={[styles.brillo, { top: -size * 0.04, right: -size * 0.06 }]} testID="icono-brillo">
+      <Vivo tipo="late" periodo={3200} retardo={retardo}>
         <Svg width={lado} height={lado} viewBox="0 0 24 24" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
           <Path d="M12 1c.8 7 2.2 9.2 11 11-8.8 1.8-10.2 4-11 11-.8-7-2.2-9.2-11-11C9.8 10.2 11.2 8 12 1z" fill={acento} />
         </Svg>
@@ -151,4 +157,4 @@ export function VidaDeIcono({ nombre, size, acento, duo, vivo, children }: { nom
   );
 }
 
-const styles = StyleSheet.create({ brillo: { position: 'absolute' } });
+const styles = StyleSheet.create({ brillo: { position: 'absolute', opacity: 0.55 } });

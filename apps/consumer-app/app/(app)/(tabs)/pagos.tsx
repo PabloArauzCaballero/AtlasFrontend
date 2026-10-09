@@ -18,7 +18,7 @@ import { useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { LoanSummary, PaymentCalendar, SpendingByCategory } from '../../../src/api/endpoints/loans';
-import { amountTone, categoryLook, dueCopy, formatAmount } from '../../../src/features/spending-copy';
+import { categoryLook, dueCopy, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useAlVolver } from '../../../src/features/al-volver';
 import { useSession } from '../../../src/session/session';
@@ -443,31 +443,7 @@ export default function Payments() {
         </Card>
       )}
 
-      {/* 6. El resumen por rubro, AL FINAL: es informativo, no accionable. */}
-      {spending && spending.categories.length > 0 ? (
-        <Card padding="tight">
-          <CardHeader icon="grafico" iconTone="neutral" title="Resumen por rubro" />
-          {spending.categories.map((item, index) => {
-            const look = categoryLook(item.category);
-            const tone = amountTone(item);
-            return (
-              <View key={item.category}>
-                {index > 0 ? <Divider inset /> : null}
-                <ListRow
-                  title={look.label}
-                  subtitle={`${item.share.toFixed(0)} % de lo financiado · ${item.loanCount} ${item.loanCount === 1 ? 'compra' : 'compras'}`}
-                  icon={look.icon}
-                  right={
-                    <AtlasText variant="amountMicro" tone={tone === 'danger' ? 'danger' : tone === 'warning' ? 'warning' : 'primary'}>
-                      {formatAmount(item.outstanding, currency)}
-                    </AtlasText>
-                  }
-                />
-              </View>
-            );
-          })}
-        </Card>
-      ) : null}
+      {/* Sin «Resumen por rubro» (Pablo, 2026-10-08): el gasto por rubro ya está en Inicio y aquí sólo alargaba la pantalla. */}
 
       <Gap size="lg" />
     </Screen>

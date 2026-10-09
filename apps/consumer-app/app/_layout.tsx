@@ -22,7 +22,7 @@ import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useAplicarActualizacionAlAbrir } from '../src/device/aplicar-actualizacion';
+import { useArranqueDecidido } from '../src/device/aplicar-actualizacion';
 import { prepararAvisos } from '../src/device/push';
 import { useAbrirAvisoTocado } from '../src/device/push-navigation';
 import { CapaSinConexion } from '../src/ui/sin-conexion';
@@ -73,7 +73,7 @@ function recordarArranque(): void {
   }
 }
 
-function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
+function NavigationTree({ fontsReady, arranqueDecidido }: { fontsReady: boolean; arranqueDecidido: boolean }) {
   const session = useSession();
   const [arranqueVisible, setArranqueVisible] = useState(() => !arranqueYaVisto());
 
@@ -93,9 +93,13 @@ function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
   // Tocar un aviso de campaña abre la pantalla que eligió operaciones; sólo con sesión, o el enlace rebota al ingreso.
   useAbrirAvisoTocado(session.status === 'authenticated');
 
+  /*
+    El splash nativo se queda hasta que se decidió el arranque (`useArranqueDecidido`): si hay una versión nueva, la app
+    se recarga BAJO la imagen quieta y la animación sólo se ve una vez. Ver `src/device/aplicar-actualizacion.ts`.
+  */
   useEffect(() => {
-    void SplashScreen.hideAsync();
-  }, []);
+    if (arranqueDecidido) void SplashScreen.hideAsync();
+  }, [arranqueDecidido]);
 
   return (
     <>
@@ -127,7 +131,7 @@ function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
       <Stack.Screen name="(app)" />
     </Stack>
     <BienvenidaHablada />
-    {arranqueVisible ? (
+    {arranqueVisible && arranqueDecidido ? (
       <AnimatedSplash
         listo={listo}
         onDone={() => {
@@ -141,8 +145,8 @@ function NavigationTree({ fontsReady }: { fontsReady: boolean }) {
 }
 
 export default function RootLayout() {
-  // Pregunta por un update nuevo al abrir y lo aplica ya, sin pedir abrir la app dos veces.
-  useAplicarActualizacionAlAbrir();
+  // Pregunta por un update nuevo al abrir y, si llega a tiempo, recarga ANTES de animar: la animación nunca se duplica.
+  const arranqueDecidido = useArranqueDecidido();
   // `error` se trata como «listo» a proposito: si una fuente no llega, la app arranca con la del
   // sistema. Quedarse en el splash indefinidamente por un problema tipografico dejaria al cliente
   // sin poder pagar su cuota, que importa bastante mas que la fuente.
@@ -200,7 +204,7 @@ export default function RootLayout() {
                   pantalla justo a la mitad de la animacion —que es exactamente cuando se navega—.
                 */}
                 <BrandCutProvider>
-                  <NavigationTree fontsReady={fontsLoaded || Boolean(fontError)} />
+                  <NavigationTree fontsReady={fontsLoaded || Boolean(fontError)} arranqueDecidido={arranqueDecidido} />
                   {/* Sin internet: el logo girando sobre toda la ventana, hasta que vuelve la conexión. */}
                   <CapaSinConexion />
                 </BrandCutProvider>
