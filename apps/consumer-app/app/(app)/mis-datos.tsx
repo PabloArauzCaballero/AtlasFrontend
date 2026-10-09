@@ -32,6 +32,7 @@ import { OrigenDeDatosCard } from '../../src/ui/origen-de-datos-card';
 import { ExtractosSubidosCard } from '../../src/ui/extractos-subidos-card';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, SkeletonLista } from '../../src/ui/primitives';
+import { marca } from '../../src/theme/tokens';
 
 const FINALIDADES: Record<string, string> = {
   device_address_book: 'Agenda del dispositivo',
@@ -80,7 +81,7 @@ export default function MisDatos() {
   if (!verificado) {
     return (
       <Screen>
-        <ScreenHeader title="Mis datos" subtitle="Lo que Atlas sabe de ti." onBack="auto" />
+        <ScreenHeader title="Mis datos" subtitle={`Lo que ${marca.nombre} sabe de ti.`} onBack="auto" />
         <EmptyState icon="candado" title="Confirma tu PIN" detail="Para enseñarte tus datos te pedimos el PIN otra vez." />
         <ConfirmarPinSheet
           visible
@@ -98,7 +99,7 @@ export default function MisDatos() {
   if (cargando) {
     return (
       <Screen>
-        <ScreenHeader title="Mis datos" subtitle="Lo que Atlas sabe de ti." onBack="auto" />
+        <ScreenHeader title="Mis datos" subtitle={`Lo que ${marca.nombre} sabe de ti.`} onBack="auto" />
         <SkeletonLista filas={4} alto={96} pantalla />
       </Screen>
     );
@@ -107,7 +108,7 @@ export default function MisDatos() {
   if (fallo || !datos) {
     return (
       <Screen>
-        <ScreenHeader title="Mis datos" subtitle="Lo que Atlas sabe de ti." onBack="auto" />
+        <ScreenHeader title="Mis datos" subtitle={`Lo que ${marca.nombre} sabe de ti.`} onBack="auto" />
         <ErrorState title="No pudimos cargar tus datos" detail="Revisa tu conexión y vuelve a intentar." onRetry={() => void cargar()} />
       </Screen>
     );
@@ -122,7 +123,7 @@ export default function MisDatos() {
 
   return (
     <Screen>
-      <ScreenHeader title="Mis datos" subtitle="Lo que Atlas sabe de ti." onBack="auto" />
+      <ScreenHeader title="Mis datos" subtitle={`Lo que ${marca.nombre} sabe de ti.`} onBack="auto" />
 
       {/*
         Tu nivel y por qué: el puntaje también es un dato que Atlas tiene de la persona. Se muestra aquí con su

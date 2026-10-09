@@ -13,7 +13,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert, StyleSheet, View } from 'react-native';
 import * as creditLineApi from '../api/endpoints/credit-line';
 import { descargarExtracto, resumenDeExtracto, subidoEl, tonoDeExtracto } from '../features/extractos-subidos';
-import { space } from '../theme/tokens';
+import { space, marca } from '../theme/tokens';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, EmptyState, ErrorState, SkeletonLista } from './primitives';
 
 type Estado =
@@ -64,7 +64,7 @@ export function ExtractosSubidosCard({ customerId }: { customerId: string }) {
         <EmptyState
           icon="documento"
           title="Todavía no subiste ningún extracto"
-          detail="Con tu extracto bancario Atlas mide lo que de verdad puedes pagar al mes y recalcula tu línea."
+          detail={`Con tu extracto bancario ${marca.nombre} mide lo que de verdad puedes pagar al mes y recalcula tu línea.`}
           action={<Button label="Subir mi extracto" variant="secondary" onPress={() => router.push('/(app)/extracto-bancario')} />}
         />
       ) : (
@@ -92,7 +92,7 @@ export function ExtractosSubidosCard({ customerId }: { customerId: string }) {
               />
             ) : (
               <AtlasText variant="caption" tone="tertiary">
-                El archivo ya no está guardado en Atlas, así que no se puede descargar.
+                El archivo ya no está guardado en {marca.nombre}, así que no se puede descargar.
               </AtlasText>
             )}
           </View>

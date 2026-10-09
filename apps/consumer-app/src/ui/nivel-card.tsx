@@ -13,7 +13,7 @@ import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
 import { COMO_SE_GANAN, filasDeMisPuntos } from '../features/puntaje-explicado';
 import { desdeDelNivel, formatoPuntos, fraseDeLoQueFalta, iconoDeEscalon, idDeEscalon, nivelPorPuntos, porcentajeDeBarra } from '../features/nivel';
-import { color, radius, space, stroke } from '../theme/tokens';
+import { color, radius, space, stroke, marca } from '../theme/tokens';
 import { BotonInfo, InfoSheet } from './help-sheet';
 import { Icon } from './icons';
 import { Vivo } from './motion';
@@ -33,7 +33,7 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
   return (
     <View
       style={styles.tarjeta}
-      accessibilityLabel={`Tu nivel Atlas: ${level.label}, nivel ${level.index} de ${level.of}, ${formatoPuntos(level.points)} ${puntos} de experiencia. ${fraseDeLoQueFalta(nivel)}`}
+      accessibilityLabel={`Tu nivel ${marca.nombre}: ${level.label}, nivel ${level.index} de ${level.of}, ${formatoPuntos(level.points)} ${puntos} de experiencia. ${fraseDeLoQueFalta(nivel)}`}
       testID="nivel-card"
     >
       {/*
@@ -149,7 +149,7 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
           <Divider />
           <AtlasText variant="bodyStrong">Puntos no es lo mismo que calificación</AtlasText>
           <AtlasText variant="body" tone="secondary">
-            Los puntos miden cuánto usas Atlas. Qué tan buen pagador eres lo dice tu calificación de 1 a 100, que sube pagando a
+            Los puntos miden cuánto usas {marca.nombre}. Qué tan buen pagador eres lo dice tu calificación de 1 a 100, que sube pagando a
             tiempo y es la que cuenta para tu crédito.
           </AtlasText>
       </InfoSheet>

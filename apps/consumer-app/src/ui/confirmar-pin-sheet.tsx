@@ -17,7 +17,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { AtlasApiError } from '../api/errors';
 import { verifyPin } from '../api/endpoints/auth';
-import { space } from '../theme/tokens';
+import { space, marca } from '../theme/tokens';
 import { BottomSheet } from './help-sheet';
 import { PinField } from './pin-field';
 import { AtlasText, Button, Cargando } from './primitives';
@@ -86,7 +86,7 @@ export function ConfirmarPinSheet({
           textContentType="password"
           onComplete={(completo) => void comprobar(completo)}
           error={error}
-          ayuda="Los cuatro dígitos con los que entras a la app. Nadie de Atlas te los pide por mensaje o llamada."
+          ayuda={`Los cuatro dígitos con los que entras a la app. Nadie de ${marca.nombre} te los pide por mensaje o llamada.`}
         />
         {verificando ? <Cargando texto="Comprobando…" /> : null}
         <Button label="Cancelar" icon="cerrar" variant="ghost" onPress={onClose} disabled={verificando} />

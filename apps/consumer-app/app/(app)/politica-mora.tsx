@@ -14,7 +14,7 @@
 import { useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useDelinquencyPolicy } from '../../src/features/use-credit-book';
-import { color, radius, space } from '../../src/theme/tokens';
+import { color, radius, space, marca } from '../../src/theme/tokens';
 import { Appear } from '../../src/ui/motion';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Badge, Card, CardHeader, ErrorState, Overline, Skeleton } from '../../src/ui/primitives';
@@ -105,7 +105,7 @@ export default function DelinquencyPolicyScreen() {
       <ScreenHeader title={policy.title} onBack="auto" />
       <View style={styles.metaRow}>
         <Badge label={`Versión ${policy.versionCode}`} tone="neutral" />
-        <Badge label={policy.source.kind === 'regulatorio' ? 'Normativa' : 'Política de Atlas'} tone="info" />
+        <Badge label={policy.source.kind === 'regulatorio' ? 'Normativa' : `Política de ${marca.nombre}`} tone="info" />
       </View>
       <AtlasText variant="caption" tone="tertiary">
         Vigente desde {new Date(`${policy.effectiveFrom}T00:00:00`).toLocaleDateString('es-BO')}

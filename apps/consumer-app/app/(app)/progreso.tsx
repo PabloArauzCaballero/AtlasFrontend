@@ -17,7 +17,7 @@
  *    nadie ve una pantalla vacía que parezca un fallo.
  */
 import { StyleSheet, View } from 'react-native';
-import { space } from '../../src/theme/tokens';
+import { space, marca } from '../../src/theme/tokens';
 import { useState } from 'react';
 import { useCreditBook } from '../../src/features/use-credit-book';
 import { useAlVolver } from '../../src/features/al-volver';
@@ -51,7 +51,7 @@ export default function Progreso() {
   if (fase === 'cargando') {
     return (
       <Screen>
-        <ScreenHeader title="Tu nivel Atlas" subtitle="Cómo subir y qué te falta." onBack="auto" />
+        <ScreenHeader title={`Tu nivel ${marca.nombre}`} subtitle="Cómo subir y qué te falta." onBack="auto" />
         <SkeletonLista filas={4} alto={110} pantalla />
       </Screen>
     );
@@ -59,7 +59,7 @@ export default function Progreso() {
   if (fase === 'fallo') {
     return (
       <Screen>
-        <ScreenHeader title="Tu nivel Atlas" subtitle="Cómo subir y qué te falta." onBack="auto" />
+        <ScreenHeader title={`Tu nivel ${marca.nombre}`} subtitle="Cómo subir y qué te falta." onBack="auto" />
         <ErrorState title="No pudimos cargar tu nivel" detail="Revisa tu conexión y vuelve a intentar." onRetry={() => void recargar()} />
       </Screen>
     );
@@ -67,7 +67,7 @@ export default function Progreso() {
 
   return (
     <Screen onRefresh={() => void recargar()}>
-      <ScreenHeader title="Tu nivel Atlas" subtitle="Cómo subir y qué te falta." onBack="auto" />
+      <ScreenHeader title={`Tu nivel ${marca.nombre}`} subtitle="Cómo subir y qué te falta." onBack="auto" />
 
       <ChipBar>
         {PESTANAS.map((p) => (

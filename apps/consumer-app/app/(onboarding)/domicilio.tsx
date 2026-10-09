@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
 import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
-import { color, space } from '../../src/theme/tokens';
+import { color, space, marca } from '../../src/theme/tokens';
 import { firstBlocker } from '../../src/ui/blocked';
 import { Icon } from '../../src/ui/icons';
 import { IconField, SelectField } from '../../src/ui/form-controls';
@@ -153,7 +153,7 @@ export default function Address() {
     new Promise<void>((resolver) => {
       const aviso =
         Platform.OS === 'android'
-          ? 'Para registrar tu ubicación también con la app cerrada, en la siguiente pantalla elige «Permitir todo el tiempo» y vuelve a Atlas.'
+          ? `Para registrar tu ubicación también con la app cerrada, en la siguiente pantalla elige «Permitir todo el tiempo» y vuelve a ${marca.nombre}.`
           : 'Para registrar tu ubicación también con la app cerrada, elige «Permitir siempre» cuando el teléfono te lo pregunte.';
       Alert.alert('Ubicación siempre', aviso, [
         { text: 'Ahora no', style: 'cancel', onPress: () => resolver() },

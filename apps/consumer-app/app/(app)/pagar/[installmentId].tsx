@@ -37,7 +37,7 @@ import {
 import { subirComprobante } from '../../../src/features/comprobante-de-pago';
 import { formatAmount } from '../../../src/features/spending-copy';
 import { useSession } from '../../../src/session/session';
-import { color, radius, space } from '../../../src/theme/tokens';
+import { color, radius, space, marca } from '../../../src/theme/tokens';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, KeyValue, Overline, Skeleton } from '../../../src/ui/primitives';
@@ -56,7 +56,7 @@ const SIN_QR: Record<string, { titulo: string; detalle: string }> = {
   /* El comercio ya lo subió; falta que Atlas lo apruebe. Sólo un QR aprobado se enseña aquí. */
   PARTNER_PAYMENT_QR_PENDING_REVIEW: {
     titulo: 'El QR del comercio está pendiente de aprobación',
-    detalle: 'El comercio ya lo subió y Atlas lo está revisando. Vuelve en un rato: tu cuota sigue esperando, no se pierde.',
+    detalle: `El comercio ya lo subió y ${marca.nombre} lo está revisando. Vuelve en un rato: tu cuota sigue esperando, no se pierde.`,
   },
   PAYMENT_QR_OBJECT_MISSING: {
     titulo: 'No pudimos recuperar el QR del comercio',
@@ -320,7 +320,7 @@ export default function PayInstallmentScreen() {
 
       <Gap size="sm" />
       <AtlasText variant="caption" tone="tertiary">
-        Atlas nunca recibe este dinero: va directo a la cuenta de {instruction.merchant?.displayName ?? 'tu comercio'}.
+        {marca.nombre} nunca recibe este dinero: va directo a la cuenta de {instruction.merchant?.displayName ?? 'tu comercio'}.
       </AtlasText>
     </Screen>
   );

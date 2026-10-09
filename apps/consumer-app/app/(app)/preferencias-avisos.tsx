@@ -29,7 +29,7 @@ import { describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
 import { avisoSinEmisor } from '../../src/features/avisos-copy';
 import { activarAvisos, estadoAvisos, type EstadoAvisos } from '../../src/device/push';
-import { space, touch } from '../../src/theme/tokens';
+import { space, touch, marca } from '../../src/theme/tokens';
 import type { IconName } from '../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Switch } from '../../src/ui/fields';
@@ -164,7 +164,7 @@ export default function PreferenciasAvisos() {
       {avisos === 'denegado' ? (
         <ErrorState
           title="Los avisos están desactivados en tu teléfono"
-          detail="Aunque los enciendas aquí, tu teléfono no los va a mostrar. Actívalos para Atlas en los ajustes del sistema."
+          detail={`Aunque los enciendas aquí, tu teléfono no los va a mostrar. Actívalos para ${marca.nombre} en los ajustes del sistema.`}
         />
       ) : avisos === 'no-disponible' && Platform.OS === 'web' ? (
         /* El navegador no recibe avisos de Atlas; se dice tal cual, sin un interruptor que no haga nada. */

@@ -27,7 +27,7 @@ import { POS_QRS } from '../../../src/sandbox/fixtures';
 import { useSession } from '../../../src/session/session';
 import { avisoYaEnviado, submitDownPayment, submitPaymentClaim } from '../../../src/api/endpoints/payment-claims';
 import { subirComprobante } from '../../../src/features/comprobante-de-pago';
-import { color, radius, space } from '../../../src/theme/tokens';
+import { color, radius, space, marca } from '../../../src/theme/tokens';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Cargando, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, Overline, Skeleton } from '../../../src/ui/primitives';
@@ -389,7 +389,7 @@ export default function PaymentScreen() {
 
       <Gap size="sm" />
       <AtlasText variant="caption" tone="tertiary">
-        Atlas nunca recibe este dinero: va directo a la cuenta de {order.context.tradeName}.
+        {marca.nombre} nunca recibe este dinero: va directo a la cuenta de {order.context.tradeName}.
       </AtlasText>
     </Screen>
   );

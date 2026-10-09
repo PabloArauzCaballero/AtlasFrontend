@@ -5,26 +5,30 @@
  * importarse en círculo: `brand.tsx` usa `AtlasText` de `primitives.tsx`.
  */
 import { LinearGradient, Stop } from 'react-native-svg';
-import { color } from '../theme/tokens';
+import { color, marca } from '../theme/tokens';
 
 /**
- * La geometria de la «A», en unidades de un `viewBox` de 48 x 48. La leen la marca de aqui y la
- * secuencia de arranque (`splash.tsx`), que la dibuja por partes.
+ * La geometria del SIMBOLO de la marca, por piezas. Sale de `theme/marca.ts › simbolo`: este archivo no
+ * dibuja ninguna forma propia. Los nombres (`caraLuz`, `travesano`…) son los de la «A» de Atlas, la
+ * primera marca; con otra marca, cada pieza es la que `marca.ts` declare.
  *
  * La letra se parte por su eje en dos caras: la izquierda recibe la luz y la derecha queda en
  * sombra. Es lo que la saca del plano. Con un solo degradado era una silueta recortada en papel, y
  * junto al rotulo se leia como un icono de sistema, no como una marca.
  */
 export const LETRA_A = {
-  silueta: 'M24 5 L43 43 H34 L24 21 L14 43 H5 Z',
-  caraLuz: 'M24 5 L24 21 L14 43 H5 Z',
-  caraSombra: 'M24 5 L43 43 H34 L24 21 Z',
-  travesano: 'M17.5 31 H30.5 L34 38 H14 Z',
+  silueta: marca.simbolo.silueta,
+  caraLuz: marca.simbolo.luz,
+  caraSombra: marca.simbolo.sombra,
+  travesano: marca.simbolo.detalle,
   /** El filo que recibe la luz: el borde exterior de la cara izquierda. */
-  filo: 'M5 43 L24 5',
+  filo: marca.simbolo.filo,
   /** El canto superior del travesano. */
-  cantoTravesano: 'M17.5 31 H30.5',
+  cantoTravesano: marca.simbolo.cantoDetalle,
 } as const;
+
+/** El `viewBox` del simbolo de la marca. */
+export const LIENZO_SIMBOLO = `0 0 ${marca.simbolo.lienzo} ${marca.simbolo.lienzo}`;
 
 /**
  * Los degradados de las caras. `prefijo` hace unicos los `id`: en la web todos los SVG comparten

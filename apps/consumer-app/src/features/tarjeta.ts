@@ -6,8 +6,9 @@
  * espere dinero de un color.
  */
 import type { CardTheme, CardTier, CardView } from '../api/endpoints/credit-line';
+import { marca } from '../theme/tokens';
 
-export const AVISO_SIN_LIMITE = 'La tarjeta es tu estatus en Atlas: no cambia tu límite de crédito.';
+export const AVISO_SIN_LIMITE = `La tarjeta es tu estatus en ${marca.nombre}: no cambia tu límite de crédito.`;
 
 const fecha = (iso: string) =>
   new Date(iso).toLocaleDateString('es-BO', {
@@ -20,7 +21,7 @@ const fecha = (iso: string) =>
 export function fraseDeOrigen(card: CardView, nivelLabel: string): string {
   if (card.source === 'AUTOMATICA') return `La ganaste por tu nivel ${nivelLabel}. Si subes de nivel, cambia sola.`;
   const hasta = card.manual?.expiresAt ? `hasta el ${fecha(card.manual.expiresAt)}` : 'sin fecha de vencimiento';
-  return `Atlas te la dio ${hasta}. Tu nivel ${nivelLabel} te corresponde la ${card.automatic.label}.`;
+  return `${marca.nombre} te la dio ${hasta}. Tu nivel ${nivelLabel} te corresponde la ${card.automatic.label}.`;
 }
 
 /** La siguiente tarjeta del escalón y qué nivel la desbloquea; null en la última. */

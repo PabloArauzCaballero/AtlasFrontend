@@ -40,6 +40,7 @@
  * (`GET /consent-documents/active`) en vez de vivir en el bundle.
  */
 import type { TrustItem } from '../ui/trust-card';
+import { marca } from '../theme/tokens';
 
 /*
   Etiquetas compartidas. Repetir la misma promesa con dos redacciones —«no se comparte con el
@@ -53,7 +54,7 @@ const NO_SE_GUARDA = { icon: 'escudo', label: 'No se guarda' } as const;
   depende de su configuracion, no de este codigo, asi que NO se promete: solo el trayecto.
 */
 const CONEXION_SEGURA = { icon: 'candado', label: 'Viaja por conexión segura' } as const;
-const SOLO_ATLAS = { icon: 'ojo', label: 'Solo Atlas' } as const;
+const SOLO_ATLAS = { icon: 'ojo', label: `Solo ${marca.nombre}` } as const;
 const NUNCA_AL_COMERCIO = { icon: 'comercio', label: 'Nunca al comercio' } as const;
 
 /**

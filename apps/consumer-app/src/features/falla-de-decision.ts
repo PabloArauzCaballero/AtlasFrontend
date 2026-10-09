@@ -1,3 +1,4 @@
+import { marca } from '../theme/tokens';
 /**
  * Qué decirle a quien intentó comprar cuando el crédito no se pudo evaluar.
  *
@@ -17,13 +18,13 @@ export function explicarFallaDeDecision(codigo: string): ExplicacionDeFalla {
       return {
         titulo: 'Este monto no tiene un crédito disponible',
         detalle:
-          'Por ahora ningún producto de crédito de Atlas admite la parte financiada de esta compra. Reintentar no lo cambia: prueba con otro monto o avisa al equipo de Atlas. Tu compra sigue abierta y nadie la rechazó.',
+          `Por ahora ningún producto de crédito de ${marca.nombre} admite la parte financiada de esta compra. Reintentar no lo cambia: prueba con otro monto o avisa al equipo de ${marca.nombre}. Tu compra sigue abierta y nadie la rechazó.`,
       };
     case 'CREDIT_APPLICATION_ALREADY_OPEN':
       return {
         titulo: 'Ya tienes una solicitud en curso',
         detalle:
-          'Atlas está revisando una solicitud de crédito tuya y solo puede haber una a la vez. Reintentar no lo cambia: espera su respuesta en Pagos o escríbenos desde Ayuda. Esta compra sigue abierta y nadie la rechazó.',
+          `${marca.nombre} está revisando una solicitud de crédito tuya y solo puede haber una a la vez. Reintentar no lo cambia: espera su respuesta en Pagos o escríbenos desde Ayuda. Esta compra sigue abierta y nadie la rechazó.`,
       };
     case 'CREDIT_PRODUCTS_UNAVAILABLE':
       return {

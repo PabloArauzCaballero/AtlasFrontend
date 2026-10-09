@@ -43,7 +43,7 @@ import {
 import { secureTokenStore } from '../session/token-storage';
 import { anotarEnHistorial } from './historial-ubicaciones';
 import { leerContextoDeRastreo, type ContextoDeRastreo } from './tracking-context';
-import { color } from '../theme/tokens';
+import { color, marca } from '../theme/tokens';
 
 /** El nombre con el que el sistema recuerda la tarea. Cambiarlo deja huerfano el rastreo instalado. */
 export const TAREA_UBICACION = 'atlas-location-tracking';
@@ -222,7 +222,7 @@ export async function iniciarRastreoEnSegundoPlano(): Promise<boolean> {
         siempre que la app esta midiendo es, ademas, lo unico honesto.
       */
       foregroundService: {
-        notificationTitle: 'Atlas está activo',
+        notificationTitle: `${marca.nombre} está activo`,
         notificationBody: 'Registrando tu ubicación según los permisos que aceptaste.',
         notificationColor: color.brand.navy,
       },

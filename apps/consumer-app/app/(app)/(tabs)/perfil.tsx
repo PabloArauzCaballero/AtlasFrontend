@@ -44,7 +44,7 @@ import {
 } from '../../../src/ui/primitives';
 import { DelinquencyImpact } from '../../../src/ui/scoring-panel';
 import { useCreditBook } from '../../../src/features/use-credit-book';
-import { space } from '../../../src/theme/tokens';
+import { space, marca } from '../../../src/theme/tokens';
 
 export default function Profile() {
   const router = useRouter();
@@ -331,7 +331,7 @@ export default function Profile() {
         <ListRow
           icon="lista"
           title="Mis compras"
-          subtitle="Todo lo que compraste con Atlas, también lo que ya pagaste"
+          subtitle={`Todo lo que compraste con ${marca.nombre}, también lo que ya pagaste`}
           onPress={() => router.push('/(app)/compras')}
           accessibilityHint="Abrir el historial de tus compras"
         />
@@ -423,7 +423,7 @@ export default function Profile() {
         <ListRow
           icon="ayuda"
           title="Preguntas frecuentes"
-          subtitle="Cómo funciona Atlas, cómo se calcula tu línea y qué pasa si te atrasas"
+          subtitle={`Cómo funciona ${marca.nombre}, cómo se calcula tu línea y qué pasa si te atrasas`}
           onPress={() => router.push('/(app)/ayuda')}
           accessibilityHint="Abrir las preguntas frecuentes"
         />
@@ -465,7 +465,7 @@ export default function Profile() {
           subtitle={resumenDeVersion(versionApp)}
           onPress={() => {
             const texto = textoParaSoporte(versionApp);
-            Alert.alert('Versión de Atlas', texto, [
+            Alert.alert(`Versión de ${marca.nombre}`, texto, [
               { text: 'Cerrar', style: 'cancel' },
               { text: 'Copiar', onPress: () => void Clipboard.setStringAsync(texto) },
             ]);

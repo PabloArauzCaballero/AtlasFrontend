@@ -10,6 +10,7 @@ import { readAccessToken } from '../api/client';
 import { apiConfig } from '../api/config';
 import type { BankStatementArchiveItem } from '../api/endpoints/credit-line';
 import { descargarConSesion, guardarEnNavegador } from '../device/archivos';
+import { marca } from '../theme/tokens';
 
 export type DescargaDeExtracto = { ok: true } | { ok: false; reason: string };
 
@@ -52,7 +53,7 @@ export function tonoDeExtracto(status: BankStatementArchiveItem['status']): 'suc
  * saber que el archivo ya no se guarda, o reintentar.
  */
 export async function descargarExtracto(customerId: string, extracto: Pick<BankStatementArchiveItem, 'reviewId' | 'file'>): Promise<DescargaDeExtracto> {
-  if (!extracto.file.available) return { ok: false, reason: 'Este archivo ya no está guardado en Atlas.' };
+  if (!extracto.file.available) return { ok: false, reason: `Este archivo ya no está guardado en ${marca.nombre}.` };
   try {
     const token = await readAccessToken();
     if (!token) return { ok: false, reason: 'Tu sesión expiró. Vuelve a ingresar.' };
@@ -73,7 +74,7 @@ export async function descargarExtracto(customerId: string, extracto: Pick<BankS
   } catch (error) {
     // `descargarConSesion` dice el código en el navegador; un 404 es «ya no está», no «inténtalo otra vez».
     if (error instanceof Error && error.message.includes('404')) {
-      return { ok: false, reason: 'Este archivo ya no está guardado en Atlas.' };
+      return { ok: false, reason: `Este archivo ya no está guardado en ${marca.nombre}.` };
     }
     return { ok: false, reason: 'No pudimos descargar tu extracto. Inténtalo de nuevo.' };
   }

@@ -10,7 +10,7 @@ import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
 import { formatMoney } from '../../../src/domain/money';
 import { useSandbox } from '../../../src/sandbox/store';
 import { useSession } from '../../../src/session/session';
-import { color, radius, space } from '../../../src/theme/tokens';
+import { color, radius, space, marca } from '../../../src/theme/tokens';
 import { AtlasMark } from '../../../src/ui/brand';
 import { Gap, Screen } from '../../../src/ui/layout';
 import {
@@ -148,18 +148,18 @@ export default function Home() {
           <AtlasText variant="caption" tone="secondary">
             Hola{firstName ? `, ${firstName}` : ''}
           </AtlasText>
-          <AtlasText variant="h1">Tu línea Atlas</AtlasText>
+          <AtlasText variant="h1">Tu línea {marca.nombre}</AtlasText>
         </View>
         {/* El botón de la marca: abre «Conoce Atlas», las pantallas de presentación de antes (Pablo, 2026-10-08). */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Conoce Atlas"
+          accessibilityLabel={`Conoce ${marca.nombre}`}
           onPress={() => router.push('/(app)/conoce-atlas')}
           style={({ pressed }) => [styles.botonAtlas, pressed && styles.botonAtlasPulsado]}
           testID="inicio-conoce-atlas"
         >
           <AtlasMark size={22} />
-          <AtlasText variant="captionStrong">Atlas</AtlasText>
+          <AtlasText variant="captionStrong">{marca.nombre}</AtlasText>
         </Pressable>
       </View>
 
@@ -380,7 +380,7 @@ export default function Home() {
         <EmptyState
           icon="billetera"
           title="Todavía no tienes compras"
-          detail="Cuando compres en un comercio Atlas, aquí verás el detalle y tus cuotas."
+          detail={`Cuando compres en un comercio ${marca.nombre}, aquí verás el detalle y tus cuotas.`}
           action={<Button label="Escanear un QR" variant="secondary" onPress={() => router.push('/(app)/(tabs)/escanear')} />}
         />
       ) : (

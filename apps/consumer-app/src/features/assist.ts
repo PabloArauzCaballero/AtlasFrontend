@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import * as assistApi from '../api/endpoints/assist';
 import { nuevoUuid } from '../lib/criptografia';
 import { AtlasApiError } from '../api/errors';
+import { marca } from '../theme/tokens';
 
 /** Cuánto se espera cuando el servidor dice «la misma consulta sigue en curso» (409). */
 const ESPERA_EN_CURSO_MS = 2_000;
@@ -31,7 +32,7 @@ const INTENTOS_EN_CURSO = 5;
  * contestar— y existen para que la primera pantalla no sea un campo en blanco frente a un robot.
  */
 export const PREGUNTAS_FRECUENTES = [
-  '¿Qué es Atlas y cómo funciona?',
+  `¿Qué es ${marca.nombre} y cómo funciona?`,
   '¿Cómo compro con QR en un comercio?',
   '¿Cómo pago una cuota?',
 ] as const;

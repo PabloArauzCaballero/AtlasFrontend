@@ -1,3 +1,4 @@
+import { marca } from '../theme/tokens';
 /**
  * El texto de la compra en demostracion.
  *
@@ -15,4 +16,4 @@ export const AVISO_DEMOSTRACION =
 
 /** Debajo de cualquier desglose de cuotas de la simulacion. */
 export const AVISO_PLAN_SIMULADO =
-  'Pagas el 60 % directo al comercio y financias el 40 % con Atlas. El plazo, las cuotas y la tasa definitivos los fija Atlas al aprobar tu solicitud, y los ves en la pantalla de tu crédito.';
+  `Pagas el 60 % directo al comercio y financias el 40 % con ${marca.nombre}. El plazo, las cuotas y la tasa definitivos los fija ${marca.nombre} al aprobar tu solicitud, y los ves en la pantalla de tu crédito.`;

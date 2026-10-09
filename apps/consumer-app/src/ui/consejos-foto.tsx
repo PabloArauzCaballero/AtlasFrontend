@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     borderColor: color.border.subtle,
     borderTopColor: color.surface.edge,
   },
-  toggleAbierto: { borderColor: color.feedbackBorder.brand },
+  toggleAbierto: { borderColor: color.accent.border },
   toggleApretado: { opacity: 0.85 },
   chip: {
     width: 36,

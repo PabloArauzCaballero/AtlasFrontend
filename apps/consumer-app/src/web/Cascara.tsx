@@ -6,11 +6,12 @@
  * derecha, y un pie sobrio. Sólo web y sólo desde 600 px: por debajo, las pestañas del teléfono.
  * El aspecto entero vive en `estilo.ts` (`.nav`, `.pie`).
  */
+import { LETRA_A, LIENZO_SIMBOLO } from '../ui/marca-letra';
 import { usePathname, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useSession } from '../session/session';
-import { color } from '../theme/tokens';
+import { color, marca } from '../theme/tokens';
 
 const DESTINOS = [
   { href: '/', etiqueta: 'Inicio' },
@@ -69,7 +70,7 @@ export function BarraSuperior() {
     <header className="nav" role="banner">
       <div className="nav__inner">
         <a href="/" className="brand" onClick={ir('/')} aria-label="Atlas — inicio">
-          <svg width="34" height="34" viewBox="0 0 48 48" aria-hidden="true">
+          <svg width="34" height="34" viewBox={LIENZO_SIMBOLO} aria-hidden="true">
             <defs>
               <linearGradient id="nav-marca" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0" stopColor={color.brand.b500} />
@@ -77,10 +78,10 @@ export function BarraSuperior() {
                 <stop offset="1" stopColor={color.brand.b300} />
               </linearGradient>
             </defs>
-            <path d="M24 5 L43 43 H34 L24 21 L14 43 H5 Z" fill="url(#nav-marca)" />
-            <path d="M17.5 31 H30.5 L34 38 H14 Z" fill={color.brand.b900} opacity=".55" />
+            <path d={LETRA_A.silueta} fill="url(#nav-marca)" />
+            <path d={LETRA_A.travesano} fill={color.brand.b900} opacity=".55" />
           </svg>
-          <span>Atlas</span>
+          <span>{marca.nombre}</span>
         </a>
 
         <nav className="nav__menu" ref={menu} aria-label="Secciones">

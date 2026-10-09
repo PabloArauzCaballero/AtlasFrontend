@@ -36,7 +36,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { alpha, color, luz } from '../theme/tokens';
+import { alpha, brillo, color, luz } from '../theme/tokens';
 
 /** Un ciclo completo: barrido + reposo. */
 export const CICLO_MS = 3800;
@@ -169,7 +169,7 @@ export function BrilloDeCristal() {
       />
       <LinearGradient
         pointerEvents="none"
-        colors={[alpha(color.action.shade, 0), alpha(color.action.shade, 0.22)]}
+        colors={[alpha(color.action.shade, 0), alpha(color.action.shade, 0.22 * brillo)]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={styles.sombraAbajo}

@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type LayoutChangeEvent, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
-import { alpha, color, easing, motion, radius, space, spring } from '../theme/tokens';
+import { alpha, brillo, color, easing, motion, radius, space, spring } from '../theme/tokens';
 import { Icon } from './icons';
 import type { Paso } from './lista-de-pasos';
 import { AtlasText, Card } from './primitives';
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   nodo: { width: NODO, height: NODO, borderRadius: NODO / 2, borderWidth: 2, borderColor: color.border.strong, backgroundColor: color.surface.raised, alignItems: 'center', justifyContent: 'center' },
   nodoHecho: { backgroundColor: color.action.primary, borderColor: color.action.primary },
   // Tu nivel: más grande y con un halo fijo (no pulsa solo).
-  nodoActual: { width: NODO + 8, height: NODO + 8, borderRadius: (NODO + 8) / 2, borderColor: color.brand.b300, borderWidth: 3, shadowColor: color.brand.b400, shadowOpacity: 0.9, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
+  nodoActual: { width: NODO + 8, height: NODO + 8, borderRadius: (NODO + 8) / 2, borderColor: color.accent.base, borderWidth: 3, shadowColor: color.brand.b400, shadowOpacity: 0.9 * brillo, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
   fundidoArriba: { position: 'absolute', top: 0, left: 0, right: 0, height: 28, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl },
   fundidoAbajo: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 28, borderBottomLeftRadius: radius.xxl, borderBottomRightRadius: radius.xxl },
 });

@@ -22,7 +22,7 @@ import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, w
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NOMBRE_COLECCION, type Logro } from '../features/celebraciones';
-import { alpha, color, luz, motion, objeto, radius, space, spring } from '../theme/tokens';
+import { alpha, color, luz, motion, objeto, radius, space, spring, marca } from '../theme/tokens';
 import { Barra, CuentaArriba, useAvance } from './cuenta-arriba';
 import { Icon } from './icons';
 import { caraDe } from './insignia';
@@ -196,7 +196,7 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
                   </View>
                 ) : cara.oculta ? (
                   <AtlasText variant="captionStrong" tone="tertiary" align="center">
-                    SECRETA · sigue usando Atlas
+                    SECRETA · sigue usando {marca.nombre}
                   </AtlasText>
                 ) : (
                   <View style={styles.avance}>

@@ -24,7 +24,7 @@ import { StyleSheet, View } from "react-native";
 import type { CreditLine } from "../api/endpoints/credit-line";
 import { formatAmount } from "../features/spending-copy";
 import { useCopy } from "../features/use-contenido-remoto";
-import { color, radius, space } from "../theme/tokens";
+import { color, radius, space, marca } from "../theme/tokens";
 import { Icon, type IconName } from "./icons";
 import { AtlasText, Badge, Divider, IconChip, Overline } from "./primitives";
 import { Paginas, type Pagina } from "./paginas";
@@ -52,7 +52,7 @@ const PROVENANCE_COPY: Record<string, { label: string; tone: string }> = {
 /** Las entradas que de verdad mueven el puntaje. El resto son controles y no se listan. */
 const SHOWN_INPUTS: { key: string; label: string }[] = [
   { key: "disposable_income", label: "Tu ingreso disponible" },
-  { key: "payment_history_score", label: "Cómo pagas en Atlas" },
+  { key: "payment_history_score", label: `Cómo pagas en ${marca.nombre}` },
   { key: "income_stability_score", label: "Estabilidad de tu ingreso" },
   { key: "bank_statement_nsf_count", label: "Tu extracto bancario" },
   { key: "bureau_score", label: "Historial en el sistema financiero" },
@@ -290,7 +290,7 @@ export function ScoringPanel({ line }: { line: CreditLine }) {
         alguien pueda contestarle mirando una ejecucion concreta.
       */}
       <AtlasText variant="caption" tone="tertiary">
-        Calculado por el motor de decisión de Atlas · ejecución{" "}
+        Calculado por el motor de decisión de {marca.nombre} · ejecución{" "}
         {line.decision.executionId ?? "—"}
         {line.decision.artifactVersionId
           ? ` · política v${line.decision.artifactVersionId}`

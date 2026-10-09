@@ -75,24 +75,25 @@ describe('TarjetaAtlas (la pieza)', () => {
     expect(screen.getByLabelText('Tarjeta Gold, acabado oro, todavía bloqueada')).toBeTruthy();
   });
 
-  it('pinta el fulgor que manda el backend: halo y chispas en la Black, nada en una sin número ni en una bloqueada', async () => {
+  it('es sobria (2026-10-09): ni halo ni chispas, en ninguna categoría; el reflejo y el barrido siguen', async () => {
     const medir = () => fireEvent(screen.getByTestId('t'), 'layout', { nativeEvent: { layout: { width: 340, height: 214, x: 0, y: 0 } } });
     const black = { ...gold, theme: { ...gold.theme, glow: 1 } };
-    const { rerender } = await render(envolver(<TarjetaAtlas tier={black} testID="t" />));
+    await render(envolver(<TarjetaAtlas tier={black} testID="t" />));
     await medir();
-    expect(screen.getByTestId('tarjeta-halo')).toBeTruthy();
-    expect(screen.getAllByTestId('tarjeta-chispa')).toHaveLength(4);
-
-    await rerender(envolver(<TarjetaAtlas tier={{ ...gold, theme: { ...gold.theme, glow: 0.4 } }} testID="t" />));
-    expect(screen.getAllByTestId('tarjeta-chispa')).toHaveLength(1);
-
-    await rerender(envolver(<TarjetaAtlas tier={{ ...gold, theme: { ...gold.theme, glow: undefined } }} testID="t" />));
     expect(screen.queryByTestId('tarjeta-halo')).toBeNull();
     expect(screen.queryByTestId('tarjeta-chispa')).toBeNull();
+    expect(screen.getByTestId('tarjeta-destello')).toBeTruthy();
+  });
 
-    await rerender(envolver(<TarjetaAtlas tier={black} bloqueada testID="t" />));
-    expect(screen.queryByTestId('tarjeta-halo')).toBeNull();
-    expect(screen.queryByTestId('tarjeta-chispa')).toBeNull();
+  it('el acabado es mate: conserva el matiz del catálogo pero nunca un color fosforescente', () => {
+    const { acabadoDeTarjeta } = jest.requireActual('../src/theme/tarjeta');
+    const { aOklch, contraste } = jest.requireActual('../src/theme/color');
+    for (const deCatalogo of ['#FFD700', '#39FF14', '#00E5FF', '#111111', '#C0C0C0']) {
+      const a = acabadoDeTarjeta(deCatalogo);
+      for (const cara of a.cara) expect(aOklch(cara).c).toBeLessThanOrEqual(0.061);
+      expect(contraste(a.tinta, a.cara[0])).toBeGreaterThanOrEqual(4.5);
+      expect(contraste(a.tinta, a.cara[1])).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   it('con onPress es un botón que avisa a quien la toca', async () => {
@@ -102,7 +103,7 @@ describe('TarjetaAtlas (la pieza)', () => {
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
-  it('es una tarjeta de banco: logotipo, número en relieve y el titular en mayúsculas', async () => {
+  it('es una tarjeta de banco: logotipo, número y el titular en mayúsculas', async () => {
     await render(envolver(<TarjetaAtlas tier={gold} titular="Pablo Arauz" testID="t" />));
     expect(screen.getByText('ATLAS')).toBeTruthy();
     expect(screen.getByText('•••• •••• •••• ••••')).toBeTruthy();

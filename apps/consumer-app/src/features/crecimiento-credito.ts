@@ -16,6 +16,7 @@
  */
 import type { Progress } from '../api/endpoints/credit-line';
 import { formatoPuntos } from './nivel';
+import { marca } from '../theme/tokens';
 
 export type PeldanoDeCredito = {
   code: string;
@@ -90,7 +91,7 @@ export const formatoVeces = (n: number) => `×${String(Math.round(n * 10) / 10).
 
 /** Lo que falta para el siguiente escalón, en una línea. */
 export function fraseDelSiguienteSalto(c: CrecimientoDeCredito): string {
-  if (!c.siguiente) return 'Ya estás en el escalón más alto: tienes el tope máximo de Atlas.';
+  if (!c.siguiente) return `Ya estás en el escalón más alto: tienes el tope máximo de ${marca.nombre}.`;
   const n = c.siguiente.pointsMissing;
   const falta = n <= 0 ? 'Ya tienes la calificación' : n === 1 ? 'Te falta 1 punto de calificación' : `Te faltan ${n} puntos de calificación`;
   return `${falta} para «${c.siguiente.label}». Se sube pagando a tiempo.`;

@@ -72,9 +72,14 @@ const NEUTROS = {
 } as const;
 
 /** Estados: matices de sistema, corregidos al contraste del tema. Verde, ambar y rojo, nunca el acento. */
+/*
+  Verdes OSCUROS y sobrios (Pablo, 2026-10-09: «los verdes oscuros solo, no esos medio fosforescentes»). En claro, un
+  verde bosque; en oscuro, un verde salvia apagado: lo justo para leerse sobre casi negro (4,5:1) sin brillar. Lo mismo
+  con el ambar y el rojo del oscuro: tonos de sistema rebajados, no los neones de iOS.
+*/
 const ESTADOS = {
-  claro: { exito: '#248A3D', aviso: '#B25000', peligro: '#D70015' },
-  oscuro: { exito: '#30D158', aviso: '#FF9F0A', peligro: '#FF453A' },
+  claro: { exito: '#1E6B43', aviso: '#9A5800', peligro: '#B3261E' },
+  oscuro: { exito: '#6FA585', aviso: '#C9A15E', peligro: '#E07A72' },
 } as const;
 
 /** La rampa de la marca: tonos del acento a luminosidades fijas, para ilustraciones y progreso. */
@@ -82,8 +87,12 @@ function rampa(acento: string, principal: string, esquema: Esquema) {
   const t = (l: number, c = 1) => conLuz(acento, l, c);
   return esquema === 'claro'
     ? { navy: principal, navyProfundo: conLuz(principal, Math.max(0.12, aOklch(principal).l - 0.06)), b900: t(0.24), b700: t(0.4), b600: t(0.47), b500: t(0.5), b400: t(0.56), b300: t(0.63), tint: t(0.47) }
-    : { navy: principal, navyProfundo: conLuz(principal, Math.max(0.12, aOklch(principal).l - 0.06)), b900: t(0.22), b700: t(0.46), b600: t(0.62), b500: t(0.68), b400: t(0.76), b300: t(0.84, 0.8), tint: t(0.88, 0.6) };
+    : // En oscuro la rampa va con la mitad de croma: sobre casi negro, un teal pleno se lee fosforescente.
+      { navy: principal, navyProfundo: conLuz(principal, Math.max(0.12, aOklch(principal).l - 0.06)), b900: t(0.22, 0.5), b700: t(0.42, 0.5), b600: t(0.55, 0.5), b500: t(0.62, 0.5), b400: t(0.7, 0.5), b300: t(0.78, 0.45), tint: t(0.84, 0.4) };
 }
+
+/** Cuanto emite luz la interfaz: ver `marca.estilo.brillo`. */
+const brilloMarca = marcaActual.estilo.brillo;
 
 export function crearTema(esquema: Esquema, marca: Marca = marcaActual) {
   const n = NEUTROS[esquema];
@@ -99,7 +108,12 @@ export function crearTema(esquema: Esquema, marca: Marca = marcaActual) {
   const presionada = conLuz(primaria, aOklch(primaria).l + (claro ? -0.06 : -0.08));
 
   // El ACENTO: lo que significa algo. Texto legible sobre cualquier superficie del tema.
-  const acento = conContraste(claro ? marca.acento : conLuz(marca.acento, 0.76), superficies, 4.5);
+  // En oscuro el acento se aclara lo justo para leerse y pierde viveza (croma ≤ 0,05): sobrio, no fosforescente.
+  const acento = conContraste(
+    claro ? marca.acento : desdeOklch({ l: 0.72, c: Math.min(aOklch(marca.acento).c, 0.05), h: aOklch(marca.acento).h }),
+    superficies,
+    4.5,
+  );
   const acentoFuerte = conLuz(acento, aOklch(acento).l + (claro ? -0.07 : 0.06));
   const sobreAcento = tintaSobre(acento);
 
@@ -122,6 +136,21 @@ export function crearTema(esquema: Esquema, marca: Marca = marcaActual) {
       edge: alpha(n.linea, claro ? 0.12 : 0.1),
       /** Superficie HUNDIDA: campos, opciones, cajas de importe. Un campo es un hueco, no un pedestal. */
       sunken: n.hundido,
+      /**
+       * El contorno de una tarjeta. En claro, NINGUNO: la tarjeta blanca se separa del fondo gris por tono, como las
+       * listas agrupadas de iOS. En oscuro, un filo casi invisible, porque dos casi-negros necesitan ayuda.
+       */
+      cardBorder: claro ? alpha(n.linea, 0) : alpha(n.linea, 0.06),
+      /**
+       * Tarjetas con TONO (un aviso, un exito, la marca): la superficie apenas teñida en vez de un borde de color. El
+       * color lo lleva el icono y el titulo; el fondo solo lo insinua. Opacos, para que el texto se mida bien.
+       */
+      tinted: {
+        danger: sobre(peligro, claro ? 0.06 : 0.1, n.superficie),
+        warning: sobre(aviso, claro ? 0.07 : 0.1, n.superficie),
+        success: sobre(exito, claro ? 0.06 : 0.1, n.superficie),
+        brand: sobre(acento, claro ? 0.05 : 0.09, n.superficie),
+      },
     },
     text: {
       primary: n.tinta1,
@@ -153,14 +182,16 @@ export function crearTema(esquema: Esquema, marca: Marca = marcaActual) {
       primary: primaria,
       primaryPressed: presionada,
       /** Un relleno casi plano: el boton se reconoce por ser el unico solido de color de la pantalla. */
-      primaryGradient: [primaria, primaria, presionada] as Degradado,
+      /** Plano: el boton se reconoce por ser el unico solido de color, no por un degradado. */
+      primaryGradient: [primaria, primaria, primaria] as Degradado,
       glow: primaria,
       glowSoft: alpha(primaria, 0),
       /** El barrido de luz que cruza el boton principal: un matiz, no un destello. */
       sheen: alpha(sobrePrimaria, claro ? 0.2 : 0.28),
       shade: negro,
-      glassTop: alpha(blanco, claro ? 0.1 : 0.16),
-      glassLine: alpha(blanco, claro ? 0.16 : 0.3),
+      /** El reflejo de cristal del boton: solo con `marca.estilo.brillo` > 0. */
+      glassTop: alpha(blanco, (claro ? 0.1 : 0.16) * brilloMarca),
+      glassLine: alpha(blanco, (claro ? 0.16 : 0.3) * brilloMarca),
       secondary: alpha(n.relleno, claro ? 0.12 : 0.24),
       destructive: peligro,
       disabled: alpha(n.relleno, claro ? 0.16 : 0.24),
@@ -190,7 +221,8 @@ export function crearTema(esquema: Esquema, marca: Marca = marcaActual) {
     overlay: { scrim: alpha(n.velo, claro ? 0.4 : 0.6), scrimStrong: alpha(n.velo, claro ? 0.8 : 0.9) },
     /** El papel desvaneciendose: mismo color con alfa 0, nunca `transparent` (pasaria por gris sucio). */
     paperFade: { from: n.fondo, to: alpha(n.fondo, 0) },
-    brandGradient: (claro ? [brand.b700, brand.b600, brand.b700] : [brand.b600, brand.b500, brand.b600]) as Degradado,
+    /** Rellenos de progreso: tonos OSCUROS de la marca en los dos temas. */
+    brandGradient: (claro ? [brand.b700, brand.b600, brand.b700] : [brand.b700, brand.b600, brand.b700]) as Degradado,
     /** Lavado de marca para superficies grandes: destaca sin obligar a cambiar el color del texto. */
     brandWash: { from: alpha(acento, claro ? 0.06 : 0.12), to: alpha(acento, claro ? 0.02 : 0.04) },
     /** El arranque de color de una cabecera ilustrada (Ayuda, Conoce Atlas), que se funde con la tarjeta. */
@@ -200,7 +232,11 @@ export function crearTema(esquema: Esquema, marca: Marca = marcaActual) {
       warning: alpha(aviso, 0.3),
       danger: alpha(peligro, 0.3),
       success: alpha(exito, 0.28),
-      brand: alpha(acento, 0.24),
+      /**
+       * La tarjeta que la pantalla quiere destacar. Sin brillo de marca, NO lleva borde de color (era el resto mas visible
+       * del diseño anterior): se destaca por su contenido. Con brillo, vuelve el filo del acento.
+       */
+      brand: brilloMarca > 0 ? alpha(acento, 0.24) : claro ? alpha(n.linea, 0) : alpha(n.linea, 0.06),
     },
     /**
      * El ESCENARIO de marca: el arranque, la celebracion de un logro, la carta de una insignia. Sigue

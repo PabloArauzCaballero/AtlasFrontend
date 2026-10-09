@@ -69,7 +69,7 @@ describe('seguridad del modulo', () => {
   const fuente = readFileSync(join(__dirname, '..', 'src/device/version-app.ts'), 'utf8');
   it('solo importa expo-constants y expo-updates: nada de sesion ni almacen seguro', () => {
     const imports = [...fuente.matchAll(/^import .* from '([^']+)';$/gm)].map((m) => m[1]);
-    expect(imports.sort()).toEqual(['expo-constants', 'expo-updates']);
+    expect(imports.sort()).toEqual(['../theme/marca', 'expo-constants', 'expo-updates']);
   });
   it('no importa expo-application (modulo nativo nuevo: romperia las instalaciones ya hechas)', () => {
     expect(fuente).not.toMatch(/from 'expo-application'/);

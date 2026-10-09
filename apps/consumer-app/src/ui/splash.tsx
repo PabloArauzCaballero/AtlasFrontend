@@ -73,10 +73,10 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import Svg, { Circle, ClipPath, Defs, Ellipse, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { color, font } from '../theme/tokens';
+import { color, font, marca as laMarca } from '../theme/tokens';
 import { useSonidoMarca } from './brand-sound';
 import { acelera, frena, frenaMucho, suave, tramo } from './curvas-arranque';
-import { DegradadosLetraA, LETRA_A } from './brand';
+import { DegradadosLetraA, LETRA_A, LIENZO_SIMBOLO } from './brand';
 import { OrbitaDelante, OrbitaDetras } from './orbita-arranque';
 import { AtlasText } from './primitives';
 
@@ -151,7 +151,7 @@ const RAYOS = Array.from({ length: 14 }, (_, i) => {
  * largo hace que el dibujo empiece tarde y termine de golpe. 152 es el perimetro real medido sobre
  * los seis vertices del trazado, redondeado hacia arriba.
  */
-const CONTORNO = 152;
+const CONTORNO = laMarca.simbolo.contorno;
 
 /** El trazado de la marca, el mismo que dibuja `ui/brand.tsx`: aqui se dibuja por partes. */
 const LETRA = LETRA_A.silueta;
@@ -167,7 +167,8 @@ const RAYOS_PX = 520;
  * ocupado, y en los iPhone viejos se notaba como tirones. La viñeta ya da profundidad al fondo.
  */
 
-const LETRAS = ['A', 'T', 'L', 'A', 'S'] as const;
+/** Las letras del rotulo: el nombre de la marca, en mayusculas. */
+const LETRAS = laMarca.nombre.toUpperCase().split('');
 
 /**
  * La capa de arranque. Se dibuja sobre todo lo demas y se retira sola.
@@ -504,7 +505,7 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
             <Animated.View pointerEvents="none" style={[styles.nucleo, nucleo]} />
             <Animated.View style={marca}>
               <OrbitaDetras reloj={reloj} guion={GUION.orbita} tamano={MARCA_PX} />
-              <Svg width={MARCA_PX} height={MARCA_PX} viewBox="0 0 48 48" accessibilityLabel="Logotipo de Atlas">
+              <Svg width={MARCA_PX} height={MARCA_PX} viewBox={LIENZO_SIMBOLO} accessibilityLabel={`Logotipo de ${laMarca.nombre}`}>
                 <Defs>
                   <DegradadosLetraA prefijo="arranque-marca" />
                   {/* La sombra en el suelo: sin ella la letra flota; con ella, esta apoyada en algo. */}

@@ -15,6 +15,7 @@
  */
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
+import { marca } from '../theme/marca';
 
 export type OrigenDelCodigo = 'update' | 'binario' | 'desarrollo';
 
@@ -78,7 +79,7 @@ const ORIGEN_LEGIBLE: Record<OrigenDelCodigo, string> = {
 
 /** Una linea corta para la fila del perfil. */
 export function resumenDeVersion(v: VersionApp): string {
-  const partes = [`Atlas ${v.version}${v.build ? ` (${v.build})` : ''}`];
+  const partes = [`${marca.nombre} ${v.version}${v.build ? ` (${v.build})` : ''}`];
   if (v.canal) partes.push(v.canal);
   if (v.updateId) partes.push(`update ${v.updateId.slice(0, 8)}`);
   return partes.join(' · ');
@@ -87,7 +88,7 @@ export function resumenDeVersion(v: VersionApp): string {
 /** El bloque completo que el tester pega en su reporte. Sin datos personales. */
 export function textoParaSoporte(v: VersionApp): string {
   return [
-    `Atlas ${v.version}${v.build ? ` (build ${v.build})` : ''}`,
+    `${marca.nombre} ${v.version}${v.build ? ` (build ${v.build})` : ''}`,
     `Runtime: ${v.runtimeVersion ?? 'n/d'}`,
     `Canal: ${v.canal ?? 'n/d'}`,
     `Código en uso: ${ORIGEN_LEGIBLE[v.origen]}`,

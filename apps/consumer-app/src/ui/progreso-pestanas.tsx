@@ -10,7 +10,7 @@
 import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import type { CreditLine, Progress } from '../api/endpoints/credit-line';
-import { space } from '../theme/tokens';
+import { space, marca } from '../theme/tokens';
 import { VitrinaDeLogros } from './vitrina-de-logros';
 import { Gap } from './layout';
 import { LineaDeNiveles } from './linea-de-niveles';
@@ -77,7 +77,7 @@ export function PestanaCalificacion({ progress, creditLine }: { progress: Progre
         ) : (
           <Card>
             <AtlasText variant="body" tone="secondary">
-              Es un número aparte de tu calificación: lo calcula el motor de decisión de Atlas con una política de crédito publicada, usando tus
+              Es un número aparte de tu calificación: lo calcula el motor de decisión de {marca.nombre} con una política de crédito publicada, usando tus
               datos declarados, tus pagos y, si la subes, la información de tu extracto bancario. Todavía no se calculó tu línea, por eso no aparece.
             </AtlasText>
           </Card>
