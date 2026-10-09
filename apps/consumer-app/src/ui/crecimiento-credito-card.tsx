@@ -24,6 +24,8 @@ import { color, motion, radius, space, stroke } from '../theme/tokens';
 import { BarraViva, CuentaArriba, useAvance } from './cuenta-arriba';
 import { BotonInfo, InfoSheet } from './help-sheet';
 import { Icon } from './icons';
+import { LineaDeNiveles } from './linea-de-niveles';
+import { SeccionConAcento } from './seccion-con-acento';
 import { AtlasText, Badge, Card, CardHeader, Divider, Overline } from './primitives';
 
 export function CrecimientoCreditoCard({ progress }: { progress: Progress }) {
@@ -97,13 +99,10 @@ export function CrecimientoCreditoCard({ progress }: { progress: Progress }) {
         </AtlasText>
       </View>
       <View style={styles.escalera}>
-        {/* El escalón más alto ARRIBA, como en «Tu nivel» (Pablo, 2026-10-08); se llena de abajo hacia arriba. */}
-        {c.peldanos
-          .map((peldano, indice) => ({ peldano, indice }))
-          .reverse()
-          .map(({ peldano, indice }) => (
-            <Peldano key={peldano.code} peldano={peldano} indice={indice} cifra={cifra} />
-          ))}
+        {/* El primer escalón ARRIBA y el más alto abajo, como «Los niveles» (Pablo, 2026-10-09). */}
+        {c.peldanos.map((peldano, indice) => (
+          <Peldano key={peldano.code} peldano={peldano} indice={indice} cifra={cifra} />
+        ))}
       </View>
 
       <InfoSheet visible={info} titulo="Cómo crece tu crédito" onClose={() => setInfo(false)} testID="crecimiento-info">
@@ -111,47 +110,45 @@ export function CrecimientoCreditoCard({ progress }: { progress: Progress }) {
         <AtlasText variant="caption" tone="secondary">
           {`Tu calificación hoy: ${progress.rating?.value ?? Math.round(progress.score)} de 100. ${frase}`}
         </AtlasText>
-        <View style={styles.tablaEscalones} testID="crecimiento-tabla">
-          {[...filasDeEscalones(c)].reverse().map((fila) => (
-            <View key={fila.code} style={[styles.filaTabla, fila.actual && styles.filaTablaActual]} testID={`crecimiento-fila-${fila.code}`}>
-              <View style={styles.textoFila}>
-                <AtlasText variant="captionStrong" tone={fila.actual ? 'brand' : 'primary'}>
-                  {fila.actual ? `${fila.label} · estás aquí` : fila.label}
-                </AtlasText>
-                <AtlasText variant="caption" tone="secondary">
-                  {`${fila.rango} de calificación`}
-                </AtlasText>
-              </View>
-              <AtlasText variant="bodyStrong" tone={fila.actual ? 'brand' : 'primary'}>
-                {fila.tope}
-              </AtlasText>
-            </View>
-          ))}
-        </View>
+        {/*
+          Los escalones como un recorrido en una línea vertical (Pablo, 2026-10-09): el primero arriba y el más alto abajo,
+          la línea llena hasta donde estás. La misma pieza que «Los niveles».
+        */}
+        <LineaDeNiveles
+          testID="crecimiento-tabla"
+          pasos={filasDeEscalones(c).map((fila) => ({
+            clave: fila.code,
+            titulo: `${fila.label} · ${fila.tope}${fila.actual ? ' · estás aquí' : ''}`,
+            derecha: `${fila.rango} de calificación`,
+            hecho: fila.alcanzado,
+            actual: fila.actual,
+            etiqueta: `${fila.label}, ${fila.rango} de calificación, ${fila.tope}. ${fila.alcanzado ? 'Alcanzado' : 'Por alcanzar'}`,
+          }))}
+        />
         {ejemploDeRevision(c) ? (
           <AtlasText variant="caption" tone="secondary">
             {ejemploDeRevision(c)}
           </AtlasText>
         ) : null}
-        <Divider />
-        <AtlasText variant="bodyStrong">Lo sube tu calificación</AtlasText>
-        <AtlasText variant="body" tone="secondary">
-          Tu calificación de 1 a 100 dice qué tan buen pagador eres. Cada escalón que alcanzas sube el tope de crédito que
-          Atlas te puede dar. Se sube pagando tus cuotas a tiempo, terminando de pagar tus compras y con el tiempo que
-          llevas con Atlas.
-        </AtlasText>
-        <Divider />
-        <AtlasText variant="bodyStrong">Son topes, no una promesa</AtlasText>
-        <AtlasText variant="body" tone="secondary">
-          Cada importe es lo MÁXIMO que admite ese escalón. Tu límite real también depende de lo que puedes pagar cada mes
-          —por eso ayuda subir tu extracto bancario— y sube por pasos: como mucho el doble en cada revisión.
-        </AtlasText>
-        <Divider />
-        <AtlasText variant="bodyStrong">Comprar más no lo sube</AtlasText>
-        <AtlasText variant="body" tone="secondary">
-          Los puntos de experiencia que ganas comprando te dan nivel y tarjeta, pero no más crédito. Lo que sube tu crédito
-          es cumplir, no endeudarte.
-        </AtlasText>
+        {/* Cada explicación en su tarjeta con barra de marca, como la política de mora (Pablo, 2026-10-09). */}
+        <SeccionConAcento
+          titulo="Lo sube tu calificación"
+          parrafos={[
+            'Tu calificación de 1 a 100 dice qué tan buen pagador eres. Cada escalón que alcanzas sube el tope de crédito que Atlas te puede dar. Se sube pagando tus cuotas a tiempo, terminando de pagar tus compras y con el tiempo que llevas con Atlas.',
+          ]}
+        />
+        <SeccionConAcento
+          titulo="Son topes, no una promesa"
+          parrafos={[
+            'Cada importe es lo MÁXIMO que admite ese escalón. Tu límite real también depende de lo que puedes pagar cada mes —por eso ayuda subir tu extracto bancario— y sube por pasos: como mucho el doble en cada revisión.',
+          ]}
+        />
+        <SeccionConAcento
+          titulo="Comprar más no lo sube"
+          parrafos={[
+            'Los puntos de experiencia que ganas comprando te dan nivel y tarjeta, pero no más crédito. Lo que sube tu crédito es cumplir, no endeudarte.',
+          ]}
+        />
       </InfoSheet>
     </Card>
   );
