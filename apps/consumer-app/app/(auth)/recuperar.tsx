@@ -18,10 +18,13 @@ import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { space } from '../../src/theme/tokens';
 import { AtlasLogo } from '../../src/ui/brand';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
+import { useSinCapturas } from '../../src/device/sin-capturas';
 
 type Step = 'request' | 'confirm' | 'done';
 
 export default function RecoverPassword() {
+  // PIN, carnet o datos bancarios: sin capturas ni grabaciones de pantalla (APP-18).
+  useSinCapturas('pin-recuperar');
   const router = useRouter();
   const [step, setStep] = useState<Step>('request');
   const [email, setEmail] = useState('');

@@ -27,6 +27,7 @@ import { AtlasText, Button, Card, Divider, ErrorState, Overline, SectionHeader, 
 import { TRUST_REGISTRO } from '../../src/features/trust-copy';
 import { TrustCardRemoto } from '../../src/features/use-contenido-remoto';
 import { bitacora } from '../../src/features/bitacora';
+import { useSinCapturas } from '../../src/device/sin-capturas';
 
 /**
  * Los documentos que gobierna la pantalla de permisos y que por eso no se listan en el alta.
@@ -57,6 +58,8 @@ function pinProblem(pin: string): string | null {
 }
 
 export default function Register() {
+  // PIN, carnet o datos bancarios: sin capturas ni grabaciones de pantalla (APP-18).
+  useSinCapturas('pin-registro');
   const router = useRouter();
   const session = useSession();
 

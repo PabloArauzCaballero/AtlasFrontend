@@ -76,7 +76,7 @@ const CABECERA_POR_DEFECTO = {
 };
 
 const AVISO_POR_DEFECTO =
-  'Tu teléfono te va a preguntar por cada permiso. Si eliges «Siempre» en la ubicación, también la registramos con la app cerrada; si eliges «Mientras uso la app», solo mientras la tienes abierta. Puedes cambiarlo cuando quieras desde «Privacidad» o desde los ajustes de tu teléfono.';
+  'Tu teléfono te va a preguntar por cada permiso. Con «Mientras uso la app» registramos tu ubicación cada 5 minutos mientras la tienes abierta. Con «Siempre», también con la app cerrada: como mucho cada 15 minutos y durante 30 días; puedes apagarlo antes desde tu perfil. Puedes cambiarlo cuando quieras desde «Privacidad» o desde los ajustes de tu teléfono.';
 
 const SIEMPRE_POR_DEFECTO = {
   antetitulo: 'Un paso más, opcional',
@@ -84,7 +84,7 @@ const SIEMPRE_POR_DEFECTO = {
   subtitulo:
     'Ya puedes seguir. Esto solo añade una señal más, y puedes decir que no sin que cambie nada de tu cuenta.',
   cuerpo:
-    'Registramos tu ubicación cada cierto tiempo aunque no tengas la app abierta. Sirve para lo mismo: comprobar tu domicilio y detectar si alguien usa tu cuenta desde otro lugar.',
+    'Registramos tu ubicación como mucho cada 15 minutos aunque no tengas la app abierta, y sólo si te moviste más de 100 m. Se apaga sola a los 30 días y puedes apagarla antes desde tu perfil. Sirve para lo mismo: comprobar tu domicilio y detectar si alguien usa tu cuenta desde otro lugar.',
 };
 
 const [UBICACION_POR_DEFECTO, CONTACTOS_POR_DEFECTO]: [PiezaDePermiso, PiezaDePermiso] = [

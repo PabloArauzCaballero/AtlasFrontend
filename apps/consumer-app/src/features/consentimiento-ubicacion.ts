@@ -20,14 +20,19 @@ export const USOS_DE_LA_UBICACION: readonly string[] = [
 
 export const LO_QUE_NO_HACEMOS_CON_LA_UBICACION = 'No la compartimos con los comercios ni la usamos para publicidad.';
 
+/** Lo que pasa si ademas concede «Siempre». Debe coincidir con `features/rastreo-plazo.ts` y `rastreo.ts`. */
+export const FRECUENCIA_CON_LA_APP_CERRADA =
+  'Si además eliges «Siempre», también con la app cerrada: como mucho cada 15 minutos y durante 30 días, que puedes acortar desde tu perfil.';
+
 export const TITULO_CONSENTIMIENTO_UBICACION = '¿Registramos tu ubicación?';
 
 /** El cuerpo del aviso del domicilio: usos, lo que no se hace y como retirarlo. */
 export function textoConsentimientoUbicacion(): string {
   return [
-    `Además de marcar tu casa, ${marca.nombre} puede registrar tu ubicación mientras usas la app para:`,
+    `Además de marcar tu casa, ${marca.nombre} puede registrar tu ubicación mientras usas la app (cada 5 minutos) para:`,
     ...USOS_DE_LA_UBICACION.map((uso) => `• ${uso}`),
     LO_QUE_NO_HACEMOS_CON_LA_UBICACION,
+    FRECUENCIA_CON_LA_APP_CERRADA,
     'Puedes retirarlo cuando quieras desde «Privacidad». Si dices que no, tu domicilio se guarda igual.',
   ].join('\n');
 }

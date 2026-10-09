@@ -30,6 +30,7 @@ import {
   SectionHeader,
   SkeletonLista,
 } from "../../src/ui/primitives";
+import { useSinCapturas } from '../../src/device/sin-capturas';
 
 const fecha = (iso: string) =>
   new Date(iso.length === 10 ? `${iso}T12:00:00` : iso).toLocaleDateString(
@@ -37,6 +38,8 @@ const fecha = (iso: string) =>
   );
 
 export default function ExtractoCredito() {
+  // PIN, carnet o datos bancarios: sin capturas ni grabaciones de pantalla (APP-18).
+  useSinCapturas('extracto-credito');
   const session = useSession();
   const [extracto, setExtracto] = useState<Extracto | null>(null);
   const [error, setError] = useState<string | null>(null);

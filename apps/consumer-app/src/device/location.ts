@@ -41,7 +41,9 @@ import {
   type PosicionParaEnviar,
 } from '../features/rastreo';
 import { secureTokenStore } from '../session/token-storage';
+import { espaciarPosiciones } from '../features/rastreo-plazo';
 import { anotarEnHistorial } from './historial-ubicaciones';
+import { anotarUltimoEnvioDeFondo, estadoDelRastreoDeFondo, leerUltimoEnvioDeFondo } from './preferencia-rastreo';
 import { leerContextoDeRastreo, type ContextoDeRastreo } from './tracking-context';
 import { color, marca } from '../theme/tokens';
 
@@ -107,10 +109,25 @@ if (!TaskManager.isTaskDefined(TAREA_UBICACION)) {
       return;
     }
 
-    const posiciones = data.locations
+    /*
+      Sin motivo vigente, la tarea se apaga SOLA (APP-11): a los 30 dias de la decision, o si la
+      persona lo apago en su perfil. Se comprueba aqui y no solo al encenderla porque la tarea vive
+      en el sistema: puede seguir despertando semanas sin que nadie abra la app.
+    */
+    if (!(await estadoDelRastreoDeFondo()).vigente) {
+      await detenerRastreoEnSegundoPlano();
+      return;
+    }
+
+    const recibidas = data.locations
       .map((posicion) => aPosicionParaEnviar(posicion, 'background'))
       .filter((posicion): posicion is PosicionParaEnviar => posicion !== null);
+    // Como mucho una cada 15 minutos, tambien en iOS, que solo filtra por distancia. Ver `rastreo-plazo.ts`.
+    const posiciones = espaciarPosiciones(recibidas, await leerUltimoEnvioDeFondo());
+    if (posiciones.length === 0) return;
     await enviarLote(contexto, posiciones);
+    const ultima = posiciones[posiciones.length - 1];
+    if (ultima) await anotarUltimoEnvioDeFondo(Date.parse(ultima.capturedAt));
   });
 }
 
@@ -161,7 +178,7 @@ export async function permisosDeUbicacion(): Promise<PermisosDeUbicacion> {
     Location.getForegroundPermissionsAsync().catch(() => ({ granted: false })),
     Location.getBackgroundPermissionsAsync().catch(() => ({ granted: false })),
   ]);
-  return { primerPlano: primerPlano.granted === true, segundoPlano: segundoPlano.granted === true };
+  return { primerPlano: primerPlano?.granted === true, segundoPlano: segundoPlano?.granted === true };
 }
 
 /**
@@ -195,7 +212,8 @@ export async function medirYEnviar(
 /**
  * Enciende el rastreo con la app CERRADA.
  *
- * No hace nada sin el permiso de «siempre», y tampoco en web, donde `startLocationUpdatesAsync` no
+ * No hace nada sin el permiso de «siempre», sin un motivo vigente (los 30 dias desde la decision de
+ * la persona, ver `features/rastreo-plazo.ts`), y tampoco en web, donde `startLocationUpdatesAsync` no
  * existe. Es idempotente: si la tarea ya estaba corriendo no se reinstala, porque reinstalarla
  * reinicia el temporizador del sistema y en la practica retrasa la siguiente medida.
  */
@@ -203,6 +221,11 @@ export async function iniciarRastreoEnSegundoPlano(): Promise<boolean> {
   if (Platform.OS === 'web') return false;
   const permisos = await permisosDeUbicacion();
   if (!permisos.segundoPlano) return false;
+  // Vencido el plazo o apagado en el perfil, no se enciende y, si seguia encendido, se apaga (APP-11).
+  if (!(await estadoDelRastreoDeFondo()).vigente) {
+    await detenerRastreoEnSegundoPlano();
+    return false;
+  }
 
   try {
     if (await Location.hasStartedLocationUpdatesAsync(TAREA_UBICACION)) return true;
@@ -223,7 +246,7 @@ export async function iniciarRastreoEnSegundoPlano(): Promise<boolean> {
       */
       foregroundService: {
         notificationTitle: `${marca.nombre} está activo`,
-        notificationBody: 'Registrando tu ubicación según los permisos que aceptaste.',
+        notificationBody: 'Registra tu ubicación como mucho cada 15 minutos, durante 30 días. Puedes apagarlo en tu perfil.',
         notificationColor: color.brand.navy,
       },
     });

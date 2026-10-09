@@ -4,6 +4,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { resolverUrlDeLaApi } from '../src/api/config';
 
 type Perfil = {
   distribution?: string;
@@ -89,5 +90,63 @@ describe('expo-updates', () => {
     const loc = app.expo.plugins.find((x: unknown) => Array.isArray(x) && x[0] === 'expo-location')[1];
     expect(loc.isIosBackgroundLocationEnabled).toBe(true);
     expect(app.expo.ios.infoPlist.NSFaceIDUsageDescription).toBeTruthy();
+  });
+
+  it('la promesa de Face ID tiene codigo detras (APP-13)', () => {
+    const plugins = app.expo.plugins.map((x: string | string[]) => (Array.isArray(x) ? x[0] : x));
+    expect(plugins).toContain('expo-local-authentication');
+    const biometria = readFileSync(join(__dirname, '..', 'src', 'device', 'biometria.ts'), 'utf8');
+    expect(biometria).toMatch(/authenticateAsync\(/);
+  });
+
+  it('ningun App Link de Android apunta a una ruta que la app no tiene (APP-24)', () => {
+    const filtros = (app.expo.android.intentFilters ?? []) as { data?: { pathPrefix?: string }[] }[];
+    for (const filtro of filtros) {
+      for (const dato of filtro.data ?? []) {
+        // `/pos` abria `+not-found`: no hay `app/**/pos*`. Si vuelve un App Link, que sea con su ruta.
+        expect(dato.pathPrefix).not.toBe('/pos');
+      }
+    }
+  });
+});
+
+describe('la URL de la API (APP-26)', () => {
+  const fuente = readFileSync(join(__dirname, '..', 'src', 'api', 'config.ts'), 'utf8');
+
+  it('el codigo no lleva ninguna base por defecto: ni IP de red local ni http', () => {
+    const sinComentarios = fuente.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    expect(sinComentarios).not.toMatch(/https?:\/\/[0-9]/);
+    expect(sinComentarios).not.toMatch(/192\.168\.|localhost|127\.0\.0\.1|10\.0\.2\.2/);
+  });
+
+  it('sin URL configurada falla con un error que dice que falta y donde ponerla', () => {
+    expect(() => resolverUrlDeLaApi(undefined)).toThrow(/EXPO_PUBLIC_ATLAS_API_URL/);
+    expect(() => resolverUrlDeLaApi('   ')).toThrow(/\.env/);
+    expect(resolverUrlDeLaApi('https://api.atlas.invalid/api/v1')).toBe('https://api.atlas.invalid/api/v1');
+  });
+
+  it('un build de EAS sin URL no se construye; fuera de EAS (expo start) no se corta la configuracion', () => {
+    // `app.config.js` es CommonJS de Node (lo carga Expo, no Metro).
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { exigirUrlEnBuildDeEas } = require('../app.config.js') as {
+      exigirUrlEnBuildDeEas: (url: string | undefined, entorno: Record<string, string | undefined>) => void;
+    };
+    expect(() => exigirUrlEnBuildDeEas(undefined, { EAS_BUILD: 'true', EAS_BUILD_PROFILE: 'production' })).toThrow(
+      /production.*EXPO_PUBLIC_ATLAS_API_URL/,
+    );
+    expect(() => exigirUrlEnBuildDeEas(undefined, { EAS_BUILD_PROFILE: 'preview' })).toThrow();
+    expect(() => exigirUrlEnBuildDeEas('https://a.invalid/api/v1', { EAS_BUILD: 'true' })).not.toThrow();
+    expect(() => exigirUrlEnBuildDeEas(undefined, {})).not.toThrow();
+  });
+
+  it('cada perfil de EAS, con su herencia, lleva la URL de la API', () => {
+    const resuelto = (nombre: string): Perfil => {
+      const p = perfil(nombre) as Perfil & { extends?: string };
+      const base = p.extends ? resuelto(p.extends) : {};
+      return { ...base, ...p, env: { ...(base as Perfil).env, ...p.env } };
+    };
+    for (const nombre of Object.keys(eas.build)) {
+      expect(resuelto(nombre).env?.EXPO_PUBLIC_ATLAS_API_URL).toMatch(/^https:\/\/[^/]+\/api\/v1$/);
+    }
   });
 });

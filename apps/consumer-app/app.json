@@ -22,10 +22,10 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Atlas usa la cámara para escanear el QR del comercio, fotografiar tu carnet y tomar tu selfie.",
         "NSPhotoLibraryUsageDescription": "Atlas usa tus fotos para adjuntar el comprobante de un pago.",
-        "NSLocationWhenInUseUsageDescription": "Atlas registra tu ubicación mientras usas la app para verificar tu domicilio y detectar usos indebidos de tu cuenta.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Con «Siempre», Atlas también registra tu ubicación con la app cerrada. Sirve para verificar tu domicilio y detectar fraude; nunca se comparte con los comercios ni se usa para publicidad.",
+        "NSLocationWhenInUseUsageDescription": "Mientras usas la app, Atlas registra tu ubicación cada 5 minutos para verificar tu domicilio y detectar usos indebidos de tu cuenta.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Con «Siempre», Atlas también registra tu ubicación con la app cerrada: como mucho cada 15 minutos y sólo si te moviste más de 100 m, durante 30 días desde que lo autorizas. Sirve para verificar tu domicilio y detectar fraude; puedes apagarlo antes desde tu perfil. Nunca se comparte con los comercios ni se usa para publicidad.",
         "NSDocumentsFolderUsageDescription": "Atlas accede a tus archivos solo para que elijas el extracto bancario que quieres subir.",
-        "NSFaceIDUsageDescription": "Atlas usa Face ID para que entres con tu rostro en lugar de escribir tu PIN.",
+        "NSFaceIDUsageDescription": "Atlas usa Face ID para desbloquear la app cuando vuelves a ella después de unos minutos, en lugar de pedirte el PIN. Puedes apagarlo en tu perfil.",
         "ITSAppUsesNonExemptEncryption": false,
         "NSContactsUsageDescription": "Atlas usa tus contactos para verificar tus referencias y detectar solicitudes coordinadas. Si lo autorizas, guardamos tu agenda cifrada; no escribimos a tus contactos ni vendemos su información. Puedes retirarlo desde «Privacidad»."
       }
@@ -48,23 +48,6 @@
         "android.permission.FOREGROUND_SERVICE_LOCATION",
         "android.permission.READ_CONTACTS",
         "android.permission.POST_NOTIFICATIONS"
-      ],
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "https",
-              "host": "app.atlas.bo",
-              "pathPrefix": "/pos"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        }
       ]
     },
     "web": {
@@ -92,8 +75,8 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Atlas registra tu ubicación mientras usas la app para verificar tu domicilio y detectar usos indebidos de tu cuenta.",
-          "locationAlwaysAndWhenInUsePermission": "Con «Siempre», Atlas también registra tu ubicación con la app cerrada. Sirve para verificar tu domicilio y detectar fraude.",
+          "locationWhenInUsePermission": "Mientras usas la app, Atlas registra tu ubicación cada 5 minutos para verificar tu domicilio y detectar usos indebidos de tu cuenta.",
+          "locationAlwaysAndWhenInUsePermission": "Con «Siempre», Atlas también registra tu ubicación con la app cerrada: como mucho cada 15 minutos y sólo si te moviste más de 100 m, durante 30 días desde que lo autorizas. Sirve para verificar tu domicilio y detectar fraude; puedes apagarlo antes desde tu perfil.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true,
           "isIosBackgroundLocationEnabled": true
@@ -111,6 +94,12 @@
           "icon": "./assets/android-icon-monochrome.png",
           "color": "#2BE0A8",
           "defaultChannel": "default"
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Atlas usa Face ID para desbloquear la app cuando vuelves a ella después de unos minutos, en lugar de pedirte el PIN. Puedes apagarlo en tu perfil."
         }
       ],
       "expo-task-manager",

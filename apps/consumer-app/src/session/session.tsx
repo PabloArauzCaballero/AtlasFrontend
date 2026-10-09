@@ -17,6 +17,7 @@ import { activarSeñalesDelDispositivo, desactivarSeñalesDelDispositivo } from 
 import { profileStorage, secureTokenStore, type StoredProfile } from './token-storage';
 import { bitacora } from '../features/bitacora';
 import { olvidarPinConfirmado } from '../features/pin-verificado';
+import { marcarSesionRecienAbierta, olvidarBloqueo } from '../features/bloqueo-local';
 import { useRastreoEnPrimerPlano } from './use-rastreo-primer-plano';
 import { cerrarSesionEnServidor } from './cierre-de-sesion';
 import { useLatidoDeSesion, type ContextoDeLatido } from './use-latido-de-sesion';
@@ -282,6 +283,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       await profileStorage.write(stored);
       setProfile(stored);
       await loadCustomerState(customerId);
+      // Acaba de escribir su PIN: el bloqueo local (APP-13) no se lo vuelve a pedir al entrar.
+      marcarSesionRecienAbierta();
       setStatus('authenticated');
       void abrirSesionTelemetria(customerId, 'password');
     },
@@ -333,6 +336,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setRastreo(null);
     // Quien entre después en este teléfono NO hereda un PIN confirmado: «Mis datos» lo vuelve a pedir.
     olvidarPinConfirmado();
+    // Ni candado a la vista ni hora de salida que herede quien entre después (APP-13).
+    olvidarBloqueo();
     // El latido se apaga lo primero: ni un latido mas de una sesion que se esta cerrando.
     setLatido(null);
     await desactivarSeñalesDelDispositivo();

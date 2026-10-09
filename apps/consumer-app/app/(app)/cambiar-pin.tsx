@@ -33,6 +33,7 @@ import { CodeField } from '../../src/ui/code-field';
 import { PinField } from '../../src/ui/pin-field';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, Card, ErrorState } from '../../src/ui/primitives';
+import { useSinCapturas } from '../../src/device/sin-capturas';
 
 type Step = 'current' | 'confirm' | 'done';
 
@@ -40,6 +41,8 @@ type Step = 'current' | 'confirm' | 'done';
 const PLAZO_SALIDA_MS = 3_000;
 
 export default function ChangePin() {
+  // PIN, carnet o datos bancarios: sin capturas ni grabaciones de pantalla (APP-18).
+  useSinCapturas('pin-cambiar');
   const router = useRouter();
   const session = useSession();
   const [step, setStep] = useState<Step>('current');

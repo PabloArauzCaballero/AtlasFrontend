@@ -26,6 +26,7 @@ import { useArranqueDecidido } from '../src/device/aplicar-actualizacion';
 import { prepararAvisos } from '../src/device/push';
 import { useAbrirAvisoTocado } from '../src/device/push-navigation';
 import { CapaSinConexion } from '../src/ui/sin-conexion';
+import { BloqueoLocal } from '../src/ui/bloqueo-local';
 import { SandboxProvider } from '../src/sandbox/store';
 import { SonidoMarcaProvider } from '../src/ui/brand-sound';
 import { AnimatedSplash } from '../src/ui/splash';
@@ -235,6 +236,8 @@ export default function RootLayout() {
                   <NavigationTree fontsReady={fontsLoaded || Boolean(fontError)} arranqueDecidido={arranqueDecidido} />
                   {/* Sin internet: el logo girando sobre toda la ventana, hasta que vuelve la conexión. */}
                   <CapaSinConexion />
+                  {/* Con sesion abierta, al volver tras unos minutos: Face ID / huella o PIN (APP-13). */}
+                  <BloqueoLocal />
                 </BrandCutProvider>
               </TourProvider>
             </SandboxProvider>

@@ -15,8 +15,11 @@ import { space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasLogo } from '../../src/ui/brand';
 import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
+import { useSinCapturas } from '../../src/device/sin-capturas';
 
 export default function SignIn() {
+  // PIN, carnet o datos bancarios: sin capturas ni grabaciones de pantalla (APP-18).
+  useSinCapturas('pin-ingreso');
   const router = useRouter();
   const session = useSession();
 

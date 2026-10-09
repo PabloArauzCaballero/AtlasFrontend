@@ -36,12 +36,15 @@
  * `capturaSimulada` lanza antes de tocar nada. Una puerta para saltarse la captura de identidad en
  * una app de credito no es una comodidad, es un fraude esperando.
  *
- * **Lo que ese guardia NO hace es sacar las imagenes del binario.** El `require` de un asset lo
- * resuelve el empaquetador leyendo el grafo de modulos, no ejecutandolo, asi que las tres PNG
- * viajan igual: medido sobre `expo export --platform android`, 1,5 MB de la compilacion publicada
- * son estas tres imagenes muertas. Se deja escrito porque es justo el detalle que un `__DEV__`
- * aparenta resolver y no resuelve — sacarlas de verdad pide excluirlas en la configuracion del
- * empaquetador, o servirlas desde el motor en vez de empotrarlas.
+ * **Y las imagenes no viajan en el binario de release** (auditoria 2026-10-09, APP-25). El `require`
+ * de un asset lo resuelve el empaquetador leyendo el grafo de modulos, no ejecutandolo: con los
+ * `require` sueltos en el modulo, las cinco PNG (1,5 MB medidos sobre `expo export --platform
+ * android`) iban dentro de la compilacion publicada aunque el boton no se dibujara. Ahora el mapa
+ * entero cuelga de `__DEV__`: en un bundle de release Metro sustituye `__DEV__` por `false` y pliega
+ * la rama ANTES de recoger dependencias, asi que los `require` desaparecen y con ellos los assets.
+ * Los perfiles de QA de EAS (`preview`, `testflight-test`) son builds de release y tampoco las
+ * llevan; solo `development` (cliente de desarrollo) y `expo start`. La prueba
+ * `camara-de-prueba-fuera-de-release.test.ts` impide que un `require` vuelva a salir del guardia.
  */
 import { Asset } from 'expo-asset';
 import { Directory, File, Paths } from 'expo-file-system';
@@ -66,18 +69,25 @@ export const CARNET_DE_PRUEBA = {
 /** El escenario del catalogo del motor del que salieron estas imagenes. */
 export const ESCENARIO = 'identidad-aprobada';
 
-const FUENTES: Record<EvidenceKind, number> = {
-  identity_front: require('../../assets/dev/carnet-anverso.png'),
-  identity_back: require('../../assets/dev/carnet-reverso.png'),
-  selfie: require('../../assets/dev/selfie.png'),
-  // Otras imágenes a propósito: con los mismos bytes el servidor rechaza la segunda (hash repetido).
-  selfie_left: require('../../assets/dev/selfie-izquierda.png'),
-  selfie_right: require('../../assets/dev/selfie-derecha.png'),
-};
+/*
+  SOLO dentro de `__DEV__`, y escrito en la misma expresion: es lo que deja a Metro plegar la rama y
+  quitar los `require` del bundle de release. Sacarlos a una constante aparte, o leer `__DEV__` desde
+  otra funcion, devolveria las imagenes al binario. Ver la cabecera.
+*/
+const FUENTES: Record<EvidenceKind, number> | null = __DEV__
+  ? {
+      identity_front: require('../../assets/dev/carnet-anverso.png'),
+      identity_back: require('../../assets/dev/carnet-reverso.png'),
+      selfie: require('../../assets/dev/selfie.png'),
+      // Otras imágenes a propósito: con los mismos bytes el servidor rechaza la segunda (hash repetido).
+      selfie_left: require('../../assets/dev/selfie-izquierda.png'),
+      selfie_right: require('../../assets/dev/selfie-derecha.png'),
+    }
+  : null;
 
 /** Solo en desarrollo. Ver la nota de arriba antes de tocar esta linea. */
 export function estaDisponible(): boolean {
-  return __DEV__;
+  return __DEV__ && FUENTES !== null;
 }
 
 /**
@@ -89,7 +99,7 @@ export function estaDisponible(): boolean {
  * hash sin extension—. Copiarlo cuesta unos milisegundos y elimina esa dependencia.
  */
 export async function capturaSimulada(kind: EvidenceKind): Promise<string> {
-  if (!estaDisponible()) throw new Error('CAMARA_DE_PRUEBA_NO_DISPONIBLE');
+  if (!estaDisponible() || !FUENTES) throw new Error('CAMARA_DE_PRUEBA_NO_DISPONIBLE');
 
   const asset = Asset.fromModule(FUENTES[kind]);
   await asset.downloadAsync();

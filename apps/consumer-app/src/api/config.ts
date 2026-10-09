@@ -1,15 +1,15 @@
 /**
  * Configuracion de entorno de la app.
  *
- * Se lee de `EXPO_PUBLIC_*` (visibles en el bundle: aqui NO va ningun secreto) con valores por
- * defecto pensados para desarrollo local contra el stack de AtlasBackend.
+ * Se lee de `EXPO_PUBLIC_*` (visibles en el bundle: aqui NO va ningun secreto). La base de la API es
+ * obligatoria; el resto tiene valores por defecto pensados para desarrollo local.
  *
  * ## Dos fuentes, y por que hacen falta las dos
  *
  * `process.env` se inlinea al empaquetar y es lo que funciona con `expo start`. En un binario nativo
  * de release, en cambio, el empaquetado lo lanza Gradle y la carga de los `.env` no esta garantizada
- * ahi: el binario acababa con el valor por defecto del codigo —una IP de desarrollo— aunque se
- * hubiera compilado con otro `.env`. Como no falla al compilar, se descubria con la app instalada.
+ * ahi: el binario acababa con el valor por defecto que entonces tenia el codigo —una IP de desarrollo—
+ * aunque se hubiera compilado con otro `.env`. Como no falla al compilar, se descubria con la app instalada.
  *
  * Por eso `app.config.js` lee el `.env` de forma explicita y deja los valores en `extra.atlas`, que
  * `expo-constants` serializa dentro del APK en cada compilacion. Se consulta primero el entorno
@@ -35,14 +35,33 @@ const fromEnv = (key: string, fallback?: string): string | undefined =>
   clean(process.env[key]) ?? clean(fallback);
 
 /**
- * `localhost` no sirve: dentro del emulador apunta al propio emulador. Se usa la IP LAN del equipo
- * anfitrion, que resuelven por igual el emulador Android, el simulador iOS y un telefono real en la
- * misma red.
+ * La base de la API NO tiene valor por defecto (auditoria de seguridad 2026-10-09, APP-26).
+ *
+ * Antes caia a `http://192.168.0.197:3105/api/v1`: una IP de la red de casa, en claro, que viajaba
+ * dentro de CADA bundle —tambien el de la tienda— y que convertia «olvide configurar la URL» en una
+ * app que arranca, no falla al compilar y habla por http con lo que conteste en esa IP de la red
+ * donde este el telefono. Sin URL configurada no hay a quien hablar, y se dice:
+ *
+ * - en desarrollo, la app se para al cargar con un error que dice que variable falta y donde;
+ * - en un build de release no puede llegar a pasar: `app.config.js` aborta el build de EAS sin URL,
+ *   y `__tests__/eas-distribucion.test.ts` exige que cada perfil la declare por https.
+ *
+ * Para un emulador o un telefono en la misma red: `EXPO_PUBLIC_ATLAS_API_URL=http://<IP LAN>:3105/api/v1`
+ * en `.env` (ver `.env.example`). `localhost` no sirve: dentro del emulador apunta al propio emulador.
  */
-const DEFAULT_API_BASE_URL = 'http://192.168.0.197:3105/api/v1';
+export const SIN_URL_DE_API =
+  'Falta EXPO_PUBLIC_ATLAS_API_URL: la app no sabe a que servidor hablar. Ponla en apps/consumer-app/.env ' +
+  '(copia .env.example) o exportala antes de `expo start`; en un build de EAS va en el perfil de eas.json.';
+
+/** La base configurada, o un error claro. Exportada para probarla sin recargar el modulo. */
+export function resolverUrlDeLaApi(configurada: string | undefined): string {
+  const url = clean(configurada?.trim());
+  if (!url) throw new Error(SIN_URL_DE_API);
+  return url;
+}
 
 export const apiConfig = {
-  baseUrl: fromEnv('EXPO_PUBLIC_ATLAS_API_URL', extra.apiUrl) ?? DEFAULT_API_BASE_URL,
+  baseUrl: resolverUrlDeLaApi(fromEnv('EXPO_PUBLIC_ATLAS_API_URL', extra.apiUrl)),
   tenantId: fromEnv('EXPO_PUBLIC_ATLAS_TENANT_ID', extra.tenantId) ?? '1',
   requestTimeoutMs: Number(fromEnv('EXPO_PUBLIC_ATLAS_TIMEOUT_MS', extra.timeoutMs) ?? 20_000),
   appVersion: Constants.expoConfig?.version ?? '0.0.0',

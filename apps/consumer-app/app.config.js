@@ -76,9 +76,27 @@ function resolvePublicEnv(projectRoot) {
   return resolved;
 }
 
+/**
+ * Un build de EAS sin URL de la API no se construye (APP-26).
+ *
+ * La app ya no tiene base por defecto (ver `src/api/config.ts`): sin URL, en desarrollo se para al
+ * cargar con un error claro. En un binario de release ese error lo veria el cliente, asi que se
+ * corta antes, aqui, donde lo ve quien compila. EAS marca sus trabajadores con `EAS_BUILD`.
+ */
+function exigirUrlEnBuildDeEas(apiUrl, entorno = process.env) {
+  const enEas = entorno.EAS_BUILD === 'true' || entorno.EAS_BUILD === '1' || Boolean(entorno.EAS_BUILD_PROFILE);
+  if (enEas && !apiUrl) {
+    throw new Error(
+      `[app.config] El perfil de EAS «${entorno.EAS_BUILD_PROFILE ?? '?'}» no declara EXPO_PUBLIC_ATLAS_API_URL: ` +
+        'un build sin URL de la API no se publica. Ponla en el bloque `env` del perfil en eas.json.',
+    );
+  }
+}
+
 module.exports = ({ config }) => {
   const env = resolvePublicEnv(__dirname);
   const apiUrl = env.EXPO_PUBLIC_ATLAS_API_URL;
+  exigirUrlEnBuildDeEas(apiUrl);
 
   /*
    * La clave del mapa de Android, si la hay.
@@ -160,3 +178,5 @@ module.exports = ({ config }) => {
 
   return withCleartextWhenHttp(withExtra, { apiUrl });
 };
+
+module.exports.exigirUrlEnBuildDeEas = exigirUrlEnBuildDeEas;

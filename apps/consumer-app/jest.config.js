@@ -3,6 +3,8 @@ module.exports = {
   // Ver la cabecera de `jest.resolver.js`: sin esto, montar un componente que use reanimated muere
   // al cargar los worklets nativos.
   resolver: '<rootDir>/jest.resolver.js',
+  // Antes que nada: `src/api/config.ts` exige la URL de la API al cargarse. Ver `jest.env.js`.
+  setupFiles: ['<rootDir>/jest.env.js'],
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',

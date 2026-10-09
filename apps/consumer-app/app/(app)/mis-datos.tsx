@@ -33,6 +33,7 @@ import { ExtractosSubidosCard } from '../../src/ui/extractos-subidos-card';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, SkeletonLista } from '../../src/ui/primitives';
 import { marca } from '../../src/theme/tokens';
+import { useSinCapturas } from '../../src/device/sin-capturas';
 
 const FINALIDADES: Record<string, string> = {
   device_address_book: 'Agenda del dispositivo',
@@ -46,6 +47,8 @@ const finalidad = (codigo: string) => FINALIDADES[codigo] ?? codigo.replace(/_/g
 type Datos = { me: customerApi.CustomerMe; respuestas: onboardingApi.OnboardingAnswers | null };
 
 export default function MisDatos() {
+  // PIN, carnet o datos bancarios: sin capturas ni grabaciones de pantalla (APP-18).
+  useSinCapturas('mis-datos');
   const router = useRouter();
   const session = useSession();
   const customerId = session.customerId;
