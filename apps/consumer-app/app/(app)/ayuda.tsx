@@ -31,7 +31,7 @@ import { Markdown } from '../../src/ui/markdown';
 import { Accordion, AtlasText, Button, Card, CardHeader, EmptyState, IconChip, SectionHeader, Skeleton } from '../../src/ui/primitives';
 import { Field } from '../../src/ui/fields';
 import { Icon, type IconName } from '../../src/ui/icons';
-import { color, palette, radius, space, stroke } from '../../src/theme/tokens';
+import { color, radius, space, stroke } from '../../src/theme/tokens';
 import { filtrarPreguntas } from '../../src/features/preguntas-frecuentes';
 import { urlDeLaGuia } from '../../src/features/guia-pdf';
 import { useVerRecorrido } from '../../src/features/ver-recorrido';
@@ -79,7 +79,7 @@ export default function Ayuda() {
 
       <View style={styles.portada}>
         <LinearGradient
-          colors={[palette.brand700, color.surface.raised]}
+          colors={[color.heroWash, color.surface.raised]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}

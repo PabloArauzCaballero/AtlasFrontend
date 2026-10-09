@@ -43,7 +43,7 @@ import React from 'react';
 import { LayoutAnimation, Platform, Pressable, StyleSheet, UIManager, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
-import { color, palette, radius, space, spring, stroke } from '../theme/tokens';
+import { color, radius, space, spring, stroke } from '../theme/tokens';
 import { BrandHalo } from './brand';
 import { toqueWeb } from './hit-slop';
 import { Icon, type IconName } from './icons';
@@ -106,7 +106,7 @@ export function TrustCard({ items, title = 'Por qué te pedimos esto' }: { items
       por el contorno ES el borde. Mismo truco que `BrandPanel`; ver el porque alli.
     */
     <LinearGradient
-      colors={[palette.brand500, palette.brand400, palette.brand700]}
+      colors={[color.brand.b500, color.brand.b400, color.brand.b700]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       locations={[0, 0.5, 1]}

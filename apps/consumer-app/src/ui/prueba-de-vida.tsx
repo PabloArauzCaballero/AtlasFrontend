@@ -30,7 +30,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { IdentityEvidenceKind } from '../features/evidence-upload';
 import { avanceDeQuietud, estaQuieto } from '../features/quietud';
-import { color, palette, radius, space, stroke } from '../theme/tokens';
+import { alpha, color, luz, radius, space, stroke } from '../theme/tokens';
 import { Icon } from './icons';
 import { SiluetaDeCara, silutaDe } from './silueta-de-cara';
 import { AtlasText, Button } from './primitives';
@@ -152,7 +152,8 @@ export function PruebaDeVida({
   };
 
   const quieto = fase === 'tomada';
-  const bordeOvalo = quieto ? color.action.primary : avance > 0 ? palette.brand300 : 'rgba(255,255,255,0.85)';
+  // Sobre la imagen en vivo: la menta del escenario (oscuro en los dos temas), no el navy de la accion, que ahi no se ve.
+  const bordeOvalo = quieto ? color.stage.brand.b400 : avance > 0 ? color.stage.brand.b300 : color.camera.guide;
 
   return (
     <View style={styles.pantalla} testID="prueba-de-vida">
@@ -172,7 +173,7 @@ export function PruebaDeVida({
       {/* Arriba: salir, paso y la instrucción. */}
       <View style={[styles.arriba, { paddingTop: insets.top + space.sm }]}>
         <Pressable onPress={onSalir} accessibilityRole="button" accessibilityLabel="Salir de la prueba de vida" hitSlop={12} style={styles.salir}>
-          <Icon name="cerrar" size={22} tint={palette.white} />
+          <Icon name="cerrar" size={22} tint={color.camera.ink} />
         </Pressable>
         <View style={styles.instruccion}>
           {pose ? (
@@ -215,7 +216,7 @@ export function PruebaDeVida({
                 style={styles.miniatura}
                 testID={`prueba-de-vida-foto-${p.kind}`}
               >
-                {foto ? <Image source={{ uri: foto.uri }} style={styles.miniaturaImagen} /> : <Icon name="perfil" size={22} tint={palette.text3} />}
+                {foto ? <Image source={{ uri: foto.uri }} style={styles.miniaturaImagen} /> : <Icon name="perfil" size={22} tint={color.camera.inkSoft} />}
                 {foto ? (
                   <View style={[styles.sello, foto.estado === 'enviada' ? styles.selloOk : foto.estado === 'error' ? styles.selloError : styles.selloEnviando]}>
                     <AtlasText variant="micro" style={styles.selloTexto}>
@@ -237,18 +238,18 @@ export function PruebaDeVida({
 const ESTADO_TEXTO: Record<EstadoFoto['estado'], string> = { enviando: 'Enviando…', enviada: 'Enviada', error: 'Reintentar' };
 
 const styles = StyleSheet.create({
-  pantalla: { flex: 1, backgroundColor: palette.black },
+  pantalla: { flex: 1, backgroundColor: color.camera.bg },
   centro: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center' },
-  destello: { backgroundColor: palette.white },
+  destello: { backgroundColor: luz.blanco },
   // Sobre el pecho, no sobre la cara: la persona tiene que verse mientras cuenta.
   cuentaCaja: { position: 'absolute', left: 0, right: 0, top: '58%', alignItems: 'center' },
-  cuenta: { color: palette.white, textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 8 },
-  arriba: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: space.lg, gap: space.sm, backgroundColor: 'rgba(0,0,0,0.35)', paddingBottom: space.md },
+  cuenta: { color: color.camera.ink, textShadowColor: alpha(luz.negro, 0.5), textShadowRadius: 8 },
+  arriba: { position: 'absolute', top: 0, left: 0, right: 0, paddingHorizontal: space.lg, gap: space.sm, backgroundColor: color.camera.bar, paddingBottom: space.md },
   salir: { alignSelf: 'flex-start', width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   instruccion: { alignItems: 'center', gap: space.xxs },
-  claro: { color: palette.white },
-  claroSuave: { color: 'rgba(255,255,255,0.86)' },
-  abajo: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: space.lg, paddingTop: space.md, gap: space.sm, backgroundColor: 'rgba(0,0,0,0.35)' },
+  claro: { color: color.camera.ink },
+  claroSuave: { color: color.camera.inkSoft },
+  abajo: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: space.lg, paddingTop: space.md, gap: space.sm, backgroundColor: color.camera.bar },
   miniaturas: { flexDirection: 'row', justifyContent: 'center', gap: space.md },
   miniatura: {
     width: 76,
@@ -258,13 +259,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: stroke.hairline,
-    borderColor: 'rgba(255,255,255,0.35)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: color.camera.ring,
+    backgroundColor: color.camera.ringFill,
   },
   miniaturaImagen: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0 },
   sello: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingVertical: 3, alignItems: 'center' },
-  selloEnviando: { backgroundColor: 'rgba(0,0,0,0.6)' },
-  selloOk: { backgroundColor: palette.brand500 },
-  selloError: { backgroundColor: palette.dangerDeep },
-  selloTexto: { color: palette.white },
+  selloEnviando: { backgroundColor: color.camera.barStrong },
+  selloOk: { backgroundColor: color.brand.b500 },
+  selloError: { backgroundColor: color.feedback.dangerStrong },
+  selloTexto: { color: color.camera.ink },
 });

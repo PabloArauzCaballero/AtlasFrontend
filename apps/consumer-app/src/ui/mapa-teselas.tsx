@@ -28,7 +28,7 @@ import {
   type Coordenada,
   type Estilo,
 } from '../features/teselas';
-import { color, palette, radius, space } from '../theme/tokens';
+import { alpha, color, luz, radius, space } from '../theme/tokens';
 import { AtlasText } from './primitives';
 
 /** Menos de esto entre que el dedo baja y sube es un toque, no un arrastre. */
@@ -176,17 +176,17 @@ function BotonMapa({ etiqueta, accesible, onPress, ancho }: { etiqueta: string; 
 }
 
 const styles = StyleSheet.create({
-  fondoCalles: { backgroundColor: '#E9EEF1', overflow: 'hidden' },
-  fondoSatelite: { backgroundColor: '#1B2530', overflow: 'hidden' },
+  fondoCalles: { backgroundColor: color.map.streets, overflow: 'hidden' },
+  fondoSatelite: { backgroundColor: color.map.satellite, overflow: 'hidden' },
   tesela: { position: 'absolute', width: 256, height: 256 },
   marcador: {
     position: 'absolute',
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: 'rgba(43,217,161,0.35)',
+    backgroundColor: alpha(color.map.point, 0.35),
     borderWidth: 2,
-    borderColor: palette.brand400,
+    borderColor: color.map.point,
   },
   controles: { position: 'absolute', right: space.md, top: space.md, gap: space.sm, alignItems: 'flex-end' },
   boton: {
@@ -195,13 +195,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(6,20,38,0.86)',
+    backgroundColor: color.map.chip,
     borderWidth: 1,
-    borderColor: color.border.subtle,
+    // Filo de luz sobre la ficha oscura: `border.subtle` es oscuro en el tema claro y ahi no se veria.
+    borderColor: alpha(luz.blanco, 0.09),
   },
   botonAncho: { paddingHorizontal: space.md },
   botonPulsado: { opacity: 0.7 },
-  botonTexto: { color: palette.white },
+  botonTexto: { color: color.text.onDark },
   atribucion: {
     position: 'absolute',
     left: space.sm,
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.75)',
+    backgroundColor: color.map.attribution,
   },
-  atribucionTexto: { color: '#22303C', fontSize: 10 },
+  atribucionTexto: { color: color.map.attributionInk, fontSize: 10 },
 });

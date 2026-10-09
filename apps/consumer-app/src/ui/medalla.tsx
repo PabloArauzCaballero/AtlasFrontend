@@ -11,7 +11,7 @@
  */
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, ClipPath, Defs, G, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { color, palette, stroke } from '../theme/tokens';
+import { color, luz, objeto, stroke } from '../theme/tokens';
 import { Icon } from './icons';
 import { iconoDe, METAL, type Rango } from './trofeo';
 
@@ -68,7 +68,7 @@ export function Medalla({
           <RadialGradient id={`${id}-cara`} cx="48" cy="38" r="44" gradientUnits="userSpaceOnUse">
             <Stop offset="0" stopColor={m.medio} stopOpacity={0.55} />
             <Stop offset="0.55" stopColor={m.tinta} stopOpacity={1} />
-            <Stop offset="1" stopColor="#050B16" stopOpacity={1} />
+            <Stop offset="1" stopColor={objeto.fondoProfundo} stopOpacity={1} />
           </RadialGradient>
           <RadialGradient id={`${id}-halo`} cx="48" cy="46" r="48" gradientUnits="userSpaceOnUse">
             <Stop offset="0" stopColor={m.halo} stopOpacity={0.5} />
@@ -78,8 +78,8 @@ export function Medalla({
             <Path d={CARA} />
           </ClipPath>
           <LinearGradient id={`${id}-vidrio`} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.5} />
-            <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
+            <Stop offset="0" stopColor={luz.blanco} stopOpacity={0.5} />
+            <Stop offset="1" stopColor={luz.blanco} stopOpacity={0} />
           </LinearGradient>
         </Defs>
         {ganado ? (
@@ -96,21 +96,21 @@ export function Medalla({
             </G>
             {/* Brillo de vidrio en la mitad alta de la cara y faja especular en el aro. */}
             <Path d="M22 23 L48 14 L74 23 V38 C62 33 34 33 22 38 Z" fill={`url(#${id}-vidrio)`} opacity={0.5} />
-            <Path d={BRILLO} fill="#FFFFFF" opacity={0.4} />
+            <Path d={BRILLO} fill={luz.blanco} opacity={0.4} />
             {/* Las gemas del rango, centradas bajo el icono. */}
             {Array.from({ length: gemas }, (_, g) => {
               const x = 48 + (g - (gemas - 1) / 2) * 7;
               return <Path key={g} d={`M${x} 66 l2.6 3 -2.6 3.4 -2.6 -3.4 Z`} fill={m.luz} stroke={m.sombra} strokeWidth={0.4} />;
             })}
-            <Path d="M82 6 l1.6 4.2 4.2 1.6 -4.2 1.6 -1.6 4.2 -1.6 -4.2 -4.2 -1.6 4.2 -1.6 Z" fill="#FFFFFF" opacity={0.95} />
-            <Path d="M10 56 l1 2.6 2.6 1 -2.6 1 -1 2.6 -1 -2.6 -2.6 -1 2.6 -1 Z" fill="#FFFFFF" opacity={0.7} />
+            <Path d="M82 6 l1.6 4.2 4.2 1.6 -4.2 1.6 -1.6 4.2 -1.6 -4.2 -4.2 -1.6 4.2 -1.6 Z" fill={luz.blanco} opacity={0.95} />
+            <Path d="M10 56 l1 2.6 2.6 1 -2.6 1 -1 2.6 -1 -2.6 -2.6 -1 2.6 -1 Z" fill={luz.blanco} opacity={0.7} />
             {children}
           </>
         ) : (
           <>
-            <Path d={ESCUDO} fill={palette.bgElevated} stroke={palette.line2} strokeWidth={1.5} strokeLinejoin="round" />
+            <Path d={ESCUDO} fill={color.surface.secondary} stroke={color.border.strong} strokeWidth={1.5} strokeLinejoin="round" />
             <G transform="translate(48 46) scale(0.88) translate(-48 -46)">
-              <Path d={CARA} fill={palette.bgCard} stroke={palette.line2} strokeWidth={1} />
+              <Path d={CARA} fill={color.surface.raised} stroke={color.border.strong} strokeWidth={1} />
             </G>
             {/* El avance: la cara se va llenando de abajo hacia arriba con el metal que se ganará. */}
             {avance > 0 ? (

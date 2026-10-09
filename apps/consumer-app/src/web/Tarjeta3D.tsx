@@ -8,6 +8,7 @@
  */
 import { useRef } from 'react';
 import { Platform } from 'react-native';
+import { color } from '../theme/tokens';
 
 export function Tarjeta3D({
   nombre,
@@ -55,8 +56,8 @@ export function Tarjeta3D({
     >
       <div className="acard__top">
         <svg width="26" height="26" viewBox="0 0 48 48" aria-hidden="true">
-          <path d="M24 5 L43 43 H34 L24 21 L14 43 H5 Z" fill="#7FEFD6" />
-          <path d="M17.5 31 H30.5 L34 38 H14 Z" fill="#052033" opacity="0.55" />
+          <path d="M24 5 L43 43 H34 L24 21 L14 43 H5 Z" fill={color.stage.brand.tint} />
+          <path d="M17.5 31 H30.5 L34 38 H14 Z" fill={color.stage.brand.b900} opacity="0.55" />
         </svg>
         Atlas
       </div>

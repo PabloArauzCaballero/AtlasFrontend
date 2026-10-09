@@ -19,7 +19,7 @@
  * traduce, se lee con lector de pantalla y puede editarse desde el portal.
  */
 import Svg, { Circle, Defs, G, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
-import { palette } from '../theme/tokens';
+import { color } from '../theme/tokens';
 
 export type NombreIlustracion = 'que-es-atlas' | 'escaneas-y-listo' | 'pagas-en-cuotas' | 'construyes-historial';
 
@@ -45,13 +45,13 @@ function Halo({ id }: { id: string }) {
     <>
       <Defs>
         <LinearGradient id={`${id}-marca`} x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor={palette.brand300} />
-          <Stop offset="0.5" stopColor={palette.brand400} />
-          <Stop offset="1" stopColor={palette.brand500} />
+          <Stop offset="0" stopColor={color.brand.b300} />
+          <Stop offset="0.5" stopColor={color.brand.b400} />
+          <Stop offset="1" stopColor={color.brand.b500} />
         </LinearGradient>
         <LinearGradient id={`${id}-halo`} x1="0.5" y1="0" x2="0.5" y2="1">
-          <Stop offset="0" stopColor={palette.brand400} stopOpacity="0.22" />
-          <Stop offset="1" stopColor={palette.brand400} stopOpacity="0" />
+          <Stop offset="0" stopColor={color.brand.b400} stopOpacity="0.22" />
+          <Stop offset="1" stopColor={color.brand.b400} stopOpacity="0" />
         </LinearGradient>
       </Defs>
       <Circle cx={160} cy={112} r={104} fill={`url(#${id}-halo)`} />
@@ -65,26 +65,26 @@ function QueEsAtlas() {
     <>
       <Halo id={id} />
       {/* El comercio: cuerpo, puerta, ventana. */}
-      <Rect x={70} y={96} width={140} height={90} rx={8} fill={palette.bgCard} stroke={palette.edgeLit} strokeWidth={2} />
-      <Rect x={128} y={130} width={26} height={56} rx={4} fill={palette.navy} />
-      <Rect x={84} y={118} width={34} height={30} rx={4} fill={palette.navy} />
-      <Rect x={164} y={118} width={34} height={30} rx={4} fill={palette.navy} />
+      <Rect x={70} y={96} width={140} height={90} rx={8} fill={color.surface.raised} stroke={color.surface.edge} strokeWidth={2} />
+      <Rect x={128} y={130} width={26} height={56} rx={4} fill={color.brand.navy} />
+      <Rect x={84} y={118} width={34} height={30} rx={4} fill={color.brand.navy} />
+      <Rect x={164} y={118} width={34} height={30} rx={4} fill={color.brand.navy} />
       {/* El toldo de rayas. */}
       <Path d="M62 96 L78 62 H202 L218 96 Z" fill={`url(#${id}-marca)`} />
       {[0, 1, 2, 3, 4].map((i) => (
-        <Path key={i} d={`M${78 + i * 25 + 12.5} 62 L${70 + i * 28 + 14} 96`} stroke={palette.brand900} strokeWidth={3} opacity={0.35} />
+        <Path key={i} d={`M${78 + i * 25 + 12.5} 62 L${70 + i * 28 + 14} 96`} stroke={color.brand.b900} strokeWidth={3} opacity={0.35} />
       ))}
-      <Path d="M62 96 q9 14 18 0 q9 14 18 0 q9 14 18 0 q9 14 18 0 q9 14 18 0 q9 14 18 0 q9 14 18 0 q9 14 18 0 Z" fill={palette.brand500} />
+      <Path d="M62 96 q9 14 18 0 q9 14 18 0 q9 14 18 0 q9 14 18 0 q9 14 18 0 q9 14 18 0 q9 14 18 0 q9 14 18 0 Z" fill={color.brand.b500} />
       {/* El teléfono con la compra confirmada. */}
       <G>
-        <Rect x={206} y={104} width={52} height={88} rx={10} fill={palette.navy} stroke={palette.brand400} strokeWidth={3} />
+        <Rect x={206} y={104} width={52} height={88} rx={10} fill={color.brand.navy} stroke={color.brand.b400} strokeWidth={3} />
         <Circle cx={232} cy={140} r={15} fill={`url(#${id}-marca)`} />
-        <Path d="M224 140 l6 6 l11 -12" stroke={palette.brand900} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-        <Rect x={216} y={166} width={32} height={5} rx={2.5} fill={palette.brand400} opacity={0.6} />
-        <Rect x={220} y={176} width={24} height={5} rx={2.5} fill={palette.edgeLit} />
+        <Path d="M224 140 l6 6 l11 -12" stroke={color.brand.b900} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <Rect x={216} y={166} width={32} height={5} rx={2.5} fill={color.brand.b400} opacity={0.6} />
+        <Rect x={220} y={176} width={24} height={5} rx={2.5} fill={color.surface.edge} />
       </G>
-      <Circle cx={56} cy={70} r={5} fill={palette.brand300} opacity={0.7} />
-      <Circle cx={270} cy={72} r={3.5} fill={palette.brand300} opacity={0.6} />
+      <Circle cx={56} cy={70} r={5} fill={color.brand.b300} opacity={0.7} />
+      <Circle cx={270} cy={72} r={3.5} fill={color.brand.b300} opacity={0.6} />
     </>
   );
 }
@@ -99,21 +99,21 @@ function EscaneasYListo() {
   return (
     <>
       <Halo id={id} />
-      <Rect x={96} y={20} width={128} height={186} rx={18} fill={palette.navy} stroke={palette.brand400} strokeWidth={3.5} />
-      <Rect x={140} y={28} width={40} height={6} rx={3} fill={palette.brand700} />
+      <Rect x={96} y={20} width={128} height={186} rx={18} fill={color.brand.navy} stroke={color.brand.b400} strokeWidth={3.5} />
+      <Rect x={140} y={28} width={40} height={6} rx={3} fill={color.brand.b700} />
       {/* El código QR dentro de las esquinas del visor. */}
       <G transform="translate(116 56)">
-        <Rect width={88} height={88} rx={8} fill={palette.bgCard} />
+        <Rect width={88} height={88} rx={8} fill={color.surface.raised} />
         <G transform="translate(12 12)">
           {[[0, 0], [5, 0], [0, 5]].map(([x, y]) => (
             <G key={`${x}-${y}`} transform={`translate(${x! * 9.1} ${y! * 9.1})`}>
-              <Rect width={18} height={18} rx={3} fill={palette.brand300} />
-              <Rect x={4} y={4} width={10} height={10} rx={1.5} fill={palette.bgCard} />
-              <Rect x={6.5} y={6.5} width={5} height={5} rx={1} fill={palette.brand300} />
+              <Rect width={18} height={18} rx={3} fill={color.brand.b300} />
+              <Rect x={4} y={4} width={10} height={10} rx={1.5} fill={color.surface.raised} />
+              <Rect x={6.5} y={6.5} width={5} height={5} rx={1} fill={color.brand.b300} />
             </G>
           ))}
           {celdas.map(([x, y]) => (
-            <Rect key={`${x}-${y}`} x={x! * 9.1} y={y! * 9.1} width={7.5} height={7.5} rx={1.5} fill={palette.brand400} opacity={0.9} />
+            <Rect key={`${x}-${y}`} x={x! * 9.1} y={y! * 9.1} width={7.5} height={7.5} rx={1.5} fill={color.brand.b400} opacity={0.9} />
           ))}
         </G>
         {/* Las cuatro esquinas del visor. */}
@@ -121,7 +121,7 @@ function EscaneasYListo() {
           <Path
             key={`${x}-${y}`}
             d={`M${x! + dx! * 18} ${y!} H${x!} V${y! + dy! * 18}`}
-            stroke={palette.brand300}
+            stroke={color.brand.b300}
             strokeWidth={4}
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -132,7 +132,7 @@ function EscaneasYListo() {
       {/* La línea de escaneo. */}
       <Rect x={110} y={98} width={100} height={4} rx={2} fill={`url(#${id}-marca)`} />
       <Rect x={120} y={168} width={80} height={22} rx={11} fill={`url(#${id}-marca)`} />
-      <Path d="M144 179 l7 7 l13 -14" stroke={palette.brand900} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <Path d="M144 179 l7 7 l13 -14" stroke={color.brand.b900} strokeWidth={4} strokeLinecap="round" strokeLinejoin="round" fill="none" />
     </>
   );
 }
@@ -142,10 +142,10 @@ function PagasEnCuotas() {
   return (
     <>
       <Halo id={id} />
-      <Rect x={64} y={36} width={192} height={150} rx={16} fill={palette.bgCard} stroke={palette.edgeLit} strokeWidth={2.5} />
+      <Rect x={64} y={36} width={192} height={150} rx={16} fill={color.surface.raised} stroke={color.surface.edge} strokeWidth={2.5} />
       <Path d="M64 70 V52 a16 16 0 0 1 16 -16 H240 a16 16 0 0 1 16 16 V70 Z" fill={`url(#${id}-marca)`} />
-      <Rect x={96} y={24} width={8} height={24} rx={4} fill={palette.brand900} />
-      <Rect x={216} y={24} width={8} height={24} rx={4} fill={palette.brand900} />
+      <Rect x={96} y={24} width={8} height={24} rx={4} fill={color.brand.b900} />
+      <Rect x={216} y={24} width={8} height={24} rx={4} fill={color.brand.b900} />
       {/* Tres cuotas: la primera ya pagada, la segunda en curso, la tercera por venir. */}
       {[0, 1, 2].map((i) => {
         const x = 108 + i * 52;
@@ -153,20 +153,20 @@ function PagasEnCuotas() {
         const encurso = i === 1;
         return (
           <G key={i}>
-            <Circle cx={x} cy={118} r={20} fill={pagada ? palette.brand400 : palette.navy} stroke={encurso ? palette.brand300 : palette.brand700} strokeWidth={encurso ? 4 : 2.5} />
+            <Circle cx={x} cy={118} r={20} fill={pagada ? color.brand.b400 : color.brand.navy} stroke={encurso ? color.brand.b300 : color.brand.b700} strokeWidth={encurso ? 4 : 2.5} />
             {pagada ? (
-              <Path d={`M${x - 8} 118 l6 6 l11 -12`} stroke={palette.brand900} strokeWidth={4.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              <Path d={`M${x - 8} 118 l6 6 l11 -12`} stroke={color.brand.b900} strokeWidth={4.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
             ) : (
-              <Circle cx={x} cy={118} r={encurso ? 6 : 4} fill={encurso ? palette.brand300 : palette.brand700} />
+              <Circle cx={x} cy={118} r={encurso ? 6 : 4} fill={encurso ? color.brand.b300 : color.brand.b700} />
             )}
           </G>
         );
       })}
-      <Path d="M128 118 H136 M180 118 H188" stroke={palette.brand700} strokeWidth={3} strokeLinecap="round" strokeDasharray="2 6" />
-      <Rect x={88} y={152} width={144} height={8} rx={4} fill={palette.navy} />
+      <Path d="M128 118 H136 M180 118 H188" stroke={color.brand.b700} strokeWidth={3} strokeLinecap="round" strokeDasharray="2 6" />
+      <Rect x={88} y={152} width={144} height={8} rx={4} fill={color.brand.navy} />
       <Rect x={88} y={152} width={52} height={8} rx={4} fill={`url(#${id}-marca)`} />
-      <Circle cx={262} cy={58} r={5} fill={palette.brand300} opacity={0.7} />
-      <Circle cx={52} cy={150} r={3.5} fill={palette.brand300} opacity={0.6} />
+      <Circle cx={262} cy={58} r={5} fill={color.brand.b300} opacity={0.7} />
+      <Circle cx={52} cy={150} r={3.5} fill={color.brand.b300} opacity={0.6} />
     </>
   );
 }
@@ -191,23 +191,23 @@ function ConstruyesHistorial() {
           width={44}
           height={e.h}
           rx={8}
-          fill={i === escalones.length - 1 ? `url(#${id}-marca)` : palette.bgCard}
-          stroke={i === escalones.length - 1 ? 'none' : palette.brand700}
+          fill={i === escalones.length - 1 ? `url(#${id}-marca)` : color.surface.raised}
+          stroke={i === escalones.length - 1 ? 'none' : color.brand.b700}
           strokeWidth={2}
           opacity={0.55 + i * 0.11}
         />
       ))}
       {/* Cada escalón alcanzado lleva su marca. */}
       {escalones.slice(0, 4).map((e, i) => (
-        <Circle key={`m-${e.x}`} cx={e.x + 22} cy={196 - e.h + 18} r={7} fill={palette.brand400} opacity={0.35 + i * 0.2} />
+        <Circle key={`m-${e.x}`} cx={e.x + 22} cy={196 - e.h + 18} r={7} fill={color.brand.b400} opacity={0.35 + i * 0.2} />
       ))}
       {/* La flecha que sube. */}
-      <Path d="M44 160 L108 118 L156 134 L236 62" stroke={palette.brand300} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" fill="none" strokeDasharray="1 11" />
+      <Path d="M44 160 L108 118 L156 134 L236 62" stroke={color.brand.b300} strokeWidth={5} strokeLinecap="round" strokeLinejoin="round" fill="none" strokeDasharray="1 11" />
       {/* La estrella de lo más alto. */}
       <Path
         d="M252 20 l6.4 13 14.4 2.1 -10.4 10.1 2.5 14.3 -12.9 -6.8 -12.9 6.8 2.5 -14.3 -10.4 -10.1 14.4 -2.1 Z"
         fill={`url(#${id}-marca)`}
-        stroke={palette.brand900}
+        stroke={color.brand.b900}
         strokeWidth={1.5}
         strokeLinejoin="round"
       />

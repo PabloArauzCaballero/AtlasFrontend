@@ -47,10 +47,10 @@ import Svg, { ClipPath, Defs, G, LinearGradient, Path, RadialGradient, Rect, Sto
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NOMBRE_COLECCION, type Logro } from '../features/celebraciones';
 import { ICONO_DE_ESCALON } from '../features/nivel';
-import { easing, motion, space, spring } from '../theme/tokens';
+import { color, easing, luz, motion, space, spring } from '../theme/tokens';
 import { EscudoDeNivel } from './escudo-de-nivel';
 import { caraDe } from './insignia';
-import { AtlasText, Button, ProgressBar } from './primitives';
+import { AtlasText, Escenario, Button, ProgressBar } from './primitives';
 import { Medalla, SILUETA_MEDALLA } from './medalla';
 import { METAL, type Rango } from './trofeo';
 
@@ -272,9 +272,9 @@ export function CelebracionDeLogro({
           <Path d={SILUETA_MEDALLA} />
         </ClipPath>
         <LinearGradient id={`luz-${clave}`} x1="0" y1="0" x2="1" y2="0">
-          <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0} />
-          <Stop offset="0.5" stopColor="#FFFFFF" stopOpacity={0.85} />
-          <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
+          <Stop offset="0" stopColor={luz.blanco} stopOpacity={0} />
+          <Stop offset="0.5" stopColor={luz.blanco} stopOpacity={0.85} />
+          <Stop offset="1" stopColor={luz.blanco} stopOpacity={0} />
         </LinearGradient>
       </Defs>
       <G clipPath={`url(#clip-${clave})`}>
@@ -290,6 +290,7 @@ export function CelebracionDeLogro({
   const puntosSig = logro.tipo === 'nivel' ? logro.siguiente : null;
 
   return (
+    <Escenario>
     <View
       style={StyleSheet.absoluteFill}
       accessibilityViewIsModal
@@ -386,11 +387,12 @@ export function CelebracionDeLogro({
       <Animated.View style={[StyleSheet.absoluteFill, styles.destello, estiloDestello]} pointerEvents="none" />
       {/* Tocar fuera del botón no cierra: un toque suelto al ganar no debe llevarse el premio sin leerlo. */}
     </View>
+    </Escenario>
   );
 }
 
 const styles = StyleSheet.create({
-  fondo: { backgroundColor: 'rgba(3,10,20,0.94)' },
+  fondo: { backgroundColor: color.stage.scrim },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.lg },
   escena: { alignItems: 'center', justifyContent: 'center' },
   capa: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
@@ -400,5 +402,5 @@ const styles = StyleSheet.create({
   bloque: { gap: space.xs, alignItems: 'center' },
   siguiente: { alignSelf: 'stretch', gap: space.xs, paddingTop: space.xs },
   boton: { alignSelf: 'stretch', marginTop: space.md },
-  destello: { backgroundColor: '#FFFFFF' },
+  destello: { backgroundColor: luz.blanco },
 });

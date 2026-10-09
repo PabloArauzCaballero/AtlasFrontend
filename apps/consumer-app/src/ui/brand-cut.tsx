@@ -66,7 +66,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Path, Rect, Stop } from 'react-native-svg';
-import { color, palette } from '../theme/tokens';
+import { color } from '../theme/tokens';
 import { AtlasMark } from './brand';
 import { useSonidoMarca } from './brand-sound';
 
@@ -234,8 +234,8 @@ export function BrandCutProvider({ children }: { children: React.ReactNode }) {
             <Svg width={520} height={520} viewBox="0 0 100 100">
               <Defs>
                 <LinearGradient id="corte-linea" x1="0" y1="0" x2="0" y2="1">
-                  <Stop offset="0" stopColor={palette.brand300} stopOpacity="0" />
-                  <Stop offset="1" stopColor={palette.brand300} stopOpacity="0.9" />
+                  <Stop offset="0" stopColor={color.brand.b300} stopOpacity="0" />
+                  <Stop offset="1" stopColor={color.brand.b300} stopOpacity="0.9" />
                 </LinearGradient>
               </Defs>
               {Array.from({ length: LINEAS }, (_, indice) => (
@@ -270,8 +270,8 @@ export function BrandCutProvider({ children }: { children: React.ReactNode }) {
             la atraviesa deprisa por los bordes, y es el detalle que separa «un SVG escalando» de
             «un plano». A escala 1 estan exactamente encima de la marca y no se ven.
           */}
-          <CopiaCromatica reloj={reloj} width={width} height={height} tinte={palette.brand300} sentido={1} />
-          <CopiaCromatica reloj={reloj} width={width} height={height} tinte={palette.brand700} sentido={-1} />
+          <CopiaCromatica reloj={reloj} width={width} height={height} tinte={color.brand.b300} sentido={1} />
+          <CopiaCromatica reloj={reloj} width={width} height={height} tinte={color.brand.b700} sentido={-1} />
 
           <MarcaEnMovimiento reloj={reloj} width={width} height={height} />
         </View>

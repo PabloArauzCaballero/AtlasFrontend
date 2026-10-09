@@ -25,6 +25,7 @@ import * as Device from 'expo-device';
 import { cargarAvisos } from './avisos-modulo';
 import { Platform } from 'react-native';
 import * as customerApi from '../api/endpoints/customer';
+import { color } from '../theme/tokens';
 
 export type EstadoAvisos = 'concedido' | 'denegado' | 'no-disponible';
 
@@ -80,7 +81,7 @@ export async function prepararAvisos(): Promise<void> {
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
       sound: 'default',
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#2BE0A8',
+      lightColor: color.accent.base,
     });
   } catch {
     /*

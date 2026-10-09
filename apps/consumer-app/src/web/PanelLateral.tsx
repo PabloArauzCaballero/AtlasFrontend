@@ -7,6 +7,7 @@
  * Sólo web y sólo DOM; el aspecto vive en `estilo.ts` (`.auth__side`, `.steps`).
  */
 import { Platform } from 'react-native';
+import { color } from '../theme/tokens';
 import { Tarjeta3D } from './Tarjeta3D';
 
 export const PASOS_DEL_REGISTRO = [
@@ -95,8 +96,8 @@ export function CabeceraDeAcceso() {
     <div className="auth__top">
       <a href="/bienvenida" className="brand" aria-label="Atlas, ir a la portada">
         <svg width="34" height="34" viewBox="0 0 48 48" aria-hidden="true">
-          <path d="M24 5 L43 43 H34 L24 21 L14 43 H5 Z" fill="#2BE0A8" />
-          <path d="M17.5 31 H30.5 L34 38 H14 Z" fill="#052033" opacity=".55" />
+          <path d="M24 5 L43 43 H34 L24 21 L14 43 H5 Z" fill={color.brand.b400} />
+          <path d="M17.5 31 H30.5 L34 38 H14 Z" fill={color.brand.b900} opacity=".55" />
         </svg>
         <span>Atlas</span>
       </a>

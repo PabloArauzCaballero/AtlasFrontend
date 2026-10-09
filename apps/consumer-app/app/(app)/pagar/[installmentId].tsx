@@ -36,7 +36,7 @@ import {
 import { subirComprobante } from '../../../src/features/comprobante-de-pago';
 import { formatAmount } from '../../../src/features/spending-copy';
 import { useSession } from '../../../src/session/session';
-import { color, palette, radius, space } from '../../../src/theme/tokens';
+import { color, radius, space } from '../../../src/theme/tokens';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Card, CardHeader, Divider, ErrorState, KeyValue, Overline, Skeleton } from '../../../src/ui/primitives';
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     padding: space.lg,
     borderRadius: radius.xl,
-    backgroundColor: palette.white,
+    backgroundColor: color.fixed.white,
     borderWidth: 1,
     borderColor: color.border.subtle,
   },

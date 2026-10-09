@@ -36,7 +36,7 @@ import Reanimated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { color, palette, press, radius, shadow, space, spring, stroke, touch, type } from '../theme/tokens';
+import { alpha, color, luz, press, radius, shadow, space, spring, stroke, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { iconoDeAccion } from './icono-de-accion';
 import { BarridoDeLuz, BrilloDeCristal, CICLO_MS, DestelloDeToque, RESPIRACION, useFaseDelBoton, vivaPorSiSola } from './button-shine';
@@ -55,12 +55,32 @@ const TONE: Record<TextTone, string> = {
   primary: color.text.primary,
   secondary: color.text.secondary,
   tertiary: color.text.tertiary,
-  brand: color.action.primary,
+  brand: color.accent.base,
   success: color.feedback.success,
   warning: color.feedback.warning,
   danger: color.feedback.danger,
   onBrand: color.text.onBrand,
 };
+
+/**
+ * El texto sobre el ESCENARIO de marca (la celebracion de un logro, la carta de una insignia): un
+ * velo oscuro en cualquier tema. Ahi los tonos de texto del tema claro —tinta casi negra— no se
+ * leerian, asi que `Escenario` los cambia por los de `color.stage` para todo lo que lleva dentro.
+ */
+/** Cuánto «neón» lleva el botón principal: 1 con el halo de la identidad oscura, menos en el tema claro. */
+const NEON = shadow.neon.shadowOpacity / 0.4;
+
+const TONE_ESCENARIO: Record<TextTone, string> = {
+  ...TONE,
+  primary: color.stage.ink,
+  secondary: color.stage.ink2,
+  tertiary: color.stage.ink3,
+  brand: color.stage.brand.b400,
+};
+const EnEscenario = React.createContext(false);
+export function Escenario({ children }: { children: React.ReactNode }) {
+  return <EnEscenario.Provider value>{children}</EnEscenario.Provider>;
+}
 
 /**
  * Correccion de RENDERIZADO de Android, aplicada una vez y valida para toda la app.
@@ -112,12 +132,13 @@ export function AtlasText({
   maxFontSizeMultiplier,
   ...rest
 }: TextProps & { variant?: TypeVariant; tone?: TextTone; align?: TextStyle['textAlign'] }) {
+  const tonos = React.useContext(EnEscenario) ? TONE_ESCENARIO : TONE;
   return (
     <Text
       {...rest}
       {...webData('texto', { variant })}
       maxFontSizeMultiplier={maxFontSizeMultiplier ?? MAX_SCALE[variant]}
-      style={[type[variant] as TextStyle, render, { color: TONE[tone] }, align ? { textAlign: align } : null, style]}
+      style={[type[variant] as TextStyle, render, { color: tonos[tone] }, align ? { textAlign: align } : null, style]}
     />
   );
 }
@@ -297,14 +318,15 @@ export function Button({
     return {
       transform: [{ scale: (1 - pressProgress.value * (1 - press.scale)) * (1 + t * RESPIRACION) }],
       // Bajado a la mitad (Pablo, 2026-10-08: «quitémosle un poco la intensidad al efecto de neón»).
-      shadowOpacity: 0.4 + t * 0.12 + pressProgress.value * 0.15,
-      shadowRadius: 8 + t * 4 + pressProgress.value * 4,
+      // La intensidad sale del token: neón pleno en el tema oscuro, una sombra navy discreta en el claro.
+      shadowOpacity: NEON * (0.4 + t * 0.12 + pressProgress.value * 0.15),
+      shadowRadius: shadow.neon.shadowRadius + t * 4 + pressProgress.value * 4,
     };
   });
   const auraStyle = useAnimatedStyle(() => {
     const t = viva ? suavidad(fase.value, desfase * CICLO_MS, CICLO_MS) : 0;
     return {
-      opacity: 0.25 + t * 0.15 + pressProgress.value * 0.1,
+      opacity: NEON * (0.25 + t * 0.15 + pressProgress.value * 0.1),
       shadowRadius: 16 + t * 6,
     };
   });
@@ -355,7 +377,7 @@ export function Button({
     >
       {isLitPrimary ? (
         <LinearGradient
-          colors={[palette.brand300, palette.brand400, palette.brand500]}
+          colors={color.action.primaryGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           locations={[0, 0.45, 1]}
@@ -790,7 +812,7 @@ export function KeyValue({
 export function BrandPanel({ style, children, ...rest }: ViewProps & { style?: ViewStyle }) {
   return (
     <LinearGradient
-      colors={[palette.brand500, palette.brand400, palette.brand700]}
+      colors={color.brandGradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       locations={[0, 0.55, 1]}
@@ -967,7 +989,7 @@ export function Avatar({ name, size = 56, foto }: { name: string; size?: number;
 
   return (
     <LinearGradient
-      colors={[palette.brand500, palette.brand700]}
+      colors={[color.brand.b500, color.brand.b700]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
@@ -977,7 +999,7 @@ export function Avatar({ name, size = 56, foto }: { name: string; size?: number;
         // deletrear «V M» antes de leerlo solo estorba.
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
-        style={[type.h2 as TextStyle, { color: color.text.primary, fontSize: size * 0.34, lineHeight: size * 0.42 }]}
+        style={[type.h2 as TextStyle, { color: color.accent.onAccent, fontSize: size * 0.34, lineHeight: size * 0.42 }]}
       >
         {initials || '·'}
       </Text>
@@ -1079,7 +1101,7 @@ export function ProgressBar({ value, label }: { value: number; label?: string })
           como avance y no como una barra de sistema.
         */}
         <LinearGradient
-          colors={[palette.brand500, palette.brand400, palette.brand300]}
+          colors={[color.brand.b500, color.brand.b400, color.brand.b300]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[styles.progressFill, { width: `${clamped}%` }]}
@@ -1139,7 +1161,7 @@ export function Skeleton({ height = 16, width = '100%', style }: { height?: numb
       {!reduced && ancho > 0 ? (
         <Reanimated.View style={[styles.skeletonBrillo, { width: ancho * 0.6 }, franja]} pointerEvents="none">
           <LinearGradient
-            colors={[`${palette.brand300}00`, `${palette.brand300}40`, `${palette.white}2E`, `${palette.brand300}00`]}
+            colors={[alpha(color.brand.b300, 0), alpha(color.brand.b300, 0.25), alpha(luz.blanco, 0.18), alpha(color.brand.b300, 0)]}
             locations={[0, 0.45, 0.55, 1]}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
@@ -1384,12 +1406,8 @@ const styles = StyleSheet.create({
   // El núcleo del neón: el marco lleva fondo (una sombra de iOS necesita algo opaco que la proyecte) y luz centrada.
   neonMarco: {
     borderRadius: radius.pill,
-    backgroundColor: palette.brand400,
-    shadowColor: palette.brand300,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
+    backgroundColor: color.action.primary,
+    ...shadow.neon,
   },
   // El aura: más ancha y tenue, el «calor» alrededor del tubo.
   neonAura: {
@@ -1399,11 +1417,8 @@ const styles = StyleSheet.create({
     left: -6,
     right: -6,
     borderRadius: radius.pill,
-    backgroundColor: 'rgba(43,224,168,0.07)',
-    shadowColor: palette.brand400,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.45,
-    shadowRadius: 16,
+    backgroundColor: color.action.glowSoft,
+    ...shadow.neonAura,
   },
   buttonDisabled: { backgroundColor: color.action.disabled },
   /*

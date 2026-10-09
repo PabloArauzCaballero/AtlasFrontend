@@ -32,7 +32,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as contentApi from '../../src/api/endpoints/app-content';
 import { PASOS_POR_DEFECTO, pasosDesdeContenido, type Paso } from '../../src/features/bienvenida-pasos';
-import { color, palette, radius, space } from '../../src/theme/tokens';
+import { alpha, color, radius, space } from '../../src/theme/tokens';
 import { BrandHalo } from '../../src/ui/brand';
 import { Ilustracion } from '../../src/ui/ilustraciones-bienvenida';
 import { Screen, ScreenHeader } from '../../src/ui/layout';
@@ -87,7 +87,7 @@ export default function ConoceAtlas() {
       <ScreenHeader title="Conoce Atlas" onBack="auto" />
 
       <View style={[styles.escenario, { height: ESCENA_ALTO }]}>
-        <LinearGradient colors={[palette.brand700, color.surface.primary]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFill} />
+        <LinearGradient colors={[color.heroWash, color.surface.primary]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFill} />
         <Resplandor respiro={respiro} ancho={ancho} />
         <Orbita giro={giro} diametro={ancho * 0.9} sentido={1} />
         <Orbita giro={giro} diametro={ancho * 0.62} sentido={-1.6} />
@@ -216,11 +216,11 @@ const styles = StyleSheet.create({
     borderColor: color.feedbackBorder.brand,
   },
   centrado: { position: 'absolute', alignItems: 'center', justifyContent: 'center' },
-  orbita: { position: 'absolute', borderWidth: 1, borderColor: 'rgba(43,224,168,0.22)' },
+  orbita: { position: 'absolute', borderWidth: 1, borderColor: alpha(color.brand.b400, 0.22) },
   particula: {
     position: 'absolute',
-    backgroundColor: palette.brand300,
-    shadowColor: palette.brand300,
+    backgroundColor: color.brand.b300,
+    shadowColor: color.brand.b300,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 6,

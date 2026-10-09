@@ -10,6 +10,7 @@ import { usePathname, useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useSession } from '../session/session';
+import { color } from '../theme/tokens';
 
 const DESTINOS = [
   { href: '/', etiqueta: 'Inicio' },
@@ -71,13 +72,13 @@ export function BarraSuperior() {
           <svg width="34" height="34" viewBox="0 0 48 48" aria-hidden="true">
             <defs>
               <linearGradient id="nav-marca" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor="#14A894" />
-                <stop offset=".55" stopColor="#2BE0A8" />
-                <stop offset="1" stopColor="#5CF0CC" />
+                <stop offset="0" stopColor={color.brand.b500} />
+                <stop offset=".55" stopColor={color.brand.b400} />
+                <stop offset="1" stopColor={color.brand.b300} />
               </linearGradient>
             </defs>
             <path d="M24 5 L43 43 H34 L24 21 L14 43 H5 Z" fill="url(#nav-marca)" />
-            <path d="M17.5 31 H30.5 L34 38 H14 Z" fill="#052033" opacity=".55" />
+            <path d="M17.5 31 H30.5 L34 38 H14 Z" fill={color.brand.b900} opacity=".55" />
           </svg>
           <span>Atlas</span>
         </a>

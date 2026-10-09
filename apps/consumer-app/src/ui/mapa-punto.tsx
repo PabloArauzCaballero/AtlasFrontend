@@ -42,7 +42,7 @@ import { Modal, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-
 import { esExpoGo } from '../device/entorno';
 import { etiquetaDeSitio, RADIO_MISMO_SITIO_M, type SitioFrecuente } from '../features/sitios-frecuentes';
 import { iosSinMapaNativo } from '../features/teselas';
-import { color, radius, space } from '../theme/tokens';
+import { alpha, color, luz, radius, space } from '../theme/tokens';
 import { Icon } from './icons';
 import { MapaTeselas } from './mapa-teselas';
 import { AtlasText, Button } from './primitives';
@@ -149,8 +149,8 @@ export function MapaPunto({
     id: `zona-${indice}`,
     center: { latitude: sitio.lat, longitude: sitio.lng },
     radius: RADIO_MISMO_SITIO_M,
-    color: '#2BD9A133',
-    lineColor: '#2BD9A1',
+    color: color.map.pointSoft,
+    lineColor: color.map.point,
     lineWidth: 1,
   }));
   // «Tu casa» ya no es un marcador: es el pin fijo del centro, que no se desfasa del punto elegido.
@@ -342,7 +342,7 @@ function SinMapa({ onPunto }: { onPunto: (punto: Punto) => void }) {
 const styles = StyleSheet.create({
   // El icono mide 44: se sube la mitad para que su punta, y no su centro, quede sobre el centro del mapa.
   pinFijo: { position: 'absolute', top: '50%', left: '50%', marginLeft: -22, marginTop: -44, alignItems: 'center' },
-  pinSombra: { width: 10, height: 4, borderRadius: 5, backgroundColor: 'rgba(0,0,0,0.35)', marginTop: -2 },
+  pinSombra: { width: 10, height: 4, borderRadius: 5, backgroundColor: alpha(luz.negro, 0.35), marginTop: -2 },
   pantalla: { flex: 1, backgroundColor: color.surface.primary },
   cabecera: {
     flexDirection: 'row',

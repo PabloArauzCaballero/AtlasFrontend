@@ -36,7 +36,7 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import { palette } from '../theme/tokens';
+import { alpha, color, luz } from '../theme/tokens';
 
 /** Un ciclo completo: barrido + reposo. */
 export const CICLO_MS = 3800;
@@ -129,7 +129,7 @@ export function BarridoDeLuz({ fase, desfase, ancho }: { fase: SharedValue<numbe
     <>
       <Animated.View pointerEvents="none" testID="boton-brillo" style={[styles.banda, banda]}>
         <LinearGradient
-          colors={['rgba(255,255,255,0)', 'rgba(190,255,235,0.55)', 'rgba(255,255,255,0.85)', 'rgba(190,255,235,0.55)', 'rgba(255,255,255,0)']}
+          colors={[alpha(luz.blanco, 0), color.action.sheen, alpha(luz.blanco, 0.85), color.action.sheen, alpha(luz.blanco, 0)]}
           locations={[0, 0.3, 0.55, 0.8, 1]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
@@ -138,7 +138,7 @@ export function BarridoDeLuz({ fase, desfase, ancho }: { fase: SharedValue<numbe
       </Animated.View>
       <Animated.View pointerEvents="none" style={[styles.filo, filo]}>
         <LinearGradient
-          colors={['rgba(255,255,255,0)', 'rgba(255,255,255,1)', 'rgba(255,255,255,0)']}
+          colors={[alpha(luz.blanco, 0), luz.blanco, alpha(luz.blanco, 0)]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={StyleSheet.absoluteFill}
@@ -161,7 +161,7 @@ export function BrilloDeCristal() {
       <LinearGradient
         pointerEvents="none"
         testID="boton-cristal"
-        colors={['rgba(255,255,255,0.42)', 'rgba(255,255,255,0.12)', 'rgba(255,255,255,0)']}
+        colors={[color.action.glassTop, alpha(luz.blanco, 0.03), alpha(luz.blanco, 0)]}
         locations={[0, 0.5, 1]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
@@ -169,7 +169,7 @@ export function BrilloDeCristal() {
       />
       <LinearGradient
         pointerEvents="none"
-        colors={['rgba(5,32,51,0)', 'rgba(5,32,51,0.22)']}
+        colors={[alpha(color.action.shade, 0), alpha(color.action.shade, 0.22)]}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={styles.sombraAbajo}
@@ -189,7 +189,7 @@ export function DestelloDeToque({ progreso, principal }: { progreso: SharedValue
     <Animated.View
       pointerEvents="none"
       testID="boton-destello"
-      style={[StyleSheet.absoluteFill, { backgroundColor: principal ? palette.white : palette.brand400 }, estilo]}
+      style={[StyleSheet.absoluteFill, { backgroundColor: principal ? color.fixed.white : color.brand.b400 }, estilo]}
     />
   );
 }
@@ -201,5 +201,5 @@ const styles = StyleSheet.create({
   cristalArriba: { position: 'absolute', top: 0, left: 0, right: 0, height: '55%' },
   sombraAbajo: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '38%' },
   // El hilo de luz del canto superior: una línea de 1 punto que se apaga hacia los extremos de la píldora.
-  hiloDeLuz: { position: 'absolute', top: 1, left: '12%', right: '12%', height: 1, borderRadius: 1, backgroundColor: 'rgba(255,255,255,0.7)' },
+  hiloDeLuz: { position: 'absolute', top: 1, left: '12%', right: '12%', height: 1, borderRadius: 1, backgroundColor: color.action.glassLine },
 });

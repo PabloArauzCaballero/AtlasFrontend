@@ -14,7 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type LayoutChangeEvent, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
-import { color, easing, motion, palette, radius, space, spring } from '../theme/tokens';
+import { alpha, color, easing, motion, radius, space, spring } from '../theme/tokens';
 import { Icon } from './icons';
 import type { Paso } from './lista-de-pasos';
 import { AtlasText, Card } from './primitives';
@@ -84,7 +84,7 @@ export function LineaDeNiveles({ pasos, testID }: { pasos: readonly Paso[]; test
           {largoLleno > 0 ? (
             <View style={[styles.llenoMarco, { top: centro, height: largoLleno }]}>
               <Animated.View style={[StyleSheet.absoluteFill, estiloLleno]}>
-                <LinearGradient colors={[palette.brand700, palette.brand500, palette.brand300]} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={[color.brand.b700, color.brand.b500, color.brand.b300]} style={StyleSheet.absoluteFill} />
               </Animated.View>
             </View>
           ) : null}
@@ -107,8 +107,8 @@ export function LineaDeNiveles({ pasos, testID }: { pasos: readonly Paso[]; test
         {/* Los bordes se desvanecen: lo que se corta arriba y abajo avisa de que se puede deslizar. */}
         {total > FILAS_A_LA_VISTA ? (
           <>
-            <LinearGradient pointerEvents="none" colors={[color.surface.raised, 'rgba(11,30,54,0)']} style={styles.fundidoArriba} />
-            <LinearGradient pointerEvents="none" colors={['rgba(11,30,54,0)', color.surface.raised]} style={styles.fundidoAbajo} />
+            <LinearGradient pointerEvents="none" colors={[color.surface.raised, alpha(color.surface.raised, 0)]} style={styles.fundidoArriba} />
+            <LinearGradient pointerEvents="none" colors={[alpha(color.surface.raised, 0), color.surface.raised]} style={styles.fundidoAbajo} />
           </>
         ) : null}
       </View>
@@ -125,7 +125,7 @@ const styles = StyleSheet.create({
   nodo: { width: NODO, height: NODO, borderRadius: NODO / 2, borderWidth: 2, borderColor: color.border.strong, backgroundColor: color.surface.raised, alignItems: 'center', justifyContent: 'center' },
   nodoHecho: { backgroundColor: color.action.primary, borderColor: color.action.primary },
   // Tu nivel: más grande y con un halo fijo (no pulsa solo).
-  nodoActual: { width: NODO + 8, height: NODO + 8, borderRadius: (NODO + 8) / 2, borderColor: palette.brand300, borderWidth: 3, shadowColor: palette.brand400, shadowOpacity: 0.9, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
+  nodoActual: { width: NODO + 8, height: NODO + 8, borderRadius: (NODO + 8) / 2, borderColor: color.brand.b300, borderWidth: 3, shadowColor: color.brand.b400, shadowOpacity: 0.9, shadowRadius: 10, shadowOffset: { width: 0, height: 0 } },
   fundidoArriba: { position: 'absolute', top: 0, left: 0, right: 0, height: 28, borderTopLeftRadius: radius.xxl, borderTopRightRadius: radius.xxl },
   fundidoAbajo: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 28, borderBottomLeftRadius: radius.xxl, borderBottomRightRadius: radius.xxl },
 });

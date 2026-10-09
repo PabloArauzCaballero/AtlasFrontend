@@ -32,7 +32,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { CardTier } from '../api/endpoints/credit-line';
 import { etiquetaAccesible, fulgorDe } from '../features/tarjeta';
-import { motion, radius, space, spring } from '../theme/tokens';
+import { alpha, luz, motion, radius, space, spring } from '../theme/tokens';
 import { AtlasMark } from './brand';
 import { Icon } from './icons';
 import { PressSurface, suavidad } from './motion';
@@ -221,7 +221,7 @@ function TarjetaGrande({
             {/* Luz de ambiente fija arriba a la izquierda: da volumen aunque nadie toque la tarjeta. */}
             <LinearGradient
               pointerEvents="none"
-              colors={[`rgba(255,255,255,${fulgor.ambiente})`, 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']}
+              colors={[alpha(luz.blanco, fulgor.ambiente), alpha(luz.blanco, 0.04), alpha(luz.blanco, 0)]}
               locations={[0, 0.45, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 0.8, y: 0.9 }}
@@ -234,7 +234,7 @@ function TarjetaGrande({
                 </Animated.View>
                 <Animated.View style={[styles.banda, { width: banda }, destello]}>
                   <LinearGradient
-                    colors={['rgba(255,255,255,0)', `rgba(255,255,255,${fulgor.barrido.opacidad})`, 'rgba(255,255,255,0)']}
+                    colors={[alpha(luz.blanco, 0), alpha(luz.blanco, fulgor.barrido.opacidad), alpha(luz.blanco, 0)]}
                     start={{ x: 0, y: 0.5 }}
                     end={{ x: 1, y: 0.5 }}
                     style={StyleSheet.absoluteFill}
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   // La sombra y la inclinación necesitan aire: la tarjeta gira unos grados y su sombra se extiende; sin margen chocaría
   // con lo de arriba, lo de abajo y los bordes de la pantalla.
   aire: { paddingVertical: space.lg, paddingHorizontal: space.sm },
-  sombra: { borderRadius: radius.xxl, shadowColor: '#000000', shadowRadius: 18, elevation: 10 },
+  sombra: { borderRadius: radius.xxl, shadowColor: luz.negro, shadowRadius: 18, elevation: 10 },
   grande: { width: '100%', aspectRatio: PROPORCION, borderRadius: radius.xxl, overflow: 'hidden' },
   // Sin `overflow: hidden` aquí: lo recorta la cara de dentro, y así el halo puede salir por fuera.
   mini: { width: 86, aspectRatio: PROPORCION, borderRadius: radius.md },
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
   chip: { marginTop: -space.xs },
   numero: { letterSpacing: 2.5, fontVariant: ['tabular-nums'] },
   // Relieve: una sombra de un píxel abajo y a la derecha, como el número estampado de una tarjeta física.
-  relieve: { textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0.6, height: 1 }, textShadowRadius: 0.8 },
+  relieve: { textShadowColor: alpha(luz.negro, 0.35), textShadowOffset: { width: 0.6, height: 1 }, textShadowRadius: 0.8 },
   pie: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: space.md },
   titular: { flexShrink: 1, gap: 1 },
   etiqueta: { opacity: 0.7, letterSpacing: 1.5 },
