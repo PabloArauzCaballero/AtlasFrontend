@@ -15,9 +15,9 @@ const progreso = {
 describe('la escalera de crédito con números', () => {
   it('cada escalón dice su rango de calificación y su tope, y marca dónde estás', () => {
     expect(filasDeEscalones(crecimientoDeCredito(progreso))).toEqual([
-      { code: 'NUEVO', label: 'Nuevo', rango: 'De 0 a 39', tope: `hasta ${formatoBs(500)}`, actual: true },
-      { code: 'EN_CONSTRUCCION', label: 'En crecimiento', rango: 'De 40 a 59', tope: `hasta ${formatoBs(2000)}`, actual: false },
-      { code: 'ESTABLECIDO', label: 'Establecido', rango: 'Desde 60', tope: `hasta ${formatoBs(5000)}`, actual: false },
+      { code: 'NUEVO', label: 'Nuevo', rango: 'De 0 a 39', tope: `hasta ${formatoBs(500)}`, actual: true, alcanzado: true },
+      { code: 'EN_CONSTRUCCION', label: 'En crecimiento', rango: 'De 40 a 59', tope: `hasta ${formatoBs(2000)}`, actual: false, alcanzado: false },
+      { code: 'ESTABLECIDO', label: 'Establecido', rango: 'Desde 60', tope: `hasta ${formatoBs(5000)}`, actual: false, alcanzado: false },
     ]);
   });
 

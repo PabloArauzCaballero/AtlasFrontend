@@ -97,7 +97,7 @@ export function fraseDelSiguienteSalto(c: CrecimientoDeCredito): string {
 }
 
 /** Una fila de la escalera con números: «De 40 a 59 → hasta Bs 2.000». */
-export type FilaDeEscalon = { code: string; label: string; rango: string; tope: string; actual: boolean };
+export type FilaDeEscalon = { code: string; label: string; rango: string; tope: string; actual: boolean; alcanzado: boolean };
 
 /**
  * La escalera en cifras para la hoja «Cómo crece tu crédito» (Pablo, 2026-10-08: «mejoremos esta pantalla con números»).
@@ -109,7 +109,7 @@ export function filasDeEscalones(c: CrecimientoDeCredito): FilaDeEscalon[] {
   return ordenados.map((p, i) => {
     const siguiente = ordenados[i + 1];
     const rango = siguiente ? `De ${p.from} a ${siguiente.from - 1}` : `Desde ${p.from}`;
-    return { code: p.code, label: p.label, rango, tope: `hasta ${cifra(p.techo ?? p.veces)}`, actual: p.actual };
+    return { code: p.code, label: p.label, rango, tope: `hasta ${cifra(p.techo ?? p.veces)}`, actual: p.actual, alcanzado: p.reached };
   });
 }
 
