@@ -62,6 +62,10 @@ export default function Ingresar() {
         <Aviso tono="success">Contraseña cambiada. Cerramos tu sesión: vuelve a entrar con la contraseña nueva.</Aviso>
       ) : null}
 
+      {aviso === 'inactividad' && !error ? (
+        <Aviso tono="info" titulo="Cerramos tu sesión">Pasaron 15 minutos sin actividad. Vuelve a entrar para seguir.</Aviso>
+      ) : null}
+
       {error ? (
         <Aviso tono="danger" testID="ingresar-error">
           {error}

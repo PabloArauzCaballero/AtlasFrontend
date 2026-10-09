@@ -17,23 +17,23 @@ import { apiArchivo } from '@/api/client';
 export type CeldaPdf = string | number | boolean | null;
 
 export interface TablaPdf {
-  columns: Array<{ key: string; label: string }>;
-  rows: Array<Record<string, CeldaPdf>>;
+  columns: { key: string; label: string }[];
+  rows: Record<string, CeldaPdf>[];
 }
 
 export interface SeccionPdf {
   title: string;
   description?: string;
   pageBreakBefore?: boolean;
-  fields?: Array<{ label: string; value: CeldaPdf }>;
+  fields?: { label: string; value: CeldaPdf }[];
   table?: TablaPdf;
 }
 
 export interface DocumentoPdf {
   title: string;
   subtitle?: string;
-  summary?: Array<{ label: string; value: CeldaPdf; caption?: string }>;
-  notices?: Array<{ level: 'positive' | 'caution' | 'critical'; title?: string; text: string }>;
+  summary?: { label: string; value: CeldaPdf; caption?: string }[];
+  notices?: { level: 'positive' | 'caution' | 'critical'; title?: string; text: string }[];
   sections: SeccionPdf[];
 }
 
@@ -64,8 +64,8 @@ export function celdaPdf(valor: unknown): CeldaPdf {
  * PDF que imprima el valor crudo donde la pantalla enmascara no es «más completo», es una fuga.
  */
 export function tablaPdf(
-  columns: Array<{ key: string; label: string }>,
-  rows: Array<Record<string, unknown>>,
+  columns: { key: string; label: string }[],
+  rows: Record<string, unknown>[],
   render?: (row: Record<string, unknown>, key: string) => unknown,
 ): TablaPdf {
   const columnas = columns.slice(0, MAX_COLUMNAS).map((columna) => ({

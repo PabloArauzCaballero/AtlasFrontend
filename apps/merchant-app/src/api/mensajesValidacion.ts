@@ -94,7 +94,7 @@ function traducirNombresDentro(mensaje: string): string {
   return mensaje.replace(/\b[a-z][A-Za-z0-9]*\b/g, (palabra) => ETIQUETAS[palabra]?.toLowerCase() ?? palabra);
 }
 
-const REGLAS: Array<[RegExp, (m: RegExpMatchArray) => string]> = [
+const REGLAS: [RegExp, (m: RegExpMatchArray) => string][] = [
   [/^String must contain at least (\d+) character\(s\)$/, (m) => `escriba al menos ${m[1]} caracteres`],
   [/^String must contain at most (\d+) character\(s\)$/, (m) => `no puede pasar de ${m[1]} caracteres`],
   [/^String must contain exactly (\d+) character\(s\)$/, (m) => `debe tener exactamente ${m[1]} caracteres`],
