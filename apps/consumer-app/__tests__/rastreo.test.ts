@@ -1,7 +1,7 @@
 import {
   aContactoParaEnviar,
   aPosicionParaEnviar,
-  fechaDeCumpleanos,
+  ajustarAlContrato,
   sinRepetidas,
   trocear,
   type PosicionParaEnviar,
@@ -11,61 +11,62 @@ import {
  * La agenda completa y el rastro, por las partes que fallan sin decirlo.
  *
  * Lo que se prueba aquí no es «convierte un objeto en otro» —eso se ve leyéndolo—, sino los cuatro
- * sitios donde un error produce un dato PLAUSIBLE Y FALSO: un cumpleaños corrido un mes, una ficha
+ * sitios donde un error produce un dato PLAUSIBLE Y FALSO: una ficha
  * vacía que infla la cuenta de contactos, una coordenada `NaN` que el servidor rechaza con un 400
  * que nadie relaciona con esto, y una velocidad de `-1` que un día alguien promediaría.
  */
-describe('fechaDeCumpleanos', () => {
-  it('NO le suma uno al mes: la API nueva lo da de 1 a 12, no de 0 a 11', () => {
-    /*
-      Este es el error que hay que evitar. La API VIEJA de expo-contacts daba el mes en base cero,
-      como `Date`, y la nueva lo da en base uno. Arrastrar el `+1` de la vieja correria TODOS los
-      cumpleaños un mes sin que nada fallara: el dato existiria, tendria forma de fecha y seria
-      mentira.
-    */
-    expect(fechaDeCumpleanos({ year: 1990, month: 1, day: 15 })).toBe('1990-01-15');
-    expect(fechaDeCumpleanos({ year: 1990, month: 12, day: 31 })).toBe('1990-12-31');
-  });
-
-  it('devuelve null cuando la agenda no guarda el año', () => {
-    // Es el caso NORMAL en iOS: día y mes sin año. Inventar uno daría una edad falsa que después
-    // nadie sabría distinguir de una real.
-    expect(fechaDeCumpleanos({ month: 5, day: 3 })).toBeNull();
-    expect(fechaDeCumpleanos(null)).toBeNull();
-    expect(fechaDeCumpleanos(undefined)).toBeNull();
-  });
-
-  it('descarta valores imposibles en vez de construir una fecha inválida', () => {
-    expect(fechaDeCumpleanos({ year: 1990, month: 13, day: 1 })).toBeNull();
-    expect(fechaDeCumpleanos({ year: 1990, month: 0, day: 1 })).toBeNull();
-    expect(fechaDeCumpleanos({ year: 1800, month: 1, day: 1 })).toBeNull();
-  });
-});
-
 describe('aContactoParaEnviar', () => {
-  it('arma la ficha completa con lo que la agenda tenga', () => {
+  it('arma la ficha MINIMA: nombre visible, numeros, favorito, tipo y tres banderas sin el dato (APP-03)', () => {
+    /*
+      Son datos de terceros que no consintieron. El servidor usa el nombre, los numeros (de ahi salen
+      los hashes que cruzan referencias), si es favorito o empresa y si la ficha TIENE correo,
+      cumpleaños y empresa. El correo, la fecha, la razon social, el cargo y las direcciones NO viajan
+      aunque la agenda los tenga.
+    */
     const ficha = aContactoParaEnviar({
       id: 'abc-123',
       fullName: 'María Quispe',
       givenName: 'María',
       familyName: 'Quispe',
       company: 'Ferretería Sur',
-      jobTitle: 'Dueña',
       isFavourite: true,
+      phones: [{ label: 'Papá', number: '+591 76500122' }, { label: 'casa', number: '4123456' }],
       birthday: { year: 1985, month: 3, day: 9 },
-      phones: [{ label: 'móvil', number: '+591 76500122' }, { label: 'casa', number: '4123456' }],
-      emails: [{ label: 'trabajo', address: 'maria@ferreteria.bo' }],
-      addresses: [{ label: 'casa', street: 'Av. Siempre Viva 123', city: 'Santa Cruz', region: 'SC', country: 'BO' }],
+      emails: [{ address: 'maria@ferreteria.bo' }],
+      // Lo que una agenda real trae y la app ya no pide; si llegara, tampoco sale.
+      ...({ jobTitle: 'Dueña', addresses: [{ street: 'Av. Siempre Viva 123' }] } as object),
     });
 
-    expect(ficha).not.toBeNull();
-    expect(ficha?.displayName).toBe('María Quispe');
-    expect(ficha?.birthday).toBe('1985-03-09');
-    expect(ficha?.phones).toHaveLength(2);
-    expect(ficha?.isFavorite).toBe(true);
-    expect(ficha?.emails).toEqual([{ label: 'trabajo', email: 'maria@ferreteria.bo' }]);
-    // Tiene nombre de persona, asi que es una persona aunque tenga empresa.
-    expect(ficha?.contactType).toBe('person');
+    expect(ficha).toEqual({
+      externalId: 'abc-123',
+      displayName: 'María Quispe',
+      // Tiene nombre de persona, asi que es una persona aunque tenga empresa.
+      contactType: 'person',
+      isFavorite: true,
+      // Sin la etiqueta: «Papá» dice quien es el contacto para esta persona.
+      phones: [{ number: '+591 76500122' }, { number: '4123456' }],
+      hasEmail: true,
+      hasBirthday: true,
+      hasCompany: true,
+    });
+  });
+
+  it('las banderas salen en falso cuando la ficha no tiene el dato, o lo tiene en blanco', () => {
+    const sinNada = aContactoParaEnviar({ id: 'n', fullName: 'Nadie', phones: [{ number: '76500122' }] });
+    expect(sinNada).toMatchObject({ hasEmail: false, hasBirthday: false, hasCompany: false });
+
+    const enBlanco = aContactoParaEnviar({
+      id: 'b',
+      fullName: 'Blanco',
+      company: '   ',
+      emails: [{ address: '' }, null, { address: '  ' }],
+      birthday: { year: 1990 },
+    });
+    expect(enBlanco).toMatchObject({ hasEmail: false, hasBirthday: false, hasCompany: false });
+  });
+
+  it('un cumpleaños sin año cuenta: es el caso normal en iOS', () => {
+    expect(aContactoParaEnviar({ id: 'c', fullName: 'C', birthday: { month: 5, day: 3 } })?.hasBirthday).toBe(true);
   });
 
   it('descarta la ficha sin identificador y la que no tiene ningun dato util', () => {
@@ -75,7 +76,7 @@ describe('aContactoParaEnviar', () => {
       y esa cuenta es una de las señales que el motor lee.
     */
     expect(aContactoParaEnviar({ id: '', fullName: 'Sin id' })).toBeNull();
-    expect(aContactoParaEnviar({ id: 'vacio', phones: [], emails: [] })).toBeNull();
+    expect(aContactoParaEnviar({ id: 'vacio', phones: [] })).toBeNull();
     expect(aContactoParaEnviar({ id: 'solo-telefono', phones: [{ number: '76500122' }] })).not.toBeNull();
   });
 
@@ -91,15 +92,41 @@ describe('aContactoParaEnviar', () => {
     expect(ficha?.displayName).toBe('Ferretería Sur');
   });
 
-  it('descarta telefonos y correos vacios en vez de mandarlos como cadenas en blanco', () => {
+  it('descarta telefonos vacios en vez de mandarlos como cadenas en blanco', () => {
     const ficha = aContactoParaEnviar({
       id: 'x',
       fullName: 'Alguien',
       phones: [{ number: '  ' }, { number: '76500122' }, null],
-      emails: [{ address: '' }],
     });
-    expect(ficha?.phones).toEqual([{ label: null, number: '76500122' }]);
-    expect(ficha?.emails).toEqual([]);
+    expect(ficha?.phones).toEqual([{ number: '76500122' }]);
+  });
+});
+
+describe('ajustarAlContrato', () => {
+  it('devuelve SOLO los campos de la ficha minima, aunque le llegue uno de mas', () => {
+    // La ultima puerta: un campo añadido a la ficha por error no viaja.
+    const conDeMas = {
+      externalId: 'z',
+      displayName: 'Z',
+      contactType: 'person' as const,
+      isFavorite: false,
+      phones: [{ number: '76500122' }],
+      hasEmail: true,
+      hasBirthday: false,
+      hasCompany: true,
+      emails: [{ email: 'z@z.bo' }],
+      birthday: '1990-01-01',
+    };
+    expect(Object.keys(ajustarAlContrato(conDeMas) ?? {}).sort()).toEqual([
+      'contactType',
+      'displayName',
+      'externalId',
+      'hasBirthday',
+      'hasCompany',
+      'hasEmail',
+      'isFavorite',
+      'phones',
+    ]);
   });
 });
 

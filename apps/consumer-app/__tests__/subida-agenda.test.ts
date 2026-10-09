@@ -9,16 +9,12 @@ import { clasificarFallo, subirAgendaPorLotes } from '../src/features/subida-age
 const ficha = (id: string, extra: Partial<ContactoParaEnviar> = {}): ContactoParaEnviar => ({
   externalId: id,
   displayName: `Contacto ${id}`,
-  givenName: null,
-  familyName: null,
-  company: null,
-  jobTitle: null,
-  birthday: null,
   contactType: 'person',
   isFavorite: false,
-  phones: [{ label: null, number: '76500122' }],
-  emails: [],
-  addresses: [],
+  phones: [{ number: '76500122' }],
+  hasEmail: false,
+  hasBirthday: false,
+  hasCompany: false,
   ...extra,
 });
 
@@ -31,22 +27,16 @@ describe('ajustarAlContrato', () => {
     const ajustada = ajustarAlContrato(
       ficha('a', {
         displayName: 'N'.repeat(300),
-        phones: Array.from({ length: 25 }, (_, i) => ({ label: 'L'.repeat(90), number: `7650${String(i).padStart(4, '0')}` })),
+        phones: Array.from({ length: 25 }, (_, i) => ({ number: `7650${String(i).padStart(4, '0')}` })),
       }),
     );
     expect(ajustada?.displayName).toHaveLength(200);
     expect(ajustada?.phones).toHaveLength(20);
-    expect(ajustada?.phones[0]?.label).toHaveLength(60);
   });
 
   it('descarta el dato inservible, no el contacto', () => {
-    const ajustada = ajustarAlContrato(ficha('a', { phones: [{ label: null, number: '12' }, { label: null, number: '4123456' }] }));
+    const ajustada = ajustarAlContrato(ficha('a', { phones: [{ number: '12' }, { number: '4123456' }] }));
     expect(ajustada?.phones.map((telefono) => telefono.number)).toEqual(['4123456']);
-  });
-
-  it('anula un cumpleaños que no existe (31 de febrero)', () => {
-    expect(ajustarAlContrato(ficha('a', { birthday: '1990-02-31' }))?.birthday).toBeNull();
-    expect(ajustarAlContrato(ficha('a', { birthday: '1990-02-28' }))?.birthday).toBe('1990-02-28');
   });
 });
 
