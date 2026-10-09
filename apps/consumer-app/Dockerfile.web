@@ -17,7 +17,7 @@
 #
 # Coolify declara `ARG NODE_ENV` en todas las etapas; por eso cada etapa fija el suyo con ENV.
 
-FROM node:22-alpine AS dependencies
+FROM node:22-alpine@sha256:0a7108bf6c7bf5de370ffb1a3ed6be93d405b43ff159f681a8d18c0e2bc2e402 AS dependencies
 WORKDIR /app
 ENV NODE_ENV=development
 COPY package.json package-lock.json turbo.json ./
@@ -48,7 +48,7 @@ RUN npx expo export --platform web \
  && test -s dist/index.html \
  && grep -q "Atlas" dist/index.html
 
-FROM nginx:1.27-alpine AS runner
+FROM nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runner
 # ATLAS_ALMACEN_ORIGEN: el ÚNICO almacén al que `/almacen/` reenvía subidas (esquema://host[:puerto],
 # comparado como cadena exacta). Por defecto, el MinIO contra el que firma el backend de TEST; otro
 # entorno lo fija en las variables de Coolify. Sin ella, envsubst dejaría el literal y todo sería 403.
