@@ -3,7 +3,8 @@ import { request } from '../client';
 
 export type LoginResponse = {
   accessToken: string;
-  refreshToken: string;
+  /** Ausente en modo cookie (la web): el servidor lo pone en una cookie `HttpOnly`. */
+  refreshToken?: string;
   tokenType: string;
   expiresIn: string;
 };
@@ -21,13 +22,20 @@ export const login = (identifier: string, password: string) =>
   request<LoginResponse>('/auth/login', {
     method: 'POST',
     anonymous: true,
+    sesion: true,
     body: { actorType: 'customer', identifier, password },
   });
 
 export const me = () => request<MeResponse>('/auth/me');
 
-export const logout = (refreshToken: string, allDevices = false) =>
-  request<{ revoked: boolean }>('/auth/logout', { method: 'POST', anonymous: true, body: { refreshToken, allDevices } });
+/** `refreshToken` nulo en modo cookie: el servidor lo lee de la cookie y la borra. */
+export const logout = (refreshToken: string | null, allDevices = false) =>
+  request<{ revoked: boolean }>('/auth/logout', {
+    method: 'POST',
+    anonymous: true,
+    sesion: true,
+    body: { ...(refreshToken ? { refreshToken } : {}), allDevices },
+  });
 
 export const requestPasswordReset = (email: string) =>
   request<{ requested: boolean }>('/auth/password-reset/request', {

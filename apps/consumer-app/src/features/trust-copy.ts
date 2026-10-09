@@ -61,7 +61,9 @@ const NUNCA_AL_COMERCIO = { icon: 'comercio', label: 'Nunca al comercio' } as co
  * Lo que dice la fila «Sesion» del perfil, segun donde corre la app.
  *
  * En el telefono los tokens van a `expo-secure-store` (llavero de iOS / Keystore de Android). En el
- * navegador el almacen es `localStorage`, que NO esta cifrado: decir «cifrados» ahi era falso.
+ * navegador la sesion es una cookie `HttpOnly` del navegador (APP-02, `token-storage.web.ts`), que no
+ * esta cifrada en disco: decir «cifrados» ahi seria falso. Sigue siendo cierto que se guarda en este
+ * navegador hasta cerrar sesion.
  */
 export const SESION_GUARDADA_MOVIL = 'Tus tokens se guardan cifrados en este dispositivo';
 export const SESION_GUARDADA_WEB = 'Tu sesión se guarda en este navegador; cierra sesión si el equipo no es tuyo';

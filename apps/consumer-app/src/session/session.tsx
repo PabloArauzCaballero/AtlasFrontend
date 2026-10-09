@@ -6,6 +6,7 @@
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { configureClient } from '../api/client';
+import { esMarcaDeCookie, marcaDeCookie } from '../api/marca-de-cookie';
 import * as authApi from '../api/endpoints/auth';
 import * as customerApi from '../api/endpoints/customer';
 import * as onboardingApi from '../api/endpoints/onboarding';
@@ -239,6 +240,17 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setProfile(stored);
     try {
       const estado = await loadCustomerState(stored.customerId);
+      /*
+        `loadCustomerState` no lanza (tolera fallos parciales): si el refresco fue RECHAZADO mientras
+        cargaba, el almacen ya esta vacio y `onSessionExpired` ya saco a la persona. Marcarla dentro
+        aqui la devolvia a un area autenticada sin sesion. En la web es el caso de cada recarga con la
+        cookie vencida.
+      */
+      if (!(await secureTokenStore.read())) {
+        setProfile(null);
+        setStatus('anonymous');
+        return;
+      }
       setStatus('authenticated');
       /*
         Quien vuelve con el alta a medias retoma su bitacora ANTES de que la sesion de telemetria la
@@ -268,7 +280,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const signIn = useCallback<SessionValue['signIn']>(
     async (identifier, password) => {
       const tokens = await authApi.login(identifier, password);
-      await secureTokenStore.write({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken });
+      // En la web (modo cookie) el token de refresco no llega: lo guarda el navegador en una cookie HttpOnly.
+      await secureTokenStore.write({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken ?? marcaDeCookie() });
 
       const actor = await authApi.me();
       const customerId = actor.customerId ?? actor.actorId;
@@ -358,7 +371,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     if (tokens && !servidorYaRevoco) {
       // Si la revocacion falla, la sesion local se cierra igual: dejar tokens en el dispositivo
       // porque el servidor no respondio seria el peor de los dos resultados.
-      await authApi.logout(tokens.refreshToken).catch(() => undefined);
+      // En la web el token está en la cookie: el servidor lo lee de ahí, lo revoca y borra la cookie.
+      await authApi.logout(esMarcaDeCookie(tokens.refreshToken) ? null : tokens.refreshToken).catch(() => undefined);
     }
     await Promise.all([secureTokenStore.clear(), profileStorage.clear()]);
     // Compras de prueba, lectura del carnet, fotos y descargas: quien entre después no las hereda.
