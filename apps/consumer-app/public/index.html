@@ -3,8 +3,22 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#F2F2F7" />
+    <meta name="theme-color" content="#FFFFFF" />
     <meta name="color-scheme" content="light" />
+    <!--
+      La apariencia que eligió la persona (Perfil › Apariencia), ANTES del primer pintado: si eligió
+      oscuro, el documento nace oscuro y no hay destello blanco mientras llega el bundle. La clave y
+      los valores son los de `src/theme/preferencia.ts` y los fondos de arranque de `src/theme/temas.ts`.
+    -->
+    <script>
+      try {
+        if (localStorage.getItem('atlas.apariencia') === 'oscuro') {
+          document.documentElement.setAttribute('data-apariencia', 'oscuro');
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0A0A0B');
+          document.querySelector('meta[name="color-scheme"]').setAttribute('content', 'dark');
+        }
+      } catch (e) {}
+    </script>
     <meta name="description" content="Atlas: compra hoy en los comercios afiliados y paga después, desde el navegador o desde la app." />
     <title>Atlas</title>
     <style>
@@ -12,19 +26,19 @@
         Lo que el navegador necesita para que la app se sienta como la app:
         - el documento no se desplaza en horizontal (el carrusel de la bienvenida y las hojas se
           recortan al ancho de la ventana, no lo ensanchan);
-        - el fondo es el navy de marca desde el primer byte, antes de que llegue el bundle: es el
-          color del arranque (el escenario de marca), y la app clara se pinta encima al cargar;
-        - la barra del navegador y los controles nativos van en claro, como la app (tema `claro`,
-          `src/theme/temas.ts`); estos valores no pueden salir de los tokens porque se leen antes
-          que el JavaScript;
+        - el fondo es el del arranque desde el primer byte, antes de que llegue el bundle: blanco, o
+          casi negro si la persona eligió oscuro (`data-apariencia`). Estos valores no pueden salir
+          de los tokens porque se leen antes que el JavaScript: si cambian en `temas.ts`, aquí también;
         - la raíz mide la ventana entera, que es lo que react-native-web espera para `flex: 1`.
       */
       html, body, #root { height: 100%; }
-      body { margin: 0; overflow-x: hidden; background: #061426; color: #f3f7fb; -webkit-font-smoothing: antialiased; }
+      body { margin: 0; overflow-x: hidden; background: #FFFFFF; color: #1D1D1F; -webkit-font-smoothing: antialiased; }
+      html[data-apariencia='oscuro'] body { background: #0A0A0B; color: #F5F5F7; }
       #root { display: flex; }
       /* Foco visible sólo cuando se navega con teclado: el anillo de marca, no el azul del sistema. */
       :focus { outline: none; }
-      :focus-visible { outline: 2px solid #0B6B6E; outline-offset: 2px; }
+      :focus-visible { outline: 2px solid #0E7C7B; outline-offset: 2px; }
+      html[data-apariencia='oscuro'] :focus-visible { outline-color: #67C3C1; }
     </style>
   </head>
   <body>

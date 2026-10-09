@@ -27,6 +27,7 @@ import { CreditoHabilitadoCard } from '../../../src/ui/credito-habilitado-card';
 import { TarjetaAtlas } from '../../../src/ui/tarjeta-atlas';
 import { MedallaDeRiesgo } from '../../../src/ui/medalla-de-riesgo';
 import { AvatarEditable } from '../../../src/ui/avatar-editable';
+import { SelectorApariencia } from '../../../src/ui/selector-apariencia';
 import { useProgress } from '../../../src/features/use-progress';
 import {
   AtlasText,
@@ -395,6 +396,8 @@ export default function Profile() {
           accessibilityHint="Abrir privacidad y derechos sobre tus datos"
         />
       </Card>
+
+      <SelectorApariencia />
 
       <Card padding="tight">
         <CardHeader icon="candado" iconTone="neutral" title="Seguridad" />

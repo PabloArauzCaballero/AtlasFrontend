@@ -112,12 +112,13 @@ export type IconName =
 /** Opacidad del relleno suave de la forma principal en un icono de dos tonos. Sutil a propósito: da cuerpo sin teñir. */
 const RELLENO = 0.16;
 /**
- * El acento de un icono de dos tonos, si no se pide otro: el ámbar de la marca.
+ * El acento de un icono de dos tonos, si no se pide otro: el MISMO matiz de la marca en un tono mas suave.
  *
- * No el menta: el trazo YA es menta, y un acento del mismo color no se distingue (se probó: el detalle se perdía y el icono
- * parecía de un solo tono). El ámbar contrasta con el menta y con el fondo oscuro, y se lee como el brillo de una moneda.
+ * Antes era ambar, para que se distinguiera del trazo menta. Con la interfaz sobria (2026-10-09) ese ambar era un tercer
+ * color en cada tarjeta, compitiendo con el acento y con los estados. Ahora el icono se jerarquiza como un SF Symbol: un
+ * solo matiz, dos intensidades (`color.accent.muted`).
  */
-const ACENTO = color.feedback.warning;
+const ACENTO = color.accent.muted;
 
 /** Lo que cada dibujo necesita saber para pintarse en uno o en dos tonos. */
 type Dibujo = {

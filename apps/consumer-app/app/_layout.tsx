@@ -14,12 +14,12 @@ import {
 } from '@expo-google-fonts/manrope';
 import { Sora_600SemiBold, Sora_700Bold, Sora_800ExtraBold } from '@expo-google-fonts/sora';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { Appearance, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useArranqueDecidido } from '../src/device/aplicar-actualizacion';
@@ -43,6 +43,31 @@ import { TourProvider } from '../src/ui/tour';
 inyectarEstiloWeb();
 
 void SplashScreen.preventAutoHideAsync();
+
+/*
+  La navegacion (pila, pestañas, cabeceras) con los colores del TEMA y no con los suyos de fabrica: sin
+  esto React Navigation pinta su gris claro de fabrica en el borde de la barra de pestañas (una raya
+  brillante en oscuro) y su fondo gris detras de cada pantalla, en los dos temas.
+*/
+const BASE_NAVEGACION = esquema === 'oscuro' ? DarkTheme : DefaultTheme;
+const TEMA_NAVEGACION = {
+  ...BASE_NAVEGACION,
+  dark: esquema === 'oscuro',
+  colors: {
+    ...BASE_NAVEGACION.colors,
+    primary: color.accent.base,
+    background: color.surface.primary,
+    card: color.surface.secondary,
+    text: color.text.primary,
+    border: color.border.subtle,
+    notification: color.feedback.danger,
+  },
+};
+/*
+  Los controles NATIVOS (teclado, selector de fecha, alertas, menus) siguen la apariencia que eligio la
+  persona en la app, no la del telefono: si eligio oscuro, todo es oscuro aunque el iPhone este en claro.
+*/
+if (Platform.OS !== 'web') Appearance.setColorScheme(esquema === 'oscuro' ? 'dark' : 'light');
 
 /**
  * En el navegador la secuencia de marca se ve UNA vez por pestaña.
@@ -133,8 +158,6 @@ function NavigationTree({ fontsReady, arranqueDecidido }: { fontsReady: boolean;
     <BienvenidaHablada />
     {arranqueVisible && arranqueDecidido ? (
       <>
-      {/* El arranque es navy en los dos temas: mientras dura, la barra de estado va en claro. */}
-      <StatusBar style="light" />
       <AnimatedSplash
         listo={listo}
         onDone={() => {
@@ -181,6 +204,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.surface.primary }}>
       <SafeAreaProvider>
+      <ThemeProvider value={TEMA_NAVEGACION}>
         <StatusBar style={esquema === 'claro' ? 'dark' : 'light'} />
         {/* La atmósfera de la landing (aurora, grano, malla). Sólo web; en el teléfono no pinta nada. */}
         <Atmosfera />
@@ -216,6 +240,7 @@ export default function RootLayout() {
             </SandboxProvider>
           </SessionProvider>
         </SonidoMarcaProvider>
+      </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -6,12 +6,12 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#061426"
+      "backgroundColor": "#FFFFFF"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -118,8 +118,12 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash-icon.png",
-          "backgroundColor": "#061426",
-          "imageWidth": 160
+          "backgroundColor": "#FFFFFF",
+          "imageWidth": 120,
+          "dark": {
+            "image": "./assets/splash-icon-oscuro.png",
+            "backgroundColor": "#0A0A0B"
+          }
         }
       ],
       "expo-font",

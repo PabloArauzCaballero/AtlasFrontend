@@ -75,7 +75,7 @@ const TONE_ESCENARIO: Record<TextTone, string> = {
   primary: color.stage.ink,
   secondary: color.stage.ink2,
   tertiary: color.stage.ink3,
-  brand: color.stage.brand.b400,
+  brand: color.accent.base,
 };
 const EnEscenario = React.createContext(false);
 export function Escenario({ children }: { children: React.ReactNode }) {
@@ -533,13 +533,14 @@ export function IconChip({
 }) {
   const box = size === 'sm' ? 32 : size === 'lg' ? 48 : 40;
   const glyph = size === 'sm' ? 16 : size === 'lg' ? 24 : 20;
-  const tint = tone === 'brand' ? color.action.primary : tone === 'neutral' ? color.text.secondary : color.feedback[tone];
+  // La marca va en el ACENTO, no en el verde de «exito»: un icono de tarjeta no es una buena noticia.
+  const tint = tone === 'brand' ? color.accent.base : tone === 'neutral' ? color.text.secondary : color.feedback[tone];
   return (
     <View
       style={[
         styles.iconChip,
         { width: box, height: box, borderRadius: size === 'sm' ? radius.md : radius.lg },
-        { backgroundColor: color.feedbackSoft[tone === 'brand' ? 'success' : tone] },
+        { backgroundColor: tone === 'brand' ? color.accent.soft : color.feedbackSoft[tone] },
         style,
       ]}
     >
