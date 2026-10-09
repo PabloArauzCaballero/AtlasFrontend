@@ -7,7 +7,7 @@
  */
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { palette, space } from '../theme/tokens';
+import { color, space } from '../theme/tokens';
 import { AtlasText, Overline } from './primitives';
 import { webData } from '../web/estilo';
 import { DegradadosLetraA, LETRA_A } from './marca-letra';
@@ -43,9 +43,9 @@ export function BrandHalo({ size, style }: { size: number; style?: ViewStyle }) 
               igual, solo que con el contorno emborronado; la parada intermedia al 45 % es la que
               concentra el color en el nucleo y deja que el resto se apague despacio.
             */}
-            <Stop offset="0" stopColor={palette.brand400} stopOpacity="0.30" />
-            <Stop offset="0.45" stopColor={palette.brand500} stopOpacity="0.12" />
-            <Stop offset="1" stopColor={palette.brand500} stopOpacity="0" />
+            <Stop offset="0" stopColor={color.brand.b400} stopOpacity="0.30" />
+            <Stop offset="0.45" stopColor={color.brand.b500} stopOpacity="0.12" />
+            <Stop offset="1" stopColor={color.brand.b500} stopOpacity="0" />
           </RadialGradient>
         </Defs>
         <Rect x="0" y="0" width="100" height="100" fill="url(#atlas-halo)" />
@@ -65,8 +65,8 @@ export function AtlasMark({ size = 40 }: { size?: number }) {
       <Path d={LETRA_A.caraLuz} fill="url(#atlas-marca-luz)" />
       <Path d={LETRA_A.caraSombra} fill="url(#atlas-marca-sombra)" />
       <Path d={LETRA_A.travesano} fill="url(#atlas-marca-travesano)" />
-      <Path d={LETRA_A.cantoTravesano} stroke={palette.brand300} strokeWidth={0.35} opacity={0.8} />
-      <Path d={LETRA_A.filo} stroke={palette.white} strokeWidth={0.35} strokeLinecap="round" opacity={0.55} />
+      <Path d={LETRA_A.cantoTravesano} stroke={color.brand.b300} strokeWidth={0.35} opacity={0.8} />
+      <Path d={LETRA_A.filo} stroke={color.fixed.white} strokeWidth={0.35} strokeLinecap="round" opacity={0.55} />
     </Svg>
   );
 }

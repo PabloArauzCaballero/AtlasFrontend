@@ -22,6 +22,7 @@ import { useState } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import Svg, { G, Path } from 'react-native-svg';
 import type { IdentityEvidenceKind } from '../features/evidence-upload';
+import { color as tema } from '../theme/tokens';
 
 /** El lienzo de las siluetas, en unidades propias; se escala a la pantalla. */
 const ANCHO = 300;
@@ -84,11 +85,11 @@ export function SiluetaDeCara({
         <Svg width={medida.ancho} height={medida.alto}>
           <G transform={`translate(${x} ${y}) scale(${escala})`}>
             {/* Lo de fuera, oscurecido: el recorte par-impar deja la silueta sin tapar. */}
-            <Path fillRule="evenodd" fill="rgba(6,18,31,0.58)" d={`M-3000 -3000 H4000 V4000 H-3000 Z ${contorno}`} transform={espejar} />
+            <Path fillRule="evenodd" fill={tema.camera.mask} d={`M-3000 -3000 H4000 V4000 H-3000 Z ${contorno}`} transform={espejar} />
             <G transform={espejar}>
               <Path d={contorno} fill="none" stroke={color} strokeWidth={grosor / escala} strokeLinejoin="round" />
               <Path d={detalle} fill="none" stroke={color} strokeWidth={(grosor * 0.85) / escala} strokeLinecap="round" />
-              {guias ? <Path d={guias} stroke="rgba(255,255,255,0.35)" strokeWidth={1.5 / escala} strokeDasharray="4 6" /> : null}
+              {guias ? <Path d={guias} stroke={tema.camera.ring} strokeWidth={1.5 / escala} strokeDasharray="4 6" /> : null}
             </G>
           </G>
         </Svg>

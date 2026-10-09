@@ -6,7 +6,7 @@
  */
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, RadialGradient, Stop } from 'react-native-svg';
-import { font } from '../theme/tokens';
+import { fuente, luz, objeto } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { AtlasText } from './primitives';
 import { METAL, type Rango } from './trofeo';
@@ -44,7 +44,7 @@ export function EscudoDeNivel({
           </LinearGradient>
           <LinearGradient id={`${id}-i`} x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={m.tinta} stopOpacity={0.92} />
-            <Stop offset="1" stopColor="#050C18" stopOpacity={0.98} />
+            <Stop offset="1" stopColor={objeto.escudoInterior} stopOpacity={0.98} />
           </LinearGradient>
           <RadialGradient id={`${id}-h`} cx="48" cy="46" r="52" gradientUnits="userSpaceOnUse">
             <Stop offset="0" stopColor={m.halo} stopOpacity={0.5} />
@@ -54,7 +54,7 @@ export function EscudoDeNivel({
         <Circle cx={48} cy={46} r={52} fill={`url(#${id}-h)`} />
         <Path d={ESCUDO} fill={`url(#${id}-m)`} stroke={m.luz} strokeWidth={1.2} strokeLinejoin="round" />
         <Path d={INTERIOR} fill={`url(#${id}-i)`} stroke={m.medio} strokeWidth={1} strokeLinejoin="round" />
-        <Path d="M48 12 L77 22 V30 C62 27 54 20 48 12 Z" fill="#FFFFFF" opacity={0.14} />
+        <Path d="M48 12 L77 22 V30 C62 27 54 20 48 12 Z" fill={luz.blanco} opacity={0.14} />
         {children}
       </Svg>
       <View style={[styles.icono, { top: 12 * k }]} pointerEvents="none">
@@ -67,7 +67,7 @@ export function EscudoDeNivel({
         <AtlasText
           variant="display"
           accessibilityElementsHidden
-          style={{ color: '#FFFFFF', fontFamily: font.displayBlack, fontSize: 28 * k, lineHeight: 30 * k, includeFontPadding: false }}
+          style={{ color: luz.blanco, ...fuente('displayBlack'), fontSize: 28 * k, lineHeight: 30 * k, includeFontPadding: false }}
         >
           {numero}
         </AtlasText>

@@ -8,7 +8,7 @@
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import type { Badge, BadgeRank } from '../api/endpoints/credit-line';
-import { color, palette, stroke } from '../theme/tokens';
+import { color, luz, metal, objeto, stroke } from '../theme/tokens';
 import { Icon, ICON_NAMES, type IconName } from './icons';
 
 export type Rango = BadgeRank;
@@ -19,11 +19,11 @@ const CIRCUNFERENCIA = 2 * Math.PI * RADIO_ANILLO;
 
 /** El metal de cada rango: claro (luz), medio y profundo (sombra), el tono del halo y el color de la tinta del medallón. */
 export const METAL: Record<Rango, { luz: string; medio: string; sombra: string; halo: string; tinta: string; nombre: string; chispas: string[] }> = {
-  bronce: { luz: '#F6C79B', medio: '#C9834B', sombra: '#7A4522', halo: '#E19A5C', tinta: '#3B1F0C', nombre: 'Bronce', chispas: ['#F6C79B', '#E19A5C', '#FFFFFF'] },
-  plata: { luz: '#FFFFFF', medio: '#C3CEDB', sombra: '#6E7D91', halo: '#D5E1EE', tinta: '#253244', nombre: 'Plata', chispas: ['#FFFFFF', '#C3CEDB', '#9FB4CC'] },
-  oro: { luz: '#FFF4B8', medio: '#F2C14E', sombra: '#9A6A12', halo: '#FFD36A', tinta: '#3D2A04', nombre: 'Oro', chispas: ['#FFF4B8', '#F2C14E', '#FFFFFF', '#FFB020'] },
-  platino: { luz: '#F2FFFC', medio: palette.brand300, sombra: palette.brand700, halo: palette.brand400, tinta: palette.brand900, nombre: 'Platino', chispas: ['#F2FFFC', palette.brand300, palette.brand400, '#FFFFFF'] },
-  diamante: { luz: '#F4FBFF', medio: '#8FD8FF', sombra: '#4B4FD6', halo: '#8FB8FF', tinta: '#0B1B4D', nombre: 'Diamante', chispas: ['#F4FBFF', '#8FD8FF', '#C7A6FF', '#FF9EE0', '#FFFFFF'] },
+  bronce: { ...metal.bronce, nombre: 'Bronce', chispas: [metal.bronce.luz, metal.bronce.halo, luz.blanco] },
+  plata: { luz: metal.plata.luz, medio: metal.plata.medio, sombra: metal.plata.sombra, halo: metal.plata.halo, tinta: metal.plata.tinta, nombre: 'Plata', chispas: [metal.plata.luz, metal.plata.medio, metal.plata.extra] },
+  oro: { luz: metal.oro.luz, medio: metal.oro.medio, sombra: metal.oro.sombra, halo: metal.oro.halo, tinta: metal.oro.tinta, nombre: 'Oro', chispas: [metal.oro.luz, metal.oro.medio, luz.blanco, metal.oro.extra] },
+  platino: { luz: metal.platino.luz, medio: color.brand.b300, sombra: color.brand.b700, halo: color.brand.b400, tinta: color.brand.b900, nombre: 'Platino', chispas: [metal.platino.luz, color.brand.b300, color.brand.b400, luz.blanco] },
+  diamante: { luz: metal.diamante.luz, medio: metal.diamante.medio, sombra: metal.diamante.sombra, halo: metal.diamante.halo, tinta: metal.diamante.tinta, nombre: 'Diamante', chispas: [metal.diamante.luz, metal.diamante.medio, metal.diamante.violeta, metal.diamante.rosa, luz.blanco] },
 };
 
 /** Qué tan difícil es cada logro, para un backend que aún no manda `rank`. Uno desconocido es de plata. */
@@ -87,8 +87,8 @@ export function Trofeo({
             <Stop offset="1" stopColor={m.sombra} />
           </LinearGradient>
           <LinearGradient id={`${id}-peana`} x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0" stopColor="#1E2C40" />
-            <Stop offset="1" stopColor="#0A1424" />
+            <Stop offset="0" stopColor={objeto.pedestal.claro} />
+            <Stop offset="1" stopColor={objeto.pedestal.oscuro} />
           </LinearGradient>
           <RadialGradient id={`${id}-halo`} cx="48" cy="38" r="46" gradientUnits="userSpaceOnUse">
             <Stop offset="0" stopColor={m.halo} stopOpacity={0.45} />
@@ -103,24 +103,24 @@ export function Trofeo({
             <Path d={COPA} fill={`url(#${id}-metal)`} />
             {/* El labio de la copa: una elipse más clara que da el volumen de la boca. */}
             <Ellipse cx={48} cy={14} rx={22} ry={3} fill={m.luz} opacity={0.9} />
-            <Path d={REFLEJO} fill="#FFFFFF" opacity={0.35} />
+            <Path d={REFLEJO} fill={luz.blanco} opacity={0.35} />
             <Path d={TALLO} fill={`url(#${id}-metal)`} />
             <Rect x={32} y={68} width={32} height={6} rx={2} fill={`url(#${id}-metal)`} />
             <Rect x={28} y={74} width={40} height={12} rx={3} fill={`url(#${id}-peana)`} stroke={m.medio} strokeWidth={1} />
             {/* La placa de la peana. */}
             <Rect x={38} y={78} width={20} height={4} rx={1} fill={m.medio} opacity={0.85} />
             {/* Los destellos: el que vende «recién pulido». */}
-            <Path d="M78 6 l1.6 4.2 4.2 1.6 -4.2 1.6 -1.6 4.2 -1.6 -4.2 -4.2 -1.6 4.2 -1.6 Z" fill="#FFFFFF" opacity={0.95} />
-            <Path d="M16 50 l1 2.6 2.6 1 -2.6 1 -1 2.6 -1 -2.6 -2.6 -1 2.6 -1 Z" fill="#FFFFFF" opacity={0.7} />
+            <Path d="M78 6 l1.6 4.2 4.2 1.6 -4.2 1.6 -1.6 4.2 -1.6 -4.2 -4.2 -1.6 4.2 -1.6 Z" fill={luz.blanco} opacity={0.95} />
+            <Path d="M16 50 l1 2.6 2.6 1 -2.6 1 -1 2.6 -1 -2.6 -2.6 -1 2.6 -1 Z" fill={luz.blanco} opacity={0.7} />
             {children}
           </>
         ) : (
           <>
-            <Path d={ASA_IZQ} fill="none" stroke={palette.line2} strokeWidth={3} strokeLinecap="round" />
-            <Path d={ASA_DER} fill="none" stroke={palette.line2} strokeWidth={3} strokeLinecap="round" />
-            <Path d={COPA} fill={palette.bgElevated} stroke={palette.line2} strokeWidth={1.5} />
-            <Path d={TALLO} fill={palette.bgElevated} stroke={palette.line2} strokeWidth={1} />
-            <Rect x={28} y={70} width={40} height={14} rx={3} fill={palette.bgElevated} stroke={palette.line2} strokeWidth={1} />
+            <Path d={ASA_IZQ} fill="none" stroke={color.border.strong} strokeWidth={3} strokeLinecap="round" />
+            <Path d={ASA_DER} fill="none" stroke={color.border.strong} strokeWidth={3} strokeLinecap="round" />
+            <Path d={COPA} fill={color.surface.secondary} stroke={color.border.strong} strokeWidth={1.5} />
+            <Path d={TALLO} fill={color.surface.secondary} stroke={color.border.strong} strokeWidth={1} />
+            <Rect x={28} y={70} width={40} height={14} rx={3} fill={color.surface.secondary} stroke={color.border.strong} strokeWidth={1} />
             {avance > 0 ? (
               <Circle
                 cx={48}
@@ -155,5 +155,5 @@ export function Trofeo({
 
 const styles = StyleSheet.create({
   medallon: { position: 'absolute', borderWidth: stroke.hairline, alignItems: 'center', justifyContent: 'center' },
-  medallonApagado: { backgroundColor: palette.bgCard, borderColor: palette.line2 },
+  medallonApagado: { backgroundColor: color.surface.raised, borderColor: color.border.strong },
 });

@@ -27,7 +27,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, { useAnimatedProps, type SharedValue } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
-import { palette } from '../theme/tokens';
+import { color } from '../theme/tokens';
 import { suave, tramo } from './curvas-arranque';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -136,14 +136,14 @@ export function OrbitaDetras({ reloj, guion, tamano }: Props) {
       <AnimatedPath
         d={DETRAS.d}
         fill="none"
-        stroke={palette.brand300}
+        stroke={color.stage.brand.b300}
         strokeOpacity={0.4}
         strokeWidth={0.45}
         strokeDasharray={DETRAS.largo}
         strokeDashoffset={DETRAS.largo}
         animatedProps={trazoProps}
       />
-      <AnimatedCircle r={0.95} opacity={0} fill={palette.brand300} animatedProps={puntoProps} />
+      <AnimatedCircle r={0.95} opacity={0} fill={color.stage.brand.b300} animatedProps={puntoProps} />
     </Lienzo>
   );
 }
@@ -166,7 +166,7 @@ export function OrbitaDelante({ reloj, guion, tamano }: Props) {
       <AnimatedPath
         d={DELANTE.d}
         fill="none"
-        stroke={palette.brand300}
+        stroke={color.stage.brand.b300}
         strokeOpacity={0.85}
         strokeWidth={0.55}
         strokeLinecap="round"
@@ -174,7 +174,7 @@ export function OrbitaDelante({ reloj, guion, tamano }: Props) {
         strokeDashoffset={DELANTE.largo}
         animatedProps={trazoProps}
       />
-      <AnimatedCircle r={1.15} opacity={0} fill={palette.brand300} animatedProps={puntoProps} />
+      <AnimatedCircle r={1.15} opacity={0} fill={color.stage.brand.b300} animatedProps={puntoProps} />
     </Lienzo>
   );
 }

@@ -22,12 +22,12 @@ import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, w
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NOMBRE_COLECCION, type Logro } from '../features/celebraciones';
-import { motion, palette, radius, space, spring } from '../theme/tokens';
+import { alpha, color, luz, motion, objeto, radius, space, spring } from '../theme/tokens';
 import { Barra, CuentaArriba, useAvance } from './cuenta-arriba';
 import { Icon } from './icons';
 import { caraDe } from './insignia';
 import { Medalla } from './medalla';
-import { AtlasText, Button } from './primitives';
+import { AtlasText, Escenario, Button } from './primitives';
 import { METAL } from './trofeo';
 
 const ALTO_BOTONES = 132;
@@ -58,10 +58,10 @@ function ArteDeFondo({ ancho, alto, rango }: { ancho: number; alto: number; rang
         <RadialGradient id={`arte-${rango}`} cx={cx} cy={cy} r={ancho * 0.75} gradientUnits="userSpaceOnUse">
           <Stop offset="0" stopColor={m.halo} stopOpacity={0.55} />
           <Stop offset="0.6" stopColor={m.sombra} stopOpacity={0.25} />
-          <Stop offset="1" stopColor="#050B16" stopOpacity={0} />
+          <Stop offset="1" stopColor={objeto.fondoProfundo} stopOpacity={0} />
         </RadialGradient>
       </Defs>
-      <Rect width={ancho} height={alto} fill="#071426" />
+      <Rect width={ancho} height={alto} fill={objeto.carta.arte} />
       {cuñas.map((d, k) => (
         <Path key={k} d={d} fill={m.halo} opacity={0.1} />
       ))}
@@ -129,6 +129,7 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
   const coleccion = insignia.category ? NOMBRE_COLECCION[insignia.category] : null;
 
   return (
+    <Escenario>
     <View
       style={StyleSheet.absoluteFill}
       accessibilityViewIsModal
@@ -146,7 +147,7 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
           {/* El marco: metal con degradado, y dentro la carta. */}
           <LinearGradient colors={[m.luz, m.medio, m.sombra, m.medio]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.marco}>
             <View style={styles.cara}>
-              <LinearGradient colors={['#0C1B30', '#08111F']} style={StyleSheet.absoluteFill} />
+              <LinearGradient colors={[objeto.carta.cara.arriba, objeto.carta.cara.abajo]} style={StyleSheet.absoluteFill} />
 
               <View style={[styles.arte, { height: alturaArte }]}>
                 <ArteDeFondo ancho={ancho - 8} alto={alturaArte} rango={rango} />
@@ -168,8 +169,8 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
               </View>
 
               {/* El nombre en una cinta de metal, como el rótulo de una carta. */}
-              <LinearGradient colors={ganada ? [m.sombra, m.medio, m.luz, m.medio, m.sombra] : ['#16263D', '#22364F', '#16263D']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.rotulo}>
-                <AtlasText variant="h3" align="center" numberOfLines={2} style={{ color: ganada ? m.tinta : '#C9D6E8' }} accessibilityRole="header">
+              <LinearGradient colors={ganada ? [m.sombra, m.medio, m.luz, m.medio, m.sombra] : [objeto.carta.rotuloApagado.borde, objeto.carta.rotuloApagado.centro, objeto.carta.rotuloApagado.borde]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.rotulo}>
+                <AtlasText variant="h3" align="center" numberOfLines={2} style={{ color: ganada ? m.tinta : objeto.carta.tintaApagada }} accessibilityRole="header">
                   {cara.label}
                 </AtlasText>
               </LinearGradient>
@@ -211,7 +212,7 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
 
               {/* El barrido holográfico: una banda de luz recortada por el marco de la carta. */}
               <Animated.View style={[styles.barrido, { height: alto * 1.5 }, estiloBarrido]} pointerEvents="none">
-                <LinearGradient colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.42)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+                <LinearGradient colors={[alpha(luz.blanco, 0), alpha(luz.blanco, 0.42), alpha(luz.blanco, 0)]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
               </Animated.View>
             </View>
           </LinearGradient>
@@ -224,18 +225,19 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
         </View>
       </View>
     </View>
+    </Escenario>
   );
 }
 
 const styles = StyleSheet.create({
-  fondo: { backgroundColor: 'rgba(3,10,20,0.94)' },
+  fondo: { backgroundColor: color.stage.scrim },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.md, paddingHorizontal: space.lg },
   sombra: { shadowOpacity: 0.5, shadowRadius: 28, shadowOffset: { width: 0, height: 10 }, elevation: 18 },
   marco: { flex: 1, borderRadius: radius.xl + 6, padding: 4 },
-  cara: { flex: 1, borderRadius: radius.xl + 2, overflow: 'hidden', backgroundColor: palette.bg },
+  cara: { flex: 1, borderRadius: radius.xl + 2, overflow: 'hidden', backgroundColor: color.stage.bg },
   arte: { alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   cinta: { position: 'absolute', top: space.sm, left: space.sm, right: space.sm, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
-  pildora: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space.sm, paddingVertical: 2, backgroundColor: 'rgba(5,11,22,0.55)' },
+  pildora: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space.sm, paddingVertical: 2, backgroundColor: color.stage.chip },
   coleccion: { flexShrink: 1, letterSpacing: 1 },
   rotulo: { paddingVertical: space.sm, paddingHorizontal: space.md, alignItems: 'center', justifyContent: 'center', minHeight: 54 },
   cuerpo: { flex: 1, gap: space.sm, padding: space.md, justifyContent: 'center' },

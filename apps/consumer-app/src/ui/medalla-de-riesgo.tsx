@@ -24,14 +24,14 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { font, palette } from '../theme/tokens';
+import { alpha, color, fuente, luz, objeto } from '../theme/tokens';
 import { AtlasText } from './primitives';
 
 const LADO = 76;
 
 const METAL = {
-  marca: { cara: ['#7DF6D8', palette.brand400, '#0E8C7B'] as const, aro: 'rgba(255,255,255,0.5)', luz: palette.brand400 },
-  alerta: { cara: ['#FFE0A6', palette.warning, '#C9862A'] as const, aro: 'rgba(255,255,255,0.5)', luz: palette.warning },
+  marca: { cara: [objeto.riesgo.marca.cara.luz, color.brand.b400, objeto.riesgo.marca.cara.sombra] as const, aro: alpha(luz.blanco, 0.5), luz: color.brand.b400 },
+  alerta: { cara: [objeto.riesgo.alerta.cara.luz, color.feedback.warning, objeto.riesgo.alerta.cara.sombra] as const, aro: alpha(luz.blanco, 0.5), luz: color.feedback.warning },
 };
 
 export function MedallaDeRiesgo({ letra, alerta = false }: { letra: string; alerta?: boolean }) {
@@ -48,7 +48,7 @@ export function MedallaDeRiesgo({ letra, alerta = false }: { letra: string; aler
     return () => cancelAnimation(barrido);
   }, [barrido, reducido]);
 
-  const luz = useAnimatedStyle(() => ({
+  const estiloLuz = useAnimatedStyle(() => ({
     opacity: Math.sin(Math.PI * barrido.value) * 0.85,
     transform: [{ translateX: -LADO + barrido.value * LADO * 2 }, { rotate: '22deg' }],
   }));
@@ -62,7 +62,7 @@ export function MedallaDeRiesgo({ letra, alerta = false }: { letra: string; aler
         {/* El brillo de arriba: el metal recibe la luz desde encima. */}
         <LinearGradient
           pointerEvents="none"
-          colors={['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0)']}
+          colors={[alpha(luz.blanco, 0.55), alpha(luz.blanco, 0.08), alpha(luz.blanco, 0)]}
           locations={[0, 0.5, 0.75]}
           style={styles.brillo}
         />
@@ -76,9 +76,9 @@ export function MedallaDeRiesgo({ letra, alerta = false }: { letra: string; aler
           {letra}
         </AtlasText>
         {reducido ? null : (
-          <Animated.View pointerEvents="none" style={[styles.barrido, luz]}>
+          <Animated.View pointerEvents="none" style={[styles.barrido, estiloLuz]}>
             <LinearGradient
-              colors={['rgba(255,255,255,0)', 'rgba(255,255,255,0.75)', 'rgba(255,255,255,0)']}
+              colors={[alpha(luz.blanco, 0), alpha(luz.blanco, 0.75), alpha(luz.blanco, 0)]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={StyleSheet.absoluteFill}
@@ -107,17 +107,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.35)',
+    borderColor: alpha(luz.blanco, 0.35),
   },
   brillo: { position: 'absolute', top: 0, left: 0, right: 0, height: LADO * 0.6 },
   aro: { position: 'absolute', top: 6, left: 6, right: 6, bottom: 6, borderRadius: (LADO - 12) / 2, borderWidth: 1.5 },
   letra: {
-    fontFamily: font.displayBlack,
-    color: '#05223A',
+    ...fuente('displayBlack'),
+    color: objeto.riesgo.tinta,
     textAlign: 'center',
     letterSpacing: 0,
     // Hundida en el metal: un filo de luz debajo de cada trazo.
-    textShadowColor: 'rgba(255,255,255,0.55)',
+    textShadowColor: alpha(luz.blanco, 0.55),
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 0.5,
   },

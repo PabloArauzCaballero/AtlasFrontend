@@ -38,7 +38,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { ANCHO_COLUMNA, useTramo } from './responsive';
-import { color, palette, radius, shadow, space, stroke, touch } from '../theme/tokens';
+import { color, radius, shadow, space, stroke, touch } from '../theme/tokens';
 import { toqueWeb } from './hit-slop';
 import { Icon } from './icons';
 import { AtlasText, IconButton, Overline } from './primitives';
@@ -284,7 +284,7 @@ function InfoVivo({ pulsado }: { pulsado: boolean }) {
   return (
     <View style={styles.infoCaja}>
       <Animated.View style={[styles.infoPastilla, pastilla]}>
-        <Icon name="info" size={14} tint={palette.brand300} />
+        <Icon name="info" size={14} tint={color.brand.b300} />
       </Animated.View>
     </View>
   );
@@ -389,9 +389,9 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(43,224,168,0.10)',
+    backgroundColor: color.accent.soft,
     borderWidth: 1,
-    borderColor: 'rgba(92,240,204,0.35)',
+    borderColor: color.accent.border,
   },
 
   // El envoltorio que reparte el alto entre velo y hoja. Es lo que `KeyboardAvoidingView`

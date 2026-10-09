@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     padding: space.md,
     borderRadius: radius.lg,
     borderWidth: stroke.hairline,
-    borderColor: 'rgba(127,239,214,0.28)',
+    borderColor: color.accent.border,
     backgroundColor: color.feedbackSoft.info,
   },
   avisoCabeza: { flexDirection: 'row', alignItems: 'center', gap: space.xs },

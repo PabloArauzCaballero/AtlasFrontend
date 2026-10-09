@@ -43,6 +43,7 @@ import {
 import { secureTokenStore } from '../session/token-storage';
 import { anotarEnHistorial } from './historial-ubicaciones';
 import { leerContextoDeRastreo, type ContextoDeRastreo } from './tracking-context';
+import { color } from '../theme/tokens';
 
 /** El nombre con el que el sistema recuerda la tarea. Cambiarlo deja huerfano el rastreo instalado. */
 export const TAREA_UBICACION = 'atlas-location-tracking';
@@ -223,7 +224,7 @@ export async function iniciarRastreoEnSegundoPlano(): Promise<boolean> {
       foregroundService: {
         notificationTitle: 'Atlas está activo',
         notificationBody: 'Registrando tu ubicación según los permisos que aceptaste.',
-        notificationColor: '#061426',
+        notificationColor: color.brand.navy,
       },
     });
     return true;

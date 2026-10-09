@@ -16,7 +16,7 @@ import type { Badge, Progress } from '../api/endpoints/credit-line';
 import { logroDeInsignia, NOMBRE_COLECCION } from '../features/celebraciones';
 import { abrirCartaDeInsignia } from '../features/celebraciones-bus';
 import { avanceDeInsignia } from '../features/puntaje-explicado';
-import { color, palette, space } from '../theme/tokens';
+import { color, space } from '../theme/tokens';
 import { Insignia } from './insignia';
 import { AtlasText, Card, SectionHeader } from './primitives';
 import { BarraViva } from './cuenta-arriba';
@@ -124,7 +124,7 @@ function Punto({ indice, progreso, activo, etiqueta, onPress }: { indice: number
 
 const styles = StyleSheet.create({
   vitrina: { gap: space.md },
-  caja: { backgroundColor: palette.bg, borderColor: color.feedbackBorder.brand, gap: space.sm },
+  caja: { backgroundColor: color.surface.primary, borderColor: color.feedbackBorder.brand, gap: space.sm },
   cabecera: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
   visor: { overflow: 'hidden' },
   rejilla: { justifyContent: 'flex-start' },

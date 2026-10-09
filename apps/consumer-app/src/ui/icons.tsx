@@ -25,7 +25,7 @@
  * contiene, no en el dibujo.
  */
 import Svg, { Circle, Path, Rect, type SvgProps } from 'react-native-svg';
-import { color, palette } from '../theme/tokens';
+import { color } from '../theme/tokens';
 import { VidaDeIcono } from './icon-vivo';
 
 /** Rejilla comun. Cambiarla obliga a redibujar todo: es el contrato del set. */
@@ -117,7 +117,7 @@ const RELLENO = 0.16;
  * No el menta: el trazo YA es menta, y un acento del mismo color no se distingue (se probó: el detalle se perdía y el icono
  * parecía de un solo tono). El ámbar contrasta con el menta y con el fondo oscuro, y se lee como el brillo de una moneda.
  */
-const ACENTO = palette.warning;
+const ACENTO = color.feedback.warning;
 
 /** Lo que cada dibujo necesita saber para pintarse en uno o en dos tonos. */
 type Dibujo = {

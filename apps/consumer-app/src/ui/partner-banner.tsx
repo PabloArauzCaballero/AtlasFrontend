@@ -17,7 +17,7 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
-import { color, palette, press, radius, space } from '../theme/tokens';
+import { color, press, radius, space } from '../theme/tokens';
 import { getContent, type ContentAction, type ContentEntry } from '../api/endpoints/app-content';
 import { ICON_NAMES, Icon, type IconName } from './icons';
 import { PressSurface } from './motion';
@@ -98,8 +98,8 @@ export function PartnerBanner({ content, onPress }: { content: PartnerBannerCont
         <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
           <Defs>
             <LinearGradient id="partnerBanner" x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={palette.brand700} />
-              <Stop offset="1" stopColor={palette.navy} />
+              <Stop offset="0" stopColor={color.brand.b700} />
+              <Stop offset="1" stopColor={color.brand.navy} />
             </LinearGradient>
           </Defs>
           <Rect x="0" y="0" width="100%" height="100%" rx={radius.xxl} fill="url(#partnerBanner)" />
@@ -107,7 +107,7 @@ export function PartnerBanner({ content, onPress }: { content: PartnerBannerCont
 
         <View style={styles.content}>
           <View style={styles.iconBox}>
-            <Icon name={content.icon} size={24} tint={palette.brand400} />
+            <Icon name={content.icon} size={24} tint={color.brand.b400} />
           </View>
           <View style={styles.text}>
             <AtlasText variant="caption" style={styles.partnerName}>
@@ -122,7 +122,7 @@ export function PartnerBanner({ content, onPress }: { content: PartnerBannerCont
               </AtlasText>
             ) : null}
           </View>
-          <Icon name="adelante" size={18} tint={palette.tint} />
+          <Icon name="adelante" size={18} tint={color.brand.tint} />
         </View>
       </PressSurface>
     </View>
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: palette.ink10,
+    backgroundColor: color.fill.strong,
   },
   text: { flex: 1, gap: space.xxs },
   /*
@@ -154,9 +154,9 @@ const styles = StyleSheet.create({
     sobre el navy— no valen aqui. Salen igualmente del palette, que es lo que pide §1: lo que no
     puede haber es un literal.
   */
-  partnerName: { color: palette.tint, letterSpacing: 0.6 },
-  headline: { color: palette.white },
+  partnerName: { color: color.brand.tint, letterSpacing: 0.6 },
+  headline: { color: color.fixed.white },
   // El cuerpo va al 78 % en vez de con un tono propio: sobre un degradado, un gris fijo se aclara o
   // se ensucia segun la zona de la tarjeta donde caiga.
-  detail: { color: palette.text1, opacity: 0.78 },
+  detail: { color: color.text.primary, opacity: 0.78 },
 });

@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { ActivityIndicator, ActionSheetIOS, Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { quitarFoto } from '../api/endpoints/customer';
 import { elegirFoto, subirFotoDePerfil, useFuenteDeFoto, type Origen } from '../features/foto-de-perfil';
-import { color, palette } from '../theme/tokens';
+import { color } from '../theme/tokens';
 import { Icon } from './icons';
 import { Avatar } from './primitives';
 
@@ -97,13 +97,13 @@ export function AvatarEditable({
         <Avatar name={nombre} size={TAMANO} foto={foto} />
         {ocupado ? (
           <View style={styles.velo}>
-            <ActivityIndicator color={palette.white} />
+            <ActivityIndicator color={color.text.onDark} />
           </View>
         ) : null}
       </View>
       {/* La camarita: dice «esto se toca» sin un texto que lo explique. */}
       <View style={styles.insignia} pointerEvents="none">
-        <Icon name={tieneFoto ? 'editar' : 'camara'} size={13} tint={color.text.onBrand} />
+        <Icon name={tieneFoto ? 'editar' : 'camara'} size={13} tint={color.accent.onAccent} />
       </View>
     </Pressable>
   );
@@ -115,12 +115,12 @@ const styles = StyleSheet.create({
     height: TAMANO,
     borderRadius: TAMANO / 2,
     borderWidth: 2,
-    borderColor: 'rgba(92,240,204,0.45)',
+    borderColor: color.accent.border,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  velo: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(3,10,20,0.55)', alignItems: 'center', justifyContent: 'center' },
+  velo: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: color.overlay.scrim, alignItems: 'center', justifyContent: 'center' },
   insignia: {
     position: 'absolute',
     right: -2,
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: palette.brand400,
+    backgroundColor: color.accent.base,
     borderWidth: 2,
     borderColor: color.surface.primary,
   },

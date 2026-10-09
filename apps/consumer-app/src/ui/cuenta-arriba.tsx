@@ -21,7 +21,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
-import { color, easing, motion, palette, radius, space } from '../theme/tokens';
+import { alpha, color, easing, motion, radius, space } from '../theme/tokens';
 import { AtlasText } from './primitives';
 
 /** Cuánto tarda la barra en subir y la cifra en contar: más que `slow`, porque es un recorrido que se quiere SEGUIR. */
@@ -150,7 +150,7 @@ export function Barra({
           {apagado ? (
             <View style={[StyleSheet.absoluteFill, styles.rellenoApagado]} />
           ) : (
-            <LinearGradient colors={[palette.brand700, palette.brand500, palette.brand300]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
+            <LinearGradient colors={[color.brand.b700, color.brand.b500, color.brand.b300]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={StyleSheet.absoluteFill} />
           )}
           {/* El filo de luz: la mitad de arriba un punto más clara, como el canto de una pieza iluminada desde arriba. */}
           {grande && !apagado ? <View style={styles.filo} /> : null}
@@ -200,21 +200,21 @@ const styles = StyleSheet.create({
 
   rellenoApagado: { backgroundColor: color.border.strong },
 
-  filo: { position: 'absolute', top: 0, left: 0, right: 0, height: '45%', backgroundColor: palette.white, opacity: 0.22 },
+  filo: { position: 'absolute', top: 0, left: 0, right: 0, height: '45%', backgroundColor: color.fixed.white, opacity: 0.22 },
 
   relleno: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, borderRadius: radius.pill, overflow: 'hidden' },
 
   punto: { position: 'absolute', left: 0, width: PUNTO, height: PUNTO, alignItems: 'center', justifyContent: 'center' },
 
-  nucleo: { width: PUNTO, height: PUNTO, borderRadius: PUNTO / 2, backgroundColor: palette.brand300, borderWidth: 2, borderColor: palette.white },
+  nucleo: { width: PUNTO, height: PUNTO, borderRadius: PUNTO / 2, backgroundColor: color.brand.b300, borderWidth: 2, borderColor: color.fixed.white },
 
   halo: {
     position: 'absolute',
     width: PUNTO * 2.6,
     height: PUNTO * 2.6,
     borderRadius: PUNTO * 1.3,
-    backgroundColor: 'rgba(43,224,168,0.28)',
-    shadowColor: palette.brand400,
+    backgroundColor: alpha(color.brand.b400, 0.28),
+    shadowColor: color.brand.b400,
     shadowOpacity: 0.9,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 0 },

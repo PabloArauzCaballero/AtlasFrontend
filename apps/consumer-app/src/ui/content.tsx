@@ -144,7 +144,7 @@ export function ContentActionButton({
  * vistazo: quien busca ayuda no lee, busca el verde. No entra en los tokens del tema porque no es un
  * color de Atlas y no debe poder usarse para nada mas.
  */
-const WHATSAPP_INK = '#128C7E';
+const WHATSAPP_INK = color.thirdParty.whatsapp;
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },

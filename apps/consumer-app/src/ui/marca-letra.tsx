@@ -5,7 +5,7 @@
  * importarse en círculo: `brand.tsx` usa `AtlasText` de `primitives.tsx`.
  */
 import { LinearGradient, Stop } from 'react-native-svg';
-import { palette } from '../theme/tokens';
+import { color } from '../theme/tokens';
 
 /**
  * La geometria de la «A», en unidades de un `viewBox` de 48 x 48. La leen la marca de aqui y la
@@ -34,18 +34,18 @@ export function DegradadosLetraA({ prefijo }: { prefijo: string }) {
   return (
     <>
       <LinearGradient id={`${prefijo}-luz`} x1="0" y1="0" x2="0" y2="1">
-        <Stop offset="0" stopColor={palette.brand300} />
-        <Stop offset="1" stopColor={palette.brand400} />
+        <Stop offset="0" stopColor={color.brand.b300} />
+        <Stop offset="1" stopColor={color.brand.b400} />
       </LinearGradient>
       <LinearGradient id={`${prefijo}-sombra`} x1="0" y1="0" x2="0" y2="1">
-        <Stop offset="0" stopColor={palette.brand500} />
-        <Stop offset="1" stopColor={palette.brand700} />
+        <Stop offset="0" stopColor={color.brand.b500} />
+        <Stop offset="1" stopColor={color.brand.b700} />
       </LinearGradient>
       {/* El travesano cruza de la luz a la sombra, como las dos caras que une. */}
       <LinearGradient id={`${prefijo}-travesano`} x1="0" y1="0" x2="1" y2="0">
-        <Stop offset="0" stopColor={palette.brand400} />
-        <Stop offset="0.5" stopColor={palette.brand500} />
-        <Stop offset="1" stopColor={palette.brand700} />
+        <Stop offset="0" stopColor={color.brand.b400} />
+        <Stop offset="0.5" stopColor={color.brand.b500} />
+        <Stop offset="1" stopColor={color.brand.b700} />
       </LinearGradient>
     </>
   );

@@ -5,6 +5,7 @@
  * Van aparte de `tarjeta-atlas.tsx` porque son dibujo puro: no saben nada del nivel, del catálogo ni de los gestos.
  */
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { luz, metal } from '../theme/tokens';
 
 /**
  * El chip EMV: el bloque dorado con sus ocho contactos.
@@ -18,19 +19,19 @@ export function ChipEmv({ ancho }: { ancho: number }) {
     <Svg width={ancho} height={alto} viewBox="0 0 50 38" accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       <Defs>
         <LinearGradient id="chip-oro" x1="0" y1="0" x2="1" y2="1">
-          <Stop offset="0" stopColor="#F6E3A1" />
-          <Stop offset="0.35" stopColor="#D9B45A" />
-          <Stop offset="0.6" stopColor="#F2D98C" />
-          <Stop offset="1" stopColor="#A9802F" />
+          <Stop offset="0" stopColor={metal.chip.claro} />
+          <Stop offset="0.35" stopColor={metal.chip.medio} />
+          <Stop offset="0.6" stopColor={metal.chip.brillo} />
+          <Stop offset="1" stopColor={metal.chip.oscuro} />
         </LinearGradient>
         <LinearGradient id="chip-brillo" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.55} />
-          <Stop offset="0.5" stopColor="#FFFFFF" stopOpacity={0} />
+          <Stop offset="0" stopColor={luz.blanco} stopOpacity={0.55} />
+          <Stop offset="0.5" stopColor={luz.blanco} stopOpacity={0} />
         </LinearGradient>
       </Defs>
-      <Rect x={0.5} y={0.5} width={49} height={37} rx={6.5} fill="url(#chip-oro)" stroke="#8C6A24" strokeWidth={0.8} />
+      <Rect x={0.5} y={0.5} width={49} height={37} rx={6.5} fill="url(#chip-oro)" stroke={metal.chip.grabado} strokeWidth={0.8} />
       {/* Las pistas de contacto: un marco central y las seis lengüetas que salen a los lados. */}
-      <G stroke="#8C6A24" strokeWidth={0.9} fill="none" opacity={0.85}>
+      <G stroke={metal.chip.grabado} strokeWidth={0.9} fill="none" opacity={0.85}>
         <Rect x={17} y={9} width={16} height={20} rx={3} />
         <Line x1={0.5} y1={13} x2={17} y2={13} />
         <Line x1={0.5} y1={25} x2={17} y2={25} />
@@ -96,9 +97,9 @@ export function ReflejoEspecular({ diametro }: { diametro: number }) {
     <Svg width={diametro} height={diametro} pointerEvents="none">
       <Defs>
         <RadialGradient id="reflejo" cx="50%" cy="50%" r="50%">
-          <Stop offset="0" stopColor="#FFFFFF" stopOpacity={0.42} />
-          <Stop offset="0.45" stopColor="#FFFFFF" stopOpacity={0.12} />
-          <Stop offset="1" stopColor="#FFFFFF" stopOpacity={0} />
+          <Stop offset="0" stopColor={luz.blanco} stopOpacity={0.42} />
+          <Stop offset="0.45" stopColor={luz.blanco} stopOpacity={0.12} />
+          <Stop offset="1" stopColor={luz.blanco} stopOpacity={0} />
         </RadialGradient>
       </Defs>
       <Circle cx={diametro / 2} cy={diametro / 2} r={diametro / 2} fill="url(#reflejo)" />
@@ -120,7 +121,7 @@ export function Chispa({ tamano, color }: { tamano: number; color: string }) {
       </Defs>
       <Circle cx={12} cy={12} r={9} fill="url(#chispa-aura)" />
       {/* Cuatro puntas muy afiladas: el cuerpo es estrecho para que se lea como luz y no como una estrella dibujada. */}
-      <Path d="M12 0 L13.3 10.7 L24 12 L13.3 13.3 L12 24 L10.7 13.3 L0 12 L10.7 10.7 Z" fill="#FFFFFF" />
+      <Path d="M12 0 L13.3 10.7 L24 12 L13.3 13.3 L12 24 L10.7 13.3 L0 12 L10.7 10.7 Z" fill={luz.blanco} />
     </Svg>
   );
 }

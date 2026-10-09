@@ -27,7 +27,7 @@ import { POS_QRS } from '../../../src/sandbox/fixtures';
 import { useSession } from '../../../src/session/session';
 import { submitDownPayment, submitPaymentClaim } from '../../../src/api/endpoints/payment-claims';
 import { subirComprobante } from '../../../src/features/comprobante-de-pago';
-import { color, palette, radius, space } from '../../../src/theme/tokens';
+import { color, radius, space } from '../../../src/theme/tokens';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Badge, Button, Cargando, Card, CardHeader, Divider, EmptyState, ErrorState, KeyValue, Overline, Skeleton } from '../../../src/ui/primitives';
@@ -300,7 +300,7 @@ export default function PaymentScreen() {
             {instruction.qrImageDataUrlSnapshot ? (
               <Image source={{ uri: instruction.qrImageDataUrlSnapshot }} style={{ width: 196, height: 196 }} resizeMode="contain" accessibilityLabel={`QR bancario de ${instruction.beneficiaryNameSnapshot}`} />
             ) : (
-              <QRCode value={instruction.qrPayloadSnapshot} size={196} backgroundColor={palette.white} color={palette.bg} />
+              <QRCode value={instruction.qrPayloadSnapshot} size={196} backgroundColor={color.fixed.white} color={color.surface.primary} />
             )}
           </View>
 

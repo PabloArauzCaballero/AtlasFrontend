@@ -1,208 +1,40 @@
 /**
  * Tokens de diseno de ATLAS.
  *
- * La fuente de verdad visual es la identidad ya publicada en `AtlasLandingPage`
- * (`assets/css/style.css`): navy profundo, degradado teal -> menta, tipografia Sora/Manrope y
- * radios generosos. Aqui se portan como TOKENS, no como CSS: React Native no consume clases, y
- * duplicar hojas de estilo entre web y movil es justo lo que hace divergir a los dos productos.
+ * Rediseno 2026-10: sobrio y minimalista, a la manera de las apps de Apple, porque ATLAS es una
+ * entidad financiera. Fondo agrupado gris, tarjetas blancas, la tipografia del sistema (SF Pro en
+ * iPhone), un solo color de accion y sombras cortas. La identidad navy original sigue entera en el
+ * tema `oscuro` (`temas.ts`). El MOVIMIENTO —duraciones, curvas, muelles— no cambio: es el mismo.
  *
  * Regla: ningun componente escribe un color literal. Si un color no esta aqui, no existe.
  */
 
-import { StyleSheet } from 'react-native';
-
-/** Paleta cruda de marca. No usar directamente en pantallas: usar los tokens semanticos. */
-export const palette = {
-  navy: '#0C2C50',
-  brand900: '#052033',
-  brand700: '#0E7377',
-  brand500: '#14A894',
-  brand400: '#2BE0A8',
-  brand300: '#5CF0CC',
-  tint: '#7FEFD6',
-
-  bg: '#061426',
-  bgElevated: '#0A1C33',
-  bgSheet: '#0B2138',
-  /**
-   * Superficie de tarjeta. OPACA, no un velo blanco.
-   *
-   * Antes las tarjetas eran `rgba(255,255,255,0.04)` sobre el fondo: a esa alfa, sobre un navy tan
-   * profundo, la tarjeta no llega a separarse del papel y la pantalla entera se lee como un solo
-   * plano con texto suelto encima. Una superficie propia —tres pasos por encima del fondo— es lo
-   * que convierte una lista de textos en objetos que se pueden tocar.
-   */
-  bgCard: '#0B1E36',
-  /** Filo superior iluminado de una superficie elevada: la luz cae desde arriba, y se nota. */
-  edgeLit: 'rgba(255,255,255,0.10)',
-
-  ink04: 'rgba(255,255,255,0.04)',
-  ink07: 'rgba(255,255,255,0.07)',
-  /** Lavado sobre una superficie que ya es de color, donde 0.07 se pierde. Hoy: el banner de partner. */
-  ink10: 'rgba(255,255,255,0.10)',
-  line: 'rgba(255,255,255,0.09)',
-  line2: 'rgba(255,255,255,0.16)',
-
-  text1: '#EDF3F9',
-  text2: '#94A8BF',
-  /**
-   * El tercer nivel de texto, SUBIDO hasta pasar AA.
-   *
-   * Estaba en `#5F7591`: 3,9:1 sobre el fondo y 3,5:1 sobre una tarjeta, por debajo del 4,5:1 que
-   * pide WCAG para texto normal. Y no lo llevaba texto decorativo: lo llevan las leyendas —la
-   * explicacion que hay bajo cada campo, la nota legal del registro, la etiqueta de un boton
-   * apagado—, o sea justo el texto que alguien lee cuando algo no le encaja. «Gris claro que se ve
-   * elegante y no llega a contraste» es una de las marcas de fabrica de una interfaz sin terminar.
-   *
-   * `#7489A6` mide 5,2:1 sobre el fondo y 4,7:1 sobre la tarjeta, y sigue claramente por debajo de
-   * `text2` (7,6:1): la jerarquia de tres niveles se conserva entera.
-   */
-  text3: '#7489A6',
-
-  danger: '#FF8A8A',
-  dangerDeep: '#B23A3A',
-  warning: '#FFC46B',
-  success: '#2BE0A8',
-  info: '#7FEFD6',
-
-  white: '#FFFFFF',
-  black: '#000000',
-} as const;
+import { Platform, StyleSheet } from 'react-native';
+import { blanco, marca, negro } from './palette';
+import { type Esquema, type Tema, temas } from './temas';
 
 /**
- * Tokens semanticos: lo que las pantallas consumen.
+ * El esquema ACTIVO. `claro` es el rediseno sobrio estilo Apple; `oscuro`, la identidad navy original.
  *
- * El nombre describe el ROL, no el color. Cambiar la marca o anadir tema claro se hace aqui y en
- * ningun otro sitio.
+ * Es una constante y no un estado porque las pantallas construyen sus estilos con
+ * `StyleSheet.create` al cargar el modulo: el tema se decide al arrancar, no a mitad de sesion.
  */
-export const color = {
-  surface: {
-    primary: palette.bg,
-    secondary: palette.bgElevated,
-    /** Tarjetas y cualquier cosa que deba leerse POR ENCIMA del fondo. Ver `palette.bgCard`. */
-    raised: palette.bgCard,
-    raisedStrong: palette.ink07,
-    sheet: palette.bgSheet,
-    inverse: palette.white,
-    /** Filo superior de una superficie elevada. */
-    edge: palette.edgeLit,
-    /**
-     * Superficie HUNDIDA: campos de texto, opciones, cajas de importe.
-     *
-     * Un campo es un hueco donde se escribe, no un pedestal. Cuando comparte color con la tarjeta
-     * que lo contiene deja de leerse como una zona editable y la pantalla se vuelve una lista de
-     * etiquetas con rectangulos al lado. Mas oscuro que la tarjeta, el hueco se ve hueco.
-     */
-    sunken: palette.bg,
-  },
-  text: {
-    primary: palette.text1,
-    secondary: palette.text2,
-    tertiary: palette.text3,
-    onBrand: palette.brand900,
-    onInverse: palette.brand900,
-    /**
-     * Texto de ejemplo dentro de un campo vacio.
-     *
-     * Mas apagado que `tertiary` a proposito. Cuando el ejemplo tiene la forma exacta del valor
-     * —`1996-04-12` en una fecha, `2031-03-10` en un vencimiento— y comparte color con el resto de
-     * los textos secundarios, el campo se lee como relleno. Eso dejaba el boton principal apagado
-     * con la pantalla aparentemente completa, sin nada que indicara donde estaba el hueco.
-     *
-     * El contraste sigue por encima del minimo de texto no esencial: un ejemplo tiene que poder
-     * leerse, solo que no tiene que competir con un dato.
-     */
-    placeholder: '#41546E',
-  },
-  border: {
-    subtle: palette.line,
-    strong: palette.line2,
-    focus: palette.brand400,
-    /**
-     * El color de una linea de UN PIXEL FISICO. Ver `stroke.hairline`.
-     *
-     * Va mas subido que `subtle` porque cubre la tercera parte de superficie: en un telefono a 3x,
-     * `subtle` a un pixel fisico se queda por debajo del umbral en el que el ojo distingue una
-     * linea de un cambio de tono, y el separador desaparece. Mismo peso percibido, un tercio de
-     * grosor: eso es lo que se lee como «nitido» y no como «fino».
-     */
-    hairline: 'rgba(255,255,255,0.20)',
-    /**
-     * El contorno de un control donde se ESCRIBE o se elige: campos, casillas del PIN, opciones.
-     *
-     * Existe porque todos ellos usaban `subtle` —el mismo blanco al 9 % que separa dos filas de una
-     * lista— y ahi la medida no da: 1,3:1 contra la tarjeta que los contiene, cuando WCAG 2.2 pide
-     * 3:1 para lo que identifica un control (1.4.11). No es un tecnicismo: era la razon de que un
-     * formulario de esta app se leyera como texto flotando sobre un fondo oscuro, con las cuatro
-     * casillas del PIN practicamente invisibles dentro de su tarjeta.
-     *
-     * Al 34 % mide 3,2:1 sobre una tarjeta y 3,1:1 sobre el fondo, que son los dos sitios donde se
-     * pintan. Un separador NO debe usar esto: una lista con contornos al 34 % seria una reja.
-     */
-    field: 'rgba(255,255,255,0.34)',
-  },
-  action: {
-    primary: palette.brand400,
-    primaryPressed: palette.brand500,
-    secondary: palette.ink07,
-    destructive: palette.danger,
-    disabled: 'rgba(255,255,255,0.10)',
-  },
-  feedback: {
-    success: palette.success,
-    warning: palette.warning,
-    danger: palette.danger,
-    info: palette.info,
-  },
-  /** Fondos tenues para chips/estados. Mantienen contraste AA sobre `surface.primary`. */
-  feedbackSoft: {
-    success: 'rgba(43,224,168,0.14)',
-    warning: 'rgba(255,196,107,0.14)',
-    danger: 'rgba(255,138,138,0.14)',
-    info: 'rgba(127,239,214,0.12)',
-    neutral: 'rgba(255,255,255,0.07)',
-  },
-  /**
-   * Velo para superponer contenido sobre la pantalla.
-   *
-   * A 0.72 el fondo sigue reconociendose —el usuario no pierde el contexto de donde estaba— pero ya
-   * no compite con lo que se le esta senalando. Por debajo de 0.6 el texto de la tarjeta se lee peor
-   * segun lo que quede debajo, que es una lectura distinta en cada pantalla.
-   */
-  overlay: { scrim: 'rgba(3,10,20,0.72)' },
-  /**
-   * El PAPEL desvaneciendose. Del fondo de pantalla opaco al mismo fondo con opacidad cero.
-   *
-   * Es lo que se pone donde el contenido pasa por debajo de algo: la barra de estado arriba, la
-   * accion fija abajo. Sin el, un parrafo que se desplaza se mete DEBAJO del reloj y de la isla
-   * dinamica y las dos cosas se leen a la vez, superpuestas; y el pie corta la frase que tiene
-   * encima por la mitad, con un filo duro que parece un fallo de dibujo.
-   *
-   * El color de destino se escribe con alfa cero SOBRE EL MISMO NAVY y no como `transparent`:
-   * `transparent` es negro con alfa cero, asi que el degradado pasa por grises sucios antes de
-   * desaparecer y el desvanecido se ve como una mancha oscura en vez de como nada.
-   */
-  paperFade: { from: palette.bg, to: 'rgba(6,20,38,0)' },
-  brandGradient: [palette.brand500, palette.brand400, palette.brand300] as const,
-  /**
-   * Lavado de marca para superficies grandes.
-   *
-   * Es el degradado de la identidad rebajado a un tinte: destaca la superficie sin obligar a
-   * cambiar el color del texto que va encima, que es lo que pasa con el degradado pleno.
-   */
-  brandWash: { from: 'rgba(20,168,148,0.16)', to: 'rgba(43,224,168,0.06)' },
-  /**
-   * Contornos de los avisos. Es el mismo color del estado a un tercio de opacidad: el borde
-   * delimita sin competir con el texto que encierra.
-   */
-  feedbackBorder: {
-    warning: 'rgba(255,196,107,0.35)',
-    danger: 'rgba(255,138,138,0.35)',
-    success: 'rgba(43,224,168,0.32)',
-    /** Para la tarjeta que la pantalla quiere destacar sin gastarse el degradado de marca. */
-    brand: 'rgba(43,224,168,0.28)',
-  },
-} as const;
+export const esquema: Esquema = 'claro';
+
+/**
+ * Tokens semanticos de color: lo que las pantallas consumen.
+ *
+ * El nombre describe el ROL, no el color. Los valores viven en `temas.ts` (roles) y `palette.ts`
+ * (valores crudos); ningun otro archivo escribe un color. Ver `__tests__/sin-colores-sueltos.test.ts`.
+ */
+export const color: Tema = temas[esquema];
+
+/** Valores que no son de interfaz sino de OBJETOS ilustrados (trofeos, medallas, el chip dorado). */
+export { metal } from './palette';
+export { ilustracion } from './ilustracion';
+export { objeto } from './objetos';
+export { alpha } from './temas';
+export type { Degradado, Tema } from './temas';
 
 /** Escala de espaciado en multiplos de 4. Evita el "casi alineado". */
 export const space = {
@@ -249,151 +81,118 @@ export const radius = {
 } as const;
 
 /**
- * Tipografia: `Sora` para lo que se lee de un vistazo, `Manrope` para lo que se lee de verdad.
+ * Tipografia: la del SISTEMA. SF Pro en iPhone, Roboto en Android, la pila del sistema en la web.
  *
- * Se nombra la FAMILIA CONCRETA de cada grosor en vez de combinar una familia con `fontWeight`.
- * En Android `fontWeight` no interpola sobre una fuente cargada: o existe el archivo de ese
- * grosor, o el sistema finge la negrita engordando los trazos, y ese engorde es exactamente lo
- * que hace que una app se vea barata al lado de su propia web.
+ * Es la decision que mas acerca la app al lenguaje de Apple, y la que mejor envejece: el sistema
+ * ajusta el tamano optico (SF Text por debajo de 20 pt, SF Display por encima) y el interletraje por
+ * si mismo, cosa que una fuente cargada no hace. Sora y Manrope siguen cargadas solo para el
+ * logotipo y el escenario de marca (`font.brand*`).
  *
- * Por eso ningun estilo de `type` lleva `fontWeight`: el grosor viaja en el nombre de la familia.
- *
- * ## El grosor 800 no es un capricho
- *
- * La identidad publicada dibuja TODOS sus titulares con `--display` a `font-weight: 800`
- * (`AtlasLandingPage/assets/css/style.css`). La app se habia quedado en 700, que en Sora es un
- * grosor claramente mas ligero, y con ello los titulos de las veinte pantallas se leian medio paso
- * por debajo de los de la web. Es el tipo de diferencia que nadie sabe nombrar y todo el mundo nota:
- * la app parecia el borrador del sitio.
+ * Con la fuente del sistema el grosor SI viaja en `fontWeight` —el sistema tiene todos los cortes y
+ * no finge negritas—, asi que cada `font.*` tiene su peso en `weight.*` y los estilos de `type` ya
+ * llevan los dos.
  */
+const SISTEMA = Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }) as string;
+
 export const font = {
-  displaySemi: 'Sora_600SemiBold',
-  displayBold: 'Sora_700Bold',
-  /** El grosor de titular de la marca. El mismo 800 que la web. */
-  displayBlack: 'Sora_800ExtraBold',
-  bodyRegular: 'Manrope_400Regular',
-  bodyMedium: 'Manrope_500Medium',
-  bodySemi: 'Manrope_600SemiBold',
-  bodyBold: 'Manrope_700Bold',
-  /** Solo para versalitas: a 11 px el 700 no llega a separarse del cuerpo. */
-  bodyBlack: 'Manrope_800ExtraBold',
+  displaySemi: SISTEMA,
+  displayBold: SISTEMA,
+  displayBlack: SISTEMA,
+  bodyRegular: SISTEMA,
+  bodyMedium: SISTEMA,
+  bodySemi: SISTEMA,
+  bodyBold: SISTEMA,
+  bodyBlack: SISTEMA,
+  /** El logotipo y el escenario de marca: la identidad publicada, en Sora. */
+  brand: 'Sora_800ExtraBold',
+  brandBold: 'Sora_700Bold',
 } as const;
 
-/**
- * Interletraje OPTICO: el mismo porcentaje, no el mismo numero de pixeles.
- *
- * Es la correccion que faltaba y la que mas hacia que la tipografia se leyera «de plantilla». El
- * interletraje se percibe en proporcion al tamano: -0.5 px sobre 26 px es un -1,9 %, y sobre 11 px
- * seria un -4,5 %. Escribir el mismo numero en toda la escala deja los titulares SUELTOS —que es
- * como se ve una fuente puesta por defecto— y las etiquetas pequenas APRETADAS.
- *
- * La identidad publicada cierra sus titulares al -4,5 % y abre sus versalitas al +14 %. Aqui se
- * calcula desde el porcentaje para que la escala entera respete esa misma curva y para que anadir
- * un tamano nuevo no obligue a adivinar su interletraje.
- */
+/** El grosor de cada `font.*`. Con la fuente del sistema, el peso va aqui y no en el nombre. */
+export const weight = {
+  displaySemi: '600',
+  displayBold: '700',
+  displayBlack: '700',
+  bodyRegular: '400',
+  bodyMedium: '400',
+  bodySemi: '600',
+  bodyBold: '600',
+  bodyBlack: '700',
+  brand: undefined,
+  brandBold: undefined,
+} as const;
+
+/** `{ fontFamily, fontWeight }` de una familia: lo que se escribe cuando un estilo no sale de `type`. */
+export const fuente = (f: keyof typeof font) => ({ fontFamily: font[f], fontWeight: weight[f] });
+
+/** Interletraje OPTICO: el mismo porcentaje del tamano, no el mismo numero de pixeles. */
 const track = (size: number, percent: number) => Math.round(size * percent) / 100;
 
 /**
- * Escala tipografica.
+ * Escala tipografica: la de iOS (Large Title, Title 1-3, Headline, Body, Subheadline, Footnote,
+ * Caption), con los interletrajes de SF Pro.
  *
- * La regla de reparto: `Sora` manda en lo que se lee de un vistazo —titulos e importes— y
- * `Manrope` en lo que se lee de verdad, que es todo lo demas. Mezclar al reves cansa: Sora tiene
- * demasiada personalidad para un parrafo y Manrope demasiada poca para un titular.
- *
- * ## Los titulos de seccion cambiaron de familia, y era el fallo mas repetido
- *
- * `h3` es el estilo mas usado de la app despues del cuerpo —titula casi todas las tarjetas— y
- * estaba en **Manrope Bold a 17 px**, es decir, la fuente del parrafo un punto mas grande y en
- * negrita. Un titulo que solo se distingue de su texto por el grosor no crea jerarquia: crea
- * texto en negrita. Al pasar a Sora, la tarjeta recupera el contraste de familia que la marca ya
- * tenia, y la pantalla deja de leerse como una lista de parrafos.
- *
- * Lo que ANTES hacia `h3` en una fila de lista —titular una fila, no una seccion— tiene ahora su
- * propio estilo, `title`: ahi el contraste de familia sobra, porque una fila no encabeza nada.
+ * La jerarquia se construye con PESO y color antes que con tamano: seminegrita para el titulo de una
+ * fila, el gris secundario para su detalle. Los titulos se cierran un poco (-1 a -2 %) y el texto
+ * pequeno se abre, como hace SF por si misma.
  */
 export const type = {
-  /** Momentos de marca: bienvenida, exito de un alta. Se usa una vez por pantalla o ninguna. */
-  display: { fontFamily: font.displayBlack, fontSize: 38, lineHeight: 44, letterSpacing: track(38, -4.5) },
-  hero: { fontFamily: font.displayBlack, fontSize: 32, lineHeight: 38, letterSpacing: track(32, -4.5) },
-  /** Titulo de pantalla. Uno por pantalla, en la cabecera. */
-  h1: { fontFamily: font.displayBlack, fontSize: 25, lineHeight: 31, letterSpacing: track(25, -4) },
-  /** Titulo de bloque grande dentro de una pantalla. */
-  h2: { fontFamily: font.displayBold, fontSize: 20, lineHeight: 26, letterSpacing: track(20, -3.5) },
-  /** Titulo de tarjeta o de seccion. */
-  h3: { fontFamily: font.displayBold, fontSize: 17, lineHeight: 23, letterSpacing: track(17, -2.5) },
-  /** Titulo de FILA: nombra un elemento de una lista, no encabeza una seccion. Va en Manrope. */
-  title: { fontFamily: font.bodyBold, fontSize: 15, lineHeight: 20, letterSpacing: track(15, -1) },
-  /*
-    El cuerpo era el UNICO hueco de la curva: no declaraba interletraje.
-
-    Sin `letterSpacing`, `body` se dibuja con el que trae Manrope de fabrica, que es el de una fuente
-    pensada para texto pequeno en pantallas anchas y a 15 px se lee suelto. Se notaba justo donde
-    peor: `title` —que va al lado, en la misma fila y al mismo tamano— si estaba corregido al -1 %,
-    asi que el titulo de una fila y su descripcion tenian dos ritmos distintos en el mismo renglon.
-    El mismo -1 % los pone en la misma retícula.
-  */
-  body: { fontFamily: font.bodyMedium, fontSize: 15, lineHeight: 23, letterSpacing: track(15, -1) },
-  bodyStrong: { fontFamily: font.bodyBold, fontSize: 15, lineHeight: 23, letterSpacing: track(15, -1) },
-  /*
-    Aqui la curva se APLANA, y a proposito.
-
-    Por debajo de 14 px la correccion cambia de signo: lo que ayuda a un titular —cerrar el espacio
-    para que las letras formen una palabra— perjudica a un apunte, porque el ojo necesita separar
-    las formas antes de reconocerlas, y sobre fondo oscuro todavia mas: el texto claro «engorda»
-    opticamente sobre el navy y se come su propio espacio entre letras. Cero es el valor correcto,
-    no el valor que falta; se escribe para que nadie lo complete «por coherencia» con la escala.
-  */
-  caption: { fontFamily: font.bodyMedium, fontSize: 13, lineHeight: 19, letterSpacing: 0 },
-  /** El dato de un par etiqueta/valor cuando no es dinero: se lee como valor, no como parrafo. */
-  captionStrong: { fontFamily: font.bodyBold, fontSize: 13, lineHeight: 19, letterSpacing: 0 },
-  /** Etiquetas y estados. Va en versalita espaciada: a 11 px el peso solo no basta para jerarquia. */
-  micro: { fontFamily: font.bodyBold, fontSize: 11, lineHeight: 15, letterSpacing: track(11, 5) },
+  /** Momentos de marca: bienvenida, exito de un alta. Una vez por pantalla o ninguna. */
+  display: { ...fuente('displayBlack'), fontSize: 34, lineHeight: 41, letterSpacing: track(34, -1.2) },
+  hero: { ...fuente('displayBlack'), fontSize: 30, lineHeight: 36, letterSpacing: track(30, -1.2) },
+  /** Titulo de pantalla (Large Title compacto). Uno por pantalla, en la cabecera. */
+  h1: { ...fuente('displayBlack'), fontSize: 28, lineHeight: 34, letterSpacing: track(28, -1.2) },
+  /** Titulo de bloque grande dentro de una pantalla (Title 2). */
+  h2: { ...fuente('displayBold'), fontSize: 22, lineHeight: 28, letterSpacing: track(22, -1) },
+  /** Titulo de tarjeta o de seccion (Headline). */
+  h3: { ...fuente('displaySemi'), fontSize: 17, lineHeight: 22, letterSpacing: track(17, -2.4) },
+  /** Titulo de FILA: nombra un elemento de una lista. */
+  title: { ...fuente('bodySemi'), fontSize: 16, lineHeight: 21, letterSpacing: track(16, -2) },
+  /** Cuerpo (Callout): un punto por debajo del Body de iOS para que las tarjetas densas respiren. */
+  body: { ...fuente('bodyMedium'), fontSize: 16, lineHeight: 22, letterSpacing: track(16, -2) },
+  bodyStrong: { ...fuente('bodyBold'), fontSize: 16, lineHeight: 22, letterSpacing: track(16, -2) },
+  /** Footnote. */
+  caption: { ...fuente('bodyMedium'), fontSize: 13, lineHeight: 18, letterSpacing: track(13, -0.6) },
+  captionStrong: { ...fuente('bodyBold'), fontSize: 13, lineHeight: 18, letterSpacing: track(13, -0.6) },
+  /** Caption 2: etiquetas y estados. */
+  micro: { ...fuente('bodyBold'), fontSize: 11, lineHeight: 13, letterSpacing: track(11, 0.6) },
   /**
-   * Antetitulo: la etiqueta que dice de QUE es el bloque que viene debajo.
-   *
-   * Existe porque la app la estaba escribiendo a mano —`variant="caption"` con el texto ya en
-   * mayusculas dentro del literal, «FINANCIADO», «POR PAGAR»—. Escribir mayusculas en el contenido
-   * las mete en el lector de pantalla, que las deletrea, y deja el interletraje sin corregir: una
-   * palabra en versalitas con el espaciado del texto normal se lee apretada y sucia. Aqui la caja
-   * la pone el componente y el espaciado lo pone el token.
+   * Antetitulo: la cabecera de un grupo, como las de las listas agrupadas de Ajustes. Mayusculas
+   * puestas por el componente, no por el texto (el lector de pantalla las deletrearia).
    */
-  overline: { fontFamily: font.bodyBlack, fontSize: 11, lineHeight: 14, letterSpacing: track(11, 14) },
-  /** Etiqueta de un control. Ligeramente abierta: compite con el borde del campo, no con un parrafo. */
-  label: { fontFamily: font.bodySemi, fontSize: 13, lineHeight: 18, letterSpacing: track(13, 1) },
+  overline: { ...fuente('bodySemi'), fontSize: 12, lineHeight: 16, letterSpacing: track(12, 3) },
+  /** Etiqueta de un control (Subheadline). */
+  label: { ...fuente('bodySemi'), fontSize: 14, lineHeight: 19, letterSpacing: track(14, -1.2) },
   /**
-   * Importes. Cifras TABULARES a proposito.
-   *
-   * Con cifras proporcionales el «1» es mas estrecho que el «8», asi que una columna de importes
-   * baila de fila en fila y el ojo deja de poder compararlos de un vistazo. En dinero eso no es
-   * un detalle tipografico: es la diferencia entre leer un saldo y tener que releerlo.
+   * Importes. Cifras TABULARES: con proporcionales el «1» es mas estrecho que el «8» y una columna
+   * de importes baila de fila en fila. En dinero, eso es releer un saldo.
    */
   amountHero: {
-    fontFamily: font.displayBlack,
+    ...fuente('displayBold'),
     fontSize: 40,
     lineHeight: 46,
-    letterSpacing: track(40, -4.5),
+    letterSpacing: track(40, -1.5),
     fontVariant: ['tabular-nums'] as const,
   },
   amount: {
-    fontFamily: font.displayBlack,
-    fontSize: 31,
-    lineHeight: 38,
-    letterSpacing: track(31, -4),
+    ...fuente('displayBold'),
+    fontSize: 30,
+    lineHeight: 36,
+    letterSpacing: track(30, -1.2),
     fontVariant: ['tabular-nums'] as const,
   },
   amountSmall: {
-    fontFamily: font.displayBold,
+    ...fuente('displaySemi'),
     fontSize: 17,
-    lineHeight: 23,
-    letterSpacing: track(17, -2.5),
+    lineHeight: 22,
+    letterSpacing: track(17, -2.4),
     fontVariant: ['tabular-nums'] as const,
   },
-  /** El importe de una fila, donde `amountSmall` ya pesa demasiado al lado del titulo. */
   amountMicro: {
-    fontFamily: font.displayBold,
-    fontSize: 14,
-    lineHeight: 19,
-    letterSpacing: track(14, -2),
+    ...fuente('displaySemi'),
+    fontSize: 15,
+    lineHeight: 20,
+    letterSpacing: track(15, -1.5),
     fontVariant: ['tabular-nums'] as const,
   },
 } as const;
@@ -539,9 +338,9 @@ export const stroke = {
  * ajuste para Android, donde el cursor y el resaltado se tinen por separado.
  */
 export const inputChrome = {
-  keyboardAppearance: 'dark',
-  selectionColor: palette.brand400,
-  cursorColor: palette.brand400,
+  keyboardAppearance: esquema === 'claro' ? 'light' : 'dark',
+  selectionColor: color.accent.base,
+  cursorColor: color.accent.base,
 } as const;
 
 /**
@@ -553,41 +352,34 @@ export const touch = {
   minSpacing: 8,
 } as const;
 
-export const shadow = {
-  /**
-   * Elevacion de una tarjeta.
-   *
-   * Profunda y muy difusa, como en la identidad publicada (`--sh` del landing es
-   * `0 30px 80px -28px rgba(0,0,0,.8)`). Una sombra corta y dura sobre fondo oscuro no se ve
-   * —no hay contraste entre negro y negro—; lo que separa la superficie del papel es el TAMANO
-   * del desenfoque, no su opacidad.
-   */
-  card: {
-    shadowColor: palette.black,
-    shadowOpacity: 0.55,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: 16 },
-    elevation: 10,
-  },
-  /**
-   * Halo de marca bajo la accion principal.
-   *
-   * Es lo que hace que el boton se lea como fuente de luz y no como un rectangulo pintado, y es
-   * la firma visual de la identidad en la web. Se reserva para UNA accion por pantalla: si
-   * brillan dos, no brilla ninguna.
-   */
-  brandGlow: {
-    shadowColor: palette.brand400,
-    shadowOpacity: 0.45,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 10,
-  },
-  sheet: {
-    shadowColor: palette.black,
-    shadowOpacity: 0.5,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: -8 },
-    elevation: 16,
-  },
-} as const;
+type Sombra = { shadowColor: string; shadowOpacity: number; shadowRadius: number; shadowOffset: { width: number; height: number }; elevation: number };
+
+const sombrasOscuras: Record<'card' | 'brandGlow' | 'sheet' | 'neon' | 'neonAura', Sombra> = {
+  /** Profunda y muy difusa: sobre navy, lo que separa la tarjeta del papel es el TAMANO del desenfoque. */
+  card: { shadowColor: negro, shadowOpacity: 0.55, shadowRadius: 32, shadowOffset: { width: 0, height: 16 }, elevation: 10 },
+  /** Halo de marca bajo la accion principal. UNA por pantalla: si brillan dos, no brilla ninguna. */
+  brandGlow: { shadowColor: marca.b400, shadowOpacity: 0.45, shadowRadius: 22, shadowOffset: { width: 0, height: 10 }, elevation: 10 },
+  sheet: { shadowColor: negro, shadowOpacity: 0.5, shadowRadius: 32, shadowOffset: { width: 0, height: -8 }, elevation: 16 },
+  /** El nucleo y el aura del boton principal «de neon». */
+  neon: { shadowColor: marca.b300, shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, elevation: 8 },
+  neonAura: { shadowColor: marca.b400, shadowOpacity: 0.45, shadowRadius: 16, shadowOffset: { width: 0, height: 0 }, elevation: 0 },
+};
+
+/**
+ * En claro las sombras son CORTAS y casi transparentes, como en iOS: la tarjeta blanca ya se separa
+ * del fondo gris por tono, y la sombra solo confirma que esta por encima. Una sombra larga sobre
+ * blanco es lo primero que hace que una interfaz se vea «de plantilla». El neon se apaga: un banco
+ * no brilla; el boton principal se reconoce por ser el unico navy solido de la pantalla.
+ */
+const sombrasClaras: typeof sombrasOscuras = {
+  card: { shadowColor: negro, shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 2 }, elevation: 1 },
+  brandGlow: { shadowColor: marca.navy, shadowOpacity: 0.16, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 3 },
+  sheet: { shadowColor: negro, shadowOpacity: 0.1, shadowRadius: 24, shadowOffset: { width: 0, height: -4 }, elevation: 12 },
+  neon: { shadowColor: marca.navy, shadowOpacity: 0.14, shadowRadius: 8, shadowOffset: { width: 0, height: 3 }, elevation: 2 },
+  neonAura: { shadowColor: marca.navy, shadowOpacity: 0, shadowRadius: 0, shadowOffset: { width: 0, height: 0 }, elevation: 0 },
+};
+
+export const shadow = esquema === 'claro' ? sombrasClaras : sombrasOscuras;
+
+/** Luz blanca: brillos, reflejos y barridos. Es luz, no tema: no cambia con el esquema. */
+export const luz = { blanco, negro } as const;

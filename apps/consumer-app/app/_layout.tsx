@@ -35,7 +35,7 @@ import { BienvenidaHablada } from '../src/ui/welcome-voice';
 import { SessionProvider, useSession } from '../src/session/session';
 import '../src/features/bitacora';
 import { useBitacoraDeApp } from '../src/features/bitacora/ganchos';
-import { color } from '../src/theme/tokens';
+import { color, esquema } from '../src/theme/tokens';
 import { BrandCutProvider } from '../src/ui/brand-cut';
 import { TourProvider } from '../src/ui/tour';
 
@@ -132,6 +132,9 @@ function NavigationTree({ fontsReady, arranqueDecidido }: { fontsReady: boolean;
     </Stack>
     <BienvenidaHablada />
     {arranqueVisible && arranqueDecidido ? (
+      <>
+      {/* El arranque es navy en los dos temas: mientras dura, la barra de estado va en claro. */}
+      <StatusBar style="light" />
       <AnimatedSplash
         listo={listo}
         onDone={() => {
@@ -139,6 +142,7 @@ function NavigationTree({ fontsReady, arranqueDecidido }: { fontsReady: boolean;
           setArranqueVisible(false);
         }}
       />
+      </>
     ) : null}
     </>
   );
@@ -177,7 +181,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.surface.primary }}>
       <SafeAreaProvider>
-        <StatusBar style="light" />
+        <StatusBar style={esquema === 'claro' ? 'dark' : 'light'} />
         {/* La atmósfera de la landing (aurora, grano, malla). Sólo web; en el teléfono no pinta nada. */}
         <Atmosfera />
         {/*

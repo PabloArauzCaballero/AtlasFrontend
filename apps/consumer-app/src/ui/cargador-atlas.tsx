@@ -38,7 +38,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Path, Stop } from 'react-native-svg';
-import { color, palette, radius } from '../theme/tokens';
+import { color, radius } from '../theme/tokens';
 import { DegradadosLetraA, LETRA_A } from './marca-letra';
 
 export type TamanoCargador = 'compacto' | 'fila' | 'bloque';
@@ -102,13 +102,13 @@ export function AnilloAtlas({ tamano = 'fila' }: { tamano?: TamanoCargador }) {
         <Svg width={lado} height={lado} viewBox={`0 0 ${lado} ${lado}`}>
           <Defs>
             <SvgGradient id={`${id}-arco`} x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={palette.brand300} stopOpacity={0} />
-              <Stop offset="0.55" stopColor={palette.brand400} stopOpacity={0.9} />
-              <Stop offset="1" stopColor={palette.brand300} />
+              <Stop offset="0" stopColor={color.brand.b300} stopOpacity={0} />
+              <Stop offset="0.55" stopColor={color.brand.b400} stopOpacity={0.9} />
+              <Stop offset="1" stopColor={color.brand.b300} />
             </SvgGradient>
           </Defs>
           {/* La pista: el círculo entero, apenas visible, para que el arco se lea como avance sobre algo. */}
-          <Circle cx={c} cy={c} r={r} stroke={palette.brand500} strokeOpacity={0.18} strokeWidth={trazo} fill="none" />
+          <Circle cx={c} cy={c} r={r} stroke={color.brand.b500} strokeOpacity={0.18} strokeWidth={trazo} fill="none" />
           <Circle
             cx={c}
             cy={c}
@@ -121,7 +121,7 @@ export function AnilloAtlas({ tamano = 'fila' }: { tamano?: TamanoCargador }) {
             transform={`rotate(-90 ${c} ${c})`}
           />
           {/* El punto de luz en la punta del arco. */}
-          <Circle cx={c + r * Math.cos((0.7 * 2 - 0.5) * Math.PI)} cy={c + r * Math.sin((0.7 * 2 - 0.5) * Math.PI)} r={trazo * 1.05} fill={palette.white} />
+          <Circle cx={c + r * Math.cos((0.7 * 2 - 0.5) * Math.PI)} cy={c + r * Math.sin((0.7 * 2 - 0.5) * Math.PI)} r={trazo * 1.05} fill={color.fixed.white} />
         </Svg>
       </Animated.View>
 
@@ -132,7 +132,7 @@ export function AnilloAtlas({ tamano = 'fila' }: { tamano?: TamanoCargador }) {
               cx={c}
               cy={c}
               r={ri}
-              stroke={palette.brand500}
+              stroke={color.brand.b500}
               strokeOpacity={0.55}
               strokeWidth={trazo * 0.55}
               strokeLinecap="round"
@@ -152,7 +152,7 @@ export function AnilloAtlas({ tamano = 'fila' }: { tamano?: TamanoCargador }) {
             <Path d={LETRA_A.caraLuz} fill={`url(#${id}-a-luz)`} />
             <Path d={LETRA_A.caraSombra} fill={`url(#${id}-a-sombra)`} />
             <Path d={LETRA_A.travesano} fill={`url(#${id}-a-travesano)`} />
-            <Path d={LETRA_A.filo} stroke={palette.white} strokeWidth={0.4} strokeLinecap="round" opacity={0.6} />
+            <Path d={LETRA_A.filo} stroke={color.fixed.white} strokeWidth={0.4} strokeLinecap="round" opacity={0.6} />
           </Svg>
         </Animated.View>
       ) : null}
@@ -194,7 +194,7 @@ export function BarraDeCarga({ ancho }: { ancho?: number | `${number}%` }) {
       {pista > 0 ? (
         <Animated.View style={[styles.tramo, { width: pista * TRAMO }, tramo]}>
           <LinearGradient
-            colors={[`${palette.brand500}00`, palette.brand400, palette.brand300, `${palette.brand300}00`]}
+            colors={[`${color.brand.b500}00`, color.brand.b400, color.brand.b300, `${color.brand.b300}00`]}
             locations={[0, 0.35, 0.7, 1]}
             start={{ x: 0, y: 0.5 }}
             end={{ x: 1, y: 0.5 }}
