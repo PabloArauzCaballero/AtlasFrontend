@@ -160,8 +160,8 @@ export async function resumirAgenda(
     /*
       Solo el campo de TELEFONOS. La API permite pedir la ficha entera —nombre, correo, direccion,
       fecha de nacimiento, notas— y aqui no se pide nada de eso: lo que no se lee no se puede
-      filtrar mal, no ocupa memoria y no aparece en un volcado si la app se cae. Quien SI la pide
-      entera es `leerAgendaCompleta`, que es otra cosa y exige otro permiso.
+      filtrar mal, no ocupa memoria y no aparece en un volcado si la app se cae. Quien pide mas
+      campos es `leerAgendaCompleta`, que es otra cosa y exige otro consentimiento.
 
       `Contact.getAllDetails` y no `getContactsAsync`: en el SDK 57 la vieja esta deprecada y su
       propia declaracion avisa de que «will throw in runtime». Como esta funcion envuelve todo en un
@@ -216,13 +216,15 @@ export async function resumirAgenda(
 /* --------------------------------------------------------- agenda completa */
 
 /**
- * La agenda ENTERA, con la ficha completa de cada contacto.
+ * La agenda ENTERA, con una ficha MINIMA de cada contacto.
  *
  * ## Esto no es lo mismo que `resumirAgenda`, y la diferencia es toda
  *
  * `resumirAgenda` recorre la agenda y manda CUENTAS: la agenda no sale del telefono, sale su forma.
- * Esto lee la ficha completa —nombre, telefonos, correos, empresa, cargo, cumpleaños y direcciones—
- * y la devuelve para que se suba y se guarde.
+ * Esto SI saca contactos del telefono: nombre visible, numeros, si es favorito, el tipo y tres
+ * banderas (tiene correo, tiene cumpleaños, tiene empresa), y los devuelve para que se suban y se
+ * guarden. Ni el correo, ni la fecha, ni la razon social, ni cargo ni direcciones salen del telefono
+ * (auditoria 2026-10-09, APP-03; ver `features/rastreo.ts`).
  *
  * Las dos siguen existiendo porque contestan preguntas distintas y porque una puede correr sin la
  * otra: el resumen viaja aunque la persona no autorice guardar las fichas, y es lo que evita que
@@ -261,17 +263,23 @@ export async function leerAgendaCompleta(): Promise<AgendaLeida | null> {
     const permiso = await requestPermissionsAsync();
     if (!permiso.granted) return null;
 
+    /*
+      Solo lo que la ficha minima necesita (`features/rastreo.ts`). Lo que no se lee no se puede subir
+      por descuido: direcciones, cargo, notas y fotos no se piden al sistema.
+
+      COMPANY, EMAILS y BIRTHDAY si se piden, pero SOLO para saber si existen: expo-contacts no tiene
+      una consulta de «tiene o no tiene», asi que hay que leer el valor. `aContactoParaEnviar` lo
+      reduce a un booleano en el acto; el valor no se guarda, no se registra y no viaja.
+    */
     const fichas = await Contact.getAllDetails([
       ContactField.FULL_NAME,
       ContactField.GIVEN_NAME,
       ContactField.FAMILY_NAME,
       ContactField.COMPANY,
-      ContactField.JOB_TITLE,
       ContactField.PHONES,
-      ContactField.EMAILS,
-      ContactField.ADDRESSES,
-      ContactField.BIRTHDAY,
       ContactField.IS_FAVOURITE,
+      ContactField.EMAILS,
+      ContactField.BIRTHDAY,
     ]);
 
     return {

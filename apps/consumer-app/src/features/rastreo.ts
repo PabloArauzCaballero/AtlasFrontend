@@ -4,9 +4,25 @@
  * ## Que cambio respecto a `agenda.ts`, dicho sin rodeos
  *
  * `agenda.ts` calcula la FORMA de la agenda —cuentas y proporciones— y manda hashes de un solo uso
- * que el servidor cruza y descarta. Este modulo hace lo contrario: prepara la ficha COMPLETA de cada
- * contacto para que el servidor la guarde, y prepara posiciones fechadas para que las guarde
- * tambien.
+ * que el servidor cruza y descarta. Este modulo hace lo contrario: prepara una ficha por contacto
+ * para que el servidor la guarde, y prepara posiciones fechadas para que las guarde tambien.
+ *
+ * ## La ficha es MINIMA (auditoria de seguridad 2026-10-09, APP-03)
+ *
+ * Son datos de TERCEROS que no consintieron nada. Viaja solo lo que el servidor usa de verdad: el
+ * identificador del sistema (que el servidor hashea), el nombre visible, los numeros (de los que el
+ * servidor saca los hashes que cruzan referencias y anillos de cuentas), si es favorito, el tipo
+ * (persona o empresa, deducido aqui) y TRES BANDERAS: `hasEmail`, `hasBirthday` y `hasCompany`.
+ *
+ * Las banderas existen porque el servidor si usa algo de esos campos: si la ficha los TIENE. Una
+ * agenda donde ninguna ficha tiene correo, cumpleaños ni empresa es la forma tipica de una agenda
+ * fabricada (señal `AGENDA_UNIFORME` de AtlasBackend). Para calcularlas, el telefono lee esos campos
+ * y los reduce a un si/no en el momento: el correo, la fecha, la razon social, el cargo, las
+ * direcciones y las etiquetas de cada numero NO viajan, no se guardan y no se registran.
+ *
+ * Contrato con el servidor (AtlasBackend #245): con esta version, omitir `emails`, `birthday`,
+ * `company`, etc. significa «no se sabe»; mandarlos como `null` o `[]` BORRARIA lo que hubiera
+ * guardado de versiones anteriores. Por eso no se mandan de ninguna forma, ni vacios.
  *
  * Los dos siguen existiendo y no se pisan. El resumen viaja siempre, aunque la persona no autorice
  * guardar las fichas; la sincronizacion completa solo si autorizo las dos cosas —el permiso del
@@ -21,8 +37,14 @@
  * habla con el telefono.
  */
 
-/** Version del algoritmo de sincronizacion. Viaja a la fila del servidor. Sube al cambiar la forma. */
-export const VERSION_AGENDA_COMPLETA = 'contacts-address-book-1.0.0';
+/**
+ * Version del algoritmo de sincronizacion. Viaja a la fila del servidor. Sube al cambiar la forma.
+ *
+ * 2.0.0 (2026-10-09): ficha minima, sin correos, cumpleaños, empresa, cargo ni direcciones, y con las
+ * banderas `hasEmail`/`hasBirthday`/`hasCompany` en su lugar. Es lo que deja distinguir en el servidor
+ * «esta agenda no tiene correos» de «esta version ya no los manda».
+ */
+export const VERSION_AGENDA_COMPLETA = 'contacts-address-book-2.0.0';
 
 /**
  * Contactos por peticion.
@@ -57,20 +79,22 @@ export const CADENCIA_PRIMER_PLANO_MS = 5 * 60 * 1000;
 export const CADENCIA_SEGUNDO_PLANO_MS = 15 * 60 * 1000;
 export const DISTANCIA_MINIMA_M = 100;
 
-/** La ficha que viaja al servidor. Espeja `deviceContactSchema` de AtlasBackend. */
+/**
+ * La ficha que viaja al servidor. Es un SUBCONJUNTO de `deviceContactSchema` de AtlasBackend: todo lo
+ * demas que ese esquema admite es opcional y aqui no se manda. Ver la cabecera.
+ */
 export type ContactoParaEnviar = {
   externalId: string;
   displayName: string | null;
-  givenName: string | null;
-  familyName: string | null;
-  company: string | null;
-  jobTitle: string | null;
-  birthday: string | null;
   contactType: 'person' | 'company' | 'unknown';
   isFavorite: boolean;
-  phones: { label: string | null; number: string }[];
-  emails: { label: string | null; email: string }[];
-  addresses: { label: string | null; street: string | null; city: string | null; region: string | null; country: string | null }[];
+  phones: { number: string }[];
+  /** La ficha tiene al menos un correo no vacio. El correo no viaja. */
+  hasEmail: boolean;
+  /** La ficha tiene cumpleaños (con o sin año). La fecha no viaja. */
+  hasBirthday: boolean;
+  /** La ficha tiene razon social. La razon social no viaja. */
+  hasCompany: boolean;
 };
 
 /**
@@ -84,35 +108,21 @@ export type ContactoParaEnviar = {
  *
  * En el SDK 57 `getContactsAsync` esta deprecada y su propia declaracion avisa de que «will throw in
  * runtime». La vigente es `Contact.getAllDetails`, y su forma NO es la misma: el nombre completo es
- * `fullName` y no `name`, el correo esta en `address` y no en `email`, el favorito se escribe
- * `isFavourite` a la britanica, y —lo que mas duele— el mes del cumpleaños viene de 1 a 12 y no de
- * 0 a 11 como en la vieja. Ver `fechaDeCumpleanos`.
+ * `fullName` y no `name` y el favorito se escribe `isFavourite` a la britanica.
  */
 export type ContactoDelTelefono = {
   id: string;
   fullName?: string | null;
   givenName?: string | null;
   familyName?: string | null;
+  /** Se lee SOLO para deducir `contactType` y `hasCompany`; no viaja. */
   company?: string | null;
-  jobTitle?: string | null;
   isFavourite?: boolean | null;
-  birthday?: { day?: number; month?: number; year?: number } | null;
   phones?: readonly ({ label?: string | null; number?: string | null } | null | undefined)[] | null;
-  emails?: readonly ({ label?: string | null; address?: string | null } | null | undefined)[] | null;
-  addresses?:
-    | readonly (
-        | {
-            label?: string | null;
-            street?: string | null;
-            city?: string | null;
-            region?: string | null;
-            state?: string | null;
-            country?: string | null;
-          }
-        | null
-        | undefined
-      )[]
-    | null;
+  /** Se lee SOLO para `hasEmail`; no viaja. */
+  emails?: readonly ({ address?: string | null } | null | undefined)[] | null;
+  /** Se lee SOLO para `hasBirthday`; no viaja. */
+  birthday?: { year?: number | null; month?: number | null; day?: number | null } | null;
 };
 
 const limpio = (valor: string | null | undefined): string | null => {
@@ -121,33 +131,9 @@ const limpio = (valor: string | null | undefined): string | null => {
 };
 
 /**
- * El cumpleaños de la agenda, en `YYYY-MM-DD`.
- *
- * ## El mes viene de 1 a 12
- *
- * En la API NUEVA de `expo-contacts` el mes es 1-12; en la vieja era 0-11, como en `Date`. Sumarle
- * uno aqui —que es lo que habria que hacer con la vieja— correria TODOS los cumpleaños un mes sin
- * que nada fallara: el dato existiria, tendria forma de fecha y seria mentira. De ahi que esto
- * tenga prueba.
- *
- * ## Sin año no hay fecha
- *
- * Muchas fichas guardan el dia y el mes SIN año, sobre todo en iOS. Inventar uno —el actual, 1900—
- * produciria una edad falsa que despues nadie sabria distinguir de una real. Sin año se devuelve
- * `null`, que el servidor guarda como «no consta».
- */
-export function fechaDeCumpleanos(fecha: ContactoDelTelefono['birthday']): string | null {
-  if (!fecha || fecha.year === undefined || fecha.day === undefined || fecha.month === undefined) return null;
-  const { year, month, day } = fecha;
-  if (year < 1900 || year > 2100 || day < 1 || day > 31 || month < 1 || month > 12) return null;
-  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-}
-
-/**
  * De la ficha del telefono a la que viaja, descartando la que no tiene con que identificarse.
  *
- * Devuelve `null` para un contacto sin `id` y para uno sin NINGUN dato util —ni nombre, ni telefono,
- * ni correo—. Las agendas reales estan llenas de fichas asi: restos de sincronizaciones de cuentas
+ * Devuelve `null` para un contacto sin `id` y para uno sin NINGUN dato util —ni nombre ni telefono—. Las agendas reales estan llenas de fichas asi: restos de sincronizaciones de cuentas
  * que se quitaron. Mandarlas engordaria la cuenta de contactos de esa persona sin añadir nada, y esa
  * cuenta es una de las señales que el motor lee.
  *
@@ -160,60 +146,40 @@ export function aContactoParaEnviar(contacto: ContactoDelTelefono): ContactoPara
   if (!externalId) return null;
 
   const phones = (contacto.phones ?? [])
-    .map((entrada) => ({ label: limpio(entrada?.label), number: limpio(entrada?.number) }))
-    .filter((entrada): entrada is { label: string | null; number: string } => entrada.number !== null);
-  const emails = (contacto.emails ?? [])
-    .map((entrada) => ({ label: limpio(entrada?.label), email: limpio(entrada?.address) }))
-    .filter((entrada): entrada is { label: string | null; email: string } => entrada.email !== null);
-  const addresses = (contacto.addresses ?? [])
-    .map((entrada) => ({
-      label: limpio(entrada?.label),
-      street: limpio(entrada?.street),
-      city: limpio(entrada?.city),
-      // `region` es el nombre largo y `state` la abreviatura; se guarda el que venga, porque cada
-      // plataforma rellena uno u otro y quedarse solo con `region` vacia la columna en Android.
-      region: limpio(entrada?.region) ?? limpio(entrada?.state),
-      country: limpio(entrada?.country),
-    }))
-    .filter((entrada) => entrada.street !== null || entrada.city !== null || entrada.region !== null);
+    .map((entrada) => ({ number: limpio(entrada?.number) }))
+    .filter((entrada): entrada is { number: string } => entrada.number !== null);
 
   const nombreDePersona = limpio([contacto.givenName, contacto.familyName].filter(Boolean).join(' '));
-  const displayName = limpio(contacto.fullName) ?? nombreDePersona;
   const company = limpio(contacto.company);
-  if (!displayName && !company && phones.length === 0 && emails.length === 0) return null;
+  // La razon social solo hace de nombre cuando no hay otro: es lo que la persona ve en su agenda.
+  const displayName = limpio(contacto.fullName) ?? nombreDePersona ?? company;
+  if (!displayName && phones.length === 0) return null;
 
   return {
     externalId,
-    displayName: displayName ?? company,
-    givenName: limpio(contacto.givenName),
-    familyName: limpio(contacto.familyName),
-    company,
-    jobTitle: limpio(contacto.jobTitle),
-    birthday: fechaDeCumpleanos(contacto.birthday),
+    displayName,
     contactType: company !== null && nombreDePersona === null ? 'company' : 'person',
     isFavorite: contacto.isFavourite === true,
     phones,
-    emails,
-    addresses,
+    // Solo si existen. Los valores se quedan aqui y mueren con esta funcion.
+    hasEmail: (contacto.emails ?? []).some((entrada) => limpio(entrada?.address) !== null),
+    hasBirthday: tieneFecha(contacto.birthday),
+    hasCompany: company !== null,
   };
 }
 
+/** Un cumpleaños cuenta si tiene dia y mes; el año es opcional (iOS lo guarda a menudo sin el). */
+const tieneFecha = (fecha: ContactoDelTelefono['birthday']): boolean =>
+  typeof fecha?.month === 'number' && fecha.month > 0 && typeof fecha.day === 'number' && fecha.day > 0;
+
 /* Los topes del contrato (`deviceContactSchema` de AtlasBackend). Pasarse de UNO rechaza el lote entero. */
-const TOPE = { texto: 200, nombre: 120, etiqueta: 60, telefono: 40, correo: 200, calle: 300, zona: 120 } as const;
-const TOPE_LISTAS = { telefonos: 20, correos: 20, direcciones: 10 } as const;
+const TOPE = { texto: 200, telefono: 40 } as const;
+const TOPE_TELEFONOS = 20;
 
 const recortar = (valor: string | null, max: number): string | null => {
   if (valor === null) return null;
   const texto = valor.slice(0, max).trim();
   return texto === '' ? null : texto;
-};
-
-/** Una fecha `YYYY-MM-DD` que de verdad existe (el 31 de febrero tiene forma de fecha y el servidor la rechaza). */
-const fechaReal = (valor: string | null): string | null => {
-  if (!valor) return null;
-  const [anio, mes, dia] = valor.split('-').map(Number) as [number, number, number];
-  const fecha = new Date(Date.UTC(anio, mes - 1, dia));
-  return fecha.getUTCFullYear() === anio && fecha.getUTCMonth() === mes - 1 && fecha.getUTCDate() === dia ? valor : null;
 };
 
 /**
@@ -228,46 +194,32 @@ const fechaReal = (valor: string | null): string | null => {
  *
  * Aqui se recorta lo que sobra y se descarta solo el DATO inservible (un telefono de menos de tres
  * cifras no es un telefono), nunca el contacto: la ficha sigue viajando con lo que si vale.
+ *
+ * Tambien es la ultima puerta de la minimizacion: devuelve SOLO los campos de `ContactoParaEnviar`.
  */
 export function ajustarAlContrato(ficha: ContactoParaEnviar): ContactoParaEnviar | null {
   const externalId = recortar(ficha.externalId, TOPE.texto);
   if (!externalId) return null;
 
   const phones = ficha.phones
-    .map((entrada) => ({ label: recortar(entrada.label, TOPE.etiqueta), number: recortar(entrada.number, TOPE.telefono) }))
-    .filter((entrada): entrada is { label: string | null; number: string } => entrada.number !== null && entrada.number.length >= 3)
-    .slice(0, TOPE_LISTAS.telefonos);
-  const emails = ficha.emails
-    .map((entrada) => ({ label: recortar(entrada.label, TOPE.etiqueta), email: recortar(entrada.email, TOPE.correo) }))
-    .filter((entrada): entrada is { label: string | null; email: string } => entrada.email !== null)
-    .slice(0, TOPE_LISTAS.correos);
-  const addresses = ficha.addresses
-    .map((entrada) => ({
-      label: recortar(entrada.label, TOPE.etiqueta),
-      street: recortar(entrada.street, TOPE.calle),
-      city: recortar(entrada.city, TOPE.zona),
-      region: recortar(entrada.region, TOPE.zona),
-      country: recortar(entrada.country, TOPE.zona),
-    }))
-    .filter((entrada) => entrada.street !== null || entrada.city !== null || entrada.region !== null)
-    .slice(0, TOPE_LISTAS.direcciones);
+    .map((entrada) => ({ number: recortar(entrada.number, TOPE.telefono) }))
+    .filter((entrada): entrada is { number: string } => entrada.number !== null && entrada.number.length >= 3)
+    .slice(0, TOPE_TELEFONOS);
 
   const displayName = recortar(ficha.displayName, TOPE.texto);
-  const company = recortar(ficha.company, TOPE.texto);
-  if (!displayName && !company && phones.length === 0 && emails.length === 0) return null;
+  if (!displayName && phones.length === 0) return null;
 
+  // Se arma campo a campo y no con `...ficha`: lo que no este nombrado aqui no viaja, aunque alguien
+  // lo añada a la ficha mañana. Es la misma lista blanca que aplica el servidor, del lado del telefono.
   return {
-    ...ficha,
     externalId,
-    displayName: displayName ?? company,
-    givenName: recortar(ficha.givenName, TOPE.nombre),
-    familyName: recortar(ficha.familyName, TOPE.nombre),
-    company,
-    jobTitle: recortar(ficha.jobTitle, TOPE.texto),
-    birthday: fechaReal(ficha.birthday),
+    displayName,
+    contactType: ficha.contactType,
+    isFavorite: ficha.isFavorite,
     phones,
-    emails,
-    addresses,
+    hasEmail: ficha.hasEmail === true,
+    hasBirthday: ficha.hasBirthday === true,
+    hasCompany: ficha.hasCompany === true,
   };
 }
 
@@ -279,7 +231,7 @@ export function ajustarAlContrato(ficha: ContactoParaEnviar): ContactoParaEnviar
  * con cuentas sincronizadas duplicadas. Se queda la que tiene mas datos.
  */
 export function unicasPorId(fichas: readonly ContactoParaEnviar[]): ContactoParaEnviar[] {
-  const peso = (ficha: ContactoParaEnviar) => ficha.phones.length + ficha.emails.length + ficha.addresses.length;
+  const peso = (ficha: ContactoParaEnviar) => ficha.phones.length + (ficha.displayName ? 1 : 0);
   const porId = new Map<string, ContactoParaEnviar>();
   for (const ficha of fichas) {
     const previa = porId.get(ficha.externalId);

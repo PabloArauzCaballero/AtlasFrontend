@@ -20,7 +20,13 @@
  * señal queda muerta sin que NADA lo delate. Por eso la funcion es una sola y por eso tiene pruebas.
  */
 
-/** Lo que el telefono manda al servidor. Cuentas y proporciones; nunca un contacto. */
+/**
+ * Lo que manda ESTE camino (el resumen): cuentas, proporciones y hashes de un solo uso; ninguna ficha.
+ *
+ * No es todo lo que sale de la agenda: con el consentimiento `device_address_book` hay un segundo
+ * camino que SI sube contactos —nombre visible, numeros, favorito, tipo y tres banderas de si/no
+ * (tiene correo, cumpleaños, empresa), sin esos datos— para que el servidor los guarde cifrados (`features/rastreo.ts`, `POST /customers/:id/address-book`).
+ */
 export type ResumenDeAgenda = {
   permiso: boolean;
   algorithmVersion: string;
