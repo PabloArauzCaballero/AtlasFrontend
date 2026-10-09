@@ -9,13 +9,31 @@
  *    correo—, y sólo ese código confirma el cambio;
  *  - un código malo es 400 y no cambia nada;
  *  - al confirmar se revocan TODAS las sesiones: desde ese momento cualquier llamada autenticada es 401.
+ *
+ * Y la sesión de la web en modo cookie (APP-02), como `customer-session-cookie.ts` del backend: con
+ * `x-atlas-session-mode: cookie`, el token de refresco va en la cookie `atlas_customer_refresh` (HttpOnly,
+ * SameSite=Strict, sólo en las rutas de refresco y cierre) y no en el cuerpo; el refresco lee la cookie y el
+ * cierre la borra. `estado.sesionWeb` anota cada llamada de sesión para que la prueba compruebe qué viajó.
  */
 import { Buffer } from 'node:buffer';
 import { createServer } from 'node:http';
 import { atenderCredito } from './api-simulada-credito.mjs';
 
 export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', pinInicial = '4821', enmascarado = 'pa***@gmail.com', vencido = 0 } = {}) {
-  const estado = { pin: pinInicial, sesionViva: false, ultimoEnvio: 0, desafios: new Map(), bandeja: [], llamadas: [], envios: 0 };
+  const estado = { pin: pinInicial, sesionViva: false, ultimoEnvio: 0, desafios: new Map(), bandeja: [], llamadas: [], envios: 0, sesionWeb: [] };
+  const COOKIE = 'atlas_customer_refresh';
+  const RUTAS_COOKIE = ['/api/v1/auth/refresh', '/api/v1/auth/logout'];
+  const modoCookie = (req) => String(req.headers['x-atlas-session-mode'] ?? '').toLowerCase() === 'cookie';
+  const leerCookie = (req) =>
+    String(req.headers.cookie ?? '')
+      .split(';')
+      .map((p) => p.trim().split('='))
+      .find(([k]) => k === COOKIE)?.[1] ?? null;
+  const ponerCookie = (res, valor) =>
+    res.setHeader(
+      'set-cookie',
+      RUTAS_COOKIE.map((ruta) => `${COOKIE}=${valor}; Path=${ruta}; HttpOnly; SameSite=Strict${valor ? '; Max-Age=2592000' : '; Max-Age=0'}`),
+    );
 
   const jwt = () => {
     const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -24,10 +42,13 @@ export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', 
   const usuario = () => ({ actorType: 'customer', actorId: '53', tenantId: '1', role: 'customer', customerId: '53' });
 
   const responder = (res, estatus, cuerpo) => {
+    // Con credenciales el navegador no acepta comodines: se refleja el origen y las cabeceras pedidas.
+    const pedido = res.req?.headers ?? {};
     res.writeHead(estatus, {
       'content-type': 'application/json',
-      'access-control-allow-origin': '*',
-      'access-control-allow-headers': '*',
+      'access-control-allow-origin': pedido.origin ?? '*',
+      'access-control-allow-credentials': 'true',
+      'access-control-allow-headers': pedido['access-control-request-headers'] ?? '*',
       'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
     });
     res.end(JSON.stringify(cuerpo));
@@ -46,21 +67,36 @@ export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', 
 
       if (ruta === '/__bandeja') return responder(res, 200, { bandeja: estado.bandeja, envios: estado.envios });
       if (ruta === '/__reiniciar') {
-        Object.assign(estado, { pin: pinInicial, sesionViva: false, ultimoEnvio: 0, bandeja: [], envios: 0, llamadas: [] });
+        Object.assign(estado, { pin: pinInicial, sesionViva: false, ultimoEnvio: 0, bandeja: [], envios: 0, llamadas: [], sesionWeb: [] });
         estado.desafios.clear();
         return ok(res, { reiniciado: true });
       }
       if (ruta === '/__llamadas') return responder(res, 200, { llamadas: estado.llamadas });
 
+      if (['/auth/login', '/auth/refresh', '/auth/logout'].includes(ruta)) {
+        estado.sesionWeb.push({ ruta, modo: modoCookie(req) ? 'cookie' : 'cuerpo', cookie: leerCookie(req), cuerpo, origin: req.headers.origin ?? null });
+      }
+      const tokens = (req) =>
+        modoCookie(req)
+          ? (ponerCookie(res, 'refresco'), { accessToken: jwt(), tokenType: 'Bearer', expiresIn: '15m', sessionMode: 'cookie' })
+          : { accessToken: jwt(), refreshToken: 'refresco', tokenType: 'Bearer', expiresIn: '15m' };
       if (ruta === '/auth/login') {
         if (cuerpo.password !== estado.pin) return fallo(res, 401, 'UNAUTHORIZED', 'Credenciales inválidas.');
         estado.sesionViva = true;
-        return ok(res, { accessToken: jwt(), refreshToken: 'refresco', tokenType: 'Bearer', expiresIn: '15m' });
+        return ok(res, tokens(req));
       }
-      if (ruta === '/auth/refresh') return estado.sesionViva ? ok(res, { accessToken: jwt(), refreshToken: 'refresco', tokenType: 'Bearer', expiresIn: '15m' }) : fallo(res, 401, 'UNAUTHORIZED', 'Sesión revocada.');
+      if (ruta === '/auth/refresh') {
+        const token = modoCookie(req) ? (leerCookie(req) ?? cuerpo.refreshToken) : cuerpo.refreshToken;
+        if (!estado.sesionViva || !token) {
+          if (modoCookie(req)) ponerCookie(res, '');
+          return fallo(res, 401, 'UNAUTHORIZED', 'Sesión revocada.');
+        }
+        return ok(res, tokens(req));
+      }
       if (ruta === '/auth/logout') {
         estado.sesionViva = false;
-        return ok(res, { revoked: true });
+        if (modoCookie(req)) ponerCookie(res, '');
+        return ok(res, { loggedOut: true });
       }
 
       // Todo lo que sigue exige sesión viva: tras el cambio de PIN el servidor real también responde 401.

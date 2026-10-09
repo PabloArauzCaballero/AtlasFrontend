@@ -19,6 +19,7 @@ import { avisarFalloDeRed, avisarRespuesta } from './conexion';
 import { getCurrentScreen } from './current-screen';
 import { AtlasApiError, kindFromStatus } from './errors';
 import { conReintentos, repeticionDe } from './reintentos';
+import { esMarcaDeCookie, marcaDeCookie } from './marca-de-cookie';
 
 export type TokenPair = { accessToken: string; refreshToken: string };
 
@@ -26,7 +27,22 @@ export type TokenStore = {
   read(): Promise<TokenPair | null>;
   write(tokens: TokenPair): Promise<void>;
   clear(): Promise<void>;
+  /**
+   * `cookie` sólo en la WEB (APP-02): el token de refresco vive en una cookie `HttpOnly` que pone el
+   * servidor y JavaScript no puede leer. El almacén guarda en su lugar una MARCA (`esMarcaDeCookie`) y
+   * el token de acceso sólo en memoria. Sin este campo —el teléfono— todo sigue como siempre.
+   */
+  readonly modo?: 'cookie';
 };
+
+/**
+ * La cabecera con la que la web pide al backend la sesión en cookie (AtlasBackend,
+ * `customer-session-cookie.ts`). Sólo va en login, refresco y cierre de sesión.
+ */
+export const CABECERA_MODO_SESION = 'x-atlas-session-mode';
+
+
+const modoCookie = (): boolean => tokenStore?.modo === 'cookie';
 
 export type RequestOptions = {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -48,6 +64,11 @@ export type RequestOptions = {
    * cierre de sesion, que tiene a la persona delante esperando a salir.
    */
   presupuestoReintentosMs?: number;
+  /**
+   * Login, refresco o cierre de sesión. En modo cookie (la web) llevan la cabecera de modo y
+   * `credentials: 'include'`, para que el navegador guarde y mande la cookie del token de refresco.
+   */
+  sesion?: boolean;
 };
 
 type Envelope<T> = { requestId?: string; data?: T; error?: { code?: string; message?: string; issues?: { path?: string; message?: string }[] } };
@@ -116,10 +137,13 @@ async function rawRequest<T>(
   const timeout = setTimeout(() => controller.abort(), apiConfig.requestTimeoutMs);
   if (options.signal) options.signal.addEventListener('abort', () => controller.abort(), { once: true });
 
+  const sesionEnCookie = options.sesion === true && modoCookie();
   let response: Response;
   try {
     response = await fetch(`${apiConfig.baseUrl}${path}`, {
       method: options.method ?? 'GET',
+      // Sólo en la web y sólo en las llamadas de sesión: es lo que deja al navegador guardar y mandar la cookie.
+      ...(sesionEnCookie ? { credentials: 'include' as const } : {}),
       headers: {
         accept: 'application/json',
         'x-tenant-id': apiConfig.tenantId,
@@ -135,6 +159,7 @@ async function rawRequest<T>(
         // el primer intento quiza ya habia hecho.
         ...(idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {}),
         ...(accessToken && !options.anonymous ? { authorization: `Bearer ${accessToken}` } : {}),
+        ...(sesionEnCookie ? { [CABECERA_MODO_SESION]: 'cookie' } : {}),
       },
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: controller.signal,
@@ -239,11 +264,17 @@ export function shouldRefreshOn(error: unknown): boolean {
  *    reglas de `reintentos.ts`.
  */
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const tokens = options.anonymous ? null : ((await tokenStore?.read()) ?? null);
+  let tokens = options.anonymous ? null : ((await tokenStore?.read()) ?? null);
   const correlationId = newCorrelationId();
   // La pantalla se fija al EMPEZAR la operacion, igual que el id: si el usuario navega mientras se
   // refresca el token, el reintento sigue siendo de la pantalla que lo pidio, no de la nueva.
   const pantalla = options.sinPantalla ? null : getCurrentScreen();
+  /*
+    Sin token de acceso pero con con que refrescar: la web recien recargada (el de acceso vivia en
+    memoria y la cookie sigue ahi) o recien migrada desde `localStorage`. Se refresca ANTES, en vez de
+    mandar una peticion condenada al 401. En el telefono no pasa: su almacen nunca da un par a medias.
+  */
+  if (tokens && !tokens.accessToken) tokens = await renovarAntesDeEmpezar(tokens, correlationId, pantalla);
   // Una clave por operacion, compartida por todos sus intentos. Ver `rawRequest`.
   const idempotencyKey = options.idempotent ? newIdempotencyKey() : null;
   const repeticion = repeticionDe(options.method, options.idempotent);
@@ -278,6 +309,15 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 /** El almacen ya no tiene sesion: otra operacion la cerro mientras esta esperaba su 401. */
 class SesionCaducada extends Error {}
 
+async function renovarAntesDeEmpezar(tokens: TokenPair, correlationId: string, pantalla: string | null): Promise<TokenPair> {
+  try {
+    return await tokenRenovado(tokens, correlationId, pantalla);
+  } catch (error) {
+    if (!(error instanceof SesionCaducada)) throw error;
+    throw new AtlasApiError({ kind: 'auth', code: 'SESSION_EXPIRED', message: 'La sesión ya no está abierta.', status: 401 });
+  }
+}
+
 /*
   UN refresco en vuelo, compartido por todos los 401 que lleguen a la vez (APP-16).
 
@@ -311,9 +351,11 @@ async function refrescar(refreshToken: string, correlationId: string, pantalla: 
   try {
     const result = await conReintentos(
       () =>
-        rawRequest<{ accessToken: string; refreshToken: string }>(
+        rawRequest<{ accessToken: string; refreshToken?: string }>(
           '/auth/refresh',
-          { method: 'POST', body: { refreshToken }, anonymous: true },
+          // Con una marca, el token va en la cookie y el cuerpo sale vacio. Con un token real en modo
+          // cookie es la MIGRACION de la web: se canjea una vez y el servidor responde poniendo la cookie.
+          { method: 'POST', body: esMarcaDeCookie(refreshToken) ? {} : { refreshToken }, anonymous: true, sesion: true },
           null,
           // El refresco lleva la correlacion de la operacion que lo provoco: sin eso, en el log
           // aparece un `/auth/refresh` suelto que no se sabe de donde salio.
@@ -325,7 +367,8 @@ async function refrescar(refreshToken: string, correlationId: string, pantalla: 
       // Sin `signal`: lo comparten varias operaciones y cancelar una no puede dejar sin token a las demas.
       { repeticion: 'solo-si-no-llego' },
     );
-    const refreshed = { accessToken: result.data.accessToken, refreshToken: result.data.refreshToken };
+    // En modo cookie el servidor no devuelve el token de refresco: queda una marca nueva en su lugar.
+    const refreshed = { accessToken: result.data.accessToken, refreshToken: result.data.refreshToken ?? marcaDeCookie() };
     await tokenStore?.write(refreshed);
     return refreshed;
   } catch (refreshError) {
@@ -360,5 +403,12 @@ function sesionRechazada(error: unknown): boolean {
  */
 export async function readAccessToken(): Promise<string | null> {
   const tokens = (await tokenStore?.read()) ?? null;
-  return tokens?.accessToken ?? null;
+  if (tokens?.accessToken) return tokens.accessToken;
+  // La web recien recargada: el de acceso vivia en memoria. Se recupera con la cookie (ver `request`).
+  if (!tokens) return null;
+  try {
+    return (await renovarAntesDeEmpezar(tokens, newCorrelationId(), null)).accessToken;
+  } catch {
+    return null;
+  }
 }

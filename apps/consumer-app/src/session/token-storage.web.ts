@@ -1,46 +1,63 @@
 /**
- * Implementacion WEB del puerto `TokenStore`.
+ * Implementacion WEB del puerto `TokenStore` (APP-02).
  *
  * Metro resuelve `token-storage.web.ts` antes que `token-storage.ts` cuando empaqueta para el
  * navegador, asi que `session.tsx` importa `./token-storage` sin saber en que plataforma corre.
  *
- * En el navegador no existe `expo-secure-store` —la llamada lanza `getValueWithKeyAsync is not a
- * function` y la app se queda en la pantalla de marca sin decidir el area—. El almacen que hay es
- * `localStorage`: no esta cifrado, pero es del ORIGEN de la web (ningun otro sitio lo lee) y es
- * el mismo sitio donde guardan la sesion los portales de Atlas. El refresh token caduca en el
- * servidor igual que en el telefono; cerrar sesion lo borra.
+ * ## Ningun token en el almacenamiento del navegador
+ *
+ * Antes el par de tokens y el perfil iban a `localStorage`, donde cualquier XSS los lee. Ahora:
+ *  - el token de REFRESCO lo guarda el servidor en una cookie `HttpOnly; SameSite=Strict` limitada a
+ *    `/api/v1/auth/refresh` y `/api/v1/auth/logout` (modo cookie, cabecera `x-atlas-session-mode`).
+ *    JavaScript nunca lo ve: en el par queda una MARCA (`esMarcaDeCookie`);
+ *  - el token de ACCESO vive solo en la memoria de la pagina. Al recargar se pierde y el cliente lo
+ *    recupera con un refresco: la cookie va sola (ver `request` en `api/client.ts`);
+ *  - el perfil (nombre, correo o telefono) vive solo en memoria.
+ *
+ * ## Lo unico que sobrevive a la recarga, y por que no es secreto
+ *
+ *  - `atlas.session.web.v1` = `'1'`: «puede haber una sesion en cookie». No autentica nada; solo
+ *    evita mandar un refresco condenado al 401 en cada visita de alguien que no ha entrado.
+ *  - `atlas.session.cliente.v1` = el `customerId` (identificador interno, sin nombre ni contacto).
+ *    Hace falta para saber, al entrar, si es OTRO cliente el que usa este navegador y borrar lo del
+ *    anterior (APP-09, `datos-locales.ts`); y para restaurar sin esperar a `/auth/me`.
+ *
+ * ## Migracion
+ *
+ * Si encuentra el par viejo en `localStorage`, `read` devuelve SOLO su token de refresco y sin token de
+ * acceso: el cliente refresca en el acto mandandolo en el cuerpo y en modo cookie, el servidor responde
+ * poniendo la cookie, y al escribir el par nuevo se borran las claves viejas. Si ese refresco no llega
+ * (sin red), las claves siguen ahi y se reintenta en la siguiente carga; si el servidor lo rechaza, se
+ * borran con `clear`. El perfil viejo (con correo o telefono) se borra al primer acceso.
  *
  * Todo pasa por try/catch: en una ventana privada, o con el almacenamiento bloqueado, `localStorage`
- * puede lanzar al tocarlo. Ahi la sesion vive solo en memoria y se pierde al recargar, que es mejor
- * que no entrar nunca.
+ * puede lanzar al tocarlo. Ahi solo se pierden la pista y la migracion.
  */
 import type { TokenPair, TokenStore } from '../api/client';
+import { esMarcaDeCookie, marcaDeCookie } from '../api/marca-de-cookie';
 
-const ACCESS_KEY = 'atlas.session.access';
-const REFRESH_KEY = 'atlas.session.refresh';
-const PROFILE_KEY = 'atlas.session.profile';
-
-const memoria = new Map<string, string>();
+/** Las claves de antes de APP-02. Solo se leen para migrar y se borran. */
+export const CLAVES_VIEJAS = { access: 'atlas.session.access', refresh: 'atlas.session.refresh', profile: 'atlas.session.profile' } as const;
+export const CLAVE_PISTA = 'atlas.session.web.v1';
+export const CLAVE_CLIENTE = 'atlas.session.cliente.v1';
 
 function leer(key: string): string | null {
   try {
-    return globalThis.localStorage?.getItem(key) ?? memoria.get(key) ?? null;
+    return globalThis.localStorage?.getItem(key) ?? null;
   } catch {
-    return memoria.get(key) ?? null;
+    return null;
   }
 }
 
 function escribir(key: string, value: string): void {
-  memoria.set(key, value);
   try {
     globalThis.localStorage?.setItem(key, value);
   } catch {
-    /* sin almacenamiento persistente: queda en memoria */
+    /* sin almacenamiento persistente: la sesion sigue en memoria */
   }
 }
 
 function borrar(key: string): void {
-  memoria.delete(key);
   try {
     globalThis.localStorage?.removeItem(key);
   } catch {
@@ -48,40 +65,67 @@ function borrar(key: string): void {
   }
 }
 
+function borrarClavesViejas(): void {
+  borrar(CLAVES_VIEJAS.access);
+  borrar(CLAVES_VIEJAS.refresh);
+}
+
+let tokensEnMemoria: TokenPair | null = null;
+
 export const secureTokenStore: TokenStore = {
+  modo: 'cookie',
+
   async read(): Promise<TokenPair | null> {
-    const accessToken = leer(ACCESS_KEY);
-    const refreshToken = leer(REFRESH_KEY);
-    if (!accessToken || !refreshToken) return null;
-    return { accessToken, refreshToken };
+    if (tokensEnMemoria) return tokensEnMemoria;
+    // Migracion: el token de acceso viejo NO se reutiliza; se canjea el de refresco por la cookie.
+    const viejo = leer(CLAVES_VIEJAS.refresh);
+    if (viejo && !esMarcaDeCookie(viejo)) return { accessToken: '', refreshToken: viejo };
+    return leer(CLAVE_PISTA) === '1' ? { accessToken: '', refreshToken: marcaDeCookie(0) } : null;
   },
+
   async write(tokens: TokenPair): Promise<void> {
-    escribir(ACCESS_KEY, tokens.accessToken);
-    escribir(REFRESH_KEY, tokens.refreshToken);
+    // Si el servidor aun no conoce el modo cookie y devuelve un token real, se queda en memoria igual.
+    tokensEnMemoria = tokens;
+    borrarClavesViejas();
+    escribir(CLAVE_PISTA, '1');
   },
+
   async clear(): Promise<void> {
-    borrar(ACCESS_KEY);
-    borrar(REFRESH_KEY);
+    tokensEnMemoria = null;
+    borrarClavesViejas();
+    borrar(CLAVE_PISTA);
   },
 };
 
 export type StoredProfile = { customerId: string; displayName: string | null; identifier: string };
 
+let perfilEnMemoria: StoredProfile | null = null;
+
 export const profileStorage = {
   async read(): Promise<StoredProfile | null> {
-    const raw = leer(PROFILE_KEY);
-    if (!raw) return null;
-    try {
-      return JSON.parse(raw) as StoredProfile;
-    } catch {
-      return null;
+    // El perfil viejo llevaba el correo o el telefono: se rescata solo el `customerId` y se borra.
+    const viejo = leer(CLAVES_VIEJAS.profile);
+    if (viejo !== null) {
+      borrar(CLAVES_VIEJAS.profile);
+      try {
+        const customerId = (JSON.parse(viejo) as Partial<StoredProfile>).customerId;
+        if (customerId && leer(CLAVE_CLIENTE) === null) escribir(CLAVE_CLIENTE, String(customerId));
+      } catch {
+        /* perfil ilegible: se descarta */
+      }
     }
+    if (perfilEnMemoria) return perfilEnMemoria;
+    const customerId = leer(CLAVE_CLIENTE);
+    return customerId ? { customerId, displayName: null, identifier: '' } : null;
   },
   async write(profile: StoredProfile): Promise<void> {
-    escribir(PROFILE_KEY, JSON.stringify(profile));
+    perfilEnMemoria = profile;
+    escribir(CLAVE_CLIENTE, profile.customerId);
   },
   async clear(): Promise<void> {
-    borrar(PROFILE_KEY);
+    perfilEnMemoria = null;
+    borrar(CLAVE_CLIENTE);
+    borrar(CLAVES_VIEJAS.profile);
   },
 };
 
