@@ -26,6 +26,7 @@ import {
   Stat,
   StatRow,
 } from '../../../src/ui/primitives';
+import { marca } from '../../../src/theme/tokens';
 
 /** Lo que queda por pagar de una cuota: lo pactado menos lo cobrado, sin dejar negativos. */
 function pendingOf(installment: loansApi.LoanInstallment): number {
@@ -163,7 +164,7 @@ export default function LoanDetail() {
         <Card>
           <CardHeader icon="ayuda" title="¿Cómo se decidió?" />
           <AtlasText variant="caption" tone="secondary">
-            Este crédito lo aprobó el motor de decisión de Atlas. Ejecución {loan.decision.executionId}
+            Este crédito lo aprobó el motor de decisión de {marca.nombre}. Ejecución {loan.decision.executionId}
             {loan.decision.artifactVersionId ? ` · política ${loan.decision.artifactVersionId}` : ''}.
           </AtlasText>
         </Card>

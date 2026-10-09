@@ -36,7 +36,7 @@ import Reanimated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { alpha, color, luz, press, radius, shadow, space, spring, stroke, touch, type } from '../theme/tokens';
+import { alpha, brillo, color, luz, press, radius, shadow, space, spring, stroke, touch, type } from '../theme/tokens';
 import { Icon, type IconName } from './icons';
 import { iconoDeAccion } from './icono-de-accion';
 import { BarridoDeLuz, BrilloDeCristal, CICLO_MS, DestelloDeToque, RESPIRACION, useFaseDelBoton, vivaPorSiSola } from './button-shine';
@@ -68,7 +68,7 @@ const TONE: Record<TextTone, string> = {
  * leerian, asi que `Escenario` los cambia por los de `color.stage` para todo lo que lleva dentro.
  */
 /** Cuánto «neón» lleva el botón principal: 1 con el halo de la identidad oscura, menos en el tema claro. */
-const NEON = shadow.neon.shadowOpacity / 0.4;
+const NEON = (shadow.neon.shadowOpacity / 0.4) * brillo;
 
 const TONE_ESCENARIO: Record<TextTone, string> = {
   ...TONE,
@@ -505,11 +505,13 @@ export function Card({
   );
 }
 
+// Con tono, la tarjeta se TIÑE apenas (rediseño 2026-10-09): el borde de color de antes enmarcaba cada aviso en rojo o
+// en verde y la pantalla se leía como una alarma. Ahora el color lo llevan el icono y el título.
 const CARD_TONE: Record<Exclude<CardTone, 'default'>, ViewStyle> = {
-  danger: { borderColor: color.feedbackBorder.danger, borderTopColor: color.feedbackBorder.danger },
-  warning: { borderColor: color.feedbackBorder.warning, borderTopColor: color.feedbackBorder.warning },
-  success: { borderColor: color.feedbackBorder.success, borderTopColor: color.feedbackBorder.success },
-  brand: { borderColor: color.feedbackBorder.brand, borderTopColor: color.feedbackBorder.brand },
+  danger: { backgroundColor: color.surface.tinted.danger },
+  warning: { backgroundColor: color.surface.tinted.warning },
+  success: { backgroundColor: color.surface.tinted.success },
+  brand: { backgroundColor: color.surface.tinted.brand },
 };
 
 /**
@@ -1437,9 +1439,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: color.surface.raised,
     borderRadius: radius.xxl,
-    borderWidth: 1,
-    borderColor: color.border.subtle,
-    borderTopColor: color.surface.edge,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: color.surface.cardBorder,
     padding: space.lg,
     gap: space.md,
     ...shadow.card,
@@ -1567,9 +1568,8 @@ const styles = StyleSheet.create({
 
   stateBox: {
     borderRadius: radius.xxl,
-    borderWidth: 1,
-    borderColor: color.border.subtle,
-    borderTopColor: color.surface.edge,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: color.surface.cardBorder,
     backgroundColor: color.surface.raised,
     padding: space.xl,
     gap: space.xs,

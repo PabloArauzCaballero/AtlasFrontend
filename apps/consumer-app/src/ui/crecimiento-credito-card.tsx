@@ -20,7 +20,7 @@ import {
   fraseDelSiguienteSalto,
   type PeldanoDeCredito,
 } from '../features/crecimiento-credito';
-import { color, motion, radius, space, stroke } from '../theme/tokens';
+import { color, motion, radius, space, stroke, marca } from '../theme/tokens';
 import { BarraViva, CuentaArriba, useAvance } from './cuenta-arriba';
 import { BotonInfo, InfoSheet } from './help-sheet';
 import { Icon } from './icons';
@@ -134,7 +134,7 @@ export function CrecimientoCreditoCard({ progress }: { progress: Progress }) {
         <SeccionConAcento
           titulo="Lo sube tu calificación"
           parrafos={[
-            'Tu calificación de 1 a 100 dice qué tan buen pagador eres. Cada escalón que alcanzas sube el tope de crédito que Atlas te puede dar. Se sube pagando tus cuotas a tiempo, terminando de pagar tus compras y con el tiempo que llevas con Atlas.',
+            `Tu calificación de 1 a 100 dice qué tan buen pagador eres. Cada escalón que alcanzas sube el tope de crédito que ${marca.nombre} te puede dar. Se sube pagando tus cuotas a tiempo, terminando de pagar tus compras y con el tiempo que llevas con ${marca.nombre}.`,
           ]}
         />
         <SeccionConAcento

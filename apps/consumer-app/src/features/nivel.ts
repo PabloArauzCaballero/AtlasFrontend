@@ -8,6 +8,7 @@
  */
 import type { IconName } from '../ui/icons';
 import type { Progress, TierCode } from '../api/endpoints/credit-line';
+import { marca } from '../theme/tokens';
 
 export const ICONO_DE_NIVEL: Record<TierCode, IconName> = {
   NUEVO: 'chispa',
@@ -54,7 +55,7 @@ const ESCALONES: readonly { id: string; code: TierCode; label: string; from: num
   { id: 'PREFERENTE', code: 'PREFERENTE', label: 'Preferente', from: 10_000 },
   { id: 'ELITE', code: 'PREFERENTE', label: 'Élite', from: 15_000 },
   { id: 'LEYENDA', code: 'PREFERENTE', label: 'Leyenda', from: 25_000 },
-  { id: 'TITAN', code: 'PREFERENTE', label: 'Titán Atlas', from: 50_000 },
+  { id: 'TITAN', code: 'PREFERENTE', label: `Titán ${marca.nombre}`, from: 50_000 },
 ];
 
 export type NivelPorPuntos = {

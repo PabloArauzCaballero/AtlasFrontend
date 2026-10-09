@@ -20,6 +20,7 @@
 import { AVISO_SIN_RECORDATORIOS, AVISOS_QUE_LLEGAN_RESUMEN } from './avisos-copy';
 import { AVISO_DEMOSTRACION, AVISO_PLAN_SIMULADO } from './demo-copy';
 import { BLOCKER_COPY, LIFECYCLE_COPY, SECTION_LABEL } from './onboarding-map';
+import { marca } from '../theme/tokens';
 
 export type CopyEntry = {
   /** La pantalla a la que pertenece, para agrupar en el portal. */
@@ -51,7 +52,7 @@ export const COPY = {
     pantalla: 'Pagos',
     donde: 'Cuando todavía no hay cuotas que mostrar',
     titulo: 'Todavía no hay cuotas que mostrar',
-    texto: 'Cuando compres con Atlas, aquí verás en qué día te toca cada pago.',
+    texto: `Cuando compres con ${marca.nombre}, aquí verás en qué día te toca cada pago.`,
   },
   'escanear.camara': {
     pantalla: 'Escanear',
@@ -61,9 +62,9 @@ export const COPY = {
   },
   'escanear.qr.no_reconocido': {
     pantalla: 'Escanear',
-    donde: 'Cuando el QR escaneado no es de Atlas',
-    titulo: 'Este QR no es de Atlas',
-    texto: 'Pide al comercio el código QR de Atlas que está pegado en la caja. El QR del banco se usa después.',
+    donde: `Cuando el QR escaneado no es de ${marca.nombre}`,
+    titulo: `Este QR no es de ${marca.nombre}`,
+    texto: `Pide al comercio el código QR de ${marca.nombre} que está pegado en la caja. El QR del banco se usa después.`,
   },
   'escanear.qr.revocado': {
     pantalla: 'Escanear',
@@ -81,7 +82,7 @@ export const COPY = {
     pantalla: 'Escanear',
     donde: 'Cuando el QR se leyó bien pero el servicio no respondió (red caída, redespliegue)',
     titulo: 'Sin conexión',
-    texto: 'Leímos el código, pero no pudimos confirmarlo con Atlas. Revisa tu conexión y vuelve a apuntar al QR, o escríbelo a mano.',
+    texto: `Leímos el código, pero no pudimos confirmarlo con ${marca.nombre}. Revisa tu conexión y vuelve a apuntar al QR, o escríbelo a mano.`,
   },
   'escanear.qr.sesion': {
     pantalla: 'Escanear',

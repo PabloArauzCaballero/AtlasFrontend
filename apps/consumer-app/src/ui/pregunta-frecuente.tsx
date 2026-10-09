@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface.raised,
     overflow: 'hidden',
   },
-  tarjetaAbierta: { borderColor: color.feedbackBorder.brand },
+  tarjetaAbierta: { borderColor: color.accent.border },
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: space.md, padding: space.md },
   numero: {
     width: 32,

@@ -54,6 +54,7 @@
  * version corta de la animacion, es ninguna. Una capa que tapa la pantalla entera es exactamente
  * el tipo de movimiento que provoca mareo, y degradarla a «lo mismo pero rapido» no lo arregla.
  */
+import { LETRA_A, LIENZO_SIMBOLO } from './marca-letra';
 import React from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
@@ -108,7 +109,7 @@ const ESTELA = 3;
 /** Cuantas lineas de velocidad salen del centro. */
 const LINEAS = 16;
 
-const LETRA = 'M24 5 L43 43 H34 L24 21 L14 43 H5 Z';
+const LETRA = LETRA_A.silueta;
 
 function tramo(reloj: number, desde: number, hasta: number): number {
   'worklet';
@@ -368,7 +369,7 @@ function CopiaCromatica({
 
   return (
     <Animated.View style={[styles.centro, { width, height }, estilo]}>
-      <Svg width={MARCA_PX} height={MARCA_PX} viewBox="0 0 48 48">
+      <Svg width={MARCA_PX} height={MARCA_PX} viewBox={LIENZO_SIMBOLO}>
         <Path d={LETRA} fill={tinte} />
       </Svg>
     </Animated.View>

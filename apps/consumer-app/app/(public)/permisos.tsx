@@ -38,7 +38,7 @@ import { useSession } from '../../src/session/session';
 import { bitacora } from '../../src/features/bitacora';
 import { decisionFinal, faltaPorDecidir, SIN_ELEGIR, type Eleccion, type Elecciones } from '../../src/features/decision-de-permisos';
 import { LO_QUE_NO_HACEMOS_CON_LA_UBICACION, USOS_DE_LA_UBICACION } from '../../src/features/consentimiento-ubicacion';
-import { space } from '../../src/theme/tokens';
+import { space, marca } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { type IconName } from '../../src/ui/icons';
 import { IndicadorDeToque } from '../../src/ui/indicador-de-toque';
@@ -72,7 +72,7 @@ const CABECERA_POR_DEFECTO = {
   antetitulo: 'Antes de empezar',
   titulo: 'Dos permisos, y para qué',
   subtitulo:
-    'Atlas presta dinero sin pedirte garantías. Estas dos señales son parte de lo que nos permite hacerlo. Puedes decir que no y abrir tu cuenta igual.',
+    `${marca.nombre} presta dinero sin pedirte garantías. Estas dos señales son parte de lo que nos permite hacerlo. Puedes decir que no y abrir tu cuenta igual.`,
 };
 
 const AVISO_POR_DEFECTO =
@@ -342,7 +342,7 @@ export default function Permisos() {
             {enAndroid ? (
               <AtlasText variant="body" tone="secondary">
                 Tu teléfono no permite concederlo desde aquí: al continuar se abren los ajustes de
-                Android y tienes que elegir «Permitir todo el tiempo». Después vuelve a Atlas.
+                Android y tienes que elegir «Permitir todo el tiempo». Después vuelve a {marca.nombre}.
               </AtlasText>
             ) : null}
           </View>

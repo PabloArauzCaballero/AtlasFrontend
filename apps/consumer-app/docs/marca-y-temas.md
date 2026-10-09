@@ -6,10 +6,12 @@ no es rediseñar. Es rellenar un archivo, regenerar unos iconos y comprobar con 
 ## Cómo está hecho
 
 ```
-src/theme/marca.ts     ← LA MARCA: nombre, color principal, acento, tipografía. Lo único que se edita.
+src/theme/marca.ts     ← LA MARCA: nombre, eslogan, símbolo (SVG), color principal, acento, brillo,
+                         tipografía. Lo único que se edita.
 src/theme/color.ts     ← motor de color (OKLCH): rampas de tono y corrección de contraste. No se toca.
 src/theme/temas.ts     ← crearTema('claro' | 'oscuro', marca): todos los roles, calculados. No se toca.
 src/theme/tokens.ts    ← espacio, radios, tipografía, movimiento, sombras; `color` = tema activo.
+src/theme/tarjeta.ts   ← acabado mate de la tarjeta de membresía desde el color del catálogo.
 src/theme/preferencia.ts ← la apariencia que eligió la persona (Perfil › Apariencia), recordada.
 ```
 
@@ -31,44 +33,48 @@ Nadie fuera de `src/theme/` escribe un color: lo vigila `__tests__/sin-colores-s
 Todos los contrastes de los dos temas, con la marca actual y con ocho marcas extremas, los vigila
 `__tests__/temas-contraste.test.ts`.
 
-## Procedimiento: «esta es la marca, estos son sus colores»
+## Qué se propaga solo desde `marca.ts`
 
-1. **`src/theme/marca.ts`**: `nombre`, `principal`, `acento`.
-   - Si la marca tiene un solo color, va en los dos campos.
-   - Si el color institucional es muy claro (amarillo, lima), igual va en `principal`: el motor lo
-     oscurece para el botón en claro. Conviene enseñarle a la marca las capturas antes de cerrar.
-2. **Tipografía** (opcional). Por defecto es la del sistema (SF Pro en iPhone), que es la
-   recomendada. Si la marca exige una fuente propia:
-   - Se instala (`npx expo install @expo-google-fonts/<fuente>` o los `.ttf` en `assets/fonts`).
-   - Se carga en `app/_layout.tsx` (`useFonts`), un archivo por grosor.
-   - Se declara en `marca.tipografia.texto` y `.titulares` con el nombre de cada grosor. El peso
-     (`fontWeight`) se apaga solo cuando hay fuente propia.
-   - `logotipo` es la fuente de la palabra de la marca en el arranque.
-3. **Comprobar contraste**: `npx jest __tests__/temas-contraste.test.ts --verbose`. Si algo falla, el
-   motor no encontró un tono legible: se corrige la elección en `marca.ts`, nunca el umbral de la prueba.
-   La misma corrida imprime «icono del arranque — claro: … · oscuro: …» con los colores del paso 5.
-4. **Símbolo de la marca** (la «A» de Atlas):
-   - `src/ui/marca-letra.tsx › LETRA_A` tiene la geometría (viewBox 48×48, partida en cara de luz,
-     cara de sombra y travesaño). La dibujan el logotipo (`brand.tsx`), el arranque (`splash.tsx`),
-     el cargador (`cargador-atlas.tsx`) y la web (`src/web/Cascara.tsx`, `PanelLateral.tsx`,
-     `Tarjeta3D.tsx`).
-   - Con un símbolo nuevo se reemplazan esos trazados. Si el símbolo no se parte en caras, las tres
-     piezas pueden llevar el mismo trazado.
-5. **Iconos nativos** (los dibuja el sistema antes que la app):
-   - Arranque: `PLAYWRIGHT_DIR=<carpeta con playwright> node scripts/generar-icono-arranque.mjs <svg|atlas> <luz> <sombra> <travesaño> assets/splash-icon.png`,
-     y lo mismo con los colores de oscuro hacia `assets/splash-icon-oscuro.png`. Los fondos están en
-     `app.json` (`expo-splash-screen`: `#FFFFFF` y `dark.backgroundColor`).
-   - Icono de la app: `assets/icon.png`, `android-icon-*.png`, `favicon.png`, y
-     `android.adaptiveIcon.backgroundColor` en `app.json`. Vienen del equipo de marca.
-   - `app.json › name` y los textos de permisos que nombran la marca.
-6. **Web antes del bundle**: `public/index.html` repite los fondos de arranque (`#FFFFFF`,
-   `#0A0A0B`), la tinta y el color del foco, porque se leen antes que el JavaScript. Si cambió el
-   acento, se cambia el `outline` de `:focus-visible` por `accent.base` de cada tema.
-7. **Textos con el nombre**: `grep -rn "Atlas" app src --include='*.tsx'`. Los textos de contenido
-   remoto (ayuda, recorrido) vienen del backend.
-8. **Verificar con capturas**, claro y oscuro, a 390 y 1280 px (`visual-proof`): Inicio, Ingresar,
-   Pagos, Perfil, el arranque y una celebración. Una marca no está lista sin haberla visto en
-   pantalla.
+| Campo | Dónde aparece |
+|---|---|
+| `nombre` | Rótulo del arranque (letra por letra), logotipo del acceso, bienvenida, tarjeta, barra web, y todos los textos de la interfaz que nombran la marca («Tu línea …», «Hablar con …»). |
+| `eslogan` | Bajo el logotipo del acceso (`null` = sin eslogan). |
+| `simbolo` | Logotipo, arranque (incluido el dibujo trazo a trazo con `contorno`), corte de marca, cargador, tarjeta, barra y panel web. |
+| `principal` / `acento` | Los dos temas completos, con contraste corregido (`temas.ts`). |
+| `estilo.brillo` | Halos, auras, reflejos de cristal y partículas. 0 = sobrio. |
+| `tipografia` | Texto, titulares y logotipo. |
+
+Las tarjetas de membresía no se pintan con el color del catálogo tal cual: `theme/tarjeta.ts` le baja la viveza y le
+busca la tinta legible, así que una categoría del backend con un color chillón igual sale sobria.
+
+## Procedimiento: «esta es la marca, estos son sus colores, este es su logo»
+
+1. **`src/theme/marca.ts`**:
+   - `nombre`, `eslogan`, `principal` y `acento`. Si la marca tiene un solo color, va en `principal` y en `acento`.
+   - `estilo.brillo`: 0 para una marca sobria (banco), hasta 1 para una marca luminosa.
+   - **Símbolo:** del SVG del logo, reescalado a un lienzo cuadrado (`lienzo`, p. ej. 48):
+     - `silueta`: la forma entera, una sola ruta.
+     - `luz` y `sombra`: si el logo tiene volumen o dos tonos. Si es plano, `luz` = silueta y `sombra` vacía.
+     - `detalle`: una pieza de otro tono (puede ir vacía).
+     - `filo` y `cantoDetalle`: trazos finos de luz (pueden ir vacíos).
+   - `tipografia` (opcional): si la marca exige su fuente, se instala, se carga en `app/_layout.tsx` (`useFonts`, un
+     archivo por grosor) y se nombra aquí. El peso se apaga solo cuando hay fuente propia.
+2. **Contraste:** `npx jest __tests__/temas-contraste.test.ts --verbose`. Si algo falla, se ajusta la elección en
+   `marca.ts`, nunca el umbral. La corrida imprime los seis colores del icono del arranque.
+3. **Iconos del arranque y contorno:**
+   `PLAYWRIGHT_DIR=<carpeta con playwright> node scripts/generar-icono-arranque.mjs <seis colores del paso 2>`.
+   Escribe `assets/splash-icon.png` y `-oscuro.png`, e imprime `simbolo.contorno`: se copia a `marca.ts` si cambió.
+4. **Lo que no es código:**
+   - El icono de la app (`assets/icon.png`, `android-icon-*.png`, `favicon.png`) lo entrega el equipo de marca.
+   - En `app.json`: `name`, `android.adaptiveIcon.backgroundColor` y los textos de permisos que nombran la marca.
+5. **Web antes del bundle:** `public/index.html` repite los fondos del arranque, la tinta y el color del foco, porque se
+   leen antes que el JavaScript.
+6. **Publicar:**
+   - Si solo cambió `src/` (colores, nombre, símbolo, textos): basta una **actualización OTA** (`eas update`), sin
+     build nuevo.
+   - Si cambiaron iconos, `app.json` o fuentes nuevas: **build nuevo** y TestFlight.
+7. **Verificar con capturas**, claro y oscuro, a 390 y 1280 px: Inicio, Ingresar, Pagos, Perfil (la tarjeta), el
+   arranque y una celebración. Una marca no está lista sin haberla visto en pantalla.
 
 ## Apariencia: claro y oscuro
 

@@ -32,7 +32,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as contentApi from '../../src/api/endpoints/app-content';
 import { PASOS_POR_DEFECTO, pasosDesdeContenido, type Paso } from '../../src/features/bienvenida-pasos';
-import { alpha, color, radius, space } from '../../src/theme/tokens';
+import { alpha, brillo, color, marca, radius, space } from '../../src/theme/tokens';
 import { BrandHalo } from '../../src/ui/brand';
 import { Ilustracion } from '../../src/ui/ilustraciones-bienvenida';
 import { Screen, ScreenHeader } from '../../src/ui/layout';
@@ -84,7 +84,7 @@ export default function ConoceAtlas() {
 
   return (
     <Screen>
-      <ScreenHeader title="Conoce Atlas" onBack="auto" />
+      <ScreenHeader title={`Conoce ${marca.nombre}`} onBack="auto" />
 
       <View style={[styles.escenario, { height: ESCENA_ALTO }]}>
         <LinearGradient colors={[color.heroWash, color.surface.primary]} start={{ x: 0.5, y: 0 }} end={{ x: 0.5, y: 1 }} style={StyleSheet.absoluteFill} />
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.brand.b300,
     shadowColor: color.brand.b300,
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 1,
+    shadowOpacity: brillo,
     shadowRadius: 6,
   },
   pagina: { alignItems: 'center', justifyContent: 'center' },

@@ -6,6 +6,7 @@
  * donde está el ratón y un halo lo sigue. Quieta mientras nadie la toca — el vaivén automático se
  * retiró el 2026-09-21; ver la nota en `estilo.ts`. Sólo web, sólo DOM; el aspecto vive allí.
  */
+import { LETRA_A, LIENZO_SIMBOLO } from '../ui/marca-letra';
 import { useRef } from 'react';
 import { Platform } from 'react-native';
 import { color } from '../theme/tokens';
@@ -55,9 +56,9 @@ export function Tarjeta3D({
       aria-label={`Tarjeta Atlas de ${nombre ?? 'tu cuenta'}`}
     >
       <div className="acard__top">
-        <svg width="26" height="26" viewBox="0 0 48 48" aria-hidden="true">
-          <path d="M24 5 L43 43 H34 L24 21 L14 43 H5 Z" fill={color.fixed.brandOnDarkSoft} />
-          <path d="M17.5 31 H30.5 L34 38 H14 Z" fill={color.brand.b900} opacity="0.55" />
+        <svg width="26" height="26" viewBox={LIENZO_SIMBOLO} aria-hidden="true">
+          <path d={LETRA_A.silueta} fill={color.fixed.brandOnDarkSoft} />
+          <path d={LETRA_A.travesano} fill={color.brand.b900} opacity="0.55" />
         </svg>
         Atlas
       </div>

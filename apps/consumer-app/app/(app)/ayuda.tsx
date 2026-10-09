@@ -31,7 +31,7 @@ import { Markdown } from '../../src/ui/markdown';
 import { Accordion, AtlasText, Button, Card, CardHeader, EmptyState, IconChip, SectionHeader, Skeleton } from '../../src/ui/primitives';
 import { Field } from '../../src/ui/fields';
 import { Icon, type IconName } from '../../src/ui/icons';
-import { color, radius, space, stroke } from '../../src/theme/tokens';
+import { color, radius, space, stroke, marca } from '../../src/theme/tokens';
 import { filtrarPreguntas } from '../../src/features/preguntas-frecuentes';
 import { urlDeLaGuia } from '../../src/features/guia-pdf';
 import { useVerRecorrido } from '../../src/features/ver-recorrido';
@@ -99,7 +99,7 @@ export default function Ayuda() {
       </View>
 
       <View style={styles.accesos}>
-        <Acceso icono="telefono" titulo="Hablar con Atlas" detalle="Soporte y tus casos" onPress={() => router.push('/(app)/soporte' as never)} />
+        <Acceso icono="telefono" titulo={`Hablar con ${marca.nombre}`} detalle="Soporte y tus casos" onPress={() => router.push('/(app)/soporte' as never)} />
         <Acceso icono="documento" titulo="Guía en PDF" detalle="Paso a paso" onPress={() => void Linking.openURL(urlDeLaGuia())} />
         <Acceso icono="chispa" titulo="Ver el recorrido" detalle="Otra vez" onPress={replayTour} />
       </View>
@@ -118,7 +118,7 @@ export default function Ayuda() {
         <Card key={entry.contentKey}>
           <CardHeader
             icon="telefono"
-            title={entry.title ?? 'Hablar con Atlas'}
+            title={entry.title ?? `Hablar con ${marca.nombre}`}
             detail={entry.subtitle ?? undefined}
             divider={false}
           />
@@ -133,7 +133,7 @@ export default function Ayuda() {
             detail={busqueda ? `${preguntas.length} ${preguntas.length === 1 ? 'resultado' : 'resultados'} para «${busqueda}»` : 'Toca una para ver la respuesta.'}
           />
           {preguntas.length === 0 ? (
-            <EmptyState icon="ayuda" title="No encontramos esa pregunta" detail="Prueba con otra palabra o escríbenos desde «Hablar con Atlas»." />
+            <EmptyState icon="ayuda" title="No encontramos esa pregunta" detail={`Prueba con otra palabra o escríbenos desde «Hablar con ${marca.nombre}».`} />
           ) : null}
           {/*
             Una pregunta sin titulo no se pinta (`filtrarPreguntas`): el contenido lo edita una persona desde el portal y
@@ -156,7 +156,7 @@ export default function Ayuda() {
             </View>
           ))}
           <Card tone="brand">
-            <CardHeader icon="chat" title="¿No encontraste tu respuesta?" detail="Una persona de Atlas te contesta desde Soporte." divider={false} />
+            <CardHeader icon="chat" title="¿No encontraste tu respuesta?" detail={`Una persona de ${marca.nombre} te contesta desde Soporte.`} divider={false} />
             <Button label="Escribir a soporte" icon="chat" onPress={() => router.push('/(app)/soporte' as never)} />
           </Card>
         </>

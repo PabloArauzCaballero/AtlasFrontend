@@ -6,6 +6,7 @@
  * de fecha. Lo PENDIENTE (cuotas por pagar) va aparte: no es un movimiento, es lo que viene.
  */
 import type { LoanDetail } from '../api/endpoints/loans';
+import { marca } from '../theme/tokens';
 
 export type MovimientoDeExtracto = {
   id: string;
@@ -36,7 +37,7 @@ export function armarExtracto(creditos: readonly LoanDetail[], hoy: string = new
   const proximas: Extracto['proximas'] = [];
 
   for (const credito of creditos) {
-    const comercio = credito.merchant?.displayName ?? 'Atlas';
+    const comercio = credito.merchant?.displayName ?? marca.nombre;
     if (credito.disbursedAt) {
       filas.push({
         id: `compra-${credito.loanId}`,

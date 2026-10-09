@@ -24,6 +24,7 @@ import { Field } from '../../src/ui/fields';
 import type { IconName } from '../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { Badge, Button, Card, Chip, ChipBar, Divider, EmptyState, ErrorState, ListRow, SectionHeader, SkeletonLista } from '../../src/ui/primitives';
+import { marca } from '../../src/theme/tokens';
 
 const FILTROS: { clave: FiltroCompras; etiqueta: string; icono: IconName }[] = [
   { clave: 'todas', etiqueta: 'Todas', icono: 'lista' },
@@ -52,7 +53,7 @@ export default function Compras() {
   if (!book.ready) {
     return (
       <Screen>
-        <ScreenHeader title="Mis compras" subtitle="Todo lo que compraste con Atlas." onBack="auto" />
+        <ScreenHeader title="Mis compras" subtitle={`Todo lo que compraste con ${marca.nombre}.`} onBack="auto" />
         <SkeletonLista filas={5} alto={72} pantalla />
       </Screen>
     );
@@ -61,7 +62,7 @@ export default function Compras() {
   if (book.error && book.loans.length === 0) {
     return (
       <Screen>
-        <ScreenHeader title="Mis compras" subtitle="Todo lo que compraste con Atlas." onBack="auto" />
+        <ScreenHeader title="Mis compras" subtitle={`Todo lo que compraste con ${marca.nombre}.`} onBack="auto" />
         <ErrorState title="No pudimos cargar tus compras" detail={book.error} onRetry={() => void book.reload()} />
       </Screen>
     );
@@ -69,12 +70,12 @@ export default function Compras() {
 
   return (
     <Screen>
-      <ScreenHeader title="Mis compras" subtitle="Todo lo que compraste con Atlas." onBack="auto" />
+      <ScreenHeader title="Mis compras" subtitle={`Todo lo que compraste con ${marca.nombre}.`} onBack="auto" />
 
       {book.loans.length === 0 ? (
         <EmptyState
           icon="billetera"
-          title="Todavía no compraste con Atlas"
+          title={`Todavía no compraste con ${marca.nombre}`}
           detail="Cuando pagues en un comercio con tu línea, la compra aparecerá aquí."
           action={<Button label="Escanear QR del comercio" icon="escanear" onPress={() => router.push('/(app)/(tabs)/escanear')} />}
         />

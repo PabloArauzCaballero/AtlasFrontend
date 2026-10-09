@@ -47,7 +47,7 @@ import Svg, { ClipPath, Defs, G, LinearGradient, Path, RadialGradient, Rect, Sto
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NOMBRE_COLECCION, type Logro } from '../features/celebraciones';
 import { ICONO_DE_ESCALON } from '../features/nivel';
-import { color, easing, luz, motion, space, spring } from '../theme/tokens';
+import { color, easing, luz, motion, space, spring, marca } from '../theme/tokens';
 import { EscudoDeNivel } from './escudo-de-nivel';
 import { caraDe } from './insignia';
 import { AtlasText, Escenario, Button, ProgressBar } from './primitives';
@@ -66,7 +66,7 @@ export const ARENGA: Record<Rango, string> = {
   plata: '¡Vas muy bien!',
   oro: '¡Esto ya es de campeón!',
   platino: '¡Casi nadie llega aquí!',
-  diamante: '¡Eres leyenda en Atlas!',
+  diamante: `¡Eres leyenda en ${marca.nombre}!`,
 };
 
 /** Aleatorio determinista por partícula: la misma ráfaga siempre, y pruebas que no dependen del azar. */
@@ -350,7 +350,7 @@ export function CelebracionDeLogro({
           </Animated.View>
           <Animated.View style={[styles.bloque, eDetalle]}>
             <AtlasText variant="body" tone="secondary" align="center">
-              {esNivel ? `Nivel ${logro.nivel.index} de ${logro.nivel.of}. Tus compras con Atlas te trajeron hasta aquí.` : (cara?.detail ?? '')}
+              {esNivel ? `Nivel ${logro.nivel.index} de ${logro.nivel.of}. Tus compras con ${marca.nombre} te trajeron hasta aquí.` : (cara?.detail ?? '')}
             </AtlasText>
             {coleccion ? (
               <AtlasText variant="captionStrong" align="center" style={{ color: m.luz }}>

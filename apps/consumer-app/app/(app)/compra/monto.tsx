@@ -15,7 +15,7 @@ import { formatMoney, type Minor } from '../../../src/domain/money';
 import { STANDARD_POLICY_V1, buildBreakdown, describeAmountRejection, validateGrossAmount } from '../../../src/domain/policy';
 import { formatDate } from '../../../src/features/payment-copy';
 import { useSandbox, useScanSession } from '../../../src/sandbox/store';
-import { space } from '../../../src/theme/tokens';
+import { space, marca } from '../../../src/theme/tokens';
 import { firstBlocker } from '../../../src/ui/blocked';
 import { AmountField } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
@@ -162,7 +162,7 @@ export default function PurchaseAmount() {
           <KeyValue label="Pagas hoy al comercio (60 %)">
             <AtlasText variant="amountSmall">{formatMoney(breakdown.initialPaymentAmount)}</AtlasText>
           </KeyValue>
-          <KeyValue label="Financias con Atlas (40 %)">
+          <KeyValue label={`Financias con ${marca.nombre} (40 %)`}>
             <AtlasText variant="amountSmall" tone="brand">
               {formatMoney(breakdown.financedAmount)}
             </AtlasText>

@@ -1,3 +1,4 @@
+import { marca } from '../theme/tokens';
 /**
  * Errores de API con jerarquia explicita.
  *
@@ -143,14 +144,14 @@ function lockedUntilOf(error: AtlasApiError): string | null {
 const MESSAGE_BY_KIND: Record<AtlasErrorKind, string> = {
   network: 'Sin conexión. Revisa tu internet e intenta de nuevo.',
   timeout: 'Sin conexión. La conexión tardó demasiado: revisa tu internet e intenta de nuevo.',
-  server: 'Sin conexión. No pudimos comunicarnos con Atlas: intenta de nuevo en unos segundos.',
+  server: `Sin conexión. No pudimos comunicarnos con ${marca.nombre}: intenta de nuevo en unos segundos.`,
   auth: 'Tu sesión expiró. Vuelve a ingresar.',
   permission: 'No tienes permiso para hacer esta acción.',
   not_found: 'No encontramos lo que buscabas.',
   validation: 'Revisa los datos ingresados.',
   conflict: 'Esta operación ya fue registrada.',
   rate_limited: 'Demasiados intentos. Espera un momento antes de reintentar.',
-  unavailable: 'Sin conexión. No pudimos comunicarnos con Atlas: intenta de nuevo en unos segundos.',
+  unavailable: `Sin conexión. No pudimos comunicarnos con ${marca.nombre}: intenta de nuevo en unos segundos.`,
   unknown: 'No pudimos completar la operación.',
 };
 

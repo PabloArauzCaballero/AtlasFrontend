@@ -1,3 +1,4 @@
+import { marca } from '../theme/tokens';
 /**
  * El texto del consentimiento de UBICACION, en un solo sitio.
  *
@@ -24,7 +25,7 @@ export const TITULO_CONSENTIMIENTO_UBICACION = '¿Registramos tu ubicación?';
 /** El cuerpo del aviso del domicilio: usos, lo que no se hace y como retirarlo. */
 export function textoConsentimientoUbicacion(): string {
   return [
-    'Además de marcar tu casa, Atlas puede registrar tu ubicación mientras usas la app para:',
+    `Además de marcar tu casa, ${marca.nombre} puede registrar tu ubicación mientras usas la app para:`,
     ...USOS_DE_LA_UBICACION.map((uso) => `• ${uso}`),
     LO_QUE_NO_HACEMOS_CON_LA_UBICACION,
     'Puedes retirarlo cuando quieras desde «Privacidad». Si dices que no, tu domicilio se guarda igual.',

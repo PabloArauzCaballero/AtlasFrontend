@@ -25,7 +25,7 @@ import * as Device from 'expo-device';
 import { cargarAvisos } from './avisos-modulo';
 import { Platform } from 'react-native';
 import * as customerApi from '../api/endpoints/customer';
-import { color } from '../theme/tokens';
+import { color, marca } from '../theme/tokens';
 
 export type EstadoAvisos = 'concedido' | 'denegado' | 'no-disponible';
 
@@ -76,7 +76,7 @@ export async function prepararAvisos(): Promise<void> {
   if (!Notifications) return;
   try {
     await Notifications.setNotificationChannelAsync(CANAL_AVISOS, {
-      name: 'Avisos de Atlas',
+      name: `Avisos de ${marca.nombre}`,
       importance: Notifications.AndroidImportance.DEFAULT,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PRIVATE,
       sound: 'default',

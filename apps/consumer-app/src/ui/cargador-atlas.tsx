@@ -39,7 +39,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Circle, Defs, LinearGradient as SvgGradient, Path, Stop } from 'react-native-svg';
 import { color, radius } from '../theme/tokens';
-import { DegradadosLetraA, LETRA_A } from './marca-letra';
+import { DegradadosLetraA, LETRA_A, LIENZO_SIMBOLO } from './marca-letra';
 
 export type TamanoCargador = 'compacto' | 'fila' | 'bloque';
 
@@ -145,7 +145,7 @@ export function AnilloAtlas({ tamano = 'fila' }: { tamano?: TamanoCargador }) {
 
       {letra > 0 ? (
         <Animated.View style={[StyleSheet.absoluteFill, styles.centro, marca]}>
-          <Svg width={letra} height={letra} viewBox="0 0 48 48">
+          <Svg width={letra} height={letra} viewBox={LIENZO_SIMBOLO}>
             <Defs>
               <DegradadosLetraA prefijo={`${id}-a`} />
             </Defs>

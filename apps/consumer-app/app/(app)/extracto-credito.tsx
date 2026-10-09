@@ -14,7 +14,7 @@ import {
 } from "../../src/features/extracto-credito";
 import { formatAmount } from "../../src/features/spending-copy";
 import { downloadCreditStatement } from "../../src/features/spending-report";
-import { color, space } from "../../src/theme/tokens";
+import { color, space, marca } from "../../src/theme/tokens";
 import { useSession } from "../../src/session/session";
 import { Gap, Screen, ScreenHeader } from "../../src/ui/layout";
 import {
@@ -185,7 +185,7 @@ export default function ExtractoCredito() {
           {extracto.movimientos.length === 0 ? (
             <EmptyState
               title="Todavía no hay movimientos"
-              detail="Cuando compres con Atlas, tu extracto empieza aquí."
+              detail={`Cuando compres con ${marca.nombre}, tu extracto empieza aquí.`}
             />
           ) : (
             <Card padding="tight" testID="extracto-movimientos">

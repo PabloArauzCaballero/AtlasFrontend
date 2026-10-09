@@ -19,7 +19,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import * as notificationsApi from '../../../src/api/endpoints/notifications';
 import { useSession } from '../../../src/session/session';
-import { color, radius, space } from '../../../src/theme/tokens';
+import { color, radius, space, marca } from '../../../src/theme/tokens';
 import type { IconName } from '../../../src/ui/icons';
 import { Gap, HeaderAction, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { PressSurface } from '../../../src/ui/motion';
@@ -238,7 +238,7 @@ export default function Avisos() {
                     <View style={styles.rowText}>
                       <View style={styles.rowTitle}>
                         <AtlasText variant="title" tone={unreadItem ? 'primary' : 'secondary'} style={styles.flex}>
-                          {item.title ?? item.subject ?? 'Aviso de Atlas'}
+                          {item.title ?? item.subject ?? `Aviso de ${marca.nombre}`}
                         </AtlasText>
                         {/* El punto sustituye a la palabra «nuevo»: ocupa menos y se ve antes. */}
                         {unreadItem ? <View style={styles.dot} /> : null}

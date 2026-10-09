@@ -1,6 +1,12 @@
 /**
  * La tarjeta Atlas: un objeto que se parece a una tarjeta de banco de verdad, con el acabado de su categoría.
  *
+ * REDISEÑO 2026-10-09 (Pablo: «redisená las tarjetas», nada fosforescente). Ahora es MATE y sobria, a la manera de
+ * una tarjeta de titanio: el color del catálogo se conserva como matiz pero sin viveza (`theme/tarjeta.ts`), sin halo,
+ * sin chispas, sin metal cepillado ni relieve. Lo que se queda es el movimiento: se inclina bajo el dedo, el reflejo
+ * sigue al dedo y una banda de luz la cruza, ahora tenue. Lo de abajo describe el diseño anterior y se conserva como
+ * historia del contrato con el backend (`theme.glow` sigue mandando cada cuánto pasa el barrido).
+ *
  * Los colores NO están escritos aquí: vienen del catálogo (`theme`), así que Atlas puede cambiar el aspecto de «Gold»
  * sin publicar la app. Lo que sí es de la app es el objeto y cómo responde:
  *  - **Material**: degradado del catálogo, metal cepillado y guilloché, chip EMV dorado, símbolo de pago sin contacto,
@@ -32,12 +38,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { CardTier } from '../api/endpoints/credit-line';
 import { etiquetaAccesible, fulgorDe } from '../features/tarjeta';
-import { alpha, luz, motion, radius, space, spring } from '../theme/tokens';
+import { acabadoDeTarjeta } from '../theme/tarjeta';
+import { alpha, luz, marca, motion, radius, space, spring } from '../theme/tokens';
 import { AtlasMark } from './brand';
 import { Icon } from './icons';
 import { PressSurface, suavidad } from './motion';
 import { AtlasText } from './primitives';
-import { Chispa, ChipEmv, ReflejoEspecular, SinContacto, TexturaMetal } from './tarjeta-atlas-piezas';
+import { ReflejoEspecular, SinContacto } from './tarjeta-atlas-piezas';
 
 /** Proporción de una tarjeta de crédito (ISO/IEC 7810 ID-1: 85,60 × 53,98 mm). */
 const PROPORCION = 1.586;
@@ -45,15 +52,8 @@ const PROPORCION = 1.586;
 const INCLINACION_MAX = 9;
 /** Lo que tarda la banda de luz en cruzar la tarjeta. */
 const BARRIDO_MS = motion.brandCut * 1.6;
-/** Un ciclo de titilar de las chispas. Lento: se descubren al mirar, no reclaman la mirada. */
-const TITILAR_MS = 3400;
-/** Dónde titilan las chispas (fracción del ancho y del alto) y su tamaño relativo. Lejos del chip, del nombre y de la marca. */
-const CHISPAS = [
-  { x: 0.8, y: 0.24, tamano: 1 },
-  { x: 0.36, y: 0.58, tamano: 0.7 },
-  { x: 0.6, y: 0.4, tamano: 0.55 },
-  { x: 0.9, y: 0.6, tamano: 0.8 },
-] as const;
+/** Cuánto brilla la banda de luz como mucho: un matiz sobre la superficie mate, no un destello. */
+const BARRIDO_MAX = 0.16;
 
 type Props = {
   tier: Pick<CardTier, 'label' | 'theme'>;
@@ -69,13 +69,13 @@ type Props = {
 
 export function TarjetaAtlas({ tier, tamano = 'grande', bloqueada = false, titular, onPress, testID }: Props) {
   const grande = tamano === 'grande';
-  const { gradient, accent } = tier.theme;
-  const colores = (gradient.length >= 2 ? gradient : [gradient[0] ?? accent, gradient[0] ?? accent]) as [string, string, ...string[]];
+  const acabado = acabadoDeTarjeta(tier.theme.gradient[0] ?? tier.theme.accent);
+  const colores = [...acabado.cara] as [string, string, ...string[]];
 
-  if (!grande) return <TarjetaMini tier={tier} colores={colores} bloqueada={bloqueada} testID={testID} />;
+  if (!grande) return <TarjetaMini tier={tier} colores={colores} tinta={acabado.tinta} canto={acabado.canto} bloqueada={bloqueada} testID={testID} />;
 
   const tarjeta = (
-    <TarjetaGrande tier={tier} colores={colores} bloqueada={bloqueada} titular={titular} testID={testID} />
+    <TarjetaGrande tier={tier} colores={colores} tinta={acabado.tinta} canto={acabado.canto} bloqueada={bloqueada} titular={titular} testID={testID} />
   );
   if (!onPress) return tarjeta;
   return (
@@ -93,17 +93,20 @@ export function TarjetaAtlas({ tier, tamano = 'grande', bloqueada = false, titul
 function TarjetaGrande({
   tier,
   colores,
+  tinta: ink,
+  canto,
   bloqueada,
   titular,
   testID,
 }: {
   tier: Pick<CardTier, 'label' | 'theme'>;
   colores: [string, string, ...string[]];
+  tinta: string;
+  canto: string;
   bloqueada: boolean;
   titular?: string | null;
   testID?: string;
 }) {
-  const { ink, accent } = tier.theme;
   const reducido = useReducedMotion();
   const [caja, setCaja] = useState({ ancho: 0, alto: 0 });
   // Dónde está el dedo, de -1 a 1 en cada eje (0 = centro), y si la tarjeta está tocada.
@@ -112,8 +115,6 @@ function TarjetaGrande({
   const tocada = useSharedValue(0);
   // El barrido de luz de entrada: 0 → 1 una sola vez.
   const barrido = useSharedValue(0);
-  // El reloj de las chispas: 0 → 1 en línea recta, sin fin. Cada chispa lo lee con su propio desfase.
-  const titilar = useSharedValue(0);
   const interactiva = !bloqueada && !reducido;
   // Una tarjeta bloqueada no brilla: el fulgor es de la que ya se tiene.
   const fulgor = fulgorDe(bloqueada ? {} : tier.theme);
@@ -130,13 +131,6 @@ function TarjetaGrande({
         : withDelay(motion.base, withRepeat(withTiming(1, { duration: BARRIDO_MS + pausa, easing: Easing.linear }), -1, false));
     return () => cancelAnimation(barrido);
   }, [barrido, caja.ancho, interactiva, pausa]);
-
-  useEffect(() => {
-    if (!interactiva || fulgor.chispas === 0) return;
-    titilar.value = 0;
-    titilar.value = withRepeat(withTiming(1, { duration: TITILAR_MS, easing: Easing.linear }), -1, false);
-    return () => cancelAnimation(titilar);
-  }, [titilar, interactiva, fulgor.chispas]);
 
   const seguir = (evento: GestureResponderEvent, empieza: boolean) => {
     if (!interactiva || caja.ancho === 0) return;
@@ -167,12 +161,12 @@ function TarjetaGrande({
   }));
   // La sombra se va al lado contrario de la inclinación: es lo que le da el peso de un objeto que se levanta de la mesa.
   const sombra = useAnimatedStyle(() => ({
-    shadowOffset: { width: -x.value * 10, height: 10 - y.value * 6 },
-    shadowOpacity: 0.34 + tocada.value * 0.12,
+    shadowOffset: { width: -x.value * 6, height: 4 - y.value * 3 },
+    shadowOpacity: 0.1 + tocada.value * 0.06,
   }));
   const diametro = caja.ancho * 1.25;
   const reflejo = useAnimatedStyle(() => ({
-    opacity: 0.35 + tocada.value * 0.65,
+    opacity: tocada.value * 0.35,
     transform: [
       { translateX: ((x.value + 1) / 2) * caja.ancho - diametro / 2 },
       { translateY: ((y.value + 1) / 2) * caja.alto - diametro / 2 },
@@ -188,7 +182,6 @@ function TarjetaGrande({
       transform: [{ translateX: -banda * 1.4 + cruce * (caja.ancho + banda * 2.8) }, { rotate: '20deg' }],
     };
   });
-  const tamanoChispa = caja.ancho * 0.09;
 
   return (
     <View style={styles.aire}>
@@ -197,13 +190,6 @@ function TarjetaGrande({
           El halo: la tarjeta como fuente de luz. Es una sombra del color de su filo, sin desplazar, por DEBAJO de la
           cara; cuanto más fulgor, más ancha y más opaca. Quieto a propósito: es materia, no animación.
         */}
-        {fulgor.halo.opacidad > 0 ? (
-          <View
-            pointerEvents="none"
-            testID="tarjeta-halo"
-            style={[styles.halo, { backgroundColor: colores[0], shadowColor: accent, shadowOpacity: fulgor.halo.opacidad, shadowRadius: fulgor.halo.radio }]}
-          />
-        ) : null}
         <View
           accessible
           accessibilityRole="image"
@@ -216,17 +202,7 @@ function TarjetaGrande({
           onTouchEnd={soltar}
           onTouchCancel={soltar}
         >
-          <LinearGradient colors={colores} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.cara, { borderColor: accent }]}>
-            <TexturaMetal ancho={caja.ancho} alto={caja.alto} tinta={ink} />
-            {/* Luz de ambiente fija arriba a la izquierda: da volumen aunque nadie toque la tarjeta. */}
-            <LinearGradient
-              pointerEvents="none"
-              colors={[alpha(luz.blanco, fulgor.ambiente), alpha(luz.blanco, 0.04), alpha(luz.blanco, 0)]}
-              locations={[0, 0.45, 1]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 0.8, y: 0.9 }}
-              style={StyleSheet.absoluteFill}
-            />
+          <LinearGradient colors={colores} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.cara, { borderColor: canto }]}>
             {interactiva && caja.ancho > 0 ? (
               <View pointerEvents="none" style={StyleSheet.absoluteFill} testID="tarjeta-destello">
                 <Animated.View style={[styles.reflejo, reflejo]}>
@@ -234,24 +210,12 @@ function TarjetaGrande({
                 </Animated.View>
                 <Animated.View style={[styles.banda, { width: banda }, destello]}>
                   <LinearGradient
-                    colors={[alpha(luz.blanco, 0), alpha(luz.blanco, fulgor.barrido.opacidad), alpha(luz.blanco, 0)]}
+                    colors={[alpha(luz.blanco, 0), alpha(luz.blanco, Math.min(BARRIDO_MAX, fulgor.barrido.opacidad * 0.3)), alpha(luz.blanco, 0)]}
                     start={{ x: 0, y: 0.5 }}
                     end={{ x: 1, y: 0.5 }}
                     style={StyleSheet.absoluteFill}
                   />
                 </Animated.View>
-                {CHISPAS.slice(0, fulgor.chispas).map((chispa, indice) => (
-                  <ChispaViva
-                    key={indice}
-                    reloj={titilar}
-                    desfase={indice / Math.max(1, fulgor.chispas)}
-                    brillo={0.55 + fulgor.nivel * 0.45}
-                    tamano={tamanoChispa * chispa.tamano}
-                    izquierda={caja.ancho * chispa.x}
-                    arriba={caja.alto * chispa.y}
-                    color={accent}
-                  />
-                ))}
               </View>
             ) : null}
 
@@ -260,17 +224,16 @@ function TarjetaGrande({
                 <View style={styles.marca}>
                   <AtlasMark size={caja.ancho * 0.085 || 26} />
                   <AtlasText variant="overline" style={[styles.palabra, { color: ink }]}>
-                    ATLAS
+                    {marca.nombre.toUpperCase()}
                   </AtlasText>
                 </View>
                 {bloqueada ? <Icon name="candado" size={20} tint={ink} /> : <SinContacto alto={caja.ancho * 0.07 || 22} color={ink} />}
               </View>
 
-              <View style={styles.chip}>
-                <ChipEmv ancho={caja.ancho * 0.15 || 46} />
-              </View>
+              {/* El chip: un rectangulo de la misma tinta, sin oro ni relieve. Dice «tarjeta» sin pedir la mirada. */}
+              <View style={[styles.chip, { width: caja.ancho * 0.13 || 42, borderColor: alpha(ink, 0.35), backgroundColor: alpha(ink, 0.08) }]} />
 
-              <AtlasText variant="title" style={[styles.numero, styles.relieve, { color: ink }]}>
+              <AtlasText variant="caption" style={[styles.numero, { color: ink }]}>
                 •••• •••• •••• ••••
               </AtlasText>
 
@@ -279,11 +242,11 @@ function TarjetaGrande({
                   <AtlasText variant="micro" style={[styles.etiqueta, { color: ink }]}>
                     TITULAR
                   </AtlasText>
-                  <AtlasText variant="caption" numberOfLines={1} style={[styles.nombre, styles.relieve, { color: ink }]}>
-                    {(titular?.trim() || 'Miembro Atlas').toUpperCase()}
+                  <AtlasText variant="captionStrong" numberOfLines={1} style={[styles.nombre, { color: ink }]}>
+                    {(titular?.trim() || `Miembro ${marca.nombre}`).toUpperCase()}
                   </AtlasText>
                 </View>
-                <AtlasText variant="h1" style={[styles.relieve, { color: ink }]}>
+                <AtlasText variant="h3" style={{ color: ink }}>
                   {tier.label}
                 </AtlasText>
               </View>
@@ -295,67 +258,31 @@ function TarjetaGrande({
   );
 }
 
-/**
- * Una chispa que titila: aparece creciendo, brilla un instante y se apaga. Todas leen el mismo reloj con su desfase,
- * así que nunca parpadean a la vez. La curva se eleva al cubo para que pase casi todo el ciclo apagada: un destello
- * es breve, y uno que está siempre encendido es un adorno pegado.
- */
-function ChispaViva({
-  reloj,
-  desfase,
-  brillo,
-  tamano,
-  izquierda,
-  arriba,
-  color,
-}: {
-  reloj: SharedValue<number>;
-  desfase: number;
-  brillo: number;
-  tamano: number;
-  izquierda: number;
-  arriba: number;
-  color: string;
-}) {
-  const estilo = useAnimatedStyle(() => {
-    const t = Math.pow(suavidad(reloj.value, desfase, 1), 3);
-    return { opacity: t * brillo, transform: [{ scale: 0.35 + t * 0.65 }, { rotate: `${t * 45}deg` }] };
-  });
-  return (
-    <Animated.View testID="tarjeta-chispa" style={[styles.chispa, { left: izquierda - tamano / 2, top: arriba - tamano / 2 }, estilo]}>
-      <Chispa tamano={tamano} color={color} />
-    </Animated.View>
-  );
-}
-
 /** La miniatura de la escalera: quieta, con el logotipo y el nombre. Es una muestra, no el objeto. */
 function TarjetaMini({
   tier,
   colores,
+  tinta: ink,
+  canto,
   bloqueada,
   testID,
 }: {
   tier: Pick<CardTier, 'label' | 'theme'>;
   colores: [string, string, ...string[]];
+  tinta: string;
+  canto: string;
   bloqueada: boolean;
   testID?: string;
 }) {
-  const { ink, accent } = tier.theme;
-  // La miniatura no se mueve, pero su halo sí sigue la escalera: de un vistazo se ve cuál brilla más.
-  const { halo } = fulgorDe(bloqueada ? {} : tier.theme);
   return (
     <View
       accessible
       accessibilityRole="image"
       accessibilityLabel={`${etiquetaAccesible(tier)}${bloqueada ? ', todavía bloqueada' : ''}`}
       testID={testID}
-      style={[
-        styles.mini,
-        bloqueada && styles.bloqueada,
-        halo.opacidad > 0 && { backgroundColor: colores[0], shadowColor: accent, shadowOpacity: halo.opacidad, shadowRadius: halo.radio / 3, shadowOffset: { width: 0, height: 0 } },
-      ]}
+      style={[styles.mini, bloqueada && styles.bloqueada]}
     >
-      <LinearGradient colors={colores} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.caraMini, { borderColor: accent }]}>
+      <LinearGradient colors={colores} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[StyleSheet.absoluteFill, styles.caraMini, { borderColor: canto }]}>
         <View style={styles.contenidoMini}>
           <View style={styles.fila}>
             <AtlasMark size={14} />
@@ -374,30 +301,26 @@ const styles = StyleSheet.create({
   // La sombra y la inclinación necesitan aire: la tarjeta gira unos grados y su sombra se extiende; sin margen chocaría
   // con lo de arriba, lo de abajo y los bordes de la pantalla.
   aire: { paddingVertical: space.lg, paddingHorizontal: space.sm },
-  sombra: { borderRadius: radius.xxl, shadowColor: luz.negro, shadowRadius: 18, elevation: 10 },
-  grande: { width: '100%', aspectRatio: PROPORCION, borderRadius: radius.xxl, overflow: 'hidden' },
+  // Radio de tarjeta física (≈3 mm sobre 85 mm): una tarjeta de banco no es una píldora.
+  sombra: { borderRadius: radius.lg, shadowColor: luz.negro, shadowRadius: 14, elevation: 4 },
+  grande: { width: '100%', aspectRatio: PROPORCION, borderRadius: radius.lg, overflow: 'hidden' },
   // Sin `overflow: hidden` aquí: lo recorta la cara de dentro, y así el halo puede salir por fuera.
   mini: { width: 86, aspectRatio: PROPORCION, borderRadius: radius.md },
   bloqueada: { opacity: 0.45 },
-  cara: { borderRadius: radius.xxl, borderWidth: 1, overflow: 'hidden' },
-  caraMini: { borderRadius: radius.md, borderWidth: 1, overflow: 'hidden' },
+  cara: { borderRadius: radius.lg, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
+  caraMini: { borderRadius: radius.sm, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   contenido: { flex: 1, padding: space.lg, justifyContent: 'space-between' },
   contenidoMini: { flex: 1, padding: space.sm, justifyContent: 'space-between' },
   fila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   marca: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   // El logotipo va abierto, con aire entre letras, como en la marca: no con el interletraje apretado de un titular.
   palabra: { letterSpacing: 4 },
-  chip: { marginTop: -space.xs },
-  numero: { letterSpacing: 2.5, fontVariant: ['tabular-nums'] },
-  // Relieve: una sombra de un píxel abajo y a la derecha, como el número estampado de una tarjeta física.
-  relieve: { textShadowColor: alpha(luz.negro, 0.35), textShadowOffset: { width: 0.6, height: 1 }, textShadowRadius: 0.8 },
+  chip: { aspectRatio: 1.3, borderRadius: radius.xs, borderWidth: 1 },
+  numero: { letterSpacing: 2.5, fontVariant: ['tabular-nums'], opacity: 0.8 },
   pie: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: space.md },
   titular: { flexShrink: 1, gap: 1 },
   etiqueta: { opacity: 0.7, letterSpacing: 1.5 },
   nombre: { letterSpacing: 1.6 },
-  // Mismo recorte que la cara, para que la luz salga del canto de la tarjeta y no de un rectángulo.
-  halo: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, borderRadius: radius.xxl, shadowOffset: { width: 0, height: 0 }, elevation: 0 },
-  chispa: { position: 'absolute' },
   reflejo: { position: 'absolute', top: 0, left: 0 },
   banda: { position: 'absolute', top: -60, bottom: -60 },
 });

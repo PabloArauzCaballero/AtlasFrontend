@@ -22,7 +22,7 @@ import { categoryLook, dueCopy, formatAmount } from '../../../src/features/spend
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useAlVolver } from '../../../src/features/al-volver';
 import { useSession } from '../../../src/session/session';
-import { color, radius, space } from '../../../src/theme/tokens';
+import { color, radius, space, marca } from '../../../src/theme/tokens';
 import type { IconName } from '../../../src/ui/icons';
 import { Appear, PressSurface } from '../../../src/ui/motion';
 import { PaymentCalendarView } from '../../../src/ui/payment-calendar';
@@ -378,7 +378,7 @@ export default function Payments() {
           title={filter === 'todos' ? 'Todavía no tienes créditos' : 'Nada en este filtro'}
           detail={
             filter === 'todos'
-              ? 'Cuando compres con Atlas, aquí aparecerán tus cuotas agrupadas por comercio.'
+              ? `Cuando compres con ${marca.nombre}, aquí aparecerán tus cuotas agrupadas por comercio.`
               : 'Prueba con otro filtro para ver el resto de tus créditos.'
           }
           action={

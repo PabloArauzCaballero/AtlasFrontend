@@ -20,7 +20,7 @@ import { router } from 'expo-router';
 import { Keyboard, ScrollView, StyleSheet, View } from 'react-native';
 import type { AssistScreen } from '../api/endpoints/assist';
 import { PREGUNTAS_FRECUENTES, type BurbujaAssist, type useAssist } from '../features/assist';
-import { color, radius, space, stroke, touch } from '../theme/tokens';
+import { color, radius, space, stroke, touch, marca } from '../theme/tokens';
 import { AssistHistorial } from './assist-historial';
 import { Field } from './fields';
 import { BottomSheet } from './help-sheet';
@@ -90,7 +90,7 @@ export function AssistSheet({
   const vacia = burbujas.length === 0 && estado.fase !== 'cargando';
 
   return (
-    <BottomSheet visible={visible} titulo="Atlas Assist" onClose={onClose} cierre="Cerrar" evitarTeclado altura="alta">
+    <BottomSheet visible={visible} titulo={`${marca.nombre} Assist`} onClose={onClose} cierre="Cerrar" evitarTeclado altura="alta">
       <View style={styles.cuerpo} {...webData('asistente-hoja')}>
         {vista === 'historial' ? (
           <AssistHistorial
@@ -133,7 +133,7 @@ export function AssistSheet({
               {vacia ? (
                 <View style={styles.vacio}>
                   <AtlasText variant="body" tone="secondary">
-                    Te ayudo con Atlas: qué es y cómo funciona, comprar con QR en un comercio, ver y pagar tus cuotas, tus avisos, tu
+                    Te ayudo con {marca.nombre}: qué es y cómo funciona, comprar con QR en un comercio, ver y pagar tus cuotas, tus avisos, tu
                     perfil y tu PIN.
                   </AtlasText>
                   <View style={styles.chips}>
@@ -164,7 +164,7 @@ export function AssistSheet({
                 <View style={styles.escribiendo}>
                   <Icon name="asistente" size={16} tint={color.text.tertiary} />
                   <AtlasText variant="caption" tone="tertiary">
-                    Atlas Assist está escribiendo…
+                    {marca.nombre} Assist está escribiendo…
                   </AtlasText>
                 </View>
               ) : null}
@@ -202,7 +202,7 @@ export function AssistSheet({
               */}
               <Button label="Hablar con una persona" icon="telefono" variant="ghost" onPress={() => irASoporte(onClose)} testID="asistente-humano" />
               <AtlasText variant="micro" tone="tertiary" style={styles.aviso}>
-                Atlas Assist puede equivocarse. No ve tus saldos ni tus movimientos.
+                {marca.nombre} Assist puede equivocarse. No ve tus saldos ni tus movimientos.
               </AtlasText>
             </View>
           </>

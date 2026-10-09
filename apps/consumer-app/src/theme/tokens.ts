@@ -41,6 +41,9 @@ export { metal } from './palette';
 export { ilustracion } from './ilustracion';
 export { objeto } from './objetos';
 export { marca } from './marca';
+
+/** Cuanto emite luz la interfaz (`marca.estilo.brillo`): multiplica halos, auras y reflejos. 0 = sobrio. */
+export const brillo = marca.estilo.brillo;
 export { alpha } from './temas';
 export type { Degradado, Esquema, Tema } from './temas';
 
@@ -114,8 +117,8 @@ export const font = {
   bodyBold: texto?.negrita ?? SISTEMA,
   bodyBlack: texto?.negrita ?? SISTEMA,
   /** El logotipo escrito y el escenario de marca. */
-  brand: marca.tipografia.logotipo,
-  brandBold: marca.tipografia.logotipo,
+  brand: marca.tipografia.logotipo ?? SISTEMA,
+  brandBold: marca.tipografia.logotipo ?? SISTEMA,
 } as const;
 
 /** El grosor de cada `font.*`. Con la fuente del sistema, el peso va aqui y no en el nombre. */

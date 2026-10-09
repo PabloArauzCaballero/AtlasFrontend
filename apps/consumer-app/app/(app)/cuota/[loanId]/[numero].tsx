@@ -40,6 +40,7 @@ import {
   ListRow,
   Skeleton,
 } from '../../../../src/ui/primitives';
+import { marca } from '../../../../src/theme/tokens';
 
 type State = 'paid' | 'overdue' | 'upcoming';
 
@@ -203,7 +204,7 @@ export default function InstallmentDetail() {
         <Card>
           <CardHeader icon="ayuda" title="¿Dónde la pago?" />
           <AtlasText variant="body" tone="secondary">
-            Al QR bancario de {loan.merchant?.displayName ?? 'el comercio donde compraste'}. Atlas nunca recibe tu dinero: cada
+            Al QR bancario de {loan.merchant?.displayName ?? 'el comercio donde compraste'}. {marca.nombre} nunca recibe tu dinero: cada
             cuota se paga al comercio, y él nos confirma el pago.
           </AtlasText>
           {/*

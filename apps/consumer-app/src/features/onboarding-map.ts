@@ -8,6 +8,7 @@
 import { copyRemoto } from './copy-cache';
 import type { Blocker, OnboardingSectionCode } from '../api/endpoints/onboarding';
 import type { IconName } from '../ui/icons';
+import { marca } from '../theme/tokens';
 
 export type OnboardingRoute =
   | '/(onboarding)/verificar-contacto'
@@ -176,7 +177,7 @@ export const LIFECYCLE_COPY: Record<string, { title: string; detail: string }> =
     detail: 'Una persona está revisando tu identidad y tus datos. Te avisamos apenas tu cuenta esté verificada.',
   },
   observed: { title: 'Necesitamos una correccion', detail: 'Revisa las observaciones y vuelve a enviar.' },
-  active: { title: 'Cuenta activa', detail: 'Ya puedes comprar con Atlas.' },
+  active: { title: 'Cuenta activa', detail: `Ya puedes comprar con ${marca.nombre}.` },
   rejected: { title: 'Solicitud no aprobada', detail: 'Por ahora no podemos habilitar tu línea.' },
   suspended: { title: 'Cuenta suspendida', detail: 'Comunícate con soporte para revisar tu caso.' },
 };

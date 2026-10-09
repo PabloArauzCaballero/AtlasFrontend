@@ -6,13 +6,14 @@
  * fraude, y los que no figuran caen a un nombre legible hecho del propio código, nunca al código crudo.
  */
 import type { BadgeTone } from '../ui/primitives';
+import { marca } from '../theme/tokens';
 
 export type Origen = 'expediente' | 'derivado' | 'ausente';
 
 /** Un color por origen: verde lo que dijo la persona, azul lo que calculó Atlas, ámbar lo que falta. */
 export const ORIGENES: Record<Origen, { titulo: string; resumen: string; tono: BadgeTone }> = {
   expediente: { titulo: 'Lo declaraste tú', resumen: 'Declarados', tono: 'success' },
-  derivado: { titulo: 'Lo calculó Atlas', resumen: 'Calculados', tono: 'info' },
+  derivado: { titulo: `Lo calculó ${marca.nombre}`, resumen: 'Calculados', tono: 'info' },
   ausente: { titulo: 'Falta', resumen: 'Faltan', tono: 'warning' },
 };
 
@@ -33,7 +34,7 @@ const ETIQUETAS: Record<string, string> = {
   tax_return_verified: 'Declaración de impuestos',
   source_of_funds_verified: 'Origen de tus fondos',
   bureau_score: 'Puntaje en buró de crédito',
-  no_hit_flag: 'Sin historial en Atlas',
+  no_hit_flag: `Sin historial en ${marca.nombre}`,
   thin_file_flag: 'Historial corto',
   delinquency_count_12m: 'Atrasos en 12 meses',
   worst_delinquency_status: 'Peor atraso',
@@ -44,7 +45,7 @@ const ETIQUETAS: Record<string, string> = {
   inquiries_last_6m: 'Solicitudes en 6 meses',
   revolving_utilization_ratio: 'Cuánto usas de tu línea',
   credit_mix_score: 'Variedad de tus créditos',
-  payment_history_score: 'Cómo pagas en Atlas',
+  payment_history_score: `Cómo pagas en ${marca.nombre}`,
   kyc_status: 'Verificación de identidad',
   national_id_verified: 'Carnet verificado',
   address_verified: 'Domicilio registrado',
@@ -87,9 +88,9 @@ const ETIQUETAS: Record<string, string> = {
   capacity_monthly_installment: 'Cuota mensual que puedes pagar',
   capacity_binding_constraint: 'Qué limita tu capacidad',
   capacity_evidence_source: 'Con qué se midió tu capacidad',
-  relationship_score: 'Tu relación con Atlas',
+  relationship_score: `Tu relación con ${marca.nombre}`,
   relationship_tier: 'Tu nivel de relación',
-  tenure_score: 'Tu antigüedad en Atlas',
+  tenure_score: `Tu antigüedad en ${marca.nombre}`,
   loyalty_score: 'Tu fidelidad',
   monthlyIncome: 'Ingreso mensual',
   incomeSource: 'Fuente de ingreso',

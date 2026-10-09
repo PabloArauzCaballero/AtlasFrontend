@@ -9,6 +9,7 @@
  * alguien lo pide de nuevo—. Tener dos copias del texto garantiza que un dia digan cosas distintas.
  */
 import type { TourStep } from '../ui/tour';
+import { marca } from '../theme/tokens';
 
 /** Clave de persistencia. Cambiarla vuelve a mostrar el recorrido a todo el mundo. */
 export const TOUR_INICIO_KEY = 'inicio.v1';
@@ -40,6 +41,6 @@ export const TOUR_INICIO_STEPS: TourStep[] = [
     title: 'Tus cuotas se pagan al comercio',
     // Es el invariante del producto y la pregunta de confianza que trae todo el mundo. Si la app no
     // lo dice, lo deduce cada quien por su cuenta y casi siempre lo deduce mal.
-    body: 'Atlas nunca recibe tu dinero: cada cuota se paga al QR bancario del comercio donde compraste. Aquí te decimos cuál y cuándo.',
+    body: `${marca.nombre} nunca recibe tu dinero: cada cuota se paga al QR bancario del comercio donde compraste. Aquí te decimos cuál y cuándo.`,
   },
 ];

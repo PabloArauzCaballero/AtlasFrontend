@@ -49,7 +49,7 @@ import { AtlasMark, BrandHalo } from '../../src/ui/brand';
 import { useBrandCut } from '../../src/ui/brand-cut';
 import { toqueWeb } from '../../src/ui/hit-slop';
 import { useAnchoDeColumna, useTramo } from '../../src/ui/responsive';
-import { color, radius, space } from '../../src/theme/tokens';
+import { color, marca, radius, space } from '../../src/theme/tokens';
 import * as contentApi from '../../src/api/endpoints/app-content';
 import { AtlasText, Button } from '../../src/ui/primitives';
 import { bitacora } from '../../src/features/bitacora';
@@ -212,7 +212,7 @@ export default function Welcome() {
           <Animated.View style={[styles.marcaWrap, marcaStyle]}>
             <AtlasMark size={112} />
             <AtlasText variant="hero" style={styles.marcaTexto}>
-              ATLAS
+              {marca.nombre.toUpperCase()}
             </AtlasText>
           </Animated.View>
           <Animated.View style={esloganStyle}>

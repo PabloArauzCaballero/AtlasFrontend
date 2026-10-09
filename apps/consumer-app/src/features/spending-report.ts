@@ -15,6 +15,7 @@ import { descargarConSesion, guardarEnNavegador } from '../device/archivos';
 import * as Sharing from 'expo-sharing';
 import { apiConfig } from '../api/config';
 import { readAccessToken } from '../api/client';
+import { marca } from '../theme/tokens';
 
 export type ReportOutcome = { ok: true } | { ok: false; reason: string };
 
@@ -51,7 +52,7 @@ export async function downloadSpendingReport(customerId: string, now = new Date(
       return { ok: false, reason: 'Este dispositivo no puede abrir el informe.' };
     }
 
-    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Informe de gastos Atlas' });
+    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Informe de gastos ${marca.nombre}` });
     return { ok: true };
   } catch {
     return { ok: false, reason: 'No pudimos generar tu informe. Inténtalo de nuevo.' };
@@ -74,7 +75,7 @@ export async function downloadCreditStatement(customerId: string, now = new Date
     });
     if (guardarEnNavegador(uri, nombre)) return { ok: true };
     if (!(await Sharing.isAvailableAsync())) return { ok: false, reason: 'Este dispositivo no puede abrir el extracto.' };
-    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Extracto de crédito Atlas' });
+    await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: `Extracto de crédito ${marca.nombre}` });
     return { ok: true };
   } catch {
     return { ok: false, reason: 'No pudimos generar tu extracto. Inténtalo de nuevo.' };

@@ -12,6 +12,7 @@ import type { ReactNode } from 'react';
 import type { CreditLine } from '../api/endpoints/credit-line';
 import { formatAmount } from '../features/spending-copy';
 import { AtlasText, Cargando, Card, CardHeader, Divider, ErrorState, Skeleton, Stat, StatRow } from './primitives';
+import { marca } from '../theme/tokens';
 
 type Props = {
   creditLine: CreditLine | null;
@@ -47,7 +48,7 @@ export function CreditoHabilitadoCard({ creditLine, ready, error, onRetry, texto
           {/* Sólo se afirma la procedencia cuando hay una ejecución del motor que la respalde. */}
           {creditLine.decision?.executionId ? (
             <AtlasText variant="caption" tone="tertiary" testID="credito-procedencia">
-              Lo decidió el motor de decisión de Atlas el {fechaCorta(creditLine.decision.calculatedAt)}.
+              Lo decidió el motor de decisión de {marca.nombre} el {fechaCorta(creditLine.decision.calculatedAt)}.
             </AtlasText>
           ) : null}
         </>

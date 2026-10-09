@@ -36,7 +36,7 @@ import * as creditLineApi from "../../api/endpoints/credit-line";
 import { describeError } from "../../api/errors";
 import { fetchAlAlmacen } from "../../api/almacen";
 import { useSession } from "../../session/session";
-import { space } from "../../theme/tokens";
+import { space, marca } from "../../theme/tokens";
 import type { IconName } from "../../ui/icons";
 import { Gap, Screen, ScreenHeader } from "../../ui/layout";
 import {
@@ -60,7 +60,7 @@ const PROMESAS: { icon: IconName; title: string; detail: string }[] = [
     icon: "candado",
     title: "Viaja por una conexión segura",
     detail:
-      "El archivo sube directo al almacén de Atlas por una conexión segura. Para subirlo, la app lo lee de una copia temporal en tu teléfono y la borra al terminar.",
+      `El archivo sube directo al almacén de ${marca.nombre} por una conexión segura. Para subirlo, la app lo lee de una copia temporal en tu teléfono y la borra al terminar.`,
   },
   {
     icon: "escudo",

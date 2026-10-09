@@ -16,7 +16,7 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { Badge } from '../api/endpoints/credit-line';
 import { avanceDeInsignia } from '../features/puntaje-explicado';
-import { color, radius, space, stroke } from '../theme/tokens';
+import { color, radius, space, stroke, marca } from '../theme/tokens';
 import { AtlasText } from './primitives';
 import { Medalla } from './medalla';
 import { METAL, rangoDe } from './trofeo';
@@ -28,7 +28,7 @@ export type { Rango } from './trofeo';
 export function caraDe(insignia: Badge): { label: string; detail: string; icon: string; oculta: boolean } {
   const oculta = !!insignia.secret && !insignia.earned;
   return oculta
-    ? { label: 'Insignia secreta', detail: insignia.hint ?? 'Sigue usando Atlas y la descubrirás.', icon: 'candado', oculta }
+    ? { label: 'Insignia secreta', detail: insignia.hint ?? `Sigue usando ${marca.nombre} y la descubrirás.`, icon: 'candado', oculta }
     : { label: insignia.label, detail: insignia.detail, icon: insignia.icon, oculta };
 }
 

@@ -9,7 +9,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
 import { formatoPuntos, nivelPorPuntos } from '../features/nivel';
 import { AVISO_SIN_LIMITE, estaDesbloqueada, fraseDeOrigen, siguienteTarjeta } from '../features/tarjeta';
-import { color, space } from '../theme/tokens';
+import { color, space, marca } from '../theme/tokens';
 import { Icon } from './icons';
 import { TarjetaAtlas } from './tarjeta-atlas';
 import { AtlasText, Card } from './primitives';
@@ -38,7 +38,7 @@ export function TarjetaSeccion({ progress }: { progress: Progress }) {
           </AtlasText>
         ) : (
           <AtlasText variant="caption" tone="brand">
-            Tienes la tarjeta más alta de Atlas.
+            Tienes la tarjeta más alta de {marca.nombre}.
           </AtlasText>
         )}
       </View>

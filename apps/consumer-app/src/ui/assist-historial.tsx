@@ -16,7 +16,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import type { AssistConversationSummary } from '../api/endpoints/assist';
 import { fechaRelativa, type EstadoHistorial } from '../features/assist';
-import { color, radius, space, stroke, touch } from '../theme/tokens';
+import { color, radius, space, stroke, touch, marca } from '../theme/tokens';
 import { toqueWeb } from './hit-slop';
 import { Icon } from './icons';
 import { AtlasText, Badge, Button, IconButton, Skeleton } from './primitives';
@@ -89,7 +89,7 @@ export function AssistHistorial({
           <View style={styles.estado} testID="asistente-historial-vacio">
             <AtlasText variant="title">Aún no tienes conversaciones</AtlasText>
             <AtlasText variant="body" tone="secondary">
-              Cuando le preguntes algo a Atlas Assist, la conversación quedará guardada aquí para que puedas retomarla.
+              Cuando le preguntes algo a {marca.nombre} Assist, la conversación quedará guardada aquí para que puedas retomarla.
             </AtlasText>
           </View>
         ) : null}

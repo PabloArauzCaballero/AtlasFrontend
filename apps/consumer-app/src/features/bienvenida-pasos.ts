@@ -14,6 +14,7 @@
 import type { ContentEntry } from '../api/endpoints/app-content';
 import { esIlustracion, type NombreIlustracion } from '../ui/ilustraciones-bienvenida';
 import { ICON_NAMES, type IconName } from '../ui/icons';
+import { marca } from '../theme/tokens';
 
 export type Paso = { clave: string; icon: IconName; titulo: string; cuerpo: string; ilustracion: NombreIlustracion };
 
@@ -23,9 +24,9 @@ export const PASOS_POR_DEFECTO: Paso[] = [
   {
     clave: CLAVE_QUE_ES_ATLAS,
     icon: 'chispa',
-    titulo: 'Qué es Atlas',
+    titulo: `Qué es ${marca.nombre}`,
     cuerpo:
-      'Atlas te da crédito para comprar en los comercios de tu barrio, sin que un banco decida por ti. Pagas después, en cuotas mensuales, y cada pago a tiempo te acerca a más límite.',
+      `${marca.nombre} te da crédito para comprar en los comercios de tu barrio, sin que un banco decida por ti. Pagas después, en cuotas mensuales, y cada pago a tiempo te acerca a más límite.`,
     ilustracion: 'que-es-atlas',
   },
   {
@@ -40,7 +41,7 @@ export const PASOS_POR_DEFECTO: Paso[] = [
     icon: 'billetera',
     titulo: 'Pagas en cuotas mensuales',
     cuerpo:
-      'Atlas revisa tu solicitud y te asigna una línea con su tasa. Lo que compras con ella lo pagas en cuotas mensuales, y el detalle de cada cuota lo ves en la pantalla de tu crédito.',
+      `${marca.nombre} revisa tu solicitud y te asigna una línea con su tasa. Lo que compras con ella lo pagas en cuotas mensuales, y el detalle de cada cuota lo ves en la pantalla de tu crédito.`,
     ilustracion: 'pagas-en-cuotas',
   },
   {
@@ -48,7 +49,7 @@ export const PASOS_POR_DEFECTO: Paso[] = [
     icon: 'tendencia',
     titulo: 'Construyes tu historial',
     cuerpo:
-      'Cada cuota que pagas a tiempo sube tu puntaje Atlas y tu línea. El historial que ningún buró tiene todavía, lo empiezas aquí.',
+      `Cada cuota que pagas a tiempo sube tu puntaje ${marca.nombre} y tu línea. El historial que ningún buró tiene todavía, lo empiezas aquí.`,
     ilustracion: 'construyes-historial',
   },
 ];

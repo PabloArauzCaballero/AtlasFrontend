@@ -25,6 +25,7 @@ import { LARGO_CODIGO_CAJA } from '../../../src/features/codigo-caja';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { AtlasText, Button, Card, CardHeader, ErrorState } from '../../../src/ui/primitives';
 import { useCopy } from '../../../src/features/use-contenido-remoto';
+import { marca } from '../../../src/theme/tokens';
 
 /** Qué clave del catálogo explica cada rechazo del QR (el texto vive en `copy-catalog.ts`). */
 const REJECTION_KEYS = {
@@ -203,11 +204,11 @@ export default function ScanScreen() {
   return (
     <Screen>
       <Gap size="sm" />
-      <ScreenHeader title="Escanear" subtitle="Apunta al código QR de Atlas del comercio." />
+      <ScreenHeader title="Escanear" subtitle={`Apunta al código QR de ${marca.nombre} del comercio.`} />
 
       {verificando ? (
         <Card>
-          <CardHeader icon="camara" title="Verificando el código…" detail="Estamos confirmando el comercio con Atlas." />
+          <CardHeader icon="camara" title="Verificando el código…" detail={`Estamos confirmando el comercio con ${marca.nombre}.`} />
         </Card>
       ) : null}
 

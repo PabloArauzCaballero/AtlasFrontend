@@ -7,10 +7,10 @@
  */
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
-import { color, space } from '../theme/tokens';
+import { brillo, color, marca, space } from '../theme/tokens';
 import { AtlasText, Overline } from './primitives';
 import { webData } from '../web/estilo';
-import { DegradadosLetraA, LETRA_A } from './marca-letra';
+import { DegradadosLetraA, LETRA_A, LIENZO_SIMBOLO } from './marca-letra';
 
 /**
  * Halo de marca: la atmosfera del fondo.
@@ -43,8 +43,8 @@ export function BrandHalo({ size, style }: { size: number; style?: ViewStyle }) 
               igual, solo que con el contorno emborronado; la parada intermedia al 45 % es la que
               concentra el color en el nucleo y deja que el resto se apague despacio.
             */}
-            <Stop offset="0" stopColor={color.brand.b400} stopOpacity="0.30" />
-            <Stop offset="0.45" stopColor={color.brand.b500} stopOpacity="0.12" />
+            <Stop offset="0" stopColor={color.brand.b400} stopOpacity={0.3 * brillo} />
+            <Stop offset="0.45" stopColor={color.brand.b500} stopOpacity={0.12 * brillo} />
             <Stop offset="1" stopColor={color.brand.b500} stopOpacity="0" />
           </RadialGradient>
         </Defs>
@@ -54,11 +54,11 @@ export function BrandHalo({ size, style }: { size: number; style?: ViewStyle }) 
   );
 }
 
-export { DegradadosLetraA, LETRA_A } from './marca-letra';
+export { DegradadosLetraA, LETRA_A, LIENZO_SIMBOLO } from './marca-letra';
 
 export function AtlasMark({ size = 40 }: { size?: number }) {
   return (
-    <Svg width={size} height={size} viewBox="0 0 48 48" accessibilityLabel="Logotipo de Atlas">
+    <Svg width={size} height={size} viewBox={LIENZO_SIMBOLO} accessibilityLabel={`Logotipo de ${marca.nombre}`}>
       <Defs>
         <DegradadosLetraA prefijo="atlas-marca" />
       </Defs>
@@ -85,9 +85,9 @@ export function AtlasLogo({ size = 44, style }: { size?: number; style?: ViewSty
           leia como una palabra en mayusculas dentro de una frase.
         */}
         <AtlasText variant="h2" style={styles.wordmark}>
-          ATLAS
+          {marca.nombre.toUpperCase()}
         </AtlasText>
-        <Overline tone="brand">Compra hoy, paga después</Overline>
+        {marca.eslogan ? <Overline tone="brand">{marca.eslogan}</Overline> : null}
       </View>
     </View>
   );
