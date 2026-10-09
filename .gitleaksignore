@@ -1,0 +1,12 @@
+# Hallazgos de gitleaks YA existentes en el historial (escaneo completo del 2026-10-09, auditoría de
+# seguridad). Están filtrados en un repo PÚBLICO y quedan pendientes de revisar y, si son reales, rotar
+# por Pablo. Este archivo existe para que el CI detecte fugas NUEVAS, no para dar estos por buenos:
+# borrar una línea cuando su secreto esté rotado (o confirmado como falso positivo).
+#
+# gcp-api-key en apps/consumer-app/google-services.json (clave de Firebase/Google del Android):
+#   restringirla en Google Cloud (paquete + huella SHA-1, sólo las APIs de Firebase) o rotarla.
+# generic-api-key en apps/consumer-app/src/ui/scoring-panel.tsx (dos commits): un `key:` de un
+#   objeto de la UI; probable falso positivo, sin confirmar.
+7995e09e3ca269381df1aebef4d0e95f4a6b2fd8:apps/consumer-app/google-services.json:gcp-api-key:18
+cb0cf4d97fc25ff06d91c1c817e546bbb3519903:apps/consumer-app/src/ui/scoring-panel.tsx:generic-api-key:57
+d7b76b73d711eba686565614835edb08c8150c27:apps/consumer-app/src/ui/scoring-panel.tsx:generic-api-key:57

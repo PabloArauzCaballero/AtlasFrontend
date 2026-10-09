@@ -34,6 +34,8 @@ services:
     environment:
       PORT: '8080'
       ATLAS_API_ORIGIN: ${ATLAS_API_ORIGIN:-http://atlas-backend:3005}
+      # El único almacén al que la web reenvía subidas (`/almacen/`, APP-07). Por defecto el de TEST.
+      ATLAS_ALMACEN_ORIGEN: ${ATLAS_ALMACEN_ORIGEN:-http://minio.161.97.85.216.sslip.io}
     expose: ['8080']
     # El build de la web comparte CPU con el resto de despliegues del servidor: `cpu_shares`
     # sí reparte (a diferencia de CPUQuota, que no limita `docker build`).
