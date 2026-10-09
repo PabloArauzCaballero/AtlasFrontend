@@ -20,7 +20,7 @@
  * Quien abre esta pantalla ya tiene un problema. Obligarle a leer seis respuestas antes de encontrar
  * como hablar con alguien es hacerle pagar por nuestra organizacion del contenido.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -33,18 +33,14 @@ import { Field } from '../../src/ui/fields';
 import { Icon, type IconName } from '../../src/ui/icons';
 import { color, palette, radius, space, stroke } from '../../src/theme/tokens';
 import { filtrarPreguntas } from '../../src/features/preguntas-frecuentes';
-import { resetTour, useTour } from '../../src/ui/tour';
 import { urlDeLaGuia } from '../../src/features/guia-pdf';
-import { TOUR_INICIO_KEY } from '../../src/features/tour-inicio';
+import { useVerRecorrido } from '../../src/features/ver-recorrido';
 import { useTourInicio } from '../../src/features/use-contenido-remoto';
 
 export default function Ayuda() {
   const router = useRouter();
-  const tour = useTour();
   // El texto del recorrido sale del portal; el de fábrica queda de respaldo (sin red, o sin pieza).
   const pasosTour = useTourInicio();
-  const pasosTourRef = useRef(pasosTour);
-  pasosTourRef.current = pasosTour;
   const [help, setHelp] = useState<contentApi.ContentEntry[]>([]);
   const [faq, setFaq] = useState<contentApi.ContentEntry[]>([]);
   const [ready, setReady] = useState(false);
@@ -69,14 +65,8 @@ export default function Ayuda() {
 
   const openScreen = (path: string) => router.push(path as never);
 
-  const replayTour = () => {
-    // Se olvida que ya se vio ANTES de lanzarlo para que al cerrarlo vuelva a marcarse: si no, el
-    // estado quedaria en «visto» y el boton no tendria nada que restablecer la vez siguiente.
-    void resetTour(TOUR_INICIO_KEY).then(() => {
-      router.push('/(app)/(tabs)');
-      tour.start(pasosTourRef.current, TOUR_INICIO_KEY);
-    });
-  };
+  // Vuelve al Inicio que ya existe y arranca cuando la navegación terminó: ver `features/ver-recorrido.ts`.
+  const replayTour = useVerRecorrido(pasosTour);
 
   /*
     Rediseño (Pablo, 2026-10-08: «la estética se ve pésima en comparación a las demás»). Antes: tres tarjetas con un

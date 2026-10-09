@@ -15,7 +15,7 @@
  * ## La coreografia
  *
  * ```
- *    0 ms  ┃ polvo de luz: veinticuatro chispas dispersas por la pantalla giran en espiral hacia el centro
+ *    0 ms  ┃ polvo de luz: catorce chispas dispersas por la pantalla giran en espiral hacia el centro
  *  560 ms  ┃ al llegar encienden un núcleo de luz: el punto exacto donde nace la letra
  *  700 ms  ┃ de ahí la «A» SE DIBUJA sola, trazo a trazo
  * 1340 ms  ┃ el relleno de marca aparece por debajo del trazo y el travesaño cierra la letra
@@ -125,8 +125,8 @@ const CHISPAS = (() => {
     semilla = (semilla * 1664525 + 1013904223) % 4294967296;
     return semilla / 4294967296;
   };
-  return Array.from({ length: 24 }, (_, i) => ({
-    angulo: (i / 24) * Math.PI * 2 + siguiente() * 0.5,
+  return Array.from({ length: 14 }, (_, i) => ({
+    angulo: (i / 14) * Math.PI * 2 + siguiente() * 0.5,
     distancia: 150 + siguiente() * 190,
     tamano: 3 + siguiente() * 5,
     retardo: siguiente() * 220,
@@ -162,41 +162,10 @@ const ESCENA_PX = 360;
 /** El lienzo de los rayos: más que la escena, para que los haces salgan de la marca y se pierdan. */
 const RAYOS_PX = 520;
 
-/**
- * El grano de pelicula.
- *
- * ## Por que hay grano en una app de dinero
- *
- * Porque es la diferencia entre «un logotipo sobre un fondo de color» y «un plano». Un degradado
- * digital perfecto no existe en el mundo fisico: el ojo lo lee como plano, y un fondo plano deja al
- * logotipo pegado contra el cristal. Unas motas irregulares a opacidad muy baja bastan para que el
- * fondo tenga textura y la marca parezca estar DELANTE de algo.
- *
- * ## Por que las posiciones se calculan una vez y no cambian
- *
- * Un grano que se remueve cada fotograma es ruido de television, no grano de pelicula, y ademas
- * obligaria a recalcular ciento veinte formas sesenta veces por segundo durante el arranque —justo
- * cuando el hilo de JS esta ocupado restaurando la sesion—. Estas motas se generan al cargar el
- * modulo, se dibujan una vez y lo unico que se anima es la opacidad de la capa entera, que el
- * compositor resuelve sin volver a dibujar nada.
- *
- * La secuencia es deterministica a proposito (semilla fija): dos ejecuciones dan el mismo grano, y
- * una captura de pantalla de referencia sigue siendo comparable.
+/*
+ * Sin grano de película (2026-10-08): eran 120 círculos SVG dibujados en el arranque, justo cuando el teléfono está más
+ * ocupado, y en los iPhone viejos se notaba como tirones. La viñeta ya da profundidad al fondo.
  */
-const MOTAS = (() => {
-  let semilla = 20260824;
-  const siguiente = () => {
-    // LCG de Numerical Recipes: no hace falta calidad estadistica, hace falta repetibilidad.
-    semilla = (semilla * 1664525 + 1013904223) % 4294967296;
-    return semilla / 4294967296;
-  };
-  return Array.from({ length: 120 }, () => ({
-    x: siguiente() * 100,
-    y: siguiente() * 100,
-    r: 0.18 + siguiente() * 0.42,
-    o: 0.05 + siguiente() * 0.09,
-  }));
-})();
 
 const LETRAS = ['A', 'T', 'L', 'A', 'S'] as const;
 
@@ -318,10 +287,6 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
     };
   });
 
-  /** El grano aparece con el fondo y se va antes del final: sobre la pantalla atravesada estorbaria. */
-  const grano = useAnimatedStyle(() => ({
-    opacity: 0.5 * suave(tramo(reloj.value, 0, 600)) * (1 - tramo(salida.value, 0, 0.6)),
-  }));
 
   /*
    * Sin barras cinematográficas (Pablo, 2026-10-08: «que no se corte abajo en negro»). Eran dos franjas negras del 11 %
@@ -483,13 +448,6 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
         </Svg>
       </View>
 
-      <Animated.View style={[StyleSheet.absoluteFill, grano]}>
-        <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
-          {MOTAS.map((mota, indice) => (
-            <Circle key={indice} cx={mota.x} cy={mota.y} r={mota.r} fill={palette.white} opacity={mota.o} />
-          ))}
-        </Svg>
-      </Animated.View>
 
       <Animated.View style={[StyleSheet.absoluteFill, styles.centro, escenario]}>
         <View style={styles.escena}>
@@ -631,7 +589,7 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
 /**
  * Una chispa del polvo de luz. Parte de lejos, gira en espiral hacia el centro acelerando —como algo que
  * cae en un remolino— y se apaga justo al llegar, cuando se enciende el núcleo. Una vista con
- * `translate`/`scale`/`opacity`: veinticuatro de éstas cuestan menos que un solo trazo SVG animado.
+ * `translate`/`scale`/`opacity`: catorce de éstas cuestan menos que un solo trazo SVG animado.
  */
 function Chispa({ chispa, reloj }: { chispa: (typeof CHISPAS)[number]; reloj: SharedValue<number> }) {
   const estilo = useAnimatedStyle(() => {

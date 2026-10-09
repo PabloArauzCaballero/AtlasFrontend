@@ -25,7 +25,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React from 'react';
-import { BackHandler, StyleSheet, View, useWindowDimensions, type LayoutRectangle } from 'react-native';
+import { BackHandler, InteractionManager, StyleSheet, View, useWindowDimensions, type LayoutRectangle } from 'react-native';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, radius, space, spring } from '../theme/tokens';
@@ -49,6 +49,11 @@ type Rect = LayoutRectangle;
 type TourContextValue = {
   register: (id: string, objetivo: Objetivo | null) => void;
   start: (steps: TourStep[], persistKey?: string) => void;
+  /**
+   * Lanza el recorrido cuando la navegación TERMINÓ de moverse (ver `useVerRecorrido`). Medir los objetivos durante una
+   * transición de pantalla los da desplazados: el foco caía en el sitio equivocado y la tarjeta fuera de la pantalla.
+   */
+  startWhenSettled: (steps: TourStep[], persistKey?: string) => void;
   /** Si hay un recorrido en pantalla. Lo consultan las capas flotantes que no deben taparlo. */
   activo: boolean;
 };
@@ -121,6 +126,8 @@ type Objetivo = { vista: React.RefObject<View | null>; desplazar: Desplazar | nu
 
 /** Cuánto se espera a que aparezca un objetivo que aún no se montó (navegación, datos que llegan). */
 const ESPERA_OBJETIVO_MS = 2500;
+/** Margen tras la transición de pantalla antes del primer paso: la pantalla de destino ya quieta y con sus datos. */
+const ASIENTO_NAVEGACION_MS = 450;
 /** Lo que tarda un `scrollTo` animado en asentarse antes de volver a medir. */
 const ASIENTO_DESPLAZAMIENTO_MS = 420;
 /** Alto reservado para la tarjeta del paso al decidir si cabe encima o debajo del objetivo. */
@@ -174,9 +181,17 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     else objetivos.current.delete(id);
   }, []);
 
+  /** El recorrido en curso, leído sin esperar a un render: dos `start` seguidos no pueden pisarse. */
+  const enCurso = React.useRef<string | null>(null);
   const start = React.useCallback((next: TourStep[], key?: string) => {
     // Un recorrido sin pasos no se abre: dejaría el velo sin tarjeta y sin forma de salir.
     if (next.length === 0) return;
+    /*
+      Uno a la vez. Al repetir el recorrido desde Ayuda se borraba la marca de «visto», y al volver a Inicio su propio
+      arranque automático lo lanzaba OTRA vez encima del que ya corría: el paso volvía a cero a mitad de camino.
+    */
+    if (enCurso.current !== null) return;
+    enCurso.current = key ?? '';
     setSteps(next);
     setIndex(0);
     setRect(undefined);
@@ -188,6 +203,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     // quiere, y volver a lanzarselo en cada arranque es ignorar esa decision. Se cierra YA y se
     // guarda después: esperar al almacenamiento dejaba el velo puesto si el disco tardaba.
     if (persistKey) void AsyncStorage.setItem(`${SEEN_PREFIX}${persistKey}`, '1').catch(() => undefined);
+    enCurso.current = null;
     setSteps(null);
     setIndex(0);
     setRect(undefined);
@@ -243,7 +259,25 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
     return () => sub.remove();
   }, [step, close]);
 
-  const value = React.useMemo<TourContextValue>(() => ({ register, start, activo: steps !== null }), [register, start, steps]);
+  const startWhenSettled = React.useCallback(
+    (next: TourStep[], key?: string) => {
+      // Se reserva YA: el arranque automático de Inicio, que llega antes, no puede colarse en medio.
+      if (enCurso.current !== null || next.length === 0) return;
+      enCurso.current = key ?? '';
+      InteractionManager.runAfterInteractions(() => {
+        setTimeout(() => {
+          enCurso.current = null;
+          start(next, key);
+        }, ASIENTO_NAVEGACION_MS);
+      });
+    },
+    [start],
+  );
+
+  const value = React.useMemo<TourContextValue>(
+    () => ({ register, start, startWhenSettled, activo: steps !== null }),
+    [register, start, startWhenSettled, steps],
+  );
 
   return (
     <TourContext.Provider value={value}>

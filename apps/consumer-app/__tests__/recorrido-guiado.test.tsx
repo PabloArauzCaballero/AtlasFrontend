@@ -43,6 +43,17 @@ describe('recorrido guiado', () => {
     expect(screen.queryByText(/Paso 1 de/)).toBeNull();
   });
 
+  it('un segundo arranque con otro en curso NO lo reinicia (Ayuda + arranque automático de Inicio, 2026-10-08)', async () => {
+    await montar();
+    await act(async () => lanzar(PASOS, 'inicio'));
+    await waitFor(() => expect(screen.getByText('Paso uno')).toBeTruthy(), { timeout: 4000 });
+    await act(async () => fireEvent.press(screen.getByTestId('tour-siguiente')));
+    await waitFor(() => expect(screen.getByText('Paso dos')).toBeTruthy(), { timeout: 4000 });
+    await act(async () => lanzar(PASOS, 'inicio'));
+    expect(screen.getByText('Paso dos')).toBeTruthy();
+    expect(screen.queryByText('Paso uno')).toBeNull();
+  }, 15000);
+
   it('no usa `Modal`: la capa se pinta sobre la navegación y no se rehace entre pasos', async () => {
     await montar();
     await act(async () => lanzar(PASOS));
