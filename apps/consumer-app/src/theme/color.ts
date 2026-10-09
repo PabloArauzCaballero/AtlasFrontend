@@ -35,7 +35,7 @@ export function rgbAHex([r, g, b]: Rgb): string {
 }
 
 export function aOklch(hex: string): Oklch {
-  const [r, g, b] = hexARgb(hex).map((v) => lin(v / 255));
+  const [r, g, b] = hexARgb(hex).map((v) => lin(v / 255)) as Rgb;
   const l_ = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
   const m_ = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
   const s_ = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
@@ -79,20 +79,20 @@ export function conLuz(hex: string, l: number, croma = 1): string {
 
 /** Luminancia relativa WCAG 2.x. */
 export function luminancia(hex: string): number {
-  const [r, g, b] = hexARgb(hex).map((v) => lin(v / 255));
+  const [r, g, b] = hexARgb(hex).map((v) => lin(v / 255)) as Rgb;
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 /** Contraste WCAG 2.x entre dos colores opacos (1 a 21). */
 export function contraste(a: string, b: string): number {
-  const [x, y] = [luminancia(a), luminancia(b)].sort((p, q) => q - p);
+  const [x, y] = [luminancia(a), luminancia(b)].sort((p, q) => q - p) as [number, number];
   return (x + 0.05) / (y + 0.05);
 }
 
 /** Un color translucido pintado sobre un fondo opaco: lo que de verdad ve el ojo. */
 export function sobre(hex: string, alfa: number, fondo: string): string {
   const f = hexARgb(fondo);
-  return rgbAHex(hexARgb(hex).map((v, i) => v * alfa + f[i] * (1 - alfa)) as Rgb);
+  return rgbAHex(hexARgb(hex).map((v, i) => v * alfa + (f[i] ?? 0) * (1 - alfa)) as Rgb);
 }
 
 /**
