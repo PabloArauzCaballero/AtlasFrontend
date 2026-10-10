@@ -18,6 +18,34 @@ App: `app/(app)/(tabs)/cartera.tsx`, `src/ui/cartera/*`, `src/features/cartera/*
 | `?tab=` de cada vista | `?tab=`; al cambiar de vista se borra | ≠ sólo se monta la vista elegida; `tab=creditos` no significa nada en facturación |
 | Breadcrumbs «Portal comercio › Cartera» | Antetítulo «Cartera y facturación» | ≠ no hay migas en un teléfono |
 
+## Limpieza visual (Pablo, 2026-10-10)
+
+Sobre capturas de TestFlight: «textos innecesarios», cosas «muy grandes y poco estéticas». Cambia la
+presentación; los datos, las acciones y las reglas son las de la web. Las tablas de más abajo siguen
+valiendo para los DATOS y los textos; donde dicen «aviso» o «tarjeta-cabecera», manda esta tabla:
+
+| Antes | Ahora |
+|---|---|
+| Antetítulo «Cartera y facturación», título «Mi cartera» / «Consumo y facturación» y párrafo descriptivo | Título «Cartera», sin antetítulo ni párrafo (las descripciones de la web no se ven) |
+| Selector «Mi cartera · Consumo y facturación» en chips con icono | Selector segmentado «Cartera · Facturación» (`corta`; el rótulo largo queda para el lector de pantalla) |
+| «Descargar PDF» gris a lo ancho en cada vista (`pdf-cartera`, `pdf-facturacion`) | Ícono de descarga en la cabecera (`boton-pdf`) que imprime la vista abierta. ≠ ya no se apaga mientras carga: sin datos imprime la estructura con cifras en cero |
+| Pestañas internas en chips con icono, cortadas («Co…») | Segmentado: Panel · Créditos · Calendario · Comisión / Cobros · Cuotas · Cargos |
+| Resumen «Comisión a Atlas (3.00 %)» cortado | «Comisión Atlas 3 %» (`tasaCorta`); en facturación igual |
+| Tarjetas-cabecera de panel con título + descripción + icono | Título corto de sección con ⓘ; la descripción de la web va dentro del ⓘ |
+| Aviso «Por qué no ve nombres» | ⓘ de «Créditos pendientes de pago» |
+| Aviso «Cómo se cobra» (cartera) y nota «Devengado y facturado…» | ⓘ de «Comisión por venta» y de «Lo que Atlas ya le facturó» |
+| Aviso «Se factura cuando el cliente termina de pagar» | ⓘ de «Estado de sus cuotas» y de «Cargos de Atlas» |
+| Aviso «Cómo se cobra la comisión» (facturación) | ⓘ de «Cobros recibidos» |
+| Pastilla con el nombre del negocio (p. ej. «MULTICENTER») en «Cobros recibidos» | Quitada (el negocio lo dice el selector «Negocio» cuando hay más de uno) |
+| Pastilla «Se factura al terminar de pagar» en cada crédito | Pastilla de estado traducida (En mora / Pendiente) y «Listo para facturar» si está saldado; la regla, en el ⓘ |
+| Días de cobro como tarjetas en rejilla / filas con icono | Una línea por día: «dom 08 nov — Bs 240,00 · 1 cuota» (`FilaDeDia`) |
+| Créditos, cobros, cargos y facturas como filas etiqueta–valor | Tarjetas: importe grande arriba, estado en español a la derecha, una línea secundaria (fecha · código corto · caja…) |
+| Concepto del cargo (`sourceType`) y medio del cobro (`paymentMethod`) en crudo («MDR», «bank_transfer») | En palabras con los rótulos del ERP (`conceptoDeCargo`, `medioDePago`); lo desconocido, humanizado |
+| Estado del crédito en crudo (`credit.status`, inglés) y de la cuota (`cuota.status`) | Traducidos desde las cuotas (`estadoDeCredito`, `estadoDeCuota`) |
+| Botón «Descargar» a lo ancho en cada factura | Ícono de descarga en la tarjeta (`descargar-factura-{id}`) |
+| Casillas de comisión con nota debajo («Sobre cada venta financiada»…) | Sólo rótulo y cifra |
+| — | Se relee al volver a la pantalla (`useFocusEffect`) y la lista deja 160 de aire abajo para los botones flotantes |
+
 ## Expediente (negocio)
 
 | Web | App | |
