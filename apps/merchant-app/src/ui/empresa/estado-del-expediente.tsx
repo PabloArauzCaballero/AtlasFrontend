@@ -7,17 +7,21 @@
  *    se sabe si ya existe: así nació más de un expediente duplicado;
  *  - con expediente: lo que falta, el formulario de cada requisito y «Enviar a revisión». Enviar NO
  *    aprueba nada: deja el caso en revisión, porque la aprobación la firma una persona.
+ *
+ * La tarjeta del expediente va en una sola jerarquía: razón social, NIT y el estado en español
+ * (nunca `APPROVED` ni el identificador interno); debajo, lo que falta como lista de comprobación
+ * compacta, y «Enviar a revisión» al pie, del tamaño de un botón y no de una barra.
  */
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { space } from '@cliente/theme/tokens';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { color, space } from '@cliente/theme/tokens';
 import { IconField, SelectField, type OpcionSelect } from '@cliente/ui/form-controls';
-import { AtlasText, Badge, Button, Card, CardHeader } from '@cliente/ui/primitives';
+import { Icon } from '@cliente/ui/icons';
+import { AtlasText, Badge, Button, Card, CardHeader, Divider } from '@cliente/ui/primitives';
 import { REQUIREMENT_LABELS, type PartnerOnboardingState, type SubmissionGap } from '@/api/servicios/partnerOnboardingService';
 import type { JsonObject } from '@/api/types';
-import { camposEscritos, DONDE_SE_RESUELVE, pareceCorreo, tituloDeHuecos, type PestanaEmpresa } from '@/features/empresa/expediente';
+import { camposEscritos, DONDE_SE_RESUELVE, estadoDelExpediente, pareceCorreo, tituloDeHuecos, type PestanaEmpresa } from '@/features/empresa/expediente';
 import { conVacia } from '@/features/empresa/opciones';
-import { Aviso } from '@/ui/aviso';
 import { Requisitos } from './requisitos';
 
 export type ExpedientePropio = 'buscando' | 'sin-expediente' | 'encontrado';
@@ -57,70 +61,83 @@ export function EstadoDelExpediente({
     );
   }
 
+  const estado = estadoDelExpediente(state.profile.onboardingStatus);
   return (
-    <Card>
-      <CardHeader
-        title={state.profile.legalName}
-        detail={`NIT ${state.profile.taxId} · expediente ${state.profile.partnerId}`}
-        icon="escudo"
-        trailing={<Badge label={state.profile.onboardingStatus} tone={state.profile.onboardingStatus === 'approved' ? 'success' : 'info'} dot />}
-      />
-      <View style={styles.cuerpo}>
-        <SubmissionGaps gaps={state.gaps} ready={state.readyToSubmit} onIrA={onIrA} />
-        {/* El formulario de cada requisito, junto al aviso que lo reclama. */}
-        <Requisitos partnerId={partnerId} pendientes={state.gaps.map((hueco) => hueco.requirement)} ocupado={busy} run={run} />
-        <Button
-          label="Enviar a revisión"
-          icon="enviar"
-          disabled={busy || !state.readyToSubmit}
-          onPress={onEnviar}
-          testID="btn-enviar-revision"
+    <View style={styles.columna}>
+      <Card testID="tarjeta-expediente">
+        <CardHeader
+          title={state.profile.legalName}
+          detail={`NIT ${state.profile.taxId}`}
+          trailing={<Badge label={estado.texto} tone={estado.tono} dot />}
+          divider={state.gaps.length > 0 || state.readyToSubmit}
         />
-      </View>
-    </Card>
+        <SubmissionGaps gaps={state.gaps} ready={state.readyToSubmit} onIrA={onIrA} />
+        {/* El botón de la web, igual de habilitado; sólo cambia el tamaño: al pie y no a lo ancho. */}
+        <View style={styles.pie}>
+          <Button label="Enviar a revisión" icon="enviar" disabled={busy || !state.readyToSubmit} onPress={onEnviar} testID="btn-enviar-revision" />
+        </View>
+      </Card>
+      {/* El formulario de cada requisito pendiente, debajo de la lista que lo reclama. */}
+      <Requisitos partnerId={partnerId} pendientes={state.gaps.map((hueco) => hueco.requirement)} ocupado={busy} run={run} />
+    </View>
   );
 }
 
 /**
- * Lo que le falta al expediente. Va en ámbar y no en rojo —no ha fallado nada, falta terminar— y se
- * enseña SIEMPRE, no sólo al intentar enviarlo: descubrir los requisitos de uno en uno, a base de
- * envíos rechazados, convierte un trámite en una pelea. Cada uno dice dónde se resuelve.
+ * Lo que le falta al expediente, como lista de comprobación. Va en ámbar y no en rojo —no ha fallado
+ * nada, falta terminar— y se enseña SIEMPRE, no sólo al intentar enviarlo: descubrir los requisitos
+ * de uno en uno, a base de envíos rechazados, convierte un trámite en una pelea. Cada uno dice dónde
+ * se resuelve, con un enlace a la pestaña.
  */
 export function SubmissionGaps({ gaps, ready, onIrA }: { gaps: SubmissionGap[]; ready: boolean; onIrA: (pestana: PestanaEmpresa) => void }) {
   if (ready) {
     return (
-      <Aviso tono="success" testID="expediente-listo">
-        El expediente reúne todo lo necesario. Al enviarlo queda en revisión: la aprobación la firma una persona.
-      </Aviso>
+      <View style={styles.listo} testID="expediente-listo">
+        <Icon name="check" size={18} tint={color.feedback.success} />
+        <AtlasText variant="body" tone="secondary" style={styles.crece}>
+          Reúne todo lo necesario. Al enviarlo queda en revisión.
+        </AtlasText>
+      </View>
     );
   }
+  // Sin huecos y sin poder enviar (ya aprobado o en revisión): no hay nada que pedir.
+  if (gaps.length === 0) return null;
   return (
-    <Aviso tono="warning" titulo={tituloDeHuecos(gaps.length)} testID="expediente-pendientes">
-      <View style={styles.huecos}>
-        {gaps.map((gap) => {
-          const donde = DONDE_SE_RESUELVE[gap.requirement];
-          return (
-            <View key={gap.requirement} style={styles.hueco}>
-              <AtlasText variant="body" tone="secondary">
-                · <AtlasText variant="bodyStrong">{REQUIREMENT_LABELS[gap.requirement] ?? gap.requirement}</AtlasText> — {gap.detail}
-              </AtlasText>
+    <View style={styles.huecos} testID="expediente-pendientes">
+      <AtlasText variant="captionStrong" tone="warning">
+        {tituloDeHuecos(gaps.length)}
+      </AtlasText>
+      {gaps.map((gap, indice) => {
+        const donde = DONDE_SE_RESUELVE[gap.requirement];
+        return (
+          <View key={gap.requirement}>
+            {indice > 0 ? <Divider /> : null}
+            <View style={styles.hueco}>
+              <Icon name="alerta" size={18} tint={color.feedback.warning} />
+              <View style={styles.crece}>
+                <AtlasText variant="bodyStrong">{REQUIREMENT_LABELS[gap.requirement] ?? gap.requirement}</AtlasText>
+                <AtlasText variant="caption" tone="secondary" numberOfLines={2}>
+                  {gap.detail}
+                </AtlasText>
+              </View>
               {donde ? (
-                <AtlasText
-                  variant="bodyStrong"
-                  tone="brand"
-                  accessibilityRole="link"
+                <Pressable
                   onPress={() => onIrA(donde.tab)}
-                  suppressHighlighting
+                  accessibilityRole="link"
+                  accessibilityLabel={`Resolverlo en ${donde.label}`}
+                  hitSlop={8}
                   testID={`resolver-${gap.requirement}`}
                 >
-                  Resuélvelo en «{donde.label}»
-                </AtlasText>
+                  <AtlasText variant="captionStrong" tone="brand">
+                    Ir ›
+                  </AtlasText>
+                </Pressable>
               ) : null}
             </View>
-          );
-        })}
-      </View>
-    </Aviso>
+          </View>
+        );
+      })}
+    </View>
   );
 }
 
@@ -146,7 +163,7 @@ function AbrirExpediente({ busy, rubros, errorRubros, onAbrir }: { busy: boolean
 
   return (
     <Card>
-      <CardHeader title="Abrir expediente" icon="comercio" detail="Todavía no tienes un expediente. Este es el primer paso." />
+      <CardHeader title="Abrir expediente" icon="comercio" />
       <View style={styles.cuerpo}>
         <IconField
           label="Razón social"
@@ -189,7 +206,6 @@ function AbrirExpediente({ busy, rubros, errorRubros, onAbrir }: { busy: boolean
           value={campos.businessCategory}
           opciones={conVacia(rubros, '— Seleccione —')}
           onChange={poner('businessCategory')}
-          hint="Agrupa tu cartera y las reglas de comisión. Se puede corregir después."
           ayuda="Rubro principal del negocio; agrupa la cartera y decide las reglas de comisión que le aplican."
           error={errorRubros}
         />
@@ -221,8 +237,12 @@ function AbrirExpediente({ busy, rubros, errorRubros, onAbrir }: { busy: boolean
 }
 
 const styles = StyleSheet.create({
+  columna: { gap: space.base },
   cuerpo: { gap: space.base, marginTop: space.base },
   buscando: { paddingVertical: space.xl },
-  huecos: { gap: space.sm },
-  hueco: { gap: space.xxs },
+  huecos: { gap: space.xs, marginTop: space.sm },
+  hueco: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.sm },
+  crece: { flex: 1, gap: space.xxs },
+  listo: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginTop: space.sm },
+  pie: { alignItems: 'flex-end', marginTop: space.base },
 });

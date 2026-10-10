@@ -6,11 +6,15 @@
  * compartir). Después, el recorrido del comercio LEÍDO paso a paso en vez de recorrido sobre la
  * pantalla (ver `features/soporte/tutoriales.ts` por qué). Al final, las guías «¿Qué es esto?» de
  * cada pantalla del portal, plegadas: quien entra aquí trae UNA pregunta, no seis.
+ *
+ * Todo es una lista compacta: la guía en PDF es UNA fila, y el recorrido y cada guía son filas
+ * plegadas (título y duración) que sólo enseñan su texto al abrirlas.
  */
 import { useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import { space } from '@cliente/theme/tokens';
-import { Accordion, AtlasText, Badge, Button, Card, CardHeader, Divider, SectionHeader } from '@cliente/ui/primitives';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
+import { color, space } from '@cliente/theme/tokens';
+import { Icon } from '@cliente/ui/icons';
+import { Accordion, AtlasText, Card, Divider, ListRow } from '@cliente/ui/primitives';
 import { guardarArchivo } from '@/features/pdf';
 import type { ScreenGuide } from '@/features/soporte/guias-portal';
 import { GUIA_PDF, TUTORIAL_PRIMEROS_PASOS, guiasDelComercio, urlDeLaGuiaPdf } from '@/features/soporte/tutoriales';
@@ -39,39 +43,46 @@ export function CentroDeTutoriales() {
 
   return (
     <View style={styles.columna} testID="tutorial-center">
-      <Card testID="guia-pdf">
-        <CardHeader title={GUIA_PDF.titulo} detail={GUIA_PDF.detalle} icon="documento" divider={false} />
-        <Button label="Descargar la guía en PDF" icon="descargar" variant="secondary" loading={bajando} onPress={() => void bajar()} />
+      <Card padding="tight" testID="guia-pdf">
+        <ListRow
+          title="Guía en PDF"
+          subtitle={GUIA_PDF.titulo}
+          icon="documento"
+          onPress={() => (bajando ? undefined : void bajar())}
+          accessibilityHint="Descarga la guía del portal en PDF"
+          right={bajando ? <ActivityIndicator color={color.text.secondary} /> : <Icon name="descargar" size={18} tint={color.text.secondary} />}
+        />
       </Card>
 
-      <Card testID={`tutorial-${tutorial.id}`}>
-        <View style={styles.etiquetas}>
-          <Badge label={tutorial.categoria} />
-          {tutorial.esencial ? <Badge label="Esencial" tone="success" /> : null}
+      <Card padding="tight">
+        <View testID={`tutorial-${tutorial.id}`}>
+          <Accordion title={`${tutorial.title} · ${tutorial.minutos} min`}>
+            <View style={styles.guia}>
+              <AtlasText variant="body" tone="secondary">
+                {tutorial.intro}
+              </AtlasText>
+              {tutorial.steps.map((paso, indice) => (
+                <View key={paso.id} style={styles.seccion}>
+                  <AtlasText variant="micro" tone="tertiary">{`PASO ${indice + 1} DE ${tutorial.steps.length}`}</AtlasText>
+                  <AtlasText variant="title">{paso.title}</AtlasText>
+                  <AtlasText variant="body" tone="secondary">
+                    {paso.content}
+                  </AtlasText>
+                  {paso.tip ? <Apunte texto={paso.tip} /> : null}
+                </View>
+              ))}
+            </View>
+          </Accordion>
         </View>
-        <CardHeader title={tutorial.title} detail={tutorial.intro} icon="educacion" />
-        <AtlasText variant="caption" tone="tertiary">{`${tutorial.minutos} min · ${tutorial.steps.length} pasos · ${tutorial.nivel}`}</AtlasText>
-        {tutorial.steps.map((paso, indice) => (
-          <View key={paso.id} style={styles.paso}>
-            {indice > 0 ? <Divider /> : null}
-            <AtlasText variant="micro" tone="tertiary">{`PASO ${indice + 1} DE ${tutorial.steps.length}`}</AtlasText>
-            <AtlasText variant="title">{paso.title}</AtlasText>
-            <AtlasText variant="body" tone="secondary">
-              {paso.content}
-            </AtlasText>
-            {paso.tip ? <Apunte texto={paso.tip} /> : null}
+        {guiasDelComercio().map(({ ruta, guia }) => (
+          <View key={ruta} testID={`guia-${ruta.split('/').pop()}`}>
+            <Divider />
+            <Accordion title={guia.title}>
+              <Guia guia={guia} />
+            </Accordion>
           </View>
         ))}
       </Card>
-
-      <SectionHeader title="Guías de cada pantalla" detail="Qué es cada sección, qué puedes hacer y a quién avisar si algo no sale como esperabas." />
-      {guiasDelComercio().map(({ ruta, guia }) => (
-        <Card key={ruta} padding="tight" testID={`guia-${ruta.split('/').pop()}`}>
-          <Accordion title={guia.title}>
-            <Guia guia={guia} />
-          </Accordion>
-        </Card>
-      ))}
     </View>
   );
 }
@@ -106,8 +117,6 @@ function Apunte({ texto }: { texto: string }) {
 
 const styles = StyleSheet.create({
   columna: { gap: space.base },
-  etiquetas: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs, paddingBottom: space.sm },
-  paso: { gap: space.xs, paddingTop: space.sm },
   guia: { gap: space.md, paddingTop: space.sm },
   seccion: { gap: space.xs },
 });

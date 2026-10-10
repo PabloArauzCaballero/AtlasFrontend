@@ -99,8 +99,43 @@ export function canalVivo(caso: CasoDeSoporte): string | null {
 }
 
 /** El tono de la pastilla de estado de un caso, como la web: cerrado gris, resuelto verde, el resto informativo. */
-export function tonoDelCaso(caso: CasoDeSoporte): 'neutral' | 'success' | 'info' {
+export function tonoDelCaso(caso: Pick<CasoDeSoporte, 'closedAt' | 'resolvedAt'>): 'neutral' | 'success' | 'info' {
   return caso.closedAt ? 'neutral' : caso.resolvedAt ? 'success' : 'info';
+}
+
+/**
+ * El estado de un caso dicho en español, con su tono. Son los catorce que admite
+ * `ck_support_case_status` en AtlasBackend; el tono parte del de la web (`tonoDelCaso`) y sólo
+ * cambia a ámbar cuando el caso espera algo DEL comercio, que es lo único que le pide actuar.
+ */
+const ESTADO_DEL_CASO: Record<string, string> = {
+  NEW: 'Nuevo',
+  TRIAGED: 'Recibido',
+  ASSIGNED: 'Asignado',
+  IN_PROGRESS: 'En curso',
+  WAITING_CUSTOMER: 'Espera tu respuesta',
+  WAITING_PARTNER: 'Espera tu respuesta',
+  WAITING_INTERNAL: 'En curso',
+  ESCALATED: 'Escalado',
+  ON_HOLD: 'En pausa',
+  RESOLVED: 'Resuelto',
+  CLOSED: 'Cerrado',
+  REOPENED: 'Reabierto',
+  DUPLICATE: 'Duplicado',
+  CANCELLED: 'Cancelado',
+};
+
+export function estadoDelCaso(caso: Pick<CasoDeSoporte, 'status' | 'closedAt' | 'resolvedAt'>): { texto: string; tono: 'neutral' | 'success' | 'info' | 'warning' } {
+  const texto = ESTADO_DEL_CASO[caso.status] ?? caso.status;
+  if (!caso.closedAt && !caso.resolvedAt && (caso.status === 'WAITING_CUSTOMER' || caso.status === 'WAITING_PARTNER')) return { texto, tono: 'warning' };
+  return { texto, tono: tonoDelCaso(caso) };
+}
+
+/** «2 oct»: la fecha de la línea de un caso, sin año ni punto de abreviatura. */
+export function fechaCorta(valor: string): string {
+  const fecha = new Date(valor);
+  if (Number.isNaN(fecha.getTime())) return valor;
+  return fecha.toLocaleDateString('es-BO', { day: 'numeric', month: 'short' }).replace(/\./g, '');
 }
 
 /** Fecha y hora como `toLocaleString('es-BO')` de la web. */

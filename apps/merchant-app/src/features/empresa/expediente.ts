@@ -45,6 +45,39 @@ export function opcionesDeRubro(actual: string | null, rubros: OpcionSelect[]): 
   return opciones;
 }
 
+export type TonoDeEstado = 'success' | 'warning' | 'danger' | 'neutral' | 'info';
+
+/**
+ * Los estados del expediente, dichos al comercio con su tono. Son TODOS los que AtlasBackend
+ * escribe en `onboarding_status`; uno desconocido se enseña tal cual en gris, nunca se esconde.
+ */
+export const ESTADO_DEL_EXPEDIENTE: Record<string, { texto: string; tono: TonoDeEstado }> = {
+  draft: { texto: 'Borrador', tono: 'neutral' },
+  contact_verified: { texto: 'Contacto verificado', tono: 'info' },
+  documents_submitted: { texto: 'Documentos enviados', tono: 'info' },
+  under_review: { texto: 'En revisión', tono: 'warning' },
+  approved: { texto: 'Aprobado', tono: 'success' },
+  rejected: { texto: 'Rechazado', tono: 'danger' },
+  suspended: { texto: 'Suspendido', tono: 'danger' },
+};
+
+export function estadoDelExpediente(status: string): { texto: string; tono: TonoDeEstado } {
+  return ESTADO_DEL_EXPEDIENTE[status] ?? { texto: status, tono: 'neutral' };
+}
+
+/** El estado de una sucursal del ERP (`ACTIVE` / `INACTIVE`). */
+export function estadoDeSucursal(status: unknown): { texto: string; tono: TonoDeEstado } {
+  return String(status) === 'ACTIVE' ? { texto: 'Activa', tono: 'success' } : { texto: 'De baja', tono: 'warning' };
+}
+
+/** El estado de una caja (terminal POS). Sólo `active` acepta cobros. */
+export function estadoDeCaja(status: string): { texto: string; tono: TonoDeEstado } {
+  if (status === 'active') return { texto: 'Activa', tono: 'success' };
+  if (status === 'registered') return { texto: 'Sin activar', tono: 'warning' };
+  if (status === 'suspended') return { texto: 'Suspendida', tono: 'danger' };
+  return { texto: status, tono: 'neutral' };
+}
+
 /** El tono de un estado de QR o de terminal (`toneForStatus` de la web). */
 export function tonoDeEstado(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
   if (status === 'active') return 'success';
@@ -80,7 +113,7 @@ export function documentoMiEmpresa(state: PartnerOnboardingState): DocumentoPdf 
     title: 'Mi empresa',
     subtitle: `${state.profile.legalName} · NIT ${state.profile.taxId}`,
     summary: [
-      { label: 'Estado', value: state.profile.onboardingStatus },
+      { label: 'Estado', value: estadoDelExpediente(state.profile.onboardingStatus).texto },
       { label: 'Sucursales', value: branches.length },
       { label: 'Terminales', value: (state.posTerminals ?? []).length },
       { label: 'QR registrados', value: (state.qrCodes ?? []).length },

@@ -9,9 +9,9 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { space } from '@cliente/theme/tokens';
 import { IconField, SelectField } from '@cliente/ui/form-controls';
 import { BottomSheet } from '@cliente/ui/help-sheet';
-import { AtlasText, Button, Divider, KeyValue, ListRow } from '@cliente/ui/primitives';
+import { AtlasText, Badge, Button, Divider, KeyValue, ListRow } from '@cliente/ui/primitives';
 import type { CasoDeSoporte, MotivoDeSoporte } from '@/api/servicios/supportService';
-import { aplanarMotivos, casoListoParaEnviar, fechaHora, motivoDeBloqueo, type BorradorDeCaso } from '@/features/soporte/chat';
+import { aplanarMotivos, casoListoParaEnviar, estadoDelCaso, fechaHora, motivoDeBloqueo, type BorradorDeCaso } from '@/features/soporte/chat';
 import { Aviso } from '@/ui/aviso';
 
 /* ------------------------------------------------------------------ abrir un caso */
@@ -40,11 +40,8 @@ export function HojaNuevoCaso({
   error: string | null;
 }) {
   return (
-    <BottomSheet visible={visible} titulo="Abrir un caso" onClose={onCerrar} cierre="Cancelar" evitarTeclado altura="alta">
+    <BottomSheet visible={visible} titulo="Nuevo caso" onClose={onCerrar} cierre="Cancelar" evitarTeclado altura="alta">
       <ScrollView contentContainerStyle={styles.formulario} keyboardShouldPersistTaps="handled" testID="formulario-abrir-caso">
-        <AtlasText variant="body" tone="secondary">
-          Cuéntanos qué pasa por escrito; lo seguimos desde tus casos.
-        </AtlasText>
         <SelectField
           label="Motivo"
           required
@@ -52,7 +49,6 @@ export function HojaNuevoCaso({
           onChange={(categoryCode) => onCambiar({ ...caso, categoryCode })}
           opciones={aplanarMotivos(motivos).map((motivo) => ({ valor: motivo.value, etiqueta: motivo.label }))}
           ayuda="Tema del caso; decide a qué equipo llega."
-          hint={motivos.length === 0 ? 'El catálogo de motivos no cargó: vuelve a intentarlo o habla con soporte.' : undefined}
           deshabilitadoPorque={motivos.length === 0 ? 'El catálogo de motivos no cargó: vuelve a intentarlo o habla con soporte.' : null}
         />
         <IconField
@@ -133,13 +129,22 @@ export function HojaMotivos({
 
 /* ------------------------------------------------------------------ detalle de un caso */
 
-/** Lo que el servidor sabe del caso, no sólo la fila de la lista. */
-export function HojaDetalleCaso({ caso, onCerrar }: { caso: CasoDeSoporte | null; onCerrar: () => void }) {
+/**
+ * Lo que el servidor sabe del caso, no sólo la fila de la lista. Si el caso tiene una conversación
+ * viva, de aquí se vuelve a ella (en la web, «Ver conversación» en la fila).
+ */
+export function HojaDetalleCaso({ caso, onCerrar, onVerConversacion }: { caso: CasoDeSoporte | null; onCerrar: () => void; onVerConversacion?: () => void }) {
+  const estado = caso ? estadoDelCaso(caso) : null;
   return (
     <BottomSheet visible={caso !== null} titulo={caso?.title ?? ''} onClose={onCerrar} cierre="Cerrar">
-      {caso ? (
+      {caso && estado ? (
         <ScrollView contentContainerStyle={styles.lista} testID="detalle-del-caso">
-          <AtlasText variant="caption" tone="secondary">{`${caso.caseNumber} · ${caso.status}`}</AtlasText>
+          <View style={styles.cabecera}>
+            <AtlasText variant="caption" tone="secondary">
+              {caso.caseNumber}
+            </AtlasText>
+            <Badge label={estado.texto} tone={estado.tono} dot />
+          </View>
           <KeyValue label="Tipo" value={caso.caseType} />
           <KeyValue label="Dominio" value={caso.domain} />
           <KeyValue label="Abierto" value={fechaHora(caso.openedAt)} />
@@ -154,7 +159,7 @@ export function HojaDetalleCaso({ caso, onCerrar }: { caso: CasoDeSoporte | null
               <AtlasText variant="body">{caso.summary}</AtlasText>
             </View>
           ) : null}
-          <Button label="Cerrar el detalle" variant="ghost" icon={null} onPress={onCerrar} />
+          {onVerConversacion ? <Button label="Ver conversación" icon="chat" onPress={onVerConversacion} testID="ver-conversacion" /> : null}
         </ScrollView>
       ) : null}
     </BottomSheet>
@@ -166,4 +171,5 @@ const styles = StyleSheet.create({
   descripcion: { minHeight: 120, textAlignVertical: 'top' },
   lista: { gap: space.sm, paddingBottom: space.xl },
   resumen: { gap: space.xxs, paddingTop: space.sm },
+  cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
 });
