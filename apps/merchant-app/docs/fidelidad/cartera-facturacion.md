@@ -40,6 +40,7 @@ valiendo para los DATOS y los textos; donde dicen «aviso» o «tarjeta-cabecera
 | Pastilla «Se factura al terminar de pagar» en cada crédito | Pastilla de estado traducida (En mora / Pendiente) y «Listo para facturar» si está saldado; la regla, en el ⓘ |
 | Días de cobro como tarjetas en rejilla / filas con icono | Una línea por día: «dom 08 nov — Bs 240,00 · 1 cuota» (`FilaDeDia`) |
 | Créditos, cobros, cargos y facturas como filas etiqueta–valor | Tarjetas: importe grande arriba, estado en español a la derecha, una línea secundaria (fecha · código corto · caja…) |
+| Concepto del cargo (`sourceType`) y medio del cobro (`paymentMethod`) en crudo («MDR», «bank_transfer») | En palabras con los rótulos del ERP (`conceptoDeCargo`, `medioDePago`); lo desconocido, humanizado |
 | Estado del crédito en crudo (`credit.status`, inglés) y de la cuota (`cuota.status`) | Traducidos desde las cuotas (`estadoDeCredito`, `estadoDeCuota`) |
 | Botón «Descargar» a lo ancho en cada factura | Ícono de descarga en la tarjeta (`descargar-factura-{id}`) |
 | Casillas de comisión con nota debajo («Sobre cada venta financiada»…) | Sólo rótulo y cifra |

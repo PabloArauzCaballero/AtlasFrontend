@@ -147,3 +147,64 @@ export function cuotasPlanas(creditos: CreditoDeCartera[]) {
     })),
   );
 }
+
+/* ------------------------------------------------------------------ códigos a palabras */
+
+/**
+ * El concepto de un cargo de Atlas (`receivable.sourceType`). Los rótulos son los del ERP:
+ * `CONCEPTO` de `b2b-sales-crm/services/proposal-terms.ts` (los `TermType`) y el dominio
+ * `accounting.billingEventType` (SAAS, SETUP, INTERCOMPANY, SUPPORT). La web lo pinta crudo («MDR»);
+ * aquí no se enseña ningún código (regla 6).
+ */
+const CONCEPTOS: Record<string, string> = {
+  MDR: 'Comisión por venta',
+  SUBSCRIPTION: 'Suscripción',
+  SAAS: 'Suscripción',
+  SETUP_FEE: 'Cargo de habilitación',
+  SETUP: 'Cargo de alta',
+  SERVICE_FEE: 'Cargo por servicio',
+  PENALTY: 'Penalidad',
+  MINIMUM_MONTHLY_FEE: 'Mínimo mensual',
+  INTERCOMPANY: 'Servicio entre empresas del grupo',
+  SUPPORT: 'Soporte',
+  ADS: 'Publicidad',
+  ADVERTISING: 'Publicidad',
+};
+
+/**
+ * El medio de un cobro (`loan_payments.payment_method` del núcleo). Los valores son los que documenta
+ * el proceso de cobranza del núcleo (`cash | bank_transfer | card | qr | wallet | direct_debit | other`)
+ * y los de la cartera de demostración (`cash_partner`, `qr_transfer`). Los rótulos siguen al dominio
+ * `accounting.paymentMethod` del ERP («Transferencia bancaria», «Efectivo», «Tarjeta»).
+ */
+const MEDIOS: Record<string, string> = {
+  CASH: 'Efectivo',
+  CASH_PARTNER: 'Efectivo en el comercio',
+  BANK_TRANSFER: 'Transferencia bancaria',
+  TRANSFER: 'Transferencia bancaria',
+  TRANSFERENCIA: 'Transferencia bancaria',
+  CARD: 'Tarjeta',
+  TARJETA: 'Tarjeta',
+  QR: 'QR',
+  QR_TRANSFER: 'Transferencia por QR',
+  WALLET: 'Billetera móvil',
+  DIRECT_DEBIT: 'Débito automático',
+  CHEQUE: 'Cheque',
+  EFECTIVO: 'Efectivo',
+  OTHER: 'Otro',
+};
+
+/** «SOME_NEW_CODE» → «Some new code»: lo desconocido se lee como palabras, nunca como código. */
+export function humanizar(codigo: string): string {
+  const palabras = codigo.replace(/[_-]+/g, ' ').trim().toLowerCase();
+  return palabras ? palabras.charAt(0).toUpperCase() + palabras.slice(1) : '—';
+}
+
+function rotulo(tabla: Record<string, string>, valor: unknown): string {
+  const codigo = typeof valor === 'string' ? valor.trim() : '';
+  if (!codigo) return '—';
+  return tabla[codigo.toUpperCase()] ?? humanizar(codigo);
+}
+
+export const conceptoDeCargo = (sourceType: unknown) => rotulo(CONCEPTOS, sourceType);
+export const medioDePago = (paymentMethod: unknown) => rotulo(MEDIOS, paymentMethod);

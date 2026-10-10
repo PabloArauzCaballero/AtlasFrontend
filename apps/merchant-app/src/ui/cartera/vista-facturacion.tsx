@@ -21,7 +21,7 @@ import { merchantCreditService, type Cartera, type PagoDeCartera } from '@/api/s
 import { portalService } from '@/api/servicios/portalService';
 import type { ResourceRow } from '@/api/types';
 import { documentoFacturacion } from '@/features/cartera/documentos';
-import { ESTADOS, codigoCorto, creditosConCuotas, cuadreDeCobros, cuotasPlanas, estadoDeCredito, estadoDeFactura, estadoDelCargo, textoDeOrigen, type Estado } from '@/features/cartera/estados';
+import { ESTADOS, codigoCorto, creditosConCuotas, cuadreDeCobros, cuotasPlanas, conceptoDeCargo, estadoDeCredito, estadoDeFactura, estadoDelCargo, medioDePago, textoDeOrigen, type Estado } from '@/features/cartera/estados';
 import { descargarFactura, facturaDeComercio } from '@/features/cartera/factura-pdf';
 import { bob, formatBob, formatDate, tasaCorta, textoDeFallo } from '@/features/cartera/formato';
 import { useMerchantScope } from '@/features/cartera/use-merchant-scope';
@@ -315,7 +315,7 @@ export function VistaFacturacion({ partner, vuelta, pdf }: { partner: MerchantPa
                         <Pastilla texto={estado.etiqueta} tono={estado.tono} />
                       </View>
                       <AtlasText variant="caption" tone="secondary" numberOfLines={2}>
-                        {`${String(receivable.sourceType ?? '—')} · emitido ${fechaDe(receivable.issuedAt)} · vence ${fechaDe(receivable.dueDate)}`}
+                        {`${conceptoDeCargo(receivable.sourceType)} · emitido ${fechaDe(receivable.issuedAt)} · vence ${fechaDe(receivable.dueDate)}`}
                       </AtlasText>
                     </View>
                   </Card>
@@ -395,7 +395,7 @@ function TarjetaDePago({ pago, tasa }: { pago: PagoDeCartera; tasa: string }) {
           <Pastilla texto={pago.reversed ? 'Revertido' : 'Pagado'} tono={pago.reversed ? 'neutral' : 'success'} />
         </View>
         <AtlasText variant="caption" tone="secondary" numberOfLines={2} accessibilityLabel={`Crédito ${pago.loanCode}`}>
-          {`${formatDate(pago.receivedAt)} · ${codigoCorto(pago.loanCode)} · ${cuotas} · ${pago.paymentMethod}`}
+          {`${formatDate(pago.receivedAt)} · ${codigoCorto(pago.loanCode)} · ${cuotas} · ${medioDePago(pago.paymentMethod)}`}
         </AtlasText>
         <Dato etiqueta={`Comisión ${tasa} %`} valor={bob(pago.commissionAccrued)} fuerte apagado={pago.reversed} />
       </View>
