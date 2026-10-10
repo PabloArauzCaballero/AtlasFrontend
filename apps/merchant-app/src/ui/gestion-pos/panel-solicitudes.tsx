@@ -10,23 +10,27 @@
  *
  * Tampoco se muestra quién es el cliente. El comercio decide si quiere la operación —importe, plazo,
  * que el motor la aprobó—, no sobre la persona.
+ *
+ * Pablo (2026-10-10): sin la tarjeta-cabecera («Esperando su respuesta» + «Descargar PDF» +
+ * «Actualizar») ni el «Por qué no puede editar nada» del final. El PDF está en la cabecera de la
+ * pantalla, se recarga tirando hacia abajo, y cada solicitud es una tarjeta: importe y estado arriba,
+ * una línea con cuotas · fecha · caja, y «Rechazar» / «Aceptar» en una fila.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { space } from '@cliente/theme/tokens';
-import { Badge, Button, Card, CardHeader, EmptyState, SkeletonLista } from '@cliente/ui/primitives';
+import { Card, EmptyState, SkeletonLista } from '@cliente/ui/primitives';
 import { mensajeDeError } from '@/api/client';
 import { merchantCreditService, type SolicitudDeCompra } from '@/api/servicios/merchantCreditService';
 import { avisoDecisionSolicitud, cuerpoDecisionSolicitud, type AvisoDeDecision } from '@/features/gestion-pos/decisiones';
-import { documentoDeSolicitudes } from '@/features/gestion-pos/documentos';
-import { fechaHora, formatBob } from '@/features/gestion-pos/formato';
+import { formatBob } from '@/features/gestion-pos/formato';
 import { MOTIVOS_SOLICITUD } from '@/features/gestion-pos/motivos';
 import type { Recargas } from '@/features/gestion-pos/recargas';
+import { estadoDeSolicitud, lineaDeSolicitud, refCorta } from '@/features/gestion-pos/tarjetas';
 import { useCola } from '@/features/gestion-pos/use-cola';
 import { Aviso } from '@/ui/aviso';
-import { BotonPdf } from '@/ui/boton-pdf';
 import { DecisionConMotivo } from './decision-con-motivo';
-import { ImporteDeclarado, OrigenDeCaja } from './piezas';
+import { CabeceraDeImporte, LineaSecundaria } from './piezas';
 
 /* A nivel de módulo: una función nueva por render haría que la cola se pidiera sin parar. */
 const leerSolicitudes = async (partnerId: string) => (await merchantCreditService.listar(partnerId)).applications ?? [];
@@ -35,14 +39,15 @@ export const ID_SOLICITUDES = 'solicitudes';
 
 export function PanelSolicitudes({
   partnerId,
-  nombre,
   onCount,
+  onFilas,
   onDone,
   recargas,
 }: {
   partnerId: string;
-  nombre: string;
   onCount: (total: number) => void;
+  /** Las filas, para el PDF de la cabecera de la pantalla. */
+  onFilas: (filas: SolicitudDeCompra[]) => void;
   /** Tras decidir: la fila pasa al Historial, así que las otras pestañas se recargan. */
   onDone: (origen: string) => void;
   recargas: Recargas;
@@ -59,6 +64,9 @@ export function PanelSolicitudes({
   const [rechazando, setRechazando] = useState<string | null>(null);
   const [motivo, setMotivo] = useState('');
   const [ocupado, setOcupado] = useState<string | null>(null);
+
+  const { filas } = cola;
+  useEffect(() => onFilas(filas), [filas, onFilas]);
 
   async function decidir(solicitud: SolicitudDeCompra, aceptada: boolean) {
     const cuerpo = cuerpoDecisionSolicitud(aceptada, motivo);
@@ -83,32 +91,6 @@ export function PanelSolicitudes({
       {cola.error ? <Aviso tono="danger">{cola.error}</Aviso> : null}
       {aviso ? <Aviso tono={aviso.tono}>{aviso.texto}</Aviso> : null}
 
-      <Card testID="solicitudes-cola">
-        <CardHeader
-          title="Esperando su respuesta"
-          detail="Sólo puede aceptar o rechazar. No hay ningún campo que se pueda modificar."
-          icon="lista"
-          divider={false}
-        />
-        <View style={styles.acciones}>
-          <BotonPdf
-            label="Descargar PDF"
-            testID="pdf-solicitudes"
-            disabled={cola.cargando || !cola.filas.length}
-            documento={() => documentoDeSolicitudes(cola.filas, nombre)}
-          />
-          <Button
-            label="Actualizar"
-            variant="secondary"
-            icon="refrescar"
-            disabled={!partnerId}
-            loading={cola.cargando}
-            onPress={() => void cola.recargar()}
-            testID="actualizar-solicitudes"
-          />
-        </View>
-      </Card>
-
       {cola.cargando && !cola.filas.length ? (
         <SkeletonLista filas={2} alto={160} texto="Cargando…" />
       ) : cola.filas.length === 0 ? (
@@ -116,24 +98,15 @@ export function PanelSolicitudes({
           <EmptyState
             icon="check"
             title="No hay nada esperando"
-            detail="Cuando un cliente escanee el QR y el motor apruebe su compra, aparecerá aquí."
+            detail="Aquí llegan las compras que pidan con su QR."
           />
         </Card>
       ) : (
         cola.filas.map((solicitud) => (
           <Card key={solicitud.applicationId} testID={`solicitud-${solicitud.applicationId}`}>
-            <CardHeader
-              title={solicitud.applicationCode}
-              detail={`Pedida el ${fechaHora(solicitud.submittedAt)} · aprobada por el motor`}
-              trailing={<Badge label={solicitud.businessAcceptance ?? 'PENDIENTE'} tone="warning" dot />}
-            />
-            {/* A qué sucursal y caja corresponde: dos compras del mismo importe pueden venir de cajas distintas. */}
-            <OrigenDeCaja origen={solicitud} />
-            <ImporteDeclarado
-              etiqueta="Importe"
-              importe={formatBob(Number(solicitud.requestedAmount))}
-              nota={`${solicitud.requestedTermMonths} meses · ${solicitud.currencyCode}`}
-            />
+            <CabeceraDeImporte importe={formatBob(Number(solicitud.requestedAmount))} estado={estadoDeSolicitud(solicitud).texto} tono={estadoDeSolicitud(solicitud).tono} />
+            {/* Cuotas, fecha y caja: dos compras del mismo importe pueden venir de cajas distintas. */}
+            <LineaSecundaria texto={lineaDeSolicitud(solicitud)} referencia={refCorta(solicitud.applicationCode)} />
             <DecisionConMotivo
               rechazando={rechazando === solicitud.applicationId}
               motivo={motivo}
@@ -155,15 +128,10 @@ export function PanelSolicitudes({
           </Card>
         ))
       )}
-
-      <Aviso tono="info" titulo="Por qué no puede editar nada">
-        El importe y el calendario de cuotas los decidió el motor al aprobar la solicitud, con el historial del cliente delante. Cambiarlos aquí sería rehacer esa decisión desde el mostrador.
-      </Aviso>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  panel: { gap: space.base },
-  acciones: { gap: space.sm },
+  panel: { gap: space.md },
 });
