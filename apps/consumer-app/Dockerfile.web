@@ -48,7 +48,7 @@ RUN npx expo export --platform web \
  && test -s dist/index.html \
  && grep -q "Atlas" dist/index.html
 
-FROM nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10 AS runner
+FROM nginx:1.30-alpine@sha256:0985e772fb9f729e6fa0980da05fca5d9c468e870eed43071545afa9d2e27d94 AS runner
 # ATLAS_ALMACEN_ORIGEN: el ÚNICO almacén al que `/almacen/` reenvía subidas (esquema://host[:puerto],
 # comparado como cadena exacta). Por defecto, el MinIO contra el que firma el backend de TEST; otro
 # entorno lo fija en las variables de Coolify. Sin ella, envsubst dejaría el literal y todo sería 403.
