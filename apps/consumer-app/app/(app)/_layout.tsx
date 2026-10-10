@@ -41,7 +41,17 @@ export default function AppLayout() {
   if (session.status === 'restoring') return null;
 
   const area = areaFor(session);
-  if (area === 'auth') return <Redirect href="/" />;
+  /*
+    Sin sesion, DIRECTO a la pantalla de entrada, y no a «/».
+
+    «/» es ambiguo: lo son la puerta de entrada (`app/index.tsx`) y la pestaña Inicio
+    (`app/(app)/(tabs)/index.tsx`). Desde DENTRO del area autenticada el router lo resolvia a Inicio, que
+    volvia a montar esta guarda, que volvia a redirigir a «/»: un bucle de redirecciones (el error 185 de React,
+    «Maximum update depth exceeded») que dejaba la app colgada en la portada al cerrar sesion o al
+    caducar la sesion, hasta matarla (Pablo, 2026-10-09: «para hacer logout tenés que cerrar la app»).
+    Reemplazar esta ruta por la de entrada vacia ademas toda la pila del area: hojas, compra, pago.
+  */
+  if (area === 'auth') return <Redirect href="/(auth)/ingresar" />;
   if (area === 'onboarding') return <Redirect href="/(onboarding)/progreso" />;
 
   /*

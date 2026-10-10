@@ -5,6 +5,7 @@
  * bienvenida. Las rutas consultan este estado; no lo reimplementan.
  */
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { configureClient } from '../api/client';
 import { esMarcaDeCookie, marcaDeCookie } from '../api/marca-de-cookie';
 import * as authApi from '../api/endpoints/auth';
@@ -18,7 +19,9 @@ import { activarSeñalesDelDispositivo, desactivarSeñalesDelDispositivo } from 
 import { profileStorage, secureTokenStore, type StoredProfile } from './token-storage';
 import { bitacora } from '../features/bitacora';
 import { olvidarPinConfirmado } from '../features/pin-verificado';
-import { marcarSesionRecienAbierta, olvidarBloqueo } from '../features/bloqueo-local';
+import { bloquearAlArrancar, marcarSesionRecienAbierta, olvidarBloqueo } from '../features/bloqueo-local';
+import { cancelarRepasos } from '../features/refresco';
+import { guardarInicioConPin, leerInicioConPin, olvidarInicioConPin, sesionVencida, type MotivoDeSalida } from './tope-de-sesion';
 import { useRastreoEnPrimerPlano } from './use-rastreo-primer-plano';
 import { cerrarSesionEnServidor } from './cierre-de-sesion';
 import { useLatidoDeSesion, type ContextoDeLatido } from './use-latido-de-sesion';
@@ -26,6 +29,15 @@ import { limpiarDatosLocales } from './datos-locales';
 
 export type SessionStatus = 'restoring' | 'anonymous' | 'authenticated';
 
+/**
+ * Lo mas que espera «Cerrar sesión» a la red. Despues, la sesion LOCAL se cierra igual y la persona
+ * ve la pantalla de entrada: con la red colgada no puede quedarse mirando un boton que gira. Lo que
+ * faltara del servidor (revocar el token) sigue en segundo plano.
+ */
+export const PLAZO_SALIDA_MS = 6_000;
+
+/** Cada cuanto se mira el tope de 8 h con la app abierta (ademas de al volver al frente). */
+const REVISION_DEL_TOPE_MS = 60_000;
 export type SessionValue = {
   status: SessionStatus;
   customerId: string | null;
@@ -36,11 +48,16 @@ export type SessionValue = {
   refresh(): Promise<void>;
   signIn(identifier: string, password: string): Promise<void>;
   register(input: RegisterInput): Promise<onboardingApi.StartOnboardingResponse>;
+  /** Por que se cerro la ultima sesion sin pedirlo, para decirlo en la pantalla de entrada. */
+  motivoDeSalida: MotivoDeSalida | null;
   /**
    * `servidorYaRevoco`: el servidor ya cerró TODAS las sesiones (cambio de PIN). Se salta lo que habla con él con
    * el token muerto —cada llamada daba 401, intentaba refrescar y esperaba— y se cierra sólo lo local.
+   * `motivo`: por qué se cierra sin que la persona lo pidiera (el tope de 8 h).
+   *
+   * Nunca tarda más de `PLAZO_SALIDA_MS` y nunca lanza: funcione o no la red, termina en la pantalla de entrada.
    */
-  signOut(opciones?: { servidorYaRevoco?: boolean }): Promise<void>;
+  signOut(opciones?: { servidorYaRevoco?: boolean; motivo?: MotivoDeSalida }): Promise<void>;
   /**
    * Vuelve a registrar los consentimientos y a encender las señales con la decision de permisos
    * que la persona acaba de tomar. Lo llama la pantalla de permisos cuando se abre DENTRO del alta:
@@ -128,12 +145,33 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     que las señales del dispositivo se activen: basta con que la sesion este abierta.
   */
   const [latido, setLatido] = useState<ContextoDeLatido | null>(null);
+  const [motivoDeSalida, setMotivoDeSalida] = useState<MotivoDeSalida | null>(null);
+  /*
+    La persona (o el tope) pidio salir. Lo que siga hablando con el servidor despues —la revocacion va en
+    segundo plano si la red tarda— puede acabar en un refresco rechazado: eso no es «se cerro tu sesion».
+  */
+  const salidaPedida = useRef(false);
 
   useEffect(() => {
     configureClient({
       tokenStore: secureTokenStore,
-      onSessionExpired: () => {
+      /*
+        El servidor RECHAZO el refresco: los tokens ya se borraron. Se cierra lo local (rastreo, latido,
+        candado, repasos pendientes) y se dice por que. Las compras de prueba y el perfil guardado NO se
+        borran: puede ser la misma persona que vuelve a entrar en un minuto (ver `datos-locales.ts`).
+        El area autenticada redirige sola al ingreso al ver `anonymous`.
+      */
+      onSessionExpired: (codigo) => {
+        if (salidaPedida.current) return;
+        setRastreo(null);
         setLatido(null);
+        olvidarPinConfirmado();
+        olvidarBloqueo();
+        cancelarRepasos();
+        void olvidarInicioConPin();
+        void desactivarSeñalesDelDispositivo().catch(() => undefined);
+        sesionTelemetria.current = null;
+        setMotivoDeSalida(codigo === 'SESSION_EXPIRED' ? 'sesion_caducada' : 'sesion_cerrada');
         setStatus('anonymous');
         setProfile(null);
         setOnboarding(null);
@@ -230,11 +268,23 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  /* `signOut` desde `restore` y desde el vigilante del tope, que se declaran antes que el. */
+  const signOutRef = useRef<SessionValue['signOut'] | null>(null);
+
   const restore = useCallback(async () => {
     const tokens = await secureTokenStore.read();
     const stored = await profileStorage.read();
     if (!tokens || !stored) {
       setStatus('anonymous');
+      return;
+    }
+    /*
+      El tope de 8 h, ANTES de enseñar nada: una sesion vencida (o de la que no se sabe cuando se abrio)
+      no entra ni a la portada; se cierra —tambien en el servidor— y se pide el PIN con su motivo.
+    */
+    if (sesionVencida(await leerInicioConPin(), Date.now())) {
+      setProfile(stored);
+      await signOutRef.current?.({ motivo: 'sesion_caducada' });
       return;
     }
     setProfile(stored);
@@ -251,6 +301,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setStatus('anonymous');
         return;
       }
+      // Abrir en frio con una sesion guardada SIEMPRE pide Face ID o el PIN (APP-13), antes del primer fotograma.
+      bloquearAlArrancar();
       setStatus('authenticated');
       /*
         Quien vuelve con el alta a medias retoma su bitacora ANTES de que la sesion de telemetria la
@@ -280,6 +332,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const signIn = useCallback<SessionValue['signIn']>(
     async (identifier, password) => {
       const tokens = await authApi.login(identifier, password);
+      salidaPedida.current = false;
       // En la web (modo cookie) el token de refresco no llega: lo guarda el navegador en una cookie HttpOnly.
       await secureTokenStore.write({ accessToken: tokens.accessToken, refreshToken: tokens.refreshToken ?? marcaDeCookie() });
 
@@ -296,8 +349,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       await profileStorage.write(stored);
       setProfile(stored);
       await loadCustomerState(customerId);
-      // Acaba de escribir su PIN: el bloqueo local (APP-13) no se lo vuelve a pedir al entrar.
+      // Acaba de escribir su PIN: el bloqueo local (APP-13) no se lo vuelve a pedir al entrar, y el tope de 8 h empieza ahora.
       marcarSesionRecienAbierta();
+      await guardarInicioConPin(Date.now());
+      setMotivoDeSalida(null);
       setStatus('authenticated');
       void abrirSesionTelemetria(customerId, 'password');
     },
@@ -336,52 +391,107 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     [signIn],
   );
 
-  const signOut = useCallback<SessionValue['signOut']>(async (opciones) => {
-    const servidorYaRevoco = opciones?.servidorYaRevoco === true;
-    /*
-      Se apaga el rastreo ANTES de revocar el token.
-      
-      El sistema recuerda la tarea de ubicacion entre arranques de la app: si no se detiene aqui,
-      sigue despertando el bundle y mandando posiciones de alguien que ya cerro sesion, con un token
-      que ya no vale. La tarea sabe apagarse sola al no encontrar contexto, pero eso ocurre en la
-      siguiente posicion y no ahora.
-    */
-    setRastreo(null);
-    // Quien entre después en este teléfono NO hereda un PIN confirmado: «Mis datos» lo vuelve a pedir.
-    olvidarPinConfirmado();
-    // Ni candado a la vista ni hora de salida que herede quien entre después (APP-13).
-    olvidarBloqueo();
-    // El latido se apaga lo primero: ni un latido mas de una sesion que se esta cerrando.
-    setLatido(null);
-    await desactivarSeñalesDelDispositivo();
-    // Lo que quede de bitacora sale con el token todavia valido; despues se borra del disco.
-    // Con las sesiones ya revocadas el lote no puede entrar: se vacía el disco sin esperar a la red.
-    await (servidorYaRevoco ? Promise.resolve() : bitacora.cerrar()).catch(() => undefined);
+  /* El cierre en curso: pulsar dos veces, o que lo pidan el candado y el tope a la vez, no cierra dos veces. */
+  const saliendo = useRef<Promise<void> | null>(null);
+  const perfilActual = useRef<StoredProfile | null>(null);
+  perfilActual.current = profile;
 
-    const abierta = sesionTelemetria.current;
-    const salienteId = profile?.customerId;
-    if (abierta && salienteId && !servidorYaRevoco) {
-      // Cerrarla antes de revocar el token: despues ya no hay con que autenticar la llamada, y una
-      // sesion que nunca se cierra se queda «activa» para siempre en la auditoria.
-      // Con plazo: como mucho 5 s, y si no se pudo, el cierre local sigue igual. Ver `cierre-de-sesion.ts`.
-      await cerrarSesionEnServidor(salienteId, abierta);
+  const signOut = useCallback<SessionValue['signOut']>((opciones) => {
+    if (saliendo.current) return saliendo.current;
+    const servidorYaRevoco = opciones?.servidorYaRevoco === true;
+    salidaPedida.current = true;
+    const tarea = (async () => {
+      /*
+        Se apaga el rastreo ANTES de revocar el token.
+
+        El sistema recuerda la tarea de ubicacion entre arranques de la app: si no se detiene aqui,
+        sigue despertando el bundle y mandando posiciones de alguien que ya cerro sesion, con un token
+        que ya no vale. La tarea sabe apagarse sola al no encontrar contexto, pero eso ocurre en la
+        siguiente posicion y no ahora.
+      */
+      setRastreo(null);
+      // Quien entre después en este teléfono NO hereda un PIN confirmado: «Mis datos» lo vuelve a pedir.
+      olvidarPinConfirmado();
+      // Ni candado a la vista ni nada que herede quien entre después (APP-13).
+      olvidarBloqueo();
+      // Ni un repaso de datos pendiente con la sesion que se cierra.
+      cancelarRepasos();
+      // El latido se apaga lo primero: ni un latido mas de una sesion que se esta cerrando.
+      setLatido(null);
+
+      const abierta = sesionTelemetria.current;
       sesionTelemetria.current = null;
-    }
-    const tokens = await secureTokenStore.read();
-    if (tokens && !servidorYaRevoco) {
-      // Si la revocacion falla, la sesion local se cierra igual: dejar tokens en el dispositivo
-      // porque el servidor no respondio seria el peor de los dos resultados.
-      // En la web el token está en la cookie: el servidor lo lee de ahí, lo revoca y borra la cookie.
-      await authApi.logout(esMarcaDeCookie(tokens.refreshToken) ? null : tokens.refreshToken).catch(() => undefined);
-    }
-    await Promise.all([secureTokenStore.clear(), profileStorage.clear()]);
-    // Compras de prueba, lectura del carnet, fotos y descargas: quien entre después no las hereda.
-    await limpiarDatosLocales();
-    setProfile(null);
-    setOnboarding(null);
-    setMe(null);
-    setStatus('anonymous');
-  }, [profile?.customerId]);
+      const salienteId = perfilActual.current?.customerId;
+      const tokens = await secureTokenStore.read().catch(() => null);
+
+      /*
+        Lo que habla con el servidor, con PLAZO. Antes se esperaba paso a paso —bitacora, cierre de la
+        sesion de telemetria, revocacion— y con la red lenta «Cerrar sesión» se quedaba girando sin
+        llevar a ninguna parte. Ahora, pasado `PLAZO_SALIDA_MS`, la sesion local se cierra igual y lo
+        que falte sigue en segundo plano.
+      */
+      const enElServidor = (async () => {
+        await desactivarSeñalesDelDispositivo().catch(() => undefined);
+        if (servidorYaRevoco) return;
+        // Lo que quede de bitacora sale con el token todavia valido; despues se borra del disco.
+        await bitacora.cerrar().catch(() => undefined);
+        // Cerrarla antes de revocar el token: despues ya no hay con que autenticar la llamada. Ver `cierre-de-sesion.ts`.
+        if (abierta && salienteId) await cerrarSesionEnServidor(salienteId, abierta);
+        // Si la revocacion falla, la sesion local se cierra igual. En la web el token está en la cookie.
+        if (tokens) await authApi.logout(esMarcaDeCookie(tokens.refreshToken) ? null : tokens.refreshToken).catch(() => undefined);
+      })();
+      let plazo: ReturnType<typeof setTimeout> | undefined;
+      await Promise.race([
+        enElServidor,
+        new Promise<void>((resolve) => {
+          plazo = setTimeout(resolve, PLAZO_SALIDA_MS);
+        }),
+      ]);
+      clearTimeout(plazo);
+
+      await Promise.all([
+        secureTokenStore.clear().catch(() => undefined),
+        profileStorage.clear().catch(() => undefined),
+        olvidarInicioConPin(),
+      ]);
+      // Compras de prueba, lectura del carnet, fotos y descargas: quien entre después no las hereda.
+      await limpiarDatosLocales().catch(() => undefined);
+    })()
+      .catch(() => undefined)
+      .finally(() => {
+        // Pase lo que pase arriba, la sesion LOCAL termina cerrada: el area autenticada redirige al ingreso.
+        setProfile(null);
+        setOnboarding(null);
+        setMe(null);
+        setMotivoDeSalida(opciones?.motivo ?? null);
+        setStatus('anonymous');
+        saliendo.current = null;
+      });
+    saliendo.current = tarea;
+    return tarea;
+  }, []);
+  signOutRef.current = signOut;
+
+  /*
+    El tope de 8 h con la app abierta: al volver al frente y cada minuto. Al abrir en frio lo mira `restore`.
+  */
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    let vigente = true;
+    const revisar = async () => {
+      const inicio = await leerInicioConPin();
+      if (vigente && sesionVencida(inicio, Date.now())) await signOutRef.current?.({ motivo: 'sesion_caducada' });
+    };
+    const suscripcion = AppState.addEventListener('change', (estado) => {
+      if (estado === 'active') void revisar();
+    });
+    const reloj = setInterval(() => void revisar(), REVISION_DEL_TOPE_MS);
+    return () => {
+      vigente = false;
+      suscripcion.remove();
+      clearInterval(reloj);
+    };
+  }, [status]);
 
   const refresh = useCallback(async () => {
     if (!profile) return;
@@ -414,13 +524,14 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       profile,
       onboarding,
       me,
+      motivoDeSalida,
       refresh,
       signIn,
       register,
       signOut,
       reactivarSeñales,
     }),
-    [me, onboarding, profile, reactivarSeñales, refresh, register, signIn, signOut, status],
+    [me, motivoDeSalida, onboarding, profile, reactivarSeñales, refresh, register, signIn, signOut, status],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

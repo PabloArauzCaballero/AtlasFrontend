@@ -74,9 +74,16 @@ export type RequestOptions = {
 type Envelope<T> = { requestId?: string; data?: T; error?: { code?: string; message?: string; issues?: { path?: string; message?: string }[] } };
 
 let tokenStore: TokenStore | null = null;
-let onSessionExpired: (() => void) | null = null;
+/**
+ * Avisa a la sesion de que el servidor RECHAZO el refresco. Recibe el codigo de negocio: con
+ * `SESSION_EXPIRED` el backend dice que se paso el tope absoluto de la sesion (8 h desde el ultimo
+ * inicio con PIN), y la app lo explica asi en vez de echar a la persona sin decir por que.
+ */
+export type AvisoDeSesionCaducada = (codigo: string | null) => void;
 
-export function configureClient(input: { tokenStore: TokenStore; onSessionExpired?: () => void }): void {
+let onSessionExpired: AvisoDeSesionCaducada | null = null;
+
+export function configureClient(input: { tokenStore: TokenStore; onSessionExpired?: AvisoDeSesionCaducada }): void {
   tokenStore = input.tokenStore;
   onSessionExpired = input.onSessionExpired ?? null;
 }
@@ -382,7 +389,7 @@ async function refrescar(refreshToken: string, correlationId: string, pantalla: 
     */
     if (sesionRechazada(refreshError)) {
       await tokenStore?.clear();
-      onSessionExpired?.();
+      onSessionExpired?.(refreshError instanceof AtlasApiError ? refreshError.code : null);
     }
     throw refreshError;
   }

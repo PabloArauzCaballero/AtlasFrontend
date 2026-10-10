@@ -28,7 +28,8 @@ import { TarjetaAtlas } from '../../../src/ui/tarjeta-atlas';
 import { MedallaDeRiesgo } from '../../../src/ui/medalla-de-riesgo';
 import { AvatarEditable } from '../../../src/ui/avatar-editable';
 import { SelectorApariencia } from '../../../src/ui/selector-apariencia';
-import { FilaBloqueoLocal, FilaUbicacionDeFondo } from '../../../src/ui/ajustes-de-seguridad';
+import { FilaUbicacionDeFondo } from '../../../src/ui/ajustes-de-seguridad';
+import { useAlVolver, useTirarParaRecargar } from '../../../src/features/al-volver';
 import { useProgress } from '../../../src/features/use-progress';
 import {
   AtlasText,
@@ -83,6 +84,16 @@ export default function Profile() {
 
   const book = useCreditBook(session.customerId);
   const nivel = useProgress(session.customerId);
+  // Puntos, nivel, línea y calificación al día al volver, tras pagar y cada minuto con la pantalla a la vista.
+  const { refresh: recargarPerfil } = session;
+  const { reload: recargarLibro } = book;
+  const { recargar: recargarNivel } = nivel;
+  const recargarTodo = useCallback(
+    () => Promise.all([recargarPerfil(), recargarLibro(), recargarNivel()]),
+    [recargarLibro, recargarNivel, recargarPerfil],
+  );
+  useAlVolver(recargarTodo);
+  const tirar = useTirarParaRecargar(recargarTodo);
   // El extracto más reciente: decide si se PIDE el extracto o se dice que está pendiente de evaluar.
   const [ultimoExtracto, setUltimoExtracto] = useState<creditLineApi.BankStatementReview | null | undefined>(undefined);
   useFocusEffect(
@@ -126,25 +137,33 @@ export default function Profile() {
     }
   };
 
+  /*
+    Salir NO navega desde aqui. `signOut` deja la sesion en `anonymous` (siempre, funcione o no la red, en
+    `PLAZO_SALIDA_MS` como mucho) y la guarda del area autenticada (`app/(app)/_layout.tsx`) reemplaza toda la
+    pila por la pantalla de entrada. El `router.replace('/')` que habia aqui apuntaba a una ruta ambigua —«/» es
+    tanto la puerta de entrada como la pestaña Inicio— y es parte de lo que dejaba la app colgada al salir.
+  */
+  const salir = async () => {
+    setSigningOut(true);
+    await session.signOut();
+  };
+
+  // En la web `Alert.alert` no hace nada: la confirmación es el propio botón (como en el historial del asistente).
+  const [confirmandoSalida, setConfirmandoSalida] = useState(false);
   const confirmSignOut = () => {
+    if (Platform.OS === 'web') {
+      setConfirmandoSalida(true);
+      return;
+    }
     // Cerrar sesión es reversible pero interrumpe: se confirma antes, con el patron nativo.
     Alert.alert('Cerrar sesión', 'Tendrás que ingresar de nuevo con tu PIN.', [
       { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Cerrar sesión',
-        style: 'destructive',
-        onPress: async () => {
-          setSigningOut(true);
-          await session.signOut();
-          setSigningOut(false);
-          router.replace('/');
-        },
-      },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: () => void salir() },
     ]);
   };
 
   return (
-    <Screen onRefresh={() => void session.refresh()}>
+    <Screen {...tirar}>
       <Gap size="sm" />
       <SurfaceContent entries={piezasDePerfil} />
       {/*
@@ -408,8 +427,10 @@ export default function Profile() {
           subtitle="Con tu PIN actual y un código al correo"
           onPress={() => router.push('/(app)/cambiar-pin')}
         />
-        {/* Sólo en el teléfono: Face ID / huella al volver (APP-13) y la ubicación de fondo (APP-11). */}
-        <FilaBloqueoLocal />
+        {/*
+          Sólo en el teléfono: la ubicación de fondo (APP-11). El bloqueo con Face ID / PIN (APP-13) ya no es un
+          ajuste: en un banco no se puede apagar (ver `features/bloqueo-local.ts`).
+        */}
         <FilaUbicacionDeFondo />
         <Divider inset />
         <ListRow title="Sesión" subtitle={Platform.OS === 'web' ? SESION_GUARDADA_WEB : SESION_GUARDADA_MOVIL} />
@@ -478,7 +499,17 @@ export default function Profile() {
         />
       </Card>
 
-      <Button label="Cerrar sesión" variant="destructive" onPress={confirmSignOut} loading={signingOut} haptic="warning" />
+      {confirmandoSalida ? (
+        <View style={styles.confirmarSalida}>
+          <AtlasText variant="body" tone="secondary" align="center">
+            ¿Cerrar sesión? Tendrás que ingresar de nuevo con tu PIN.
+          </AtlasText>
+          <Button label="Sí, cerrar sesión" variant="destructive" onPress={() => void salir()} loading={signingOut} testID="perfil-confirmar-salida" />
+          <Button label="Cancelar" variant="ghost" onPress={() => setConfirmandoSalida(false)} disabled={signingOut} />
+        </View>
+      ) : (
+        <Button label="Cerrar sesión" variant="destructive" onPress={confirmSignOut} loading={signingOut} haptic="warning" testID="perfil-cerrar-sesion" />
+      )}
     </Screen>
   );
 }
@@ -488,4 +519,5 @@ const styles = StyleSheet.create({
   identidadTexto: { flex: 1, gap: space.xs },
   gradeRow: { flexDirection: 'row', alignItems: 'center', gap: space.base },
   gradeText: { flex: 1, gap: space.sm },
+  confirmarSalida: { gap: space.sm },
 });

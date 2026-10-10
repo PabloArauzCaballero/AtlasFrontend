@@ -35,7 +35,8 @@ import { isBackendDecision } from '../api/config';
 import { useSession } from '../session/session';
 import { requestLiveDecision } from '../features/credit-evaluation';
 import { listCreditApplications } from '../api/endpoints/credit';
-import { descartarComprasSinSolicitud } from './conciliacion';
+import { descartarComprasSinSolicitud, inicialesConfirmados } from './conciliacion';
+import { avisarCambioDeDinero } from '../features/refresco';
 import type { UploadedPaymentQr } from '../api/endpoints/loans';
 import { alLimpiarDatosLocales, CLAVE_COMPRAS_DE_PRUEBA } from '../session/datos-locales';
 
@@ -59,6 +60,8 @@ const DEFAULT_LIMIT: Minor = minor(500_000);
 const MERCHANT_REVIEW_MS = 4_500;
 /** Cada cuanto se le pregunta al backend si el comercio ya acepto la venta. */
 const MERCHANT_ACCEPTANCE_POLL_MS = 4_000;
+/** Cada cuanto, con una compra esperando su pago inicial, se pregunta si el comercio ya lo confirmo. */
+const INITIAL_PAYMENT_POLL_MS = 15_000;
 
 type SandboxContextValue = {
   ready: boolean;
@@ -350,13 +353,22 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
     const instruction =
       posQr && initialItem ? issueInstruction({ item: initialItem, posQr, currency: order.currency, now: Date.now() }) : null;
 
-    setState((previous) => ({
-      ...previous,
-      orders: previous.orders.map((item) => (item.id === orderId ? result.order : item)),
-      creditLine: result.line,
-      schedules: [result.schedule, ...previous.schedules],
-      instructions: instruction ? [instruction, ...previous.instructions] : previous.instructions,
-    }));
+    setState((previous) => {
+      /*
+        Idempotente: la confirmacion la disparan la pantalla de la compra y el propio estado (si la persona ya no
+        esta en esa pantalla cuando el comercio acepta). Si las dos llegan en la misma pasada, la segunda no
+        duplica cuotas ni vuelve a descontar la linea.
+      */
+      if (previous.orders.some((item) => item.id === orderId && item.commitmentId)) return previous;
+      return {
+        ...previous,
+        orders: previous.orders.map((item) => (item.id === orderId ? result.order : item)),
+        creditLine: result.line,
+        schedules: [result.schedule, ...previous.schedules],
+        instructions: instruction ? [instruction, ...previous.instructions] : previous.instructions,
+      };
+    });
+    avisarCambioDeDinero();
     return { ok: true };
   }, []);
 
@@ -431,7 +443,11 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const confirmMerchantReceipt = useCallback<SandboxContextValue['confirmMerchantReceipt']>((itemId) => {
+    // El dinero se movio: el prestamo, la linea y los puntos cambian en el servidor. Ver `features/refresco.ts`.
+    avisarCambioDeDinero();
     setState((current) => {
+      // Idempotente: la pantalla del pago y el sondeo global pueden confirmar la misma cuota a la vez.
+      if (current.schedules.some((schedule) => schedule.items.some((item) => item.id === itemId && item.status === 'PAID'))) return current;
       const now = new Date().toISOString();
       const schedules = current.schedules.map((schedule) => ({
         ...schedule,
@@ -591,6 +607,51 @@ export function SandboxProvider({ children }: { children: React.ReactNode }) {
       suscripcion.remove();
     };
   }, [ready, customerId]);
+
+  /*
+    La compra que el comercio YA acepto se confirma aqui, no solo en su pantalla: si la persona salio de
+    ella mientras esperaba, la aceptacion llegaba (el sondeo de arriba es global) pero la compra no se
+    confirmaba hasta volver a abrirla.
+  */
+  useEffect(() => {
+    state.orders
+      .filter((order) => order.status === 'PENDING_MERCHANT_ACCEPTANCE' && order.acceptance && !order.commitmentId)
+      .forEach((order) => {
+        commit(order.id);
+      });
+  }, [commit, state.orders]);
+
+  /*
+    El pago inicial confirmado por el comercio, con la app en cualquier pantalla. Ver `inicialesConfirmados`.
+    Se pregunta al volver al frente y, mientras haya una compra esperando su inicial, cada 15 s.
+  */
+  const esperandoInicial = state.orders.some((order) => order.status === 'WAITING_INITIAL_PAYMENT' && order.backendApplicationId);
+  useEffect(() => {
+    if (!ready || !isBackendDecision || !customerId || !esperandoInicial) return;
+    let vivo = true;
+    let alFrente = true;
+    const preguntar = async () => {
+      if (!alFrente) return;
+      try {
+        const { applications } = await listCreditApplications(customerId, { sinPantalla: true });
+        if (!vivo) return;
+        inicialesConfirmados(stateRef.current, applications).forEach((itemId) => confirmMerchantReceipt(itemId));
+      } catch {
+        // Sin red no se afirma nada: se vuelve a preguntar en el siguiente tick.
+      }
+    };
+    void preguntar();
+    const intervalo = setInterval(() => void preguntar(), INITIAL_PAYMENT_POLL_MS);
+    const suscripcion = AppState.addEventListener('change', (estado) => {
+      alFrente = estado === 'active';
+      if (alFrente) void preguntar();
+    });
+    return () => {
+      vivo = false;
+      clearInterval(intervalo);
+      suscripcion.remove();
+    };
+  }, [confirmMerchantReceipt, customerId, esperandoInicial, ready]);
 
   /** Expira sesiones y ordenes vencidas: el TTL debe verse, no solo existir en el modelo. */
   useEffect(() => {

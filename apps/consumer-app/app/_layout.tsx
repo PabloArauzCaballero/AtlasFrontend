@@ -24,7 +24,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useArranqueDecidido } from '../src/device/aplicar-actualizacion';
 import { prepararAvisos } from '../src/device/push';
-import { useAbrirAvisoTocado } from '../src/device/push-navigation';
+import { useAbrirAvisoTocado, useRecargarAlRecibirAviso } from '../src/device/push-navigation';
+import { registrarInteraccion } from '../src/features/bloqueo-local';
 import { CapaSinConexion } from '../src/ui/sin-conexion';
 import { BloqueoLocal } from '../src/ui/bloqueo-local';
 import { SandboxProvider } from '../src/sandbox/store';
@@ -118,6 +119,8 @@ function NavigationTree({ fontsReady, arranqueDecidido }: { fontsReady: boolean;
   useBitacoraDeApp();
   // Tocar un aviso de campaña abre la pantalla que eligió operaciones; sólo con sesión, o el enlace rebota al ingreso.
   useAbrirAvisoTocado(session.status === 'authenticated');
+  // Un aviso que llega con la app abierta recarga compras, cuotas, línea y puntos (ver `features/refresco.ts`).
+  useRecargarAlRecibirAviso(session.status === 'authenticated');
 
   /*
     El splash nativo se queda hasta que se decidió el arranque (`useArranqueDecidido`): si hay una versión nueva, la app
@@ -203,7 +206,12 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.surface.primary }}>
+    /*
+      `onTouchStart` en la raiz: cada toque de la app —tambien dentro de hojas y modales, porque el evento sube por el
+      arbol de React— reinicia el reloj de inactividad del bloqueo (5 min, ver `features/bloqueo-local.ts`). No
+      captura ni consume el toque: solo lo anota.
+    */
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: color.surface.primary }} onTouchStart={registrarInteraccion}>
       <SafeAreaProvider>
       <ThemeProvider value={TEMA_NAVEGACION}>
         <StatusBar style={esquema === 'claro' ? 'dark' : 'light'} />
@@ -236,7 +244,7 @@ export default function RootLayout() {
                   <NavigationTree fontsReady={fontsLoaded || Boolean(fontError)} arranqueDecidido={arranqueDecidido} />
                   {/* Sin internet: el logo girando sobre toda la ventana, hasta que vuelve la conexión. */}
                   <CapaSinConexion />
-                  {/* Con sesion abierta, al volver tras unos minutos: Face ID / huella o PIN (APP-13). */}
+                  {/* Con sesion abierta: al abrir, al volver tras 60 s o tras 5 min sin tocarla, Face ID / huella o PIN (APP-13). */}
                   <BloqueoLocal />
                 </BrandCutProvider>
               </TourProvider>

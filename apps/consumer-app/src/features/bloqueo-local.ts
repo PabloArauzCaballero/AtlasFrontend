@@ -1,72 +1,138 @@
 /**
- * El bloqueo LOCAL de la app al volver a ella (APP-13).
+ * El bloqueo LOCAL de la app (APP-13), con la regla de la banca movil.
  *
- * ## Que es y que no es
+ * ## La regla, sin excepciones ni ajustes
  *
- * Con la sesion abierta, una app que estuvo mas de cinco minutos en segundo plano se tapa al volver y
- * pide Face ID / Touch ID / huella o, si no hay o falla, el PIN de la cuenta. NO cierra la sesion:
- * los tokens siguen donde estaban y, al desbloquear, la persona sigue exactamente donde lo dejo. Es
- * lo que protege a quien presta el telefono desbloqueado o lo pierde con la app abierta.
+ * Con la sesion abierta en el telefono, la app se tapa y pide Face ID / Touch ID / huella —o, si no
+ * hay o falla, el PIN de la cuenta— SIEMPRE que:
  *
- * Tambien se pide al ABRIR la app con una sesion guardada si hace mas de cinco minutos que salio
- * —o si no se sabe cuando salio—: que el sistema matara la app en segundo plano no puede ser la
- * forma de saltarse el bloqueo. Quien acaba de escribir su PIN para entrar no lo vuelve a ver.
+ *  a. se abre en frio (el proceso arranca con una sesion guardada);
+ *  b. vuelve de segundo plano (`background`) tras MAS de 60 s fuera;
+ *  c. lleva 5 min sin que nadie toque la pantalla, aunque este en primer plano (PCI DSS 8.2.8 pide
+ *     15 como maximo; la banca movil usa 5).
  *
- * ## Opcional, y encendido por omision solo si hay biometria
+ * Las salidas cortas (< 60 s) no bloquean: el dialogo de un permiso, la propia hoja de Face ID, el
+ * selector de fotos o la camara del sistema. Las de iOS pasan por `inactive` sin llegar a
+ * `background` y ni siquiera cuentan como salida; las que si llegan a `background` cuentan con su
+ * reloj.
  *
- * La persona lo apaga y lo enciende en Perfil. Mientras no haya decidido nada, esta encendido si el
- * telefono tiene biometria registrada: pedir el PIN de cuatro digitos cada vez que se vuelve a la app,
- * sin que nadie lo haya pedido, convertiria una proteccion en una molestia que se apaga a ciegas.
+ * NO cierra la sesion: los tokens siguen donde estaban y, al desbloquear, la persona sigue donde lo
+ * dejo. El cierre total lo pone el TOPE de 8 h (`TOPE_DE_SESION_MS`, en `session/tope-de-sesion.ts`).
+ *
+ * ## Por que antes era inconsistente («a veces me pide la cara y otras no»)
+ *
+ * La version anterior (PR #121) tenia CUATRO fuentes de variacion, todas invisibles para la persona:
+ *  1. al abrir en frio solo bloqueaba si la ultima salida anotada en disco era de hacia mas de 5 min
+ *     —abrir, salir y volver a abrir en 4 min no pedia nada; a los 6, si—;
+ *  2. al volver de segundo plano, igual: 4 min fuera no pedia nada, 6 si;
+ *  3. era un ajuste del perfil, encendido por omision SOLO si el telefono tenia biometria registrada
+ *     cuando se leyo, y mientras esa lectura asincrona no terminaba (`activado === null`) volver de
+ *     segundo plano no bloqueaba;
+ *  4. no habia limite de inactividad en primer plano: dejada abierta en la mesa, nunca se tapaba.
  *
  * ## Por que aqui y no en la pantalla
  *
- * La regla —cuando se bloquea, cuando se pide— es pura y se prueba en `__tests__/bloqueo-local.test.ts`.
- * El estado (bloqueado o no) vive en el modulo, fuera de React, porque lo tocan la sesion (al entrar
- * con PIN, al salir) y la capa que se dibuja, que estan en sitios distintos del arbol.
+ * La regla es pura —recibe la hora y los cambios de `AppState` y decide— y se prueba con relojes
+ * falsos en `__tests__/bloqueo-local.test.ts`. El estado (bloqueado o no) vive en el modulo, fuera de
+ * React, porque lo tocan la sesion (al entrar con PIN, al restaurar, al salir) y la capa que se
+ * dibuja, que estan en sitios distintos del arbol.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 
-/** Cuanto puede estar la app en segundo plano sin pedir nada al volver. */
-export const UMBRAL_BLOQUEO_MS = 5 * 60 * 1000;
+/** Cuanto puede estar la app en segundo plano sin pedir nada al volver. MAS de esto, bloquea. */
+export const SALIDA_CORTA_MS = 60 * 1000;
+/** Cuanto puede estar la app abierta sin que nadie la toque. Esto o mas, bloquea. */
+export const INACTIVIDAD_MS = 5 * 60 * 1000;
+/** Cada cuanto se mira la inactividad con la app en primer plano. */
+export const REVISION_MS = 15 * 1000;
 
-const KEY_PREFERENCIA = 'atlas.bloqueo.preferencia';
-const KEY_SALIDA = 'atlas.bloqueo.salida-en';
+export type MotivoDeBloqueo = 'arranque' | 'segundo_plano' | 'inactividad';
 
-export type PreferenciaDeBloqueo = 'activado' | 'desactivado';
-
-/** Si el bloqueo esta encendido. Sin decision de la persona, lo decide la biometria. */
-export function bloqueoActivado(preferencia: PreferenciaDeBloqueo | null, hayBiometria: boolean): boolean {
-  if (preferencia === 'activado') return true;
-  if (preferencia === 'desactivado') return false;
-  return hayBiometria;
-}
+/** Lo que el vigilante necesita del mundo: la hora y como bloquear. Inyectado para probarlo. */
+export type EntornoDelVigilante = {
+  ahora: () => number;
+  bloquear: (motivo: MotivoDeBloqueo) => void;
+  bloqueada: () => boolean;
+};
 
 /**
- * Si hay que pedir el desbloqueo al volver de segundo plano (o al abrir con sesion guardada).
+ * La regla, como maquina de estados. Una instancia por sesion abierta.
  *
- * `salidaEn` es cuando se fue la app a segundo plano. Sin ese dato —primera apertura con esta
- * version, almacenamiento borrado— se pide: no saber cuanto tiempo paso no es saber que fue poco.
- * Un reloj que va hacia atras (la persona cambio la hora) tambien pide: no se puede fiar.
+ * - `cambioDeEstado` recibe los `AppState` tal cual los da el sistema. En iOS, salir es
+ *   `active → inactive → background` y volver `background → active` (a veces con un `inactive` en
+ *   medio); la hoja de Face ID, el centro de control o un permiso son `active → inactive → active`
+ *   y no son salida. En Android no hay `inactive`.
+ * - `interaccion` se llama en cada toque de pantalla.
+ * - `revisar` se llama periodicamente en primer plano: es el reloj de la inactividad.
+ * - `desbloqueado` reinicia el reloj de inactividad: quien acaba de desbloquear acaba de interactuar.
  */
-export function debePedirDesbloqueo(salidaEn: number | null, ahora: number, umbralMs = UMBRAL_BLOQUEO_MS): boolean {
-  if (salidaEn === null || !Number.isFinite(salidaEn)) return true;
-  const transcurrido = ahora - salidaEn;
-  return transcurrido < 0 || transcurrido > umbralMs;
+export function crearVigilante(entorno: EntornoDelVigilante) {
+  let salidaEn: number | null = null;
+  let ultimaInteraccion = entorno.ahora();
+
+  const inactivaDemasiado = (ahora: number) => {
+    const quieta = ahora - ultimaInteraccion;
+    // Un reloj que va hacia atras (la persona cambio la hora) no se puede fiar: se bloquea.
+    return quieta < 0 || quieta >= INACTIVIDAD_MS;
+  };
+
+  return {
+    cambioDeEstado(estado: string) {
+      const ahora = entorno.ahora();
+      if (estado === 'background') {
+        // La PRIMERA vez que se va: un segundo `background` sin volver no mueve la hora de salida.
+        if (salidaEn === null) salidaEn = ahora;
+        return;
+      }
+      if (estado !== 'active') return; // `inactive`, `unknown`, `extension`: no son ni salir ni volver.
+      const salio = salidaEn;
+      salidaEn = null;
+      if (entorno.bloqueada()) return;
+      if (salio !== null) {
+        const fuera = ahora - salio;
+        if (fuera < 0 || fuera > SALIDA_CORTA_MS) {
+          entorno.bloquear('segundo_plano');
+          return;
+        }
+      }
+      if (inactivaDemasiado(ahora)) entorno.bloquear('inactividad');
+    },
+    interaccion() {
+      ultimaInteraccion = entorno.ahora();
+    },
+    revisar() {
+      if (salidaEn !== null || entorno.bloqueada()) return;
+      if (inactivaDemasiado(entorno.ahora())) entorno.bloquear('inactividad');
+    },
+    desbloqueado() {
+      ultimaInteraccion = entorno.ahora();
+    },
+  };
 }
+
+export type Vigilante = ReturnType<typeof crearVigilante>;
 
 /* ------------------------------------------------------------------------------------------------
  * El estado, fuera de React.
  * ---------------------------------------------------------------------------------------------- */
 
 let bloqueada = false;
+let motivo: MotivoDeBloqueo | null = null;
 /** Si la sesion de esta ejecucion se abrio escribiendo el PIN (y no restaurandola del disco). */
 let sesionRecienAbierta = false;
 const oyentes = new Set<() => void>();
+/* El toque de pantalla llega a la raiz, que no conoce al vigilante de la capa: se reenvia aqui. */
+const oyentesDeInteraccion = new Set<() => void>();
 
 const avisar = () => oyentes.forEach((oyente) => oyente());
 
 export function estaBloqueada(): boolean {
   return bloqueada;
+}
+
+export function motivoDelBloqueo(): MotivoDeBloqueo | null {
+  return motivo;
 }
 
 export function suscribirBloqueo(oyente: () => void): () => void {
@@ -76,19 +142,31 @@ export function suscribirBloqueo(oyente: () => void): () => void {
   };
 }
 
-export function bloquear(): void {
+export function bloquear(porque: MotivoDeBloqueo = 'segundo_plano'): void {
   if (bloqueada) return;
   bloqueada = true;
+  motivo = porque;
   avisar();
 }
 
 export function desbloquear(): void {
   if (!bloqueada) return;
   bloqueada = false;
+  motivo = null;
   avisar();
 }
 
-/** La sesion se abrio con el PIN en esta ejecucion: no se vuelve a pedir al montar el area privada. */
+/**
+ * La app ARRANCA con una sesion guardada: (a) de la regla. Se llama desde la restauracion de la
+ * sesion, ANTES de marcarla como abierta, para que no se vea ni un fotograma de la app sin candado.
+ * En el navegador no: no hay biometria y la sesion web vive lo que vive la pestaña.
+ */
+export function bloquearAlArrancar(): void {
+  if (Platform.OS === 'web') return;
+  bloquear('arranque');
+}
+
+/** La sesion se abrio con el PIN en esta ejecucion: nada que desbloquear. */
 export function marcarSesionRecienAbierta(): void {
   sesionRecienAbierta = true;
   desbloquear();
@@ -98,53 +176,24 @@ export function sesionAbiertaConPinAhora(): boolean {
   return sesionRecienAbierta;
 }
 
+/** Cada toque de pantalla (lo llama la raiz). Barato a proposito: corre en cada `touchstart`. */
+export function registrarInteraccion(): void {
+  oyentesDeInteraccion.forEach((oyente) => oyente());
+}
+
+export function suscribirInteraccion(oyente: () => void): () => void {
+  oyentesDeInteraccion.add(oyente);
+  return () => {
+    oyentesDeInteraccion.delete(oyente);
+  };
+}
+
+/* Lo que guardaba la version con ajuste (PR #121): ya no se lee, se borra para no dejar restos. */
+const CLAVES_RETIRADAS = ['atlas.bloqueo.preferencia', 'atlas.bloqueo.salida-en'];
+
 /** Al cerrar sesion: nada que desbloquear y nada que recordar para el siguiente que entre. */
 export function olvidarBloqueo(): void {
   sesionRecienAbierta = false;
   desbloquear();
-  void AsyncStorage.removeItem(KEY_SALIDA).catch(() => undefined);
-}
-
-/* ------------------------------------------------------------------------------------------------
- * Lo que se guarda en el telefono. Nada de esto es secreto: una preferencia y una hora.
- * ---------------------------------------------------------------------------------------------- */
-
-export async function leerPreferenciaDeBloqueo(): Promise<PreferenciaDeBloqueo | null> {
-  try {
-    const valor = await AsyncStorage.getItem(KEY_PREFERENCIA);
-    return valor === 'activado' || valor === 'desactivado' ? valor : null;
-  } catch {
-    return null;
-  }
-}
-
-export async function guardarPreferenciaDeBloqueo(preferencia: PreferenciaDeBloqueo): Promise<void> {
-  await AsyncStorage.setItem(KEY_PREFERENCIA, preferencia).catch(() => undefined);
-  avisarPreferencia();
-}
-
-export async function anotarSalida(ahora = Date.now()): Promise<void> {
-  await AsyncStorage.setItem(KEY_SALIDA, String(ahora)).catch(() => undefined);
-}
-
-export async function leerSalida(): Promise<number | null> {
-  try {
-    const crudo = await AsyncStorage.getItem(KEY_SALIDA);
-    if (crudo === null) return null;
-    const valor = Number(crudo);
-    return Number.isFinite(valor) ? valor : null;
-  } catch {
-    return null;
-  }
-}
-
-/* La capa vuelve a leer la preferencia cuando Perfil la cambia. */
-const oyentesPreferencia = new Set<() => void>();
-const avisarPreferencia = () => oyentesPreferencia.forEach((oyente) => oyente());
-
-export function suscribirPreferenciaDeBloqueo(oyente: () => void): () => void {
-  oyentesPreferencia.add(oyente);
-  return () => {
-    oyentesPreferencia.delete(oyente);
-  };
+  void AsyncStorage.multiRemove(CLAVES_RETIRADAS).catch(() => undefined);
 }

@@ -21,6 +21,7 @@
  */
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useRef } from 'react';
+import { avisarCambioDeDinero } from '../features/refresco';
 import { cargarAvisos } from './avisos-modulo';
 import { rutaDelAviso } from './ruta-del-aviso';
 
@@ -53,4 +54,19 @@ export function useAbrirAvisoTocado(habilitado: boolean): void {
     const suscripcion = Notifications.addNotificationResponseReceivedListener(atender);
     return () => suscripcion.remove();
   }, [habilitado, router]);
+}
+
+/**
+ * Un aviso que LLEGA con la app abierta (pago confirmado, compra aprobada, cuota vencida) es la señal de que algo
+ * cambió en el servidor: las pantallas de dinero se recargan sin esperar a que la persona cambie de pantalla.
+ * Ver `features/refresco.ts`.
+ */
+export function useRecargarAlRecibirAviso(habilitado: boolean): void {
+  useEffect(() => {
+    if (!habilitado) return;
+    const Notifications = cargarAvisos();
+    if (!Notifications) return;
+    const suscripcion = Notifications.addNotificationReceivedListener(() => avisarCambioDeDinero());
+    return () => suscripcion.remove();
+  }, [habilitado]);
 }

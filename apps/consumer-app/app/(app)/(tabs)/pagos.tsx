@@ -20,7 +20,7 @@ import { StyleSheet, View } from 'react-native';
 import type { LoanSummary, PaymentCalendar, SpendingByCategory } from '../../../src/api/endpoints/loans';
 import { categoryLook, dueCopy, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
-import { useAlVolver } from '../../../src/features/al-volver';
+import { useAlVolver, useTirarParaRecargar } from '../../../src/features/al-volver';
 import { useSession } from '../../../src/session/session';
 import { color, radius, space, marca } from '../../../src/theme/tokens';
 import type { IconName } from '../../../src/ui/icons';
@@ -189,6 +189,8 @@ export default function Payments() {
   const book = useCreditBook(session.customerId);
   // Al volver a la pantalla: lo que cambió mientras tanto (un pago confirmado, una compra nueva) se ve sin cerrar la app.
   useAlVolver(book.reload);
+  // Tirar hacia abajo: no existía en Pagos, y lo único que traía un pago confirmado era cerrar la app.
+  const tirar = useTirarParaRecargar(book.reload);
 
   const [filter, setFilter] = useState<Filter>('todos');
   const [layout, setLayout] = useState<Layout>('lista');
@@ -247,7 +249,7 @@ export default function Payments() {
 
   if (!book.ready) {
     return (
-      <Screen>
+      <Screen {...tirar}>
         <Gap size="lg" />
         <Card>
           <Skeleton height={11} width="35%" />
@@ -265,7 +267,7 @@ export default function Payments() {
 
   if (book.error) {
     return (
-      <Screen>
+      <Screen {...tirar}>
         <Gap size="lg" />
         <ErrorState title="No pudimos cargar tus pagos" detail={book.error} />
         <Button label="Reintentar" icon="refrescar" variant="secondary" onPress={() => book.reload()} />
@@ -274,7 +276,7 @@ export default function Payments() {
   }
 
   return (
-    <Screen>
+    <Screen {...tirar}>
       <Gap size="sm" />
       <ScreenHeader
         title="Tus pagos"

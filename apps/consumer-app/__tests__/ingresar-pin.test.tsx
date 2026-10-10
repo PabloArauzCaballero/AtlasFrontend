@@ -13,7 +13,10 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ replace: mockReplace, push: jest.fn(), back: jest.fn(), canGoBack: () => true, navigate: jest.fn() }),
   usePathname: () => '/ingresar',
 }));
-jest.mock('../src/session/session', () => ({ useSession: () => ({ signIn: (...args: unknown[]) => mockSignIn(...args) }) }));
+const mockSesion: { motivoDeSalida: string | null } = { motivoDeSalida: null };
+jest.mock('../src/session/session', () => ({
+  useSession: () => ({ ...mockSesion, signIn: (...args: unknown[]) => mockSignIn(...args) }),
+}));
 
 const METRICAS = initialWindowMetrics ?? {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -31,6 +34,18 @@ const escribirPin = (digitos: string) => fireEvent.changeText(screen.getByLabelT
 beforeEach(() => {
   jest.clearAllMocks();
   mockSignIn.mockResolvedValue(undefined);
+  mockSesion.motivoDeSalida = null;
+});
+
+it('si la sesión venció por el tope de 8 h, lo dice claro en la entrada', async () => {
+  mockSesion.motivoDeSalida = 'sesion_caducada';
+  await montar();
+  expect(screen.getByText('Por seguridad, tu sesión dura 8 horas. Vuelve a entrar con tu PIN.')).toBeTruthy();
+});
+
+it('tras un cierre pedido no dice nada', async () => {
+  await montar();
+  expect(screen.queryByTestId('ingresar-motivo-salida')).toBeNull();
 });
 
 it('con el cuarto dígito entra solo, con el PIN completo', async () => {

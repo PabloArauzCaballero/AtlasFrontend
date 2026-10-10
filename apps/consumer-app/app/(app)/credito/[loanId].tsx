@@ -8,11 +8,12 @@
  * credito», y tenerla a mano en la app evita que la unica forma de saberlo sea llamar a soporte.
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import * as loansApi from '../../../src/api/endpoints/loans';
 import { categoryLook, dueCopy, formatAmount } from '../../../src/features/spending-copy';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
+import { useAlVolver, useTirarParaRecargar } from '../../../src/features/al-volver';
+import { useLoanDetail } from '../../../src/features/use-credit-book';
 import {
   AtlasText,
   Badge,
@@ -39,24 +40,10 @@ function pendingOf(installment: loansApi.LoanInstallment): number {
 export default function LoanDetail() {
   const router = useRouter();
   const params = useLocalSearchParams<{ loanId: string }>();
-  const [loan, setLoan] = useState<loansApi.LoanDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!params.loanId) return;
-    let cancelled = false;
-    loansApi
-      .getLoan(params.loanId)
-      .then((value) => {
-        if (!cancelled) setLoan(value);
-      })
-      .catch(() => {
-        if (!cancelled) setError('No pudimos cargar este crédito.');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [params.loanId]);
+  const { loan, error, reload } = useLoanDetail(params.loanId, 'No pudimos cargar este crédito.');
+  // Al volver (p. ej. tras avisar el pago de una cuota), tras una operación de dinero y cada minuto a la vista.
+  useAlVolver(reload);
+  const tirar = useTirarParaRecargar(reload);
 
   if (error) {
     return (
@@ -100,7 +87,7 @@ export default function LoanDetail() {
   }, 0);
 
   return (
-    <Screen>
+    <Screen {...tirar}>
       <ScreenHeader
         title={formatAmount(Number(loan.principalAmount), loan.currencyCode)}
         subtitle={`${loan.merchant?.displayName ?? 'Compra sin comercio'} · ${look.label}`}
