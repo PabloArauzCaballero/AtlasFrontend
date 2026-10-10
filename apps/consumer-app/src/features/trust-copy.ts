@@ -65,8 +65,9 @@ const NUNCA_AL_COMERCIO = { icon: 'comercio', label: 'Nunca al comercio' } as co
  * esta cifrada en disco: decir «cifrados» ahi seria falso. Sigue siendo cierto que se guarda en este
  * navegador hasta cerrar sesion.
  */
-export const SESION_GUARDADA_MOVIL = 'Tus tokens se guardan cifrados en este dispositivo';
-export const SESION_GUARDADA_WEB = 'Tu sesión se guarda en este navegador; cierra sesión si el equipo no es tuyo';
+export const SESION_GUARDADA_MOVIL =
+  'Cifrada en este teléfono y dura 8 horas. Al abrir la app, al volver tras un minuto fuera o tras 5 minutos sin usarla, te pedimos Face ID, tu huella o tu PIN.';
+export const SESION_GUARDADA_WEB = 'Tu sesión se guarda en este navegador y dura 8 horas; cierra sesión si el equipo no es tuyo';
 
 /** Crear cuenta: quien eres, como te contactamos, como entras. */
 export const TRUST_REGISTRO: TrustItem[] = [

@@ -36,7 +36,7 @@ import { PartnerBanner, usePartnerBanner } from '../../../src/ui/partner-banner'
 import { downloadSpendingReport } from '../../../src/features/spending-report';
 import { categoryLook, formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
-import { useAlVolver } from '../../../src/features/al-volver';
+import { useAlVolver, useTirarParaRecargar } from '../../../src/features/al-volver';
 import { useProgress } from '../../../src/features/use-progress';
 import { CalificacionCard } from '../../../src/ui/calificacion-card';
 import { CrecimientoCreditoCard } from '../../../src/ui/crecimiento-credito-card';
@@ -61,8 +61,10 @@ export default function Home() {
    */
   const book = useCreditBook(session.customerId);
   const nivel = useProgress(session.customerId);
-  // Al volver a Inicio: puntos, calificación y créditos al día, y las cifras cuentan otra vez.
-  const vuelta = useAlVolver(() => Promise.all([nivel.recargar(), book.reload()]));
+  // Al volver a Inicio, tras pagar y cada minuto a la vista: puntos, calificación y créditos al día, y las cifras cuentan otra vez.
+  const recargarTodo = () => Promise.all([session.refresh(), nivel.recargar(), book.reload()]);
+  const vuelta = useAlVolver(recargarTodo);
+  const tirar = useTirarParaRecargar(recargarTodo);
   const partnerBanner = usePartnerBanner();
   // Avisos y mensajes que negocio escribe para el inicio; los del banner de partner salen aparte.
   const avisosDeInicio = useSurfaceContent('home', esBannerDePartner);
@@ -142,7 +144,11 @@ export default function Home() {
   }
 
   return (
-    <Screen onRefresh={() => void session.refresh()}>
+    /*
+      Tirar hacia abajo recarga TODO lo que pinta la portada. Antes solo recargaba el perfil (`session.refresh`):
+      la línea, las compras y los puntos seguían como estaban, y lo único que los traía era cerrar la app.
+    */
+    <Screen {...tirar}>
       <View style={styles.greeting}>
         <View style={styles.greetingText}>
           <AtlasText variant="caption" tone="secondary">

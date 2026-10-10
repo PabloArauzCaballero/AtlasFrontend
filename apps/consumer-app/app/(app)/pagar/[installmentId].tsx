@@ -35,6 +35,7 @@ import {
   type PaymentInstruction,
 } from '../../../src/api/endpoints/payment-claims';
 import { subirComprobante } from '../../../src/features/comprobante-de-pago';
+import { avisarCambioDeDinero } from '../../../src/features/refresco';
 import { formatAmount } from '../../../src/features/spending-copy';
 import { useSession } from '../../../src/session/session';
 import { color, radius, space, marca } from '../../../src/theme/tokens';
@@ -174,6 +175,8 @@ export default function PayInstallmentScreen() {
       });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setReportado(true);
+      // Pagos, Inicio, la cuota y los avisos se recargan ya y en los repasos: ver `features/refresco.ts`.
+      avisarCambioDeDinero();
       await cargar();
     } catch (problema) {
       setFallo(problema instanceof Error ? problema.message : 'No pudimos enviar tu aviso. Intenta de nuevo.');

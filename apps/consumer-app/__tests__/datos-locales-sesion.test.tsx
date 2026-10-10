@@ -7,6 +7,7 @@ import { act, render } from '@testing-library/react-native';
 import * as authApi from '../src/api/endpoints/auth';
 import { SessionProvider, useSession, type SessionValue } from '../src/session/session';
 import { profileStorage } from '../src/session/token-storage';
+import { guardarInicioConPin } from '../src/session/tope-de-sesion';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -79,8 +80,10 @@ async function montar(): Promise<() => SessionValue> {
   return () => valor as unknown as SessionValue;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
+  // Una sesión abierta con el PIN hace un rato: dentro del tope de 8 h (`session/tope-de-sesion.ts`).
+  await guardarInicioConPin(Date.now());
 });
 
 describe('lo que deja un cliente en el teléfono (APP-09)', () => {
