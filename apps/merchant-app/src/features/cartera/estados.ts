@@ -24,6 +24,16 @@ export function estadoDeCuota(cuota: Pick<CuotaDeCartera, 'amountOutstanding' | 
   return Number(cuota.amountOutstanding) === 0 ? 'pagado' : cuota.overdue ? 'mora' : 'pendiente';
 }
 
+/**
+ * El estado de un crédito en las tres cestas, para su pastilla. El backend manda `status` en inglés y
+ * en mayúsculas (`ACTIVE`…), que no se pinta crudo: se lee de sus cuotas. Saldado si no falta nada,
+ * en mora si alguna cuota lo está, y si no, pendiente.
+ */
+export function estadoDeCredito(credito: Pick<CreditoDeCartera, 'outstanding' | 'installments'>): Estado {
+  if (Number(credito.outstanding) === 0) return 'pagado';
+  return credito.installments.some((cuota) => estadoDeCuota(cuota) === 'mora') ? 'mora' : 'pendiente';
+}
+
 export type CuotaConEstado = CuotaDeCartera & { estado: Estado };
 
 export interface GrupoDeCredito {
