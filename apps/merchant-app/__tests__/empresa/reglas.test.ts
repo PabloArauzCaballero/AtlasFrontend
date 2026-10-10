@@ -15,7 +15,18 @@ import {
   slugDeSucursal,
   textoDeCajas,
 } from '@/features/empresa/cajas';
-import { camposEscritos, documentoMiEmpresa, DONDE_SE_RESUELVE, opcionesDeRubro, pareceCorreo, tituloDeHuecos, tonoDeEstado } from '@/features/empresa/expediente';
+import {
+  camposEscritos,
+  documentoMiEmpresa,
+  DONDE_SE_RESUELVE,
+  estadoDeCaja,
+  estadoDelExpediente,
+  estadoDeSucursal,
+  opcionesDeRubro,
+  pareceCorreo,
+  tituloDeHuecos,
+  tonoDeEstado,
+} from '@/features/empresa/expediente';
 import {
   clasificarQr,
   documentoQrDeCobro,
@@ -101,6 +112,25 @@ describe('formularios del expediente', () => {
     expect(pareceCorreo('pagos tienda.bo')).toBe(false);
   });
 
+  it('los estados se dicen en español, con su tono; nunca el código', () => {
+    expect(['draft', 'contact_verified', 'documents_submitted', 'under_review', 'approved', 'rejected', 'suspended'].map((e) => estadoDelExpediente(e).texto)).toEqual([
+      'Borrador',
+      'Contacto verificado',
+      'Documentos enviados',
+      'En revisión',
+      'Aprobado',
+      'Rechazado',
+      'Suspendido',
+    ]);
+    expect(estadoDelExpediente('approved').tono).toBe('success');
+    expect(estadoDelExpediente('under_review').tono).toBe('warning');
+    expect(estadoDelExpediente('rejected').tono).toBe('danger');
+    expect(estadoDelExpediente('draft').tono).toBe('neutral');
+    expect(estadoDeSucursal('ACTIVE').texto).toBe('Activa');
+    expect(estadoDeSucursal('INACTIVE').texto).toBe('De baja');
+    expect(['active', 'registered', 'suspended'].map((e) => estadoDeCaja(e).texto)).toEqual(['Activa', 'Sin activar', 'Suspendida']);
+  });
+
   it('tonos de estado de QR y terminales', () => {
     expect(['active', 'pending_review', 'registered', 'rejected', 'suspended', 'replaced'].map(tonoDeEstado)).toEqual([
       'success',
@@ -119,7 +149,7 @@ describe('PDF de cada pestaña', () => {
     expect(doc.title).toBe('Mi empresa');
     expect(doc.subtitle).toBe('Panadería El Sol SRL · NIT 1023456019');
     expect(doc.summary).toEqual([
-      { label: 'Estado', value: 'draft' },
+      { label: 'Estado', value: 'Borrador' },
       { label: 'Sucursales', value: 1 },
       { label: 'Terminales', value: 1 },
       { label: 'QR registrados', value: 0 },

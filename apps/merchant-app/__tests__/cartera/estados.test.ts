@@ -6,16 +6,20 @@
 import type { CreditoDeCartera, CuotaDeCartera, PagoDeCartera } from '@/api/servicios/merchantCreditService';
 import {
   codigoCorto,
+  conceptoDeCargo,
   creditosConCuotas,
   cuadreDeCobros,
   cuotasPlanas,
+  estadoDeCredito,
   estadoDeCuota,
   estadoDeFactura,
   estadoDelCargo,
+  humanizar,
+  medioDePago,
   nombreDeCaja,
   textoDeOrigen,
 } from '@/features/cartera/estados';
-import { bob, fechaCorta, formatBob, formatDate, textoDeFallo } from '@/features/cartera/formato';
+import { bob, cuotasTexto, fechaCorta, formatBob, formatDate, tasaCorta, textoDeFallo } from '@/features/cartera/formato';
 import { MENSAJE_PERSONAL_INTERNO, resolverAlcance } from '@/features/cartera/use-merchant-scope';
 
 const NBSP = / /g;
@@ -198,5 +202,48 @@ describe('alcance del comercio (/portal/scope)', () => {
 
   it('sin respuesta todavía no está listo', () => {
     expect(resolverAlcance(null, '').ready).toBe(false);
+  });
+});
+
+describe('rótulos cortos de la pantalla', () => {
+  it('la tasa sin decimales de relleno, para que «Comisión Atlas 3 %» no se corte', () => {
+    expect(tasaCorta('3.00')).toBe('3');
+    expect(plano(tasaCorta('2.50'))).toBe('2,5');
+    expect(tasaCorta(undefined)).toBe('0');
+    expect(tasaCorta('abc')).toBe('0');
+  });
+
+  it('«1 cuota» y «3 cuotas», no «cuota(s)»', () => {
+    expect(cuotasTexto(1)).toBe('1 cuota');
+    expect(cuotasTexto(3)).toBe('3 cuotas');
+  });
+
+  it('el estado de un crédito sale de sus cuotas, no del `status` en inglés', () => {
+    expect(estadoDeCredito({ outstanding: '0.00', installments: [cuota({ amountOutstanding: '0', overdue: false })] })).toBe('pagado');
+    expect(estadoDeCredito({ outstanding: '80.00', installments: [cuota({ amountOutstanding: '80', overdue: true })] })).toBe('mora');
+    expect(estadoDeCredito({ outstanding: '80.00', installments: [cuota({ amountOutstanding: '80', overdue: false })] })).toBe('pendiente');
+  });
+});
+
+describe('códigos a palabras (regla 6)', () => {
+  it('el concepto de un cargo con los rótulos del ERP', () => {
+    expect(conceptoDeCargo('MDR')).toBe('Comisión por venta');
+    expect(conceptoDeCargo('SUBSCRIPTION')).toBe('Suscripción');
+    expect(conceptoDeCargo('MINIMUM_MONTHLY_FEE')).toBe('Mínimo mensual');
+  });
+
+  it('el medio de un cobro, también en minúsculas', () => {
+    expect(medioDePago('bank_transfer')).toBe('Transferencia bancaria');
+    expect(medioDePago('cash_partner')).toBe('Efectivo en el comercio');
+    expect(medioDePago('qr_transfer')).toBe('Transferencia por QR');
+    expect(medioDePago('QR')).toBe('QR');
+  });
+
+  it('lo desconocido se humaniza y lo vacío es una raya', () => {
+    expect(conceptoDeCargo('LATE_PAYMENT_FEE')).toBe('Late payment fee');
+    expect(medioDePago('crypto_wallet')).toBe('Crypto wallet');
+    expect(medioDePago('')).toBe('—');
+    expect(conceptoDeCargo(null)).toBe('—');
+    expect(humanizar('__')).toBe('—');
   });
 });

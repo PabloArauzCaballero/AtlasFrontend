@@ -12,13 +12,17 @@
  * cobro a la caja equivocada.
  *
  * La tabla de la web pasa a una tarjeta por sucursal, y sus `Modal` a hojas (`ui/empresa/hoja.tsx`).
+ * Cada tarjeta: el nombre y su estado en español, una línea con ciudad y dirección, si vende a
+ * crédito, y sus cajas como filas compactas (el QR pequeño abre el grande). «Editar» y «Dar de baja»
+ * van al pie en una fila de dos. El PDF va a la cabecera de «Mi empresa» (`onPdf`) y «Actualizar»
+ * es tirar hacia abajo.
  * El expediente lo resuelve «Mi empresa» y llega por props: las cuatro pestañas hablan del MISMO.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { color, radius, space } from '@cliente/theme/tokens';
 import { IconField, SelectField } from '@cliente/ui/form-controls';
-import { AtlasText, Badge, Button, Card, CardHeader, Cargando } from '@cliente/ui/primitives';
+import { AtlasText, Badge, Button, Card, CardHeader, Cargando, Divider, EmptyState, IconButton } from '@cliente/ui/primitives';
 import { partnerOnboardingService, type PartnerOnboardingState, type PartnerPosTerminal } from '@/api/servicios/partnerOnboardingService';
 import { portalService } from '@/api/servicios/portalService';
 import type { ResourceRow } from '@/api/types';
@@ -35,11 +39,12 @@ import {
 } from '@/features/empresa/cajas';
 import type { DatosCartel } from '@/features/empresa/cartel';
 import { mensajeDe } from '@/features/empresa/errores';
+import { estadoDeCaja, estadoDeSucursal } from '@/features/empresa/expediente';
+import type { DocumentoPdf } from '@/features/pdf';
 import { conVacia, useOpciones } from '@/features/empresa/opciones';
 import { ciudadesParaEditar, cuerpoDeAlta, documentoSucursales, lineaDeUbicacion } from '@/features/empresa/sucursales';
 import { useMerchantScope } from '@/features/empresa/use-merchant-scope';
 import { Aviso } from '@/ui/aviso';
-import { BotonPdf } from '@/ui/boton-pdf';
 import { HojaDelCartel } from './cartel';
 import { Hoja, PieDeHoja } from './hoja';
 import { ImportarSucursales } from './importar-sucursales';
@@ -53,6 +58,7 @@ export function Sucursales({
   cargandoEstado,
   recargarEstado,
   vuelta,
+  onPdf,
 }: {
   partnerId: string;
   /** El expediente que resolvió «Mi empresa»: de él cuelgan las cajas y sus QR. */
@@ -61,6 +67,8 @@ export function Sucursales({
   /** Relee el expediente en «Mi empresa» (en la web: `recargarExpediente` + `onDone`). */
   recargarEstado: () => Promise<void>;
   vuelta: number;
+  /** El PDF de esta pestaña para la cabecera de «Mi empresa»; `null` sin sucursales. */
+  onPdf?: (generar: (() => DocumentoPdf) | null) => void;
 }) {
   const scope = useMerchantScope();
   const { accountId: queryAccountId, ready } = scope;
@@ -89,6 +97,10 @@ export function Sucursales({
   useEffect(() => {
     void recargarSucursales();
   }, [recargarSucursales, vuelta]);
+
+  useEffect(() => {
+    onPdf?.(branchRows.length ? () => documentoSucursales(branchRows) : null);
+  }, [onPdf, branchRows]);
 
   /** El local del expediente enlazado con ESTA sucursal del ERP, si ya se declaró. */
   const localDe = (erpBranchId: string) => estado?.branches.find((local) => local.erpBranchId === erpBranchId) ?? null;
@@ -189,7 +201,6 @@ export function Sucursales({
             value={queryAccountId ?? ''}
             opciones={conVacia(scope.accountOptions, '— Elige uno de tus negocios —')}
             onChange={scope.setAccountId}
-            hint="Administras varios negocios: elige de cuál quieres ver las sucursales."
             ayuda="Negocio del que se muestran las sucursales, si administras varios."
           />
         </Card>
@@ -208,7 +219,7 @@ export function Sucursales({
       */}
       {estado && estado.profile.onboardingStatus !== 'approved' ? (
         <Aviso tono="warning" titulo="Tu expediente todavía no está aprobado" testID="aviso-expediente-no-aprobado">
-          {`Está en «${ESTADO_EXPEDIENTE[estado.profile.onboardingStatus] ?? estado.profile.onboardingStatus}». Mientras no esté aprobado, la app de tus clientes no reconoce ningún QR ni código de tus cajas —aunque la caja esté activa— y responde «Este QR no es de Atlas». Los carteles ya se pueden descargar, pero empezarán a funcionar al aprobarse el expediente.`}
+          {`Está en «${ESTADO_EXPEDIENTE[estado.profile.onboardingStatus] ?? estado.profile.onboardingStatus}». Hasta que se apruebe, la app de tus clientes no reconoce los QR de tus cajas. Los carteles ya se pueden descargar.`}
         </Aviso>
       ) : null}
 
@@ -224,31 +235,28 @@ export function Sucursales({
         </Aviso>
       ) : null}
 
-      <Card>
-        <CardHeader title="Sucursales registradas" detail="Cada fila enseña sus cajas y el QR que se imprime para ese mostrador." icon="comercio" />
-        <View style={styles.acciones}>
-          <Button label="Agregar sucursal" icon="ubicacion" disabled={!ready} onPress={() => setCreando(true)} testID="btn-agregar-sucursal" />
-          <View style={styles.fila}>
-            <Button label="Importar desde Excel" icon="subir" variant="secondary" disabled={!ready} onPress={() => setImportando(true)} testID="btn-importar-sucursales" />
-            <BotonPdf label="Descargar PDF" testID="pdf-sucursales" disabled={!branchRows.length} documento={() => documentoSucursales(branchRows)} />
-            <Button label="Actualizar" icon="refrescar" variant="secondary" loading={cargandoSucursales} disabled={!ready} onPress={() => recargarSucursales()} />
-          </View>
-        </View>
-        {errorSucursales ? (
-          <Aviso tono="danger" titulo="No se pudo consultar">
-            {errorSucursales}
-          </Aviso>
-        ) : null}
-        {!ready ? (
-          <AtlasText variant="caption" tone="tertiary" align="center" style={styles.vacio}>
-            {scope.error ? 'No hay nada que mostrar hasta resolver lo de arriba.' : 'Elige uno de tus negocios para ver sus sucursales.'}
-          </AtlasText>
-        ) : !branchRows.length && !cargandoSucursales ? (
-          <AtlasText variant="captionStrong" tone="secondary" align="center" style={styles.vacio}>
-            Tu negocio aún no tiene sucursales registradas.
-          </AtlasText>
-        ) : null}
-      </Card>
+      <View style={styles.fila}>
+        <Button
+          label="Importar"
+          icon="subir"
+          variant="secondary"
+          disabled={!ready}
+          onPress={() => setImportando(true)}
+          testID="btn-importar-sucursales"
+          style={styles.mitad}
+        />
+        <Button label="Agregar" icon="ubicacion" disabled={!ready} onPress={() => setCreando(true)} testID="btn-agregar-sucursal" style={styles.mitad} />
+      </View>
+      {errorSucursales ? (
+        <Aviso tono="danger" titulo="No se pudo consultar">
+          {errorSucursales}
+        </Aviso>
+      ) : null}
+      {!ready ? (
+        <EmptyState icon="comercio" title="Sin negocio elegido" detail={scope.error ? 'No hay nada que mostrar hasta resolver lo de arriba.' : 'Elige uno de tus negocios.'} />
+      ) : !branchRows.length && !cargandoSucursales && !errorSucursales ? (
+        <EmptyState icon="comercio" title="Sin sucursales" detail="Agrega la primera con el botón de arriba." />
+      ) : null}
 
       {ready
         ? branchRows.map((branch) => {
@@ -257,42 +265,41 @@ export function Sucursales({
             const terminales = local ? (estado?.posTerminals ?? []).filter((pos) => pos.branchId === local.branchId) : [];
             const bnpl = estadoBnplSucursal(branch);
             const activa = String(branch.status) === 'ACTIVE';
+            const estadoSucursal = estadoDeSucursal(branch.status);
             return (
-              <Card key={id}>
-                <CardHeader title={String(branch.name ?? '—')} detail={lineaDeUbicacion(branch)} trailing={<Badge label={String(branch.status ?? '—')} tone={activa ? 'success' : 'warning'} dot />} />
+              <Card key={id} testID={`sucursal-${id}`}>
+                <CardHeader title={String(branch.name ?? '—')} detail={lineaDeUbicacion(branch)} trailing={<Badge label={estadoSucursal.texto} tone={estadoSucursal.tono} dot />} />
                 <View style={styles.cuerpo}>
-                  <View style={styles.bnpl}>
+                  <View style={styles.filaEntre} accessible accessibilityLabel={`Venta a crédito: ${bnpl.texto}. ${bnpl.explicacion}`}>
                     <AtlasText variant="caption" tone="secondary">
-                      BNPL
+                      Venta a crédito
                     </AtlasText>
                     <Badge label={bnpl.texto} tone={bnpl.tono} />
                   </View>
-                  <AtlasText variant="caption" tone="tertiary">
-                    {bnpl.explicacion}
-                  </AtlasText>
 
                   <View style={styles.cajas} testID={`cajas-de-${id}`}>
-                    <AtlasText variant="captionStrong">Cajas y QR</AtlasText>
+                    <AtlasText variant="captionStrong" tone="secondary">
+                      Cajas
+                    </AtlasText>
                     {cargandoEstado && !estado ? (
-                      <AtlasText variant="body" tone="secondary">
-                        Buscando las cajas de esta sucursal…
+                      <AtlasText variant="caption" tone="tertiary">
+                        Buscando las cajas…
                       </AtlasText>
                     ) : !partnerId ? (
-                      <AtlasText variant="body" tone="secondary">
-                        Todavía no has abierto el expediente de tu empresa, y el QR cuelga de él. Ábrelo en <AtlasText variant="bodyStrong">Estado del expediente</AtlasText> y vuelve aquí.
+                      <AtlasText variant="caption" tone="tertiary">
+                        Abre tu expediente en «Estado» para tener QR.
                       </AtlasText>
                     ) : !local ? (
                       <View style={styles.cajas}>
-                        <AtlasText variant="body" tone="secondary">
-                          Esta sucursal todavía no está enlazada con tu expediente, así que no puede tener QR.
+                        <AtlasText variant="caption" tone="tertiary">
+                          Sin enlazar con tu expediente: todavía no puede tener QR.
                         </AtlasText>
                         {sinEnlazar.length ? (
                           <SelectField
                             label="¿Es uno de los locales que ya declaraste?"
                             value={adoptar}
                             onChange={setAdoptar}
-                            hint="Si es el mismo mostrador, enlázalo en vez de declararlo otra vez: dos filas para un local son dos QR."
-                            ayuda="Si este local ya lo declaraste antes, enlázalo en vez de crearlo otra vez."
+                            ayuda="Si este local ya lo declaraste antes, enlázalo en vez de crearlo otra vez: dos filas para un local son dos QR."
                             opciones={[
                               { etiqueta: '— Es un local nuevo —', valor: '' },
                               ...sinEnlazar.map((suelto) => ({ etiqueta: `${suelto.branchCode} · ${suelto.name}`, valor: suelto.branchId })),
@@ -300,7 +307,7 @@ export function Sucursales({
                           />
                         ) : null}
                         <Button
-                          label="Habilitar QR en esta sucursal"
+                          label="Habilitar QR"
                           icon="check"
                           loading={ocupada === `declarar-${id}`}
                           testID={`habilitar-qr-${id}`}
@@ -312,44 +319,44 @@ export function Sucursales({
                         />
                       </View>
                     ) : (
-                      <View style={styles.cajas}>
+                      <View>
                         {terminales.length === 0 ? (
-                          <AtlasText variant="body" tone="secondary">
-                            Sin cajas dadas de alta: no hay ningún QR que imprimir para este mostrador.
+                          <AtlasText variant="caption" tone="tertiary">
+                            Sin cajas: no hay QR que imprimir.
                           </AtlasText>
                         ) : (
-                          <View style={styles.rejilla} testID={`rejilla-cajas-${id}`}>
-                            {terminales.map((pos) => (
-                              <Caja
-                                key={pos.terminalId}
-                                pos={pos}
-                                ocupada={ocupada}
-                                onVer={() => setQrAmpliado(pos)}
-                                onDescargar={() =>
-                                  pos.manualCode
-                                    ? setCartel({
-                                        serial: pos.terminalSerial,
-                                        codigoManual: pos.manualCode,
-                                        comercio,
-                                        sucursal: String(branch.name ?? 'Sucursal'),
-                                        caja: pos.terminalAlias ?? pos.terminalSerial,
-                                      })
-                                    : undefined
-                                }
-                                onCambiarEstado={() =>
-                                  enExpediente('Estado de la caja', `pos-${pos.terminalId}`, () =>
-                                    partnerOnboardingService.changePosStatus(partnerId, pos.terminalId, { status: siguienteEstadoDeCaja(pos.status) }),
-                                  )
-                                }
-                              />
+                          <View testID={`rejilla-cajas-${id}`}>
+                            {terminales.map((pos, indice) => (
+                              <View key={pos.terminalId}>
+                                {indice > 0 ? <Divider /> : null}
+                                <Caja
+                                  pos={pos}
+                                  ocupada={ocupada}
+                                  onVer={() => setQrAmpliado(pos)}
+                                  onDescargar={() =>
+                                    pos.manualCode
+                                      ? setCartel({
+                                          serial: pos.terminalSerial,
+                                          codigoManual: pos.manualCode,
+                                          comercio,
+                                          sucursal: String(branch.name ?? 'Sucursal'),
+                                          caja: pos.terminalAlias ?? pos.terminalSerial,
+                                        })
+                                      : undefined
+                                  }
+                                  onCambiarEstado={() =>
+                                    enExpediente('Estado de la caja', `pos-${pos.terminalId}`, () =>
+                                      partnerOnboardingService.changePosStatus(partnerId, pos.terminalId, { status: siguienteEstadoDeCaja(pos.status) }),
+                                    )
+                                  }
+                                />
+                              </View>
                             ))}
                           </View>
                         )}
-                        <Button
-                          label="Agregar cajas"
-                          icon="lista"
-                          variant="secondary"
-                          loading={ocupada === `alta-pos-${id}`}
+                        <Enlace
+                          texto="+ Agregar cajas"
+                          ocupado={ocupada === `alta-pos-${id}`}
                           testID={`btn-nueva-caja-${id}`}
                           onPress={() => setNuevaCaja({ erpBranchId: id, branchId: local.branchId, nombre: String(branch.name ?? 'esta sucursal') })}
                         />
@@ -358,13 +365,14 @@ export function Sucursales({
                   </View>
 
                   <View style={styles.fila}>
-                    <Button label="Editar" icon="editar" variant="secondary" onPress={() => setEditando(branch)} />
+                    <Button label="Editar" icon="editar" variant="secondary" onPress={() => setEditando(branch)} style={styles.mitad} />
                     <Button
                       label={activa ? 'Dar de baja' : 'Reactivar'}
                       icon={activa ? 'cerrar' : 'check'}
                       variant={activa ? 'destructive' : 'secondary'}
                       loading={ocupada === id}
                       onPress={() => cambiarEstado(branch)}
+                      style={styles.mitad}
                     />
                   </View>
                 </View>
@@ -429,7 +437,6 @@ export function Sucursales({
       <Hoja
         visible={qrAmpliado !== null}
         titulo={qrAmpliado ? `QR de ${qrAmpliado.terminalAlias ?? qrAmpliado.terminalSerial}` : 'QR'}
-        descripcion="El código que escanean tus clientes en este mostrador. Imprímelo y pégalo junto a la caja."
         onClose={() => setQrAmpliado(null)}
         cierre="Cerrar"
         testID="qr-ampliado"
@@ -452,7 +459,31 @@ export function Sucursales({
   );
 }
 
-/** Una caja: su QR pequeño (toca para verlo en grande), su código a mano, su estado y sus acciones. */
+/** Un enlace de texto con su spinner: para la acción secundaria de una tarjeta, que no merece un botón a lo ancho. */
+function Enlace({ texto, onPress, ocupado = false, testID, tono = 'brand' }: { texto: string; onPress: () => void; ocupado?: boolean; testID?: string; tono?: 'brand' | 'danger' | 'secondary' }) {
+  return (
+    <Pressable
+      onPress={ocupado ? undefined : onPress}
+      accessibilityRole="button"
+      accessibilityLabel={texto.replace(/^\+\s*/, '')}
+      accessibilityState={{ busy: ocupado }}
+      hitSlop={8}
+      style={styles.enlace}
+      testID={testID}
+    >
+      {ocupado ? <ActivityIndicator size="small" color={color.text.secondary} /> : null}
+      <AtlasText variant="captionStrong" tone={tono}>
+        {texto}
+      </AtlasText>
+    </Pressable>
+  );
+}
+
+/**
+ * Una caja en UNA fila: su QR pequeño (toca para verlo en grande), su nombre y el código a mano, su
+ * estado en español y, a la derecha, descargar el cartel. Activar o suspender va como enlace debajo
+ * del nombre: es lo que menos se usa y no puede competir con el QR.
+ */
 function Caja({
   pos,
   ocupada,
@@ -467,56 +498,36 @@ function Caja({
   onCambiarEstado: () => Promise<void>;
 }) {
   const nombre = pos.terminalAlias ?? pos.terminalSerial;
+  const estado = estadoDeCaja(pos.status);
+  const accion = accionDeEstadoDeCaja(pos.status);
   return (
-    <View style={styles.caja}>
-      <Pressable
-        onPress={onVer}
-        accessibilityRole="button"
-        accessibilityLabel={`Ver en grande el QR de ${nombre}`}
-        testID={`btn-ver-qr-${pos.terminalSerial}`}
-        style={styles.qrPequeno}
-      >
-        <QrDeCaja serial={pos.terminalSerial} size={88} />
+    <View style={styles.caja} testID={`caja-${pos.terminalSerial}`}>
+      <Pressable onPress={onVer} accessibilityRole="button" accessibilityLabel={`Ver en grande el QR de ${nombre}`} testID={`btn-ver-qr-${pos.terminalSerial}`} style={styles.qrPequeno}>
+        <QrDeCaja serial={pos.terminalSerial} size={44} />
       </Pressable>
-      <AtlasText variant="bodyStrong" align="center" numberOfLines={1}>
-        {nombre}
-      </AtlasText>
-      {/* El serial sólo si el alias no es él mismo: repetirlo no dice nada. */}
-      {pos.terminalAlias ? (
-        <AtlasText variant="micro" tone="tertiary" align="center" numberOfLines={1}>
-          {pos.terminalSerial}
+      <View style={styles.crece}>
+        <AtlasText variant="bodyStrong" numberOfLines={1}>
+          {nombre}
         </AtlasText>
-      ) : null}
-      {/* El código que se teclea en la app cuando la cámara no lee el QR. Es de ESTA caja. */}
-      {pos.manualCode ? (
-        <AtlasText variant="caption" tone="secondary" align="center">
-          Código a mano:{' '}
-          <AtlasText variant="bodyStrong" selectable testID={`codigo-manual-${pos.terminalSerial}`}>
-            {pos.manualCode}
+        {/* El código que se teclea en la app cuando la cámara no lee el QR. Es de ESTA caja. */}
+        {pos.manualCode ? (
+          <AtlasText variant="caption" tone="secondary" numberOfLines={1}>
+            Código{' '}
+            <AtlasText variant="captionStrong" selectable testID={`codigo-manual-${pos.terminalSerial}`}>
+              {pos.manualCode}
+            </AtlasText>
           </AtlasText>
-        </AtlasText>
-      ) : null}
-      <Badge label={pos.status} tone={pos.status === 'active' ? 'success' : 'warning'} dot />
-      {pos.status !== 'active' ? (
-        <AtlasText variant="micro" tone="tertiary" align="center">
-          El teléfono del cliente rechaza este código hasta que la caja esté activa.
-        </AtlasText>
-      ) : null}
-      <Button
-        label="Descargar QR"
-        icon="descargar"
-        disabled={!pos.manualCode}
-        blockedReason={pos.manualCode ? null : 'Esta caja aún no tiene código manual'}
-        onPress={onDescargar}
-        testID={`btn-descargar-qr-${pos.terminalSerial}`}
-      />
-      <Button
-        label={accionDeEstadoDeCaja(pos.status)}
-        variant="secondary"
-        loading={ocupada === `pos-${pos.terminalId}`}
-        onPress={onCambiarEstado}
-        testID={`btn-estado-pos-${pos.terminalSerial}`}
-      />
+        ) : null}
+        <Enlace
+          texto={accion}
+          tono={accion === 'Suspender' ? 'secondary' : 'brand'}
+          ocupado={ocupada === `pos-${pos.terminalId}`}
+          onPress={() => void onCambiarEstado()}
+          testID={`btn-estado-pos-${pos.terminalSerial}`}
+        />
+      </View>
+      <Badge label={estado.texto} tone={estado.tono} dot />
+      {pos.manualCode ? <IconButton icon="descargar" label={`Descargar el cartel del QR de ${nombre}`} onPress={onDescargar} testID={`btn-descargar-qr-${pos.terminalSerial}`} /> : null}
     </View>
   );
 }
@@ -569,7 +580,7 @@ function AltaDeSucursal({
   };
 
   return (
-    <Hoja visible={visible} titulo="Agregar sucursal" descripcion="Registra un local nuevo de tu negocio. Nace activo; vender a crédito en él lo habilita Atlas aparte." onClose={onClose}>
+    <Hoja visible={visible} titulo="Agregar sucursal" descripcion="Nace activa; vender a crédito en ella lo habilita Atlas aparte." onClose={onClose}>
       <IconField
         label="Nombre de sucursal"
         icon="comercio"
@@ -596,7 +607,6 @@ function AltaDeSucursal({
         onChangeText={(texto) => setCantidad(texto.replace(/[^\d]/g, ''))}
         keyboardType="number-pad"
         maxLength={2}
-        hint="Se crean como Caja 1, Caja 2… ya activas, cada una con su QR. Puedes agregar más después."
         ayuda="Cuántas cajas o mostradores cobran en este local. Cada una recibe su QR y se llama Caja 1, Caja 2…"
         testID="campo-cantidad-cajas"
       />
@@ -713,7 +723,6 @@ function NuevasCajas({
     <Hoja
       visible={destino !== null}
       titulo={destino ? `Agregar cajas en ${destino.nombre}` : 'Agregar cajas'}
-      descripcion="Cada caja tiene su propio QR: es lo que permite saber en qué mostrador se hizo cada venta."
       onClose={onClose}
     >
       <IconField
@@ -735,7 +744,7 @@ function NuevasCajas({
         onChangeText={setSerial}
         autoCapitalize="characters"
         autoCorrect={false}
-        hint="Déjalo vacío para que Atlas lo genere: NOMBRE-DE-LA-SUCURSAL-…-CAJA-N."
+        hint="Déjalo vacío para que Atlas lo genere."
         ayuda="Sólo si tu terminal ya trae un número de serie y quieres que el QR lo use. Si lo dejas vacío, Atlas lo genera."
         testID={destino ? `campo-pos-serial-${destino.erpBranchId}` : undefined}
       />
@@ -760,22 +769,14 @@ function NuevasCajas({
 
 const styles = StyleSheet.create({
   pestana: { gap: space.base },
-  acciones: { gap: space.sm, marginTop: space.base },
-  fila: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  vacio: { paddingVertical: space.xl },
+  fila: { flexDirection: 'row', gap: space.sm },
+  mitad: { flex: 1 },
   cuerpo: { gap: space.md, marginTop: space.base },
-  bnpl: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  filaEntre: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
   cajas: { gap: space.sm },
-  rejilla: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: space.sm },
-  caja: {
-    width: '48.5%',
-    gap: space.xs,
-    padding: space.sm,
-    borderRadius: radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: color.border.subtle,
-    alignItems: 'stretch',
-  },
-  qrPequeno: { alignSelf: 'center' },
+  caja: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.sm },
+  crece: { flex: 1, gap: space.xxs },
+  qrPequeno: { borderRadius: radius.sm, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: color.border.subtle },
+  enlace: { flexDirection: 'row', alignItems: 'center', gap: space.xs, alignSelf: 'flex-start', paddingVertical: space.xxs },
   ampliado: { alignItems: 'center', gap: space.sm },
 });

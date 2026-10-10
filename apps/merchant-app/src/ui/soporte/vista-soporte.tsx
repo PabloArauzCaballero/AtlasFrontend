@@ -13,14 +13,21 @@
  * En la web su fallo se tragaba «para no tumbar la pantalla» y escondió durante semanas que la
  * pasarela no reenviaba `merchant/support/categories`. Se puede seguir hablando sin motivos, pero
  * el aviso queda a la vista.
+ *
+ * ## Cómo se ve
+ *
+ * Arriba, una fila de dos: «Chat con soporte» y «Nuevo caso». Debajo, los casos como tarjetas
+ * compactas —título, estado en español y una línea «número · fecha»—; tocar una abre su detalle, y
+ * desde el detalle se vuelve a la conversación si sigue viva.
  */
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { space } from '@cliente/theme/tokens';
-import { AtlasText, Badge, Button, Card, CardHeader, Cargando, Divider } from '@cliente/ui/primitives';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { color, space } from '@cliente/theme/tokens';
+import { Icon } from '@cliente/ui/icons';
+import { AtlasText, Badge, Button, Card, Cargando, EmptyState } from '@cliente/ui/primitives';
 import { supportService, type CasoDeSoporte, type MotivoDeSoporte } from '@/api/servicios/supportService';
-import { CASO_VACIO, TEXTOS, canalVivo, soloFecha, tonoDelCaso, type BorradorDeCaso } from '@/features/soporte/chat';
+import { CASO_VACIO, TEXTOS, canalVivo, estadoDelCaso, fechaCorta, type BorradorDeCaso } from '@/features/soporte/chat';
 import type { MerchantPartner } from '@/features/use-merchant-partner';
 import { Aviso } from '@/ui/aviso';
 import { HojaDetalleCaso, HojaMotivos, HojaNuevoCaso } from './hojas';
@@ -39,6 +46,8 @@ export function VistaSoporte({ partner, vuelta }: { partner: MerchantPartner; vu
   const [enviandoCaso, setEnviandoCaso] = useState(false);
   const [errorDelCaso, setErrorDelCaso] = useState<string | null>(null);
   const [casoAbierto, setCasoAbierto] = useState<CasoDeSoporte | null>(null);
+  /** El canal vivo del caso abierto, leído de la fila de la lista (la que enciende «Ver conversación» en la web). */
+  const [canalDelAbierto, setCanalDelAbierto] = useState<string | null>(null);
   const [abriendoConversacion, setAbriendoConversacion] = useState(false);
   const primeraVez = useRef(true);
   const cargando = cargandoCasos || (!partnerId && partner.cargando);
@@ -149,72 +158,80 @@ export function VistaSoporte({ partner, vuelta }: { partner: MerchantPartner; vu
 
   const abrirDetalle = async (caso: CasoDeSoporte) => {
     try {
-      setCasoAbierto(await supportService.verCaso(caso.caseId));
+      const detalle = await supportService.verCaso(caso.caseId);
+      setCanalDelAbierto(canalVivo(caso));
+      setCasoAbierto(detalle);
     } catch {
       setError(TEXTOS.noDetalle);
     }
   };
 
-  const verConversacion = (caso: CasoDeSoporte) => {
-    const vivo = canalVivo(caso);
-    if (vivo) router.push({ pathname: '/conversacion/[channelId]', params: { channelId: vivo } });
+  const verConversacion = (vivo: string) => {
+    router.push({ pathname: '/conversacion/[channelId]', params: { channelId: vivo } });
   };
 
   return (
     <View style={styles.columna}>
       <View style={styles.acciones}>
         <Button
-          label="Hablar con soporte"
+          label="Chat con soporte"
           icon="chat"
+          variant="secondary"
           onPress={empezar}
           loading={abriendoConversacion}
           disabled={!partnerId}
           blockedReason={!partnerId && !partner.cargando ? partner.error : null}
           testID="hablar-con-soporte"
+          style={styles.mitad}
         />
         <Button
-          label="Abrir un caso"
+          label="Nuevo caso"
           icon="documento"
-          variant="secondary"
           onPress={() => {
             setErrorDelCaso(null);
             setAbriendoCaso(true);
           }}
           disabled={!partnerId}
           testID="abrir-un-caso"
+          style={styles.mitad}
         />
       </View>
 
       {error ? <Aviso tono="warning">{error}</Aviso> : null}
       {!partnerId && !partner.cargando && partner.error ? <Aviso tono="warning">{partner.error}</Aviso> : null}
 
-      <Card>
-        <CardHeader title="Mis casos" detail={cargando ? 'Cargando…' : `${casos.length} caso(s)`} icon="lista" />
-        {cargando ? <Cargando texto="Cargando…" /> : null}
-        {casos.length === 0 && !cargando ? (
-          <AtlasText variant="body" tone="secondary">
-            Todavía no abriste ningún caso. El botón de arriba abre una conversación.
-          </AtlasText>
-        ) : null}
-        {casos.map((caso, indice) => (
-          <View key={caso.caseId} style={styles.caso} testID={`caso-${caso.caseId}`}>
-            {indice > 0 ? <Divider /> : null}
-            <View style={styles.filaEntre}>
-              <View style={styles.crece}>
-                <AtlasText variant="title" numberOfLines={2}>
+      {cargando ? <Cargando texto="Cargando…" /> : null}
+      {casos.length === 0 && !cargando ? <EmptyState icon="chat" title="Sin casos" detail="Escríbenos por el chat o abre un caso." /> : null}
+      {casos.map((caso) => {
+        const estado = estadoDelCaso(caso);
+        const vivo = canalVivo(caso) !== null;
+        return (
+          <Pressable
+            key={caso.caseId}
+            onPress={() => void abrirDetalle(caso)}
+            accessibilityRole="button"
+            accessibilityLabel={`${caso.title}, ${estado.texto}`}
+            accessibilityHint="Abre el detalle del caso"
+            testID={`caso-${caso.caseId}`}
+          >
+            <Card padding="tight">
+              <View style={styles.filaEntre}>
+                <AtlasText variant="title" numberOfLines={2} style={styles.crece}>
                   {caso.title}
                 </AtlasText>
-                <AtlasText variant="caption" tone="secondary">{`${caso.caseNumber} · abierto el ${soloFecha(caso.openedAt)}`}</AtlasText>
+                <Badge label={estado.texto} tone={estado.tono} dot />
               </View>
-              <Badge label={caso.status} tone={tonoDelCaso(caso)} />
-            </View>
-            <View style={styles.botonesCaso}>
-              <Button label="Ver detalle" variant="ghost" icon={null} onPress={() => void abrirDetalle(caso)} />
-              {canalVivo(caso) ? <Button label="Ver conversación" variant="ghost" icon="chat" onPress={() => verConversacion(caso)} /> : null}
-            </View>
-          </View>
-        ))}
-      </Card>
+              <View style={styles.linea}>
+                {vivo ? <Icon name="chat" size={14} tint={color.text.secondary} /> : null}
+                <AtlasText variant="caption" tone="secondary" numberOfLines={1} style={styles.crece}>
+                  {`${caso.caseNumber} · ${fechaCorta(caso.openedAt)}`}
+                </AtlasText>
+                <Icon name="adelante" size={16} tint={color.text.tertiary} />
+              </View>
+            </Card>
+          </Pressable>
+        );
+      })}
 
       <HojaNuevoCaso
         visible={abriendoCaso}
@@ -227,16 +244,27 @@ export function VistaSoporte({ partner, vuelta }: { partner: MerchantPartner; vu
         error={errorDelCaso}
       />
       <HojaMotivos motivos={eligiendo} onElegir={elegirMotivo} onSinMotivo={() => void abrirConversacion()} onCerrar={() => setEligiendo(null)} />
-      <HojaDetalleCaso caso={casoAbierto} onCerrar={() => setCasoAbierto(null)} />
+      <HojaDetalleCaso
+        caso={casoAbierto}
+        onCerrar={() => setCasoAbierto(null)}
+        {...(canalDelAbierto
+          ? {
+              onVerConversacion: () => {
+                setCasoAbierto(null);
+                verConversacion(canalDelAbierto);
+              },
+            }
+          : {})}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  columna: { gap: space.base },
-  acciones: { gap: space.sm },
-  caso: { gap: space.xs, paddingVertical: space.xs },
+  columna: { gap: space.md },
+  acciones: { flexDirection: 'row', gap: space.sm },
+  mitad: { flex: 1 },
   filaEntre: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space.sm },
-  crece: { flex: 1, gap: space.xxs },
-  botonesCaso: { flexDirection: 'row', flexWrap: 'wrap', gap: space.xs },
+  linea: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.xxs },
+  crece: { flex: 1 },
 });

@@ -10,6 +10,8 @@ import {
   canalVivo,
   casoListoParaEnviar,
   efectoDelEvento,
+  estadoDelCaso,
+  fechaCorta,
   fechaHora,
   fueLeido,
   motivoDeBloqueo,
@@ -138,6 +140,19 @@ describe('casos', () => {
     expect(tonoDelCaso(caso({ closedAt: 'x', resolvedAt: 'x' }))).toBe('neutral');
     expect(tonoDelCaso(caso({ resolvedAt: 'x' }))).toBe('success');
     expect(tonoDelCaso(caso({}))).toBe('info');
+  });
+
+  it('el estado se dice en español; ámbar sólo cuando espera al comercio', () => {
+    expect(estadoDelCaso(caso({ status: 'NEW' }))).toEqual({ texto: 'Nuevo', tono: 'info' });
+    expect(estadoDelCaso(caso({ status: 'WAITING_PARTNER' }))).toEqual({ texto: 'Espera tu respuesta', tono: 'warning' });
+    expect(estadoDelCaso(caso({ status: 'RESOLVED', resolvedAt: 'x' }))).toEqual({ texto: 'Resuelto', tono: 'success' });
+    expect(estadoDelCaso(caso({ status: 'CLOSED', closedAt: 'x' }))).toEqual({ texto: 'Cerrado', tono: 'neutral' });
+    expect(estadoDelCaso(caso({ status: 'RARO' })).texto).toBe('RARO');
+  });
+
+  it('la fecha corta de la línea del caso, sin año ni punto', () => {
+    expect(fechaCorta('2026-10-02T15:00:00Z')).toMatch(/^2 oct$/);
+    expect(fechaCorta('no-es-fecha')).toBe('no-es-fecha');
   });
 
   it('una fecha que todavía no llegó dice «Todavía no»', () => {

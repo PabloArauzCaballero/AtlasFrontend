@@ -11,18 +11,26 @@
  * El expediente se resuelve AQUÍ y una sola vez (`useMerchantPartner`): cuando cada pestaña lo
  * resolvía por su cuenta, dos pestañas contiguas podían estar hablando de comercios distintos.
  *
- * Lo que añade el teléfono a la web (que sólo tiene «Actualizar» en cada panel, y se conserva):
- * tirar hacia abajo recarga todas las pestañas, volver a la pantalla también, y decidir en una
- * pestaña recarga las demás —la fila decidida pasa al Historial—. Ver `features/gestion-pos/recargas.ts`.
+ * Lo que cambia respecto a la web, que tiene «Actualizar» y «Descargar PDF» en cada panel: tirar
+ * hacia abajo recarga todas las pestañas, volver a la pantalla también, y decidir en una pestaña
+ * recarga las demás —la fila decidida pasa al Historial— (ver `features/gestion-pos/recargas.ts`).
+ * Los «Actualizar» se quitaron, y el PDF de la pestaña abierta es el ícono de la cabecera (Pablo,
+ * 2026-10-10: la cabecera de cada panel era lo más grande de la pantalla para lo que menos se usa).
+ *
+ * El contador de «Comprobantes» suma las cuotas Y los pagos iniciales (la web sólo cuenta las
+ * cuotas): ver `pendientesDeComprobantes`.
  */
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Screen, ScreenHeader } from '@cliente/ui/layout';
 import { SkeletonLista } from '@cliente/ui/primitives';
+import type { ComprobanteDePago, SolicitudDeCompra } from '@/api/servicios/merchantCreditService';
 import { useMerchantPartner } from '@/features/use-merchant-partner';
+import { documentoDeComprobantes, documentoDeSolicitudes } from '@/features/gestion-pos/documentos';
 import { useRecargas } from '@/features/gestion-pos/recargas';
+import { pendientesDeComprobantes } from '@/features/gestion-pos/tarjetas';
+import { AccionesDeCabecera } from '@/ui/acciones-de-cabecera';
 import { Aviso } from '@/ui/aviso';
-import { BotonCuenta } from '@/ui/boton-cuenta';
 import { PanelComprobantes } from '@/ui/gestion-pos/panel-comprobantes';
 import { PanelHistorial } from '@/ui/gestion-pos/panel-historial';
 import { PanelSolicitudes } from '@/ui/gestion-pos/panel-solicitudes';
@@ -37,10 +45,14 @@ export default function GestionPos() {
   const [pestana, elegirPestana] = usePestana<IdPestana>(PESTANAS);
   const recargas = useRecargas();
   const [refrescando, setRefrescando] = useState(false);
-  const [pendientes, setPendientes] = useState<{ solicitudes: number | null; comprobantes: number | null }>({
+  const [pendientes, setPendientes] = useState<{ solicitudes: number | null; comprobantes: number | null; iniciales: number | null }>({
     solicitudes: null,
     comprobantes: null,
+    iniciales: null,
   });
+  /* Lo que lleva el PDF de cada pestaña: las filas que se ven, como el `BotonPdf` de cada panel de la web. */
+  const [solicitudes, setSolicitudes] = useState<SolicitudDeCompra[]>([]);
+  const [comprobantes, setComprobantes] = useState<ComprobanteDePago[]>([]);
 
   /*
    * Los contadores se guardan por separado y con `setState` funcional: las pestañas están montadas a
@@ -53,6 +65,10 @@ export default function GestionPos() {
   const contarComprobantes = useCallback((total: number) => {
     setPendientes((previo) => (previo.comprobantes === total ? previo : { ...previo, comprobantes: total }));
   }, []);
+  const contarIniciales = useCallback((total: number) => {
+    setPendientes((previo) => (previo.iniciales === total ? previo : { ...previo, iniciales: total }));
+  }, []);
+  const cuentaComprobantes = pendientesDeComprobantes(pendientes.comprobantes, pendientes.iniciales);
 
   /* Tras decidir en una pestaña, las demás vuelven a pedir lo suyo (la que decidió ya se recargó). */
   const alDecidir = useCallback((origen: string) => void recargas.recargar(origen), [recargas]);
@@ -85,17 +101,17 @@ export default function GestionPos() {
     {
       id: 'solicitudes',
       etiqueta: 'Solicitudes de compra',
-      icono: 'lista',
+      corta: 'Solicitudes',
       ...(pendientes.solicitudes === null ? {} : { cuenta: pendientes.solicitudes }),
     },
     {
       id: 'comprobantes',
       etiqueta: 'Comprobantes por verificar',
-      icono: 'documento',
-      ...(pendientes.comprobantes === null ? {} : { cuenta: pendientes.comprobantes }),
+      corta: 'Comprobantes',
+      ...(cuentaComprobantes === null ? {} : { cuenta: cuentaComprobantes }),
     },
     // Lo ya respondido y todos los pagos, iniciales y de cuota (Pablo, 2026-10-08).
-    { id: 'historial', etiqueta: 'Historial', icono: 'reloj' },
+    { id: 'historial', etiqueta: 'Historial', corta: 'Historial' },
   ];
 
   /*
@@ -105,13 +121,22 @@ export default function GestionPos() {
    */
   const resolviendoExpediente = partner.cargando && !partner.partnerId;
 
+  /*
+   * El PDF de la pestaña abierta, con lo que hay en ella. Sin filas no hay ícono (la web deja el
+   * botón apagado); el Historial no tiene PDF en la web, así que aquí tampoco.
+   */
+  const nombre = partner.nombre;
+  const pdf =
+    pestana === 'solicitudes' && solicitudes.length
+      ? () => documentoDeSolicitudes(solicitudes, nombre)
+      : pestana === 'comprobantes' && comprobantes.length
+        ? () => documentoDeComprobantes(comprobantes, nombre)
+        : undefined;
+
   return (
-    <Screen onRefresh={() => void refrescar()} refreshing={refrescando}>
-      <ScreenHeader
-        title="Gestión POS"
-        subtitle="Lo que pasa en su caja: las compras que sus clientes piden con el QR y los pagos que avisan haber transferido. Usted acepta, rechaza y confirma."
-        action={<BotonCuenta />}
-      />
+    // El aire de abajo es para los botones flotantes (Mi empresa, Soporte, asistente): no tapan la última tarjeta.
+    <Screen onRefresh={() => void refrescar()} refreshing={refrescando} contentStyle={{ paddingBottom: 160 }}>
+      <ScreenHeader title="Gestión POS" action={<AccionesDeCabecera {...(pdf ? { pdf } : {})} />} />
 
       <SelectorDeExpediente partner={partner} />
       {partner.error ? <Aviso tono="danger">{partner.error}</Aviso> : null}
@@ -124,8 +149,8 @@ export default function GestionPos() {
           <Panel visible={pestana === 'solicitudes'}>
             <PanelSolicitudes
               partnerId={partner.partnerId}
-              nombre={partner.nombre}
               onCount={contarSolicitudes}
+              onFilas={setSolicitudes}
               onDone={alDecidir}
               recargas={recargas}
             />
@@ -133,8 +158,9 @@ export default function GestionPos() {
           <Panel visible={pestana === 'comprobantes'}>
             <PanelComprobantes
               partnerId={partner.partnerId}
-              nombre={partner.nombre}
               onCount={contarComprobantes}
+              onCountIniciales={contarIniciales}
+              onFilas={setComprobantes}
               onDone={alDecidir}
               recargas={recargas}
             />

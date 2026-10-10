@@ -13,18 +13,23 @@
  * reconstruir contra qué QR se cobró un día concreto. Y subirlo CIERRA el requisito `bank_qr` del
  * alta, así que al terminar se avisa a «Mi empresa» (`onDone`) para que «Estado» no siga diciendo
  * que falta.
+ *
+ * En pantalla, dos tarjetas: lo que ve el cliente (con su estado) y el formulario para cambiarlo. Las
+ * explicaciones de la web («Atlas nunca recibe este dinero», por qué sólo la cuenta enmascarada) van
+ * detrás del ⓘ de cada tarjeta; el PDF, en la cabecera (`onPdf`); «Actualizar», al tirar hacia abajo.
  */
 import { scanFromURLAsync } from 'expo-camera';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image, StyleSheet, View } from 'react-native';
 import { color, radius, space } from '@cliente/theme/tokens';
 import { IconField, SelectField } from '@cliente/ui/form-controls';
-import { FieldLabel } from '@cliente/ui/help-sheet';
-import { AtlasText, Badge, Button, Card, CardHeader, Cargando, Divider, EmptyState, KeyValue, Skeleton } from '@cliente/ui/primitives';
+import { BotonInfo, FieldLabel, InfoSheet } from '@cliente/ui/help-sheet';
+import { AtlasText, Badge, Button, Card, CardHeader, Cargando, Divider, EmptyState, Skeleton } from '@cliente/ui/primitives';
 import { leerBytes, type ArchivoLocal } from '@/api/almacen';
 import { ApiError } from '@/api/client';
 import { partnerOnboardingService, uploadQrFile, type PartnerQrCode } from '@/api/servicios/partnerOnboardingService';
 import type { JsonObject } from '@/api/types';
+import type { DocumentoPdf } from '@/features/pdf';
 import { elegirImagen, tamanoLegible } from '@/features/empresa/archivos';
 import { mensajeDe } from '@/features/empresa/errores';
 import { conVacia, useOpciones } from '@/features/empresa/opciones';
@@ -40,7 +45,6 @@ import {
   type ComprobacionQr,
 } from '@/features/empresa/qr-de-cobro';
 import { Aviso, type TonoAviso } from '@/ui/aviso';
-import { BotonPdf } from '@/ui/boton-pdf';
 import { Reautenticacion } from './reautenticacion';
 
 /** ¿La imagen lleva un QR? Con el lector de códigos del teléfono. Un fallo del lector no es un veredicto. */
@@ -61,6 +65,7 @@ export function QrDeCobro({
   estadoExpediente,
   onDone,
   vuelta,
+  onPdf,
 }: {
   partnerId: string;
   nombre: string;
@@ -69,6 +74,8 @@ export function QrDeCobro({
   onDone: () => void;
   /** Cambia al tirar hacia abajo: se vuelven a pedir los QR. */
   vuelta: number;
+  /** El PDF de esta pestaña para la cabecera de «Mi empresa»; `null` mientras no hay QR que listar. */
+  onPdf?: (generar: (() => DocumentoPdf) | null) => void;
 }) {
   const [codigos, setCodigos] = useState<PartnerQrCode[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -99,6 +106,12 @@ export function QrDeCobro({
   useEffect(() => {
     if (partnerId) void recargar(partnerId);
   }, [partnerId, recargar, vuelta]);
+
+  useEffect(() => {
+    onPdf?.(!cargando && codigos.length ? () => documentoQrDeCobro(codigos, nombre, estadoExpediente) : null);
+  }, [onPdf, cargando, codigos, nombre, estadoExpediente]);
+
+  const [info, setInfo] = useState<'vista' | 'subida' | null>(null);
 
   const elegir = async (origen: 'fotos' | 'camara') => {
     const { archivo: elegido, permisoNegado } = await elegirImagen(origen);
@@ -203,69 +216,55 @@ export function QrDeCobro({
           {ultimoRechazo.reviewNote ?? 'No se indicó el motivo. Suba una imagen nítida del QR de su banco.'}
         </Aviso>
       ) : null}
-      {enRevision && !aprobado ? (
-        <Aviso tono="info" titulo="Su QR está en revisión">
-          Atlas lo revisa antes de enseñárselo a sus clientes. Hasta entonces, la app les dice que el QR está pendiente de aprobación.
-        </Aviso>
-      ) : null}
       {error ? <Aviso tono="danger">{error}</Aviso> : null}
       {aviso ? (
         <Aviso tono={aviso.tono} testID="qr-cobro-aviso">
           {aviso.texto}
         </Aviso>
       ) : null}
+      {/* Un solo aviso para «todavía no le pueden pagar»: antes iban dos seguidos diciendo lo mismo. */}
       {!cargando && !aprobado ? (
         <Aviso tono="warning" titulo="Sus clientes todavía no pueden pagarle">
-          {enRevision
-            ? 'El QR bancario está en revisión. Hasta que Atlas lo apruebe, la app no mostrará un código de pago.'
-            : 'Suba su QR bancario. Hasta que Atlas lo apruebe, la app no mostrará un código de pago.'}
+          {enRevision ? 'Su QR está en revisión. Hasta que Atlas lo apruebe, la app no muestra un código de pago.' : 'Suba su QR bancario. Hasta que Atlas lo apruebe, la app no muestra un código de pago.'}
         </Aviso>
       ) : null}
 
       <Card>
         <CardHeader
-          title={aprobado ? 'Lo que ve su cliente' : 'QR bancario del comercio'}
-          detail={
-            aprobado
-              ? 'Esta es la imagen exacta que aparece en la app cuando su cliente pulsa «pagar».'
-              : 'Vista previa del QR. En cuanto lo confirmes, es el que ven tus clientes al pagar; Atlas no lo revisa antes.'
+          title={aprobado ? 'Lo que ve su cliente' : 'QR bancario'}
+          trailing={
+            <View style={styles.trailing}>
+              {vigente && estadoVigente ? <Badge label={estadoVigente.texto.split(' · ')[0] ?? estadoVigente.texto} tone={estadoVigente.tono} dot /> : null}
+              <BotonInfo etiqueta="QR de cobro" onPress={() => setInfo('vista')} testID="info-qr-vista" />
+            </View>
           }
-          icon="telefono"
         />
         <View style={styles.cuerpo}>
-          {/* Las acciones de la vista (en la web, en la cabecera del panel). */}
-          <View style={styles.acciones}>
-            <BotonPdf label="Descargar PDF" testID="pdf-qr" disabled={cargando || !codigos.length} documento={() => documentoQrDeCobro(codigos, nombre, estadoExpediente)} />
-            <Button label="Actualizar" icon="refrescar" variant="secondary" disabled={!partnerId} loading={cargando} onPress={() => partnerId && recargar(partnerId)} />
-          </View>
           {cargando ? (
             <Cargando texto="Cargando…" />
           ) : vigente ? (
             <View style={styles.vigente}>
               <QrImagen partnerId={partnerId} qrId={vigente.qrId} />
-              <KeyValue label="Entidad" value={vigente.bankInstitutionCode ?? '—'} />
-              <KeyValue label="Cuenta" value={vigente.accountNumberMasked ?? '—'} />
-              <KeyValue label="Huella del archivo" value={vigente.fingerprint} />
-              <KeyValue label="Subido" value={fechaHora(vigente.createdAt)} />
-              <Badge label={estadoVigente?.texto ?? vigente.status} tone={estadoVigente?.tono ?? 'neutral'} dot />
+              <AtlasText variant="body" tone="secondary">
+                {[vigente.bankInstitutionCode ?? '—', vigente.accountNumberMasked ?? '—', `subido el ${fechaHora(vigente.createdAt)}`].join(' · ')}
+              </AtlasText>
+              <AtlasText variant="micro" tone="tertiary" numberOfLines={1} ellipsizeMode="middle" selectable>
+                {`Huella ${vigente.fingerprint}`}
+              </AtlasText>
               {aprobado && enRevision ? (
                 <AtlasText variant="caption" tone="tertiary" testID="qr-cobro-nuevo-en-revision">
-                  Hay un QR nuevo esperando revisión (huella {enRevision.fingerprint}). Sus clientes siguen viendo el aprobado hasta que Atlas lo apruebe.
+                  Hay un QR nuevo en revisión. Sus clientes siguen viendo el aprobado hasta que Atlas lo apruebe.
                 </AtlasText>
               ) : null}
             </View>
           ) : (
-            <EmptyState icon="escanear" title="Todavía no hay QR de cobro" detail="Sus clientes ven la instrucción de pago sin código que escanear." />
+            <EmptyState icon="escanear" title="Todavía no hay QR de cobro" detail="Sus clientes no tienen código que escanear." />
           )}
         </View>
       </Card>
 
       <Card>
-        <CardHeader
-          title={vigente ? 'Reemplazar el QR' : 'Subir mi QR bancario'}
-          detail="Se guarda la imagen y su huella, no el número transcrito. El QR anterior queda archivado, nunca se sobrescribe."
-          icon="subir"
-        />
+        <CardHeader title={vigente ? 'Reemplazar el QR' : 'Subir mi QR bancario'} trailing={<BotonInfo etiqueta="Subir el QR" onPress={() => setInfo('subida')} testID="info-qr-subida" />} />
         <View style={styles.cuerpo}>
           <View style={styles.archivo} testID="input-qr-cobro">
             <FieldLabel label="Imagen del QR (PNG o JPG)" ayuda="La imagen del QR que le dio su banco, tal cual: se guarda con su huella para poder comprobarla." />
@@ -284,8 +283,8 @@ export function QrDeCobro({
               </View>
             ) : null}
             <View style={styles.fila}>
-              <Button label={archivo ? 'Elegir otra' : 'Elegir de mis fotos'} icon="galeria" variant="secondary" onPress={() => elegir('fotos')} testID="qr-cobro-fotos" />
-              <Button label="Tomar foto" icon="camara" variant="secondary" onPress={() => elegir('camara')} testID="qr-cobro-camara" />
+              <Button label={archivo ? 'Elegir otra' : 'Mis fotos'} icon="galeria" variant="secondary" onPress={() => elegir('fotos')} testID="qr-cobro-fotos" style={styles.mitad} />
+              <Button label="Tomar foto" icon="camara" variant="secondary" onPress={() => elegir('camara')} testID="qr-cobro-camara" style={styles.mitad} />
             </View>
           </View>
           {/* La sigla ASFI es lo que permite cruzar el QR con el padrón del regulador. */}
@@ -294,7 +293,6 @@ export function QrDeCobro({
             value={entidad}
             opciones={conVacia(entidades.opciones, '— Elija su banco —')}
             onChange={setEntidad}
-            hint="La entidad que emitió el QR."
             ayuda="Banco que emitió el QR, por su sigla ASFI. Ej.: BNB."
             error={entidades.error}
             required
@@ -313,38 +311,39 @@ export function QrDeCobro({
             autoCorrect={false}
             keyboardType="phone-pad"
             maxLength={34}
-            hint="Sólo los 4 últimos dígitos, p. ej. ****7890. Si escribes el número entero, lo enmascaramos."
-            ayuda="Últimos cuatro dígitos de la cuenta, precedidos de asteriscos. Ej.: ****7890."
+            // El formato se dice a la vista: es lo que evita el rechazo más común.
+            hint="Sólo los 4 últimos dígitos, p. ej. ****7890."
+            ayuda="Últimos cuatro dígitos de la cuenta, precedidos de asteriscos. Ej.: ****7890. Si escribes el número entero, lo enmascaramos."
             testID="campo-cuenta"
           />
-          <Button
-            label={vigente ? 'Reemplazar QR de cobro' : 'Subir QR de cobro'}
-            icon="subir"
-            loading={subiendo}
-            disabled={!partnerId || bloqueo !== null}
-            blockedReason={bloqueo}
-            onPress={() => subir()}
-            testID="btn-subir-qr-cobro"
-          />
-          <AtlasText variant="caption" tone="tertiary">
-            Sólo se guarda la cuenta ENMASCARADA: el expediente prueba de quién es la cuenta, no necesita operarla.
-          </AtlasText>
+          <View style={styles.pie}>
+            <Button
+              label={vigente ? 'Reemplazar QR' : 'Subir QR'}
+              icon="subir"
+              loading={subiendo}
+              disabled={!partnerId || bloqueo !== null}
+              blockedReason={bloqueo}
+              onPress={() => subir()}
+              testID="btn-subir-qr-cobro"
+            />
+          </View>
         </View>
       </Card>
 
       {historial.length > 0 ? (
         <Card testID="tabla-qr-historial">
-          <CardHeader title={`QR anteriores (${historial.length})`} detail="Se conservan para poder reconstruir contra qué QR se cobró cada día." icon="reloj" />
+          <CardHeader title={`QR anteriores (${historial.length})`} />
           {historial.map((codigo, indice) => {
             const estado = estadoDeQr(codigo.status);
             return (
               <View key={codigo.qrId} style={styles.anterior}>
                 {indice > 0 ? <Divider /> : null}
-                <KeyValue label="Entidad" value={codigo.bankInstitutionCode ?? '—'} />
-                <KeyValue label="Cuenta" value={codigo.accountNumberMasked ?? '—'} />
-                <KeyValue label="Huella" value={codigo.fingerprint} />
-                <KeyValue label="Subido" value={fecha(codigo.createdAt)} />
-                <Badge label={estado.texto} tone={estado.tono} dot />
+                <View style={styles.filaEntre}>
+                  <AtlasText variant="body" style={styles.crece} numberOfLines={1}>
+                    {[codigo.bankInstitutionCode ?? '—', codigo.accountNumberMasked ?? '—', fecha(codigo.createdAt)].join(' · ')}
+                  </AtlasText>
+                  <Badge label={estado.texto} tone={estado.tono} />
+                </View>
                 {codigo.status === 'rejected' && codigo.reviewNote ? (
                   <AtlasText variant="caption" tone="tertiary">
                     {codigo.reviewNote}
@@ -355,6 +354,26 @@ export function QrDeCobro({
           })}
         </Card>
       ) : null}
+
+      <InfoSheet visible={info === 'vista'} titulo={aprobado ? 'Lo que ve su cliente' : 'QR bancario'} onClose={() => setInfo(null)}>
+        <AtlasText variant="body" tone="secondary">
+          {aprobado
+            ? 'Esta es la imagen exacta que aparece en la app cuando su cliente pulsa «pagar».'
+            : 'Vista previa del QR. En cuanto lo confirmes, es el que ven tus clientes al pagar; Atlas no lo revisa antes.'}
+        </AtlasText>
+        <AtlasText variant="bodyStrong">Atlas nunca recibe este dinero</AtlasText>
+        <AtlasText variant="body" tone="secondary">
+          Su cliente transfiere directo a la cuenta de este QR. Por eso, cuando avise que pagó, es usted quien lo confirma desde «Comprobantes por verificar»: es el único que ve la transferencia en su extracto.
+        </AtlasText>
+      </InfoSheet>
+      <InfoSheet visible={info === 'subida'} titulo={vigente ? 'Reemplazar el QR' : 'Subir mi QR bancario'} onClose={() => setInfo(null)}>
+        <AtlasText variant="body" tone="secondary">
+          Se guarda la imagen y su huella, no el número transcrito. El QR anterior queda archivado, nunca se sobrescribe: así se puede reconstruir contra qué QR se cobró cada día.
+        </AtlasText>
+        <AtlasText variant="body" tone="secondary">
+          Sólo se guarda la cuenta ENMASCARADA: el expediente prueba de quién es la cuenta, no necesita operarla.
+        </AtlasText>
+      </InfoSheet>
 
       <Reautenticacion
         visible={pidiendoContrasena}
@@ -370,9 +389,6 @@ export function QrDeCobro({
         }}
       />
 
-      <Aviso tono="info" titulo="Atlas nunca recibe este dinero">
-        Su cliente transfiere directo a la cuenta de este QR. Por eso, cuando avise que pagó, es usted quien lo confirma desde «Comprobantes por verificar»: es el único que ve la transferencia en su extracto.
-      </Aviso>
     </View>
   );
 }
@@ -420,10 +436,14 @@ function QrImagen({ partnerId, qrId }: { partnerId: string; qrId: string }) {
 const styles = StyleSheet.create({
   pestana: { gap: space.base },
   cuerpo: { gap: space.base, marginTop: space.base },
-  acciones: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  trailing: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   vigente: { gap: space.sm },
   archivo: { gap: space.sm },
-  fila: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
+  fila: { flexDirection: 'row', gap: space.sm },
+  mitad: { flex: 1 },
+  pie: { alignItems: 'flex-end' },
+  filaEntre: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
+  crece: { flex: 1 },
   ficha: {
     flexDirection: 'row',
     alignItems: 'center',

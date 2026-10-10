@@ -113,7 +113,6 @@ export default function Conversacion() {
       }
     >
       <ScreenHeader
-        eyebrow="Soporte"
         title="Conversación"
         subtitle={hilo.conectado ? 'En vivo' : 'Reconectando…'}
         onBack="auto"

@@ -11,7 +11,7 @@
 import type { OpcionSelect } from '@cliente/ui/form-controls';
 import type { BadgeTone } from '@cliente/ui/primitives';
 import type { FiltroDeHistorial, HistorialDePos, MovimientoDePos } from '@/api/servicios/merchantCreditService';
-import { formatBob } from './formato';
+import { fechaCorta, formatBob } from './formato';
 import { nombreDeCaja } from './origen-de-caja';
 
 /*
@@ -84,18 +84,30 @@ export function hayFiltros(filtro: FiltroDeHistorial): boolean {
   return Boolean(filtro.branchId || filtro.terminalId || filtro.from || filtro.to);
 }
 
+/** Cuántos filtros hay puestos: el número del botón «Filtros». */
+export function cuantosFiltros(filtro: FiltroDeHistorial): number {
+  return [filtro.branchId, filtro.terminalId, filtro.from, filtro.to].filter(Boolean).length;
+}
+
 /**
- * «3 operaciones · confirmado Bs 1.500,00 con estos filtros»: la línea del total.
+ * «3 operaciones · Bs 1.500,00 confirmados con estos filtros»: la línea del total.
  *
- * En la web va con dos negritas dentro; aquí se devuelve en piezas para que la pantalla las ponga en
- * negrita igual, y `texto` entero para el lector de pantalla y las pruebas.
+ * En la web dice «3 operaciones · confirmado Bs 1.500,00»; aquí el importe va delante de la palabra
+ * porque es una línea pequeña bajo las pestañas y lo que se busca de reojo es la cifra (Pablo,
+ * 2026-10-10). Se devuelve en piezas para que la pantalla ponga en negrita la cuenta y el importe, y
+ * `texto` entero para el lector de pantalla y las pruebas.
  */
 export function lineaDelTotal(datos: HistorialDePos | null, conFiltros: boolean) {
   const cuenta = datos?.totals.count ?? 0;
   const importe = formatBob(Number(datos?.totals.amount ?? 0));
   const operaciones = datos?.totals.count === 1 ? 'operación' : 'operaciones';
   const cola = conFiltros ? ' con estos filtros' : '';
-  return { cuenta: String(cuenta), operaciones, importe, cola, texto: `${cuenta} ${operaciones} · confirmado ${importe}${cola}` };
+  return { cuenta: String(cuenta), operaciones, importe, cola, texto: `${cuenta} ${operaciones} · ${importe} confirmados${cola}` };
+}
+
+/** «9 oct, 14:03 · Casa matriz · Caja 5 · Ref. 778812»: la línea de una fila del historial. */
+export function lineaDelMovimiento(m: MovimientoDePos, hoy?: Date): string {
+  return [fechaCorta(m.happenedAt, hoy), m.branchName, nombreDeCaja(m), m.reference ? `Ref. ${m.reference}` : null].filter(Boolean).join(' · ');
 }
 
 /** El texto del vacío: con filtros, la culpa es del filtro; sin ellos, todavía no pasó nada. */
