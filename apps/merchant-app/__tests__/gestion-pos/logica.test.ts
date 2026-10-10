@@ -146,8 +146,8 @@ describe('Gestión POS · historial (casos de pos-historial.test.ts de la web)',
     expect(hayFiltros({ page: 1 })).toBe(false);
     expect(hayFiltros({ to: '2026-10-09' })).toBe(true);
     const datos = { totals: { count: 1, amount: '500' } } as HistorialDePos;
-    expect(plano(lineaDelTotal(datos, false).texto)).toBe(plano(`1 operación · confirmado ${formatBob(500)}`));
-    expect(lineaDelTotal({ totals: { count: 3, amount: '0' } } as HistorialDePos, true).texto).toMatch(/^3 operaciones · confirmado .* con estos filtros$/);
+    expect(plano(lineaDelTotal(datos, false).texto)).toBe(plano(`1 operación · ${formatBob(500)} confirmados`));
+    expect(lineaDelTotal({ totals: { count: 3, amount: '0' } } as HistorialDePos, true).texto).toMatch(/^3 operaciones · .* confirmados con estos filtros$/);
     expect(lineaDelTotal(null, false).cuenta).toBe('0');
     expect(lineaDelTotal(null, false).operaciones).toBe('operaciones');
     expect(textoVacioDelHistorial(true)).toBe('No hay nada con estos filtros.');

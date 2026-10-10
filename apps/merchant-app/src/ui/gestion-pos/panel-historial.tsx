@@ -8,22 +8,30 @@
  *
  * La tabla de ocho columnas de la web es aquí una tarjeta por fila: en un teléfono una tabla de
  * 760 px obliga a desplazar de lado para encontrar el importe, que es lo único que se vino a mirar.
- * Cada tarjeta lleva los mismos ocho datos, con el código y el estado arriba.
+ *
+ * Pablo (2026-10-10): el título de cada tarjeta era el código interno («CRA-b51c9eaa-bde4-…») y los
+ * filtros ocupaban media pantalla. Ahora el IMPORTE es el título, el estado y el tipo van en
+ * pastillas, y lo demás en UNA línea («9 oct, 14:03 · Casa matriz · Caja 5»), con la referencia corta
+ * del código en gris al final. Los filtros van detrás de un botón «Filtros» con el número de filtros
+ * puestos, en una hoja; el total es una línea pequeña al lado.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { space } from '@cliente/theme/tokens';
 import { DateField, SelectField } from '@cliente/ui/form-controls';
-import { AtlasText, Badge, Button, Card, CardHeader, EmptyState, KeyValue, SkeletonLista } from '@cliente/ui/primitives';
+import { BottomSheet } from '@cliente/ui/help-sheet';
+import { AtlasText, Badge, Button, Card, EmptyState, SkeletonLista } from '@cliente/ui/primitives';
 import { mensajeDeError } from '@/api/client';
 import { merchantCreditService, type FiltroDeHistorial, type HistorialDePos } from '@/api/servicios/merchantCreditService';
-import { fechaDelHistorial, formatBob } from '@/features/gestion-pos/formato';
+import { formatBob } from '@/features/gestion-pos/formato';
 import {
   FILTRO_INICIAL,
   aplicarFiltro,
+  cuantosFiltros,
   estadoDe,
   fechaDeFiltro,
   hayFiltros as calcularHayFiltros,
+  lineaDelMovimiento,
   lineaDelTotal,
   opcionesDeCaja,
   opcionesDeSucursal,
@@ -31,9 +39,10 @@ import {
   textoVacioDelHistorial,
   tipoDe,
 } from '@/features/gestion-pos/historial';
-import { nombreDeCaja } from '@/features/gestion-pos/origen-de-caja';
 import { useRegistrarRecarga, type Recargas } from '@/features/gestion-pos/recargas';
+import { refCorta } from '@/features/gestion-pos/tarjetas';
 import { Aviso } from '@/ui/aviso';
+import { CabeceraDeImporte, LineaSecundaria } from './piezas';
 
 export const ID_HISTORIAL = 'historial';
 
@@ -42,6 +51,7 @@ export function PanelHistorial({ partnerId, recargas }: { partnerId: string; rec
   const [datos, setDatos] = useState<HistorialDePos | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
 
   const recargar = useCallback(async () => {
     /*
@@ -76,69 +86,69 @@ export function PanelHistorial({ partnerId, recargas }: { partnerId: string; rec
   const sucursales = useMemo(() => opcionesDeSucursal(filtros), [filtros]);
   const cajas = useMemo(() => opcionesDeCaja(filtros, filtro.branchId), [filtros, filtro.branchId]);
   const hayFiltros = calcularHayFiltros(filtro);
+  const puestos = cuantosFiltros(filtro);
   const total = lineaDelTotal(datos, hayFiltros);
 
   return (
     <View style={styles.panel}>
       {error ? <Aviso tono="danger">{error}</Aviso> : null}
 
-      <Card testID="historial-filtros">
-        <CardHeader
-          title="Historial de la caja"
-          detail="Solicitudes respondidas y pagos verificados, de lo más reciente a lo más antiguo, con la sucursal y la caja de cada uno."
-          icon="reloj"
-        />
-        <Button
-          label="Actualizar"
-          variant="secondary"
-          icon="refrescar"
-          disabled={!partnerId}
-          loading={cargando}
-          onPress={() => void recargar()}
-          testID="actualizar-historial"
-        />
-        <SelectField
-          label="Sucursal"
-          value={filtro.branchId ?? ''}
-          opciones={sucursales}
-          onChange={(valor) => cambiar({ branchId: valor || undefined })}
-          ayuda="Muestra sólo lo que pasó en esa sucursal."
-        />
-        <SelectField
-          label="Caja"
-          value={filtro.terminalId ?? ''}
-          opciones={cajas}
-          onChange={(valor) => cambiar({ terminalId: valor || undefined })}
-          ayuda="Muestra sólo lo que pasó en esa caja. Con una sucursal elegida, sólo aparecen sus cajas."
-        />
-        <DateField
-          label="Fecha inicio"
-          value={filtro.from ?? ''}
-          onChange={(valor) => cambiar({ from: valor || undefined })}
-          ayuda="Desde qué día (incluido), en hora de Bolivia."
-          placeholder="Sin fecha"
-          maximumDate={fechaDeFiltro(filtro.to)}
-        />
-        <DateField
-          label="Fecha fin"
-          value={filtro.to ?? ''}
-          onChange={(valor) => cambiar({ to: valor || undefined })}
-          ayuda="Hasta qué día (incluido), en hora de Bolivia."
-          placeholder="Sin fecha"
-          minimumDate={fechaDeFiltro(filtro.from)}
-        />
-      </Card>
-
-      <View style={styles.total} testID="historial-total" accessible accessibilityLabel={total.texto}>
-        <AtlasText variant="body" tone="secondary" style={styles.totalTexto}>
-          <AtlasText variant="bodyStrong">{total.cuenta}</AtlasText> {total.operaciones} · confirmado{' '}
-          <AtlasText variant="bodyStrong">{total.importe}</AtlasText>
-          {total.cola}
+      <View style={styles.barra}>
+        <AtlasText variant="caption" tone="secondary" style={styles.totalTexto} testID="historial-total" accessibilityLabel={total.texto}>
+          <AtlasText variant="captionStrong">
+            {total.cuenta} {total.operaciones}
+          </AtlasText>
+          {' · '}
+          <AtlasText variant="captionStrong">{total.importe}</AtlasText> confirmados{total.cola}
         </AtlasText>
-        {hayFiltros ? (
-          <Button label="Quitar filtros" variant="ghost" icon="cerrar" onPress={() => setFiltro(FILTRO_INICIAL)} testID="historial-quitar-filtros" />
-        ) : null}
+        <Button
+          label={puestos ? `Filtros · ${puestos}` : 'Filtros'}
+          variant={puestos ? 'secondary' : 'ghost'}
+          icon="filtro"
+          disabled={!partnerId}
+          onPress={() => setFiltrosAbiertos(true)}
+          accessibilityLabel={puestos ? `Filtros, ${puestos} ${puestos === 1 ? 'puesto' : 'puestos'}` : 'Filtros'}
+          testID="historial-abrir-filtros"
+        />
       </View>
+
+      <BottomSheet visible={filtrosAbiertos} titulo="Filtros" onClose={() => setFiltrosAbiertos(false)}>
+        <View style={styles.filtros} testID="historial-filtros">
+          <SelectField
+            label="Sucursal"
+            value={filtro.branchId ?? ''}
+            opciones={sucursales}
+            onChange={(valor) => cambiar({ branchId: valor || undefined })}
+            ayuda="Muestra sólo lo que pasó en esa sucursal."
+          />
+          <SelectField
+            label="Caja"
+            value={filtro.terminalId ?? ''}
+            opciones={cajas}
+            onChange={(valor) => cambiar({ terminalId: valor || undefined })}
+            ayuda="Muestra sólo lo que pasó en esa caja. Con una sucursal elegida, sólo aparecen sus cajas."
+          />
+          <DateField
+            label="Fecha inicio"
+            value={filtro.from ?? ''}
+            onChange={(valor) => cambiar({ from: valor || undefined })}
+            ayuda="Desde qué día (incluido), en hora de Bolivia."
+            placeholder="Sin fecha"
+            maximumDate={fechaDeFiltro(filtro.to)}
+          />
+          <DateField
+            label="Fecha fin"
+            value={filtro.to ?? ''}
+            onChange={(valor) => cambiar({ to: valor || undefined })}
+            ayuda="Hasta qué día (incluido), en hora de Bolivia."
+            placeholder="Sin fecha"
+            minimumDate={fechaDeFiltro(filtro.from)}
+          />
+          {hayFiltros ? (
+            <Button label="Quitar filtros" variant="ghost" icon="cerrar" onPress={() => setFiltro(FILTRO_INICIAL)} testID="historial-quitar-filtros" />
+          ) : null}
+        </View>
+      </BottomSheet>
 
       {cargando && !datos ? (
         <SkeletonLista filas={3} alto={120} texto="Cargando…" />
@@ -150,15 +160,13 @@ export function PanelHistorial({ partnerId, recargas }: { partnerId: string; rec
         <View style={[styles.lista, cargando ? styles.recargando : null]} testID="historial-pos">
           {datos.items.map((m) => (
             <Card key={m.id} padding="tight" testID={`historial-${m.id}`}>
-              <CardHeader title={m.code} trailing={<Badge label={estadoDe(m).texto} tone={estadoDe(m).tono} dot />} divider={false} />
-              <View style={styles.tipo}>
+              <CabeceraDeImporte importe={formatBob(m.amount)} estado={estadoDe(m).texto} tono={estadoDe(m).tono} variante="h3" />
+              <View style={styles.detalle}>
                 <Badge label={tipoDe(m).texto} tone={tipoDe(m).tono} />
+                <View style={styles.linea}>
+                  <LineaSecundaria texto={lineaDelMovimiento(m)} referencia={refCorta(m.code)} />
+                </View>
               </View>
-              <KeyValue label="Fecha" value={fechaDelHistorial(m.happenedAt)} />
-              <KeyValue label="Sucursal" value={m.branchName ?? '—'} />
-              <KeyValue label="Caja" value={nombreDeCaja(m) ?? '—'} tone="brand" />
-              <KeyValue label="Importe" value={formatBob(m.amount)} numeric />
-              <KeyValue label="Referencia" value={m.reference ?? '—'} />
             </Card>
           ))}
         </View>
@@ -196,13 +204,15 @@ export function PanelHistorial({ partnerId, recargas }: { partnerId: string; rec
 }
 
 const styles = StyleSheet.create({
-  panel: { gap: space.base },
-  total: { gap: space.sm },
+  panel: { gap: space.md },
+  barra: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
   totalTexto: { flexShrink: 1 },
+  filtros: { gap: space.base, paddingBottom: space.lg },
   lista: { gap: space.sm },
+  detalle: { flexDirection: 'row', alignItems: 'flex-start', gap: space.sm },
+  linea: { flex: 1, paddingTop: space.xxs },
   // La opacidad de la web mientras llega la página nueva: se ve que lo de debajo está por cambiar.
   recargando: { opacity: 0.6 },
-  tipo: { flexDirection: 'row' },
   paginas: { gap: space.sm },
   paginasBotones: { flexDirection: 'row', gap: space.sm },
   paginaBoton: { flex: 1 },
