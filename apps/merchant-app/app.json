@@ -1,0 +1,85 @@
+{
+  "expo": {
+    "name": "Atlas Comercio",
+    "slug": "atlas-merchant-app",
+    "scheme": "atlascomercio",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "bo.atlas.comercio",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Atlas Comercio usa la cámara para leer el QR de cobro de tu banco antes de subirlo.",
+        "NSPhotoLibraryUsageDescription": "Atlas Comercio usa tus fotos para subir el QR de cobro de tu banco y guardar el cartel con el QR de tus cajas.",
+        "NSPhotoLibraryAddUsageDescription": "Atlas Comercio guarda en tus fotos el cartel con el QR de tus cajas.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "bo.atlas.comercio",
+      "predictiveBackGestureEnabled": true,
+      "adaptiveIcon": {
+        "backgroundColor": "#061426",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "permissions": [
+        "android.permission.CAMERA"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-localization",
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Atlas Comercio usa la cámara para leer el QR de cobro de tu banco antes de subirlo."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Atlas Comercio usa tus fotos para subir el QR de cobro de tu banco."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#FFFFFF",
+          "imageWidth": 120,
+          "dark": {
+            "image": "./assets/splash-icon-oscuro.png",
+            "backgroundColor": "#0A0A0B"
+          }
+        }
+      ],
+      "expo-font",
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {}
+    },
+    "owner": "pablo28809",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    }
+  }
+}

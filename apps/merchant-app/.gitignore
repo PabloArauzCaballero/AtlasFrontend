@@ -1,0 +1,67 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+# Entorno local (no versionado)
+.env
+.env.local
+
+# Evidencia generada en ejecucion
+*.log
+android/
+ios/
+assets/audio/tomas/
+
+# `google-services.json` SI se versiona: no es un secreto —viaja dentro de cada APK que se
+# distribuye, y Google lo documenta como publico— y EAS **no sube lo que esta ignorado**, asi que
+# ocultarlo produce un binario sin Firebase, que instala bien y nunca recibe un aviso.
+
+# Clave de cuenta de servicio de Firebase: permite enviar push a TODOS los usuarios.
+# Nunca a git; el backend la lee de su entorno.
+*firebase-adminsdk*.json
+
+# Credenciales de Apple. El `.p8` ya lo cubre la regla de arriba; esto añade la carpeta donde se
+# guarda y los perfiles y certificados de firma. La llave de App Store Connect sólo se descarga UNA
+# vez y firma subidas a TestFlight en nombre de la cuenta: si entra al repo, se queda en el historial
+# aunque se borre después. El identificador de la llave y el del emisor no son secretos; el fichero sí.
+/credentials/
+*.mobileprovision
+*.p12
