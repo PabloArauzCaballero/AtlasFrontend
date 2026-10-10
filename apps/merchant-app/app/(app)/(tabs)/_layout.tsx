@@ -1,10 +1,10 @@
 /**
  * Barra de pestañas del comercio.
  *
- * Son las secciones del portal web (`PORTAL_COMERCIO_NAV`) llevadas al teléfono: Gestión POS (el
- * hogar), Cartera (con Consumo y facturación detrás de su selector, como `CarteraFacturacionSwitch`),
- * Mi empresa y Soporte. En la web, Mi empresa cuelga del avatar y Soporte de un botón flotante;
- * en el teléfono las dos son destinos de primer nivel y recurrentes, que es para lo que sirven las pestañas.
+ * Dos destinos, los mismos dos que pinta el menú del portal web (`PORTAL_COMERCIO_MENU`): Gestión POS
+ * (el hogar) y Cartera (con Consumo y facturación detrás de su selector). Mi empresa, Soporte y el
+ * asistente son botones flotantes abajo a la derecha, como en la app del cliente (Pablo, 2026-10-10);
+ * ver `src/ui/botones-flotantes.tsx`.
  *
  * El dibujo es el de la barra de la app del cliente (`consumer-app/app/(app)/(tabs)/_layout.tsx`):
  * mismo alto, misma área segura, mismo icono que se asienta con un muelle al enfocarse.
@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useReducedMotion, useSharedValue, withSpring } from 'react-native-reanimated';
 import { color, space, spring, touch, type } from '@cliente/theme/tokens';
 import { Icon, type IconName } from '@cliente/ui/icons';
+import { BotonesFlotantes } from '@/ui/botones-flotantes';
 
 function TabIcon({ name, focused }: { name: IconName; focused: boolean }) {
   const reduced = useReducedMotion();
@@ -45,6 +46,7 @@ export default function TabsLayout() {
   const bar = [styles.bar, { height: BAR_HEIGHT + insets.bottom, paddingBottom: insets.bottom }];
 
   return (
+    <>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -63,15 +65,9 @@ export default function TabsLayout() {
         name="cartera"
         options={{ title: 'Cartera', tabBarIcon: ({ focused }) => <TabIcon name="billetera" focused={focused} /> }}
       />
-      <Tabs.Screen
-        name="empresa"
-        options={{ title: 'Mi empresa', tabBarIcon: ({ focused }) => <TabIcon name="comercio" focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="soporte"
-        options={{ title: 'Soporte', tabBarIcon: ({ focused }) => <TabIcon name="chat" focused={focused} /> }}
-      />
     </Tabs>
+    <BotonesFlotantes />
+    </>
   );
 }
 
