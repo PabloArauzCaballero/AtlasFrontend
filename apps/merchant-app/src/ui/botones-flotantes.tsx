@@ -17,7 +17,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, shadow, space } from '@cliente/theme/tokens';
 import { Icon, type IconName } from '@cliente/ui/icons';
 import { PressSurface } from '@cliente/ui/motion';
-import { AtlasText } from '@cliente/ui/primitives';
 import { HojaDelAsistente } from './asistente/hoja';
 
 /** El alto de la barra de pestañas sin el área segura (`BAR_HEIGHT` de `app/(app)/(tabs)/_layout.tsx`). */
@@ -37,18 +36,16 @@ function useTecladoVisible(): boolean {
   return visible;
 }
 
+/**
+ * Sin rótulo de texto a la vista: probados en el teléfono, «Mi empresa» y «Soporte» en pastillas
+ * quedaban pegados encima del contenido de la lista y ensuciaban la pantalla. El nombre va en la
+ * accesibilidad, como en el botón del asistente de la app del cliente.
+ */
 function Secundario({ icono, etiqueta, onPress, testID }: { icono: IconName; etiqueta: string; onPress: () => void; testID: string }) {
   return (
-    <View style={styles.fila}>
-      <View style={styles.rotulo} pointerEvents="none">
-        <AtlasText variant="micro" tone="secondary">
-          {etiqueta}
-        </AtlasText>
-      </View>
-      <PressSurface onPress={onPress} accessibilityRole="button" accessibilityLabel={etiqueta} style={styles.secundario} testID={testID}>
-        <Icon name={icono} size={21} tint={color.text.primary} />
-      </PressSurface>
-    </View>
+    <PressSurface onPress={onPress} accessibilityRole="button" accessibilityLabel={etiqueta} style={styles.secundario} testID={testID}>
+      <Icon name={icono} size={21} tint={color.text.primary} />
+    </PressSurface>
   );
 }
 
@@ -83,14 +80,6 @@ export function BotonesFlotantes() {
 
 const styles = StyleSheet.create({
   pila: { position: 'absolute', right: space.md, alignItems: 'flex-end', gap: space.sm, zIndex: 40 },
-  fila: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
-  rotulo: {
-    backgroundColor: color.surface.raised,
-    paddingHorizontal: space.sm,
-    paddingVertical: 3,
-    borderRadius: 999,
-    ...shadow.card,
-  },
   secundario: {
     width: SECUNDARIO,
     height: SECUNDARIO,
@@ -98,6 +87,8 @@ const styles = StyleSheet.create({
     backgroundColor: color.surface.raised,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: color.border.subtle,
     ...shadow.card,
     elevation: 5,
   },
