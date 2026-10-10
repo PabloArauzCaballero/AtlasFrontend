@@ -16,6 +16,12 @@
  * También sin expediente: cada una dice lo que le falta en vez de desaparecer. Las sucursales son del
  * ERP y existen aunque el expediente no; lo que falta es el QR de sus cajas, y lo dice cada una.
  *
+ * ## El PDF es el de la pestaña abierta
+ *
+ * Como en la web, cada pestaña tiene su documento (Estado y Ficha: la empresa; QR: sus QR;
+ * Sucursales: la lista). El ícono de la cabecera descarga el de la pestaña activa; las pestañas con
+ * datos propios lo registran con `onPdf` en cuanto tienen algo que imprimir.
+ *
  * ## Lo que cambia en una pestaña lo ven las demás
  *
  * Subir el QR cierra el requisito `bank_qr`, y declarar una sucursal o darle cajas cierra `branch`.
@@ -23,19 +29,18 @@
  * seguía diciendo que faltaba lo que se acababa de subir en la pestaña de al lado.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { space } from '@cliente/theme/tokens';
 import { Screen, ScreenHeader } from '@cliente/ui/layout';
+import { EmptyState } from '@cliente/ui/primitives';
 import { SIN_EXPEDIENTE } from '@/api/avisosDelComercio';
 import { partnerOnboardingService, type PartnerOnboardingState } from '@/api/servicios/partnerOnboardingService';
 import type { JsonObject } from '@/api/types';
 import { mensajeDe } from '@/features/empresa/errores';
 import { documentoMiEmpresa, PESTANAS_EMPRESA } from '@/features/empresa/expediente';
+import type { DocumentoPdf } from '@/features/pdf';
 import { olvidarDominios, useOpciones } from '@/features/empresa/opciones';
 import { useMerchantPartner } from '@/features/use-merchant-partner';
 import { Aviso, type TonoAviso } from '@/ui/aviso';
-import { BotonCuenta } from '@/ui/boton-cuenta';
-import { BotonPdf } from '@/ui/boton-pdf';
+import { AccionesDeCabecera } from '@/ui/acciones-de-cabecera';
 import { EstadoDelExpediente, type ExpedientePropio } from '@/ui/empresa/estado-del-expediente';
 import { FichaComercial } from '@/ui/empresa/ficha-comercial';
 import { QrDeCobro } from '@/ui/empresa/qr-de-cobro';
@@ -44,11 +49,13 @@ import { BarraDePestanas, Panel, usePestana, type Pestana } from '@/ui/pestanas'
 import { SelectorDeExpediente } from '@/ui/selector-de-expediente';
 
 const PESTANAS: Pestana<(typeof PESTANAS_EMPRESA)[number]>[] = [
-  { id: 'estado', etiqueta: 'Estado del expediente', icono: 'check' },
-  { id: 'ficha', etiqueta: 'Ficha comercial', icono: 'editar' },
-  { id: 'qr', etiqueta: 'Mi QR de cobro', icono: 'escanear' },
-  { id: 'sucursales', etiqueta: 'Sucursales', icono: 'comercio' },
+  { id: 'estado', etiqueta: 'Estado del expediente', corta: 'Estado' },
+  { id: 'ficha', etiqueta: 'Ficha comercial', corta: 'Ficha' },
+  { id: 'qr', etiqueta: 'Mi QR de cobro', corta: 'QR' },
+  { id: 'sucursales', etiqueta: 'Sucursales', corta: 'Sucursales' },
 ];
+
+type Generador = (() => DocumentoPdf) | null;
 
 export default function MiEmpresa() {
   const partner = useMerchantPartner();
@@ -65,6 +72,11 @@ export default function MiEmpresa() {
   const [refrescando, setRefrescando] = useState(false);
   /** Sube al tirar hacia abajo: las pestañas con datos propios (QR, sucursales) los vuelven a pedir. */
   const [vuelta, setVuelta] = useState(0);
+  /* El PDF de las pestañas con datos propios. Va envuelto en un objeto: un setState con una función la ejecutaría. */
+  const [pdfQr, setPdfQr] = useState<{ generar: Generador }>({ generar: null });
+  const [pdfSucursales, setPdfSucursales] = useState<{ generar: Generador }>({ generar: null });
+  const registrarPdfQr = useCallback((generar: Generador) => setPdfQr({ generar }), []);
+  const registrarPdfSucursales = useCallback((generar: Generador) => setPdfSucursales({ generar }), []);
 
   /*
     Un expediente distinto no hereda el estado del anterior: se vacía antes de pedir el nuevo, o la
@@ -147,15 +159,12 @@ export default function MiEmpresa() {
     void recargarEstado();
   }, [recargarEstado]);
 
+  const pdf: Generador =
+    pestana === 'qr' ? pdfQr.generar : pestana === 'sucursales' ? pdfSucursales.generar : state ? () => documentoMiEmpresa(state) : null;
+
   return (
     <Screen onRefresh={() => void refrescar()} refreshing={refrescando}>
-      <ScreenHeader title="Mi empresa" subtitle="Los datos de tu negocio, dónde opera, con qué cobra y el QR que escanean tus clientes." action={<BotonCuenta />} />
-
-      {state ? (
-        <View style={styles.pdf}>
-          <BotonPdf label="Descargar PDF" testID="pdf-mi-empresa" documento={() => documentoMiEmpresa(state)} />
-        </View>
-      ) : null}
+      <ScreenHeader title="Mi empresa" onBack="auto" action={<AccionesDeCabecera cuenta={false} {...(pdf ? { pdf } : {})} />} />
 
       <SelectorDeExpediente partner={partner} />
 
@@ -208,21 +217,16 @@ export default function MiEmpresa() {
             estadoExpediente={state.profile.onboardingStatus}
             onDone={recargarDesdeHija}
             vuelta={vuelta}
+            onPdf={registrarPdfQr}
           />
         ) : (
-          <Aviso tono="info" titulo="Primero hay que abrir tu expediente">
-            El QR con el que te pagan cuelga de tu expediente, así que no hay dónde guardarlo todavía. Ábrelo en «Estado del expediente»; es el primer paso y son siete campos.
-          </Aviso>
+          <EmptyState icon="escanear" title="Primero hay que abrir tu expediente" detail="Ábrelo en «Estado»: son siete campos." />
         )}
       </Panel>
 
       <Panel visible={pestana === 'sucursales'}>
-        <Sucursales partnerId={partnerId} estado={state} cargandoEstado={cargandoEstado} recargarEstado={recargarEstado} vuelta={vuelta} />
+        <Sucursales partnerId={partnerId} estado={state} cargandoEstado={cargandoEstado} recargarEstado={recargarEstado} vuelta={vuelta} onPdf={registrarPdfSucursales} />
       </Panel>
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  pdf: { alignItems: 'flex-start', marginBottom: space.xs },
-});

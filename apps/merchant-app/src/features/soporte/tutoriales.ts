@@ -40,8 +40,8 @@ export interface TutorialDelComercio {
 /**
  * `portal-primeros-pasos` (`tours/tour-operacion.ts`). Los textos son los de la web salvo dos apuntes
  * que en el teléfono serían falsos, y que se dicen en la ficha de fidelidad:
- *  - «En el móvil el menú se abre con el botón de las tres rayas» → en la app las secciones son las
- *    pestañas de abajo.
+ *  - «En el móvil el menú se abre con el botón de las tres rayas» → en la app dos secciones son las
+ *    pestañas de abajo y Mi empresa y Soporte, botones flotantes.
  *  - «Este botón, junto al título, abre la explicación…» → en la app esas explicaciones están en
  *    «Guías de cada pantalla», debajo de este recorrido.
  */
@@ -59,7 +59,7 @@ export const TUTORIAL_PRIMEROS_PASOS: TutorialDelComercio = {
       title: 'Éstas son tus secciones',
       content:
         'Cinco: lo que pasa en tu caja, tu cartera de ventas a crédito, lo que Atlas te factura, la ficha de tu empresa y el sitio donde preguntar. Nada de lo que veas aquí es de otro comercio.',
-      tip: 'En la app, las secciones son las pestañas de abajo; tu cuenta está en el círculo con tus iniciales, arriba a la derecha.',
+      tip: 'En la app, Gestión POS y Cartera son las pestañas de abajo; Mi empresa y Soporte, los botones redondos de abajo a la derecha; tu cuenta, el círculo con tus iniciales arriba a la derecha.',
     },
     {
       id: 'gestion-pos',

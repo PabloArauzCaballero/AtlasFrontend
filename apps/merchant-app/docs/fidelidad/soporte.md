@@ -86,3 +86,23 @@ dispositivo con una sesión real**: ver el informe.
 | Paso «menu», apunte «En el móvil el menú se abre con el botón de las tres rayas…» | «En la app, las secciones son las pestañas de abajo; tu cuenta está en el círculo con tus iniciales, arriba a la derecha.» | ≠ el texto de la web sería falso en la app |
 | Paso «ayuda»: «Este botón, junto al título, abre la explicación…» (espera un clic) | «En la app, la explicación de cada pantalla está aquí abajo, en «Guías de cada pantalla»…» | ≠ en la app no hay botón «¿Qué es esto?» |
 | Guías de pantalla (`GUIAS_PORTAL`, se abren con el botón junto al título de cada pantalla) | «Guías de cada pantalla»: las seis guías, plegadas (`Accordion`), con intro, secciones y apuntes LITERALES | ✓ texto · ≠ se leen aquí y no desde cada pantalla. La guía de Soporte dice «Los tutoriales recorren la aplicación de verdad… el botón junto al título…»: es el texto de la web y se deja literal |
+
+## Limpieza visual (Pablo, 2026-10-10)
+
+Soporte ya no es una pestaña: es una pantalla apilada que abre el botón flotante. Mismas peticiones,
+validaciones y comportamiento del chat; cambia la presentación:
+
+| Antes | Ahora |
+|---|---|
+| Título «Soporte y tutoriales», párrafo y avatar | «Soporte», volver; sin PDF (la web no tiene) |
+| Pestañas «Soporte · Tutoriales» con íconos | Segmentado «Casos · Tutoriales» (el `?tab=` sigue siendo `soporte` / `tutoriales`) |
+| «Hablar con soporte» y «Abrir un caso», dos botones a lo ancho apilados | Una fila de dos: «Chat con soporte» (secundario) y «Nuevo caso» (principal). Hacen lo mismo |
+| Tarjeta «Mis casos · N caso(s)» con filas, estado en crudo (`WAITING_PARTNER`) y botones «Ver detalle» / «Ver conversación» | Una tarjeta compacta por caso: título, estado en español (Nuevo, Recibido, Asignado, En curso, Espera tu respuesta, Escalado, En pausa, Resuelto, Cerrado, Reabierto, Duplicado, Cancelado) y «ATL-SUP-… · 2 oct». Tocarla abre el detalle; «Ver conversación» está en el detalle cuando hay un canal vivo (un ícono de chat en la tarjeta lo anuncia) |
+| Sin casos: «Todavía no abriste ningún caso. El botón de arriba abre una conversación.» | Estado vacío «Sin casos · Escríbenos por el chat o abre un caso.» |
+| Hoja «Abrir un caso» con párrafo de entrada | Hoja «Nuevo caso» sin párrafo; el motivo deshabilitado sigue diciendo por qué |
+| Detalle: «número · STATUS» y botón «Cerrar el detalle» | Número + pastilla de estado en español; se cierra con el «Cerrar» de la hoja |
+| Tutoriales: tarjeta de la guía en PDF con texto, tarjeta del recorrido con los tres pasos abiertos, encabezado con párrafo y una tarjeta por guía | Una fila «Guía en PDF» (toca y se descarga) y una sola lista plegada: «Tu portal, de un vistazo · 3 min» y las seis guías. El texto sólo aparece al abrir cada una |
+| Conversación: antetítulo «Soporte» | Sin antetítulo; «En vivo / Reconectando…» sigue debajo del título |
+
+El apunte del paso «menu» del recorrido se actualizó a la navegación nueva: Gestión POS y Cartera abajo,
+Mi empresa y Soporte en los botones flotantes.

@@ -102,3 +102,32 @@ Leyenda: ✓ igual · ≈ igual en lo que hace, distinto en el cómo (motivo al 
 - `toDataURL` del cartel y el tipo devuelto por la fototeca de iOS (HEIC vs JPEG) sólo se han compilado
   (`expo export`) y probado en jest, no en un dispositivo.
 - `scanFromURLAsync` con una foto real del QR de un banco.
+
+## Limpieza visual (Pablo, 2026-10-10)
+
+Mi empresa ya no es una pestaña: es una pantalla apilada que abre el botón flotante. Lo que cambió en la
+presentación (los datos, las peticiones y las validaciones son los mismos):
+
+| Antes | Ahora |
+|---|---|
+| Párrafo bajo el título («Los datos de tu negocio, dónde opera…») y avatar de la cuenta | Sólo el título, volver y el ícono del PDF (`AccionesDeCabecera cuenta={false}`) |
+| «Descargar PDF» a lo ancho (en la pantalla, en «Mi QR de cobro» y en «Sucursales») | Un único ícono en la cabecera que descarga el PDF de la pestaña ABIERTA (empresa / QR / sucursales, como la web) |
+| «Actualizar» en QR y Sucursales | Tirar hacia abajo |
+| Fila de chips cortada («Estado del expediente · Ficha comercial · …») | Selector segmentado «Estado · Ficha · QR · Sucursales» (mismo `?tab=`) |
+| Tarjeta del expediente: estado en crudo (`approved`) y «expediente <id>» | Razón social, «NIT …» y el estado en español con su tono (Borrador, Contacto verificado, Documentos enviados, En revisión, Aprobado, Rechazado, Suspendido). El id interno no se enseña |
+| Requisitos pendientes como aviso ámbar con párrafo y «Resuélvelo en «…»» | Lista de comprobación compacta (requisito + detalle en una línea + «Ir ›» a su pestaña). Sin huecos y sin poder enviar (aprobado o en revisión) no se pinta nada |
+| «Enviar a revisión» a lo ancho | Botón normal al pie de la tarjeta; se habilita igual que en la web (`readyToSubmit`) |
+| Párrafos de Matrícula y Representante legal | Sin párrafo; el representante dice en una línea qué falta. El texto del poder notarial va a su ⓘ («PDF o imagen, hasta 10 MB» se queda: evita un error) |
+| Ficha: párrafo «Cómo se presenta tu negocio…» y pistas bajo los campos | Ese texto va al ⓘ del título; la ayuda de cada campo, en su ⓘ. «Correo verificado» pasa a «Correo» (« · sin verificar» si no lo está) |
+| QR: avisos «Su QR está en revisión» y «Sus clientes todavía no pueden pagarle» seguidos | Uno solo |
+| QR: «Atlas nunca recibe este dinero», detalle de la tarjeta, «Sólo se guarda la cuenta ENMASCARADA…» | Detrás del ⓘ de cada tarjeta. La pista de la cuenta se queda corta («Sólo los 4 últimos dígitos, p. ej. ****7890.»): evita el rechazo más común |
+| QR vigente: cuatro `KeyValue` (entidad, cuenta, huella, subido) | Una línea «BNB · ****7890 · subido el …» y la huella en gris; el estado como pastilla en la cabecera |
+| QR anteriores: cuatro `KeyValue` por QR | Una fila: «entidad · cuenta · fecha» + estado |
+| Sucursales: tarjeta-cabecera con «Agregar sucursal», «Importar desde Excel», PDF y «Actualizar» | Fila de dos botones: «Importar Excel» y «Agregar sucursal» |
+| Sucursal: estado en crudo (`ACTIVE`), «BNPL» + explicación, cajas en rejilla de tarjetas con QR de 88 px y dos botones cada una | Estado en español (Activa / De baja), «Venta a crédito» + pastilla (la explicación queda en el lector de pantalla), cajas en filas: QR pequeño (abre el grande), nombre, «Código …», estado en español (Activa / Sin activar / Suspendida), ícono para descargar el cartel y «Suspender/Activar/Reactivar» como enlace |
+| «Agregar cajas» a lo ancho, «Editar» y «Dar de baja» sueltos | «+ Agregar cajas» como enlace; «Editar» y «Dar de baja» al pie en una fila de dos |
+| Aviso de expediente no aprobado (cuatro líneas) | Dos frases: en qué estado está y que los QR no funcionan hasta aprobarlo |
+| Pestañas sin expediente: avisos con párrafo | Estado vacío compacto «Primero hay que abrir tu expediente · Ábrelo en «Estado»: son siete campos.» |
+| Hojas de alta: descripciones y pistas largas | Descripción de una frase; las pistas pasan al ⓘ salvo «Déjalo vacío para que Atlas lo genere.» (serial propio) y «Sólo dígitos.» (NIT) |
+
+Cambio que no es sólo de dibujo: el PDF de «Mi empresa» escribe el estado en español («Borrador») en vez del código (`draft`).

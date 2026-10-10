@@ -54,11 +54,7 @@ function Matricula({ partnerId, ocupado, run }: { partnerId: string; ocupado: bo
 
   return (
     <Card>
-      <CardHeader
-        title="Matrícula de comercio"
-        icon="documento"
-        detail="El número con el que tu empresa está inscrita en el registro de comercio. Si tu ejecutivo de Atlas lo cargó en el alta, ya no aparece aquí."
-      />
+      <CardHeader title="Matrícula de comercio" icon="documento" />
       <IconField
         label="Número de matrícula"
         icon="documento"
@@ -138,7 +134,6 @@ function Representante({ partnerId, ocupado, run, faltaRepresentante, faltaPoder
       <CardHeader
         title="Representante legal"
         icon="perfil"
-        detail="Lo carga tu ejecutivo de Atlas desde el ERP, con el poder notarial que acredita quién firma por la empresa."
         trailing={
           <Button
             label={editando ? 'Cerrar' : 'Editar'}
@@ -149,10 +144,9 @@ function Representante({ partnerId, ocupado, run, faltaRepresentante, faltaPoder
           />
         }
       />
-      <AtlasText variant="body" tone="secondary" testID="aviso-representante-desde-erp">
-        {faltaRepresentante
-          ? 'Todavía no está cargado. Envía a tu ejecutivo de Atlas el nombre y el documento del representante y el poder notarial escaneado, o cárgalo tú con «Editar».'
-          : 'El representante ya está declarado, pero falta el poder notarial que lo acredita. Envíaselo a tu ejecutivo de Atlas o adjúntalo con «Editar».'}
+      {/* Una línea: lo normal es que lo cargue tu ejecutivo de Atlas desde el ERP; «Editar» es la otra vía. */}
+      <AtlasText variant="caption" tone="secondary" style={styles.linea} testID="aviso-representante-desde-erp">
+        {faltaRepresentante ? 'Sin cargar. Envíalo a tu ejecutivo de Atlas o cárgalo con «Editar».' : 'Falta el poder notarial. Envíalo a tu ejecutivo o adjúntalo con «Editar».'}
       </AtlasText>
       {editando ? (
         <View style={styles.formulario}>
@@ -186,7 +180,11 @@ function Representante({ partnerId, ocupado, run, faltaRepresentante, faltaPoder
             testID="campo-representante-documento"
           />
           <View style={styles.archivo} testID="campo-poder">
-            <FieldLabel label="Poder notarial" required={faltaPoder} ayuda="El poder notarial escaneado que acredita que esta persona firma por la empresa." />
+            <FieldLabel
+              label="Poder notarial"
+              required={faltaPoder}
+              ayuda="El poder notarial escaneado que acredita que esta persona firma por la empresa. Se guarda como evidencia del expediente; sin él no se puede enviar a revisión."
+            />
             {poder ? (
               <AtlasText variant="body">
                 {poder.name} · {tamanoLegible(poder.size)}
@@ -197,7 +195,7 @@ function Representante({ partnerId, ocupado, run, faltaRepresentante, faltaPoder
               {poder ? <Button label="Quitar" icon="papelera" variant="ghost" onPress={() => setPoder(null)} /> : null}
             </View>
             <AtlasText variant="caption" tone="tertiary">
-              PDF o imagen del poder, hasta 10 MB. Se guarda como evidencia del expediente; sin él no se puede enviar a revisión.
+              PDF o imagen, hasta 10 MB.
             </AtlasText>
             {errorPoder ? <Aviso tono="danger">{errorPoder}</Aviso> : null}
           </View>
@@ -210,6 +208,7 @@ function Representante({ partnerId, ocupado, run, faltaRepresentante, faltaPoder
 
 const styles = StyleSheet.create({
   bloques: { gap: space.base },
+  linea: { marginTop: space.sm },
   formulario: { gap: space.base, marginTop: space.base },
   archivo: { gap: space.sm },
   fila: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },

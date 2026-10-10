@@ -3,12 +3,16 @@
  *
  * Al cambiarla se cierran todas las sesiones, también ésta, igual que en la web. El aviso de que
  * salió bien se muestra en «Ingresar» (`?aviso=clave-cambiada`), que es donde la persona aterriza.
+ *
+ * Cabecera con sólo el título y volver. Que al terminar se cierran todas las sesiones va detrás del
+ * ⓘ de la tarjeta; lo que evita un error (el formato de la contraseña) se queda a la vista.
  */
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { IconField } from '@cliente/ui/form-controls';
+import { BotonInfo, InfoSheet } from '@cliente/ui/help-sheet';
 import { Gap, Screen, ScreenHeader } from '@cliente/ui/layout';
-import { Button, Card, CardHeader, KeyValue } from '@cliente/ui/primitives';
+import { AtlasText, Button, Card, CardHeader, KeyValue } from '@cliente/ui/primitives';
 import { mensajeDeError } from '@/api/client';
 import { authApi, type PinChallenge } from '@/api/endpoints/auth';
 import { useSession } from '@/session/session';
@@ -25,6 +29,7 @@ export default function Cuenta() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [saliendo, setSaliendo] = useState(false);
+  const [info, setInfo] = useState(false);
 
   const pedirCodigo = async () => {
     if (submitting || currentPassword === '') return;
@@ -68,7 +73,7 @@ export default function Cuenta() {
 
   return (
     <Screen>
-      <ScreenHeader eyebrow="Cuenta" title="Mi cuenta" subtitle="Seguridad de tu acceso al portal del comercio." onBack="auto" />
+      <ScreenHeader title="Mi cuenta" onBack="auto" />
 
       {merchant ? (
         <Card>
@@ -81,11 +86,7 @@ export default function Cuenta() {
       <Card>
         {challenge ? (
           <>
-            <CardHeader
-              title="Cambiar contraseña"
-              icon="candado"
-              detail={`Enviamos un código de 6 dígitos a tu correo. Vence en ${challenge.expiresInMinutes} minutos.`}
-            />
+            <CardHeader title="Cambiar contraseña" icon="candado" detail={`Código enviado a tu correo. Vence en ${challenge.expiresInMinutes} min.`} />
             <IconField
               label="Código del correo"
               icon="sobre"
@@ -132,7 +133,7 @@ export default function Cuenta() {
             <CardHeader
               title="Cambiar contraseña"
               icon="candado"
-              detail="Pide un código a tu correo y confírmalo. Al terminar se cierran todas tus sesiones."
+              trailing={<BotonInfo etiqueta="Cambiar contraseña" onPress={() => setInfo(true)} testID="info-contrasena" />}
             />
             <IconField
               label="Contraseña actual"
@@ -151,6 +152,12 @@ export default function Cuenta() {
           </>
         )}
       </Card>
+
+      <InfoSheet visible={info} titulo="Cambiar contraseña" onClose={() => setInfo(false)}>
+        <AtlasText variant="body" tone="secondary">
+          Pide un código a tu correo y confírmalo. Al terminar se cierran todas tus sesiones, también ésta.
+        </AtlasText>
+      </InfoSheet>
 
       <Gap size="base" />
       <Button label="Cerrar sesión" icon="salir" variant="secondary" onPress={() => void salir()} loading={saliendo} testID="cuenta-salir" />
