@@ -75,7 +75,10 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "3228522f-e3dc-480b-a540-e50b69b9d717"
+      }
     },
     "owner": "pablo28809",
     "runtimeVersion": {
