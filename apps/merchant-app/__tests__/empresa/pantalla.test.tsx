@@ -44,7 +44,7 @@ jest.mock('@/api/client', () => ({
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const MiEmpresa = (require('../../app/(app)/(tabs)/empresa') as { default: () => React.JSX.Element }).default;
+const MiEmpresa = (require('../../app/(app)/empresa') as { default: () => React.JSX.Element }).default;
 
 
 beforeEach(() => {

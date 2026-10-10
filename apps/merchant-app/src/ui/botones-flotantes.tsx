@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { color, shadow, space } from '@cliente/theme/tokens';
 import { Icon, type IconName } from '@cliente/ui/icons';
 import { PressSurface } from '@cliente/ui/motion';
+import { useAsistente } from '@/features/asistente/use-asistente';
 import { HojaDelAsistente } from './asistente/hoja';
 
 /** El alto de la barra de pestañas sin el área segura (`BAR_HEIGHT` de `app/(app)/(tabs)/_layout.tsx`). */
@@ -54,6 +55,8 @@ export function BotonesFlotantes() {
   const insets = useSafeAreaInsets();
   const teclado = useTecladoVisible();
   const [asistente, setAsistente] = useState(false);
+  // Con el asistente apagado (404) su botón no se pinta; Mi empresa y Soporte siguen.
+  const hilo = useAsistente();
 
   return (
     <>
@@ -61,19 +64,21 @@ export function BotonesFlotantes() {
         <View style={[styles.pila, { bottom: ALTO_BARRA + insets.bottom + space.sm }]} pointerEvents="box-none">
           <Secundario icono="comercio" etiqueta="Mi empresa" onPress={() => router.push('/empresa')} testID="flotante-empresa" />
           <Secundario icono="chat" etiqueta="Soporte" onPress={() => router.push('/soporte')} testID="flotante-soporte" />
-          <PressSurface
-            onPress={() => setAsistente(true)}
-            accessibilityRole="button"
-            accessibilityLabel="Abrir asistente de ayuda"
-            accessibilityHint="Abre un chat que contesta dudas sobre cómo usar la app"
-            style={styles.principal}
-            testID="asistente-fab"
-          >
-            <Icon name="asistente" size={26} tint={color.text.onBrand} />
-          </PressSurface>
+          {hilo.disponible === false ? null : (
+            <PressSurface
+              onPress={() => setAsistente(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Abrir asistente de ayuda"
+              accessibilityHint="Abre un chat que contesta dudas sobre cómo usar la app"
+              style={styles.principal}
+              testID="asistente-fab"
+            >
+              <Icon name="asistente" size={26} tint={color.text.onBrand} />
+            </PressSurface>
+          )}
         </View>
       )}
-      <HojaDelAsistente visible={asistente} onClose={() => setAsistente(false)} />
+      <HojaDelAsistente visible={asistente && hilo.disponible !== false} onClose={() => setAsistente(false)} asistente={hilo} />
     </>
   );
 }
