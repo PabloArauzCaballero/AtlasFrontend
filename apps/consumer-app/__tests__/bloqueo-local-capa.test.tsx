@@ -60,10 +60,12 @@ beforeEach(async () => {
   jest.clearAllMocks();
   await AsyncStorage.clear();
   olvidarBloqueo();
-  cambioDeEstado = null;
+  // Todos los oyentes de `AppState` (el vigilante y el candado), como en el sistema.
+  const oyentes = new Set<(estado: string) => void>();
+  cambioDeEstado = (estado) => [...oyentes].forEach((oyente) => oyente(estado));
   jest.spyOn(AppState, 'addEventListener').mockImplementation((_tipo, oyente) => {
-    cambioDeEstado = oyente as (estado: string) => void;
-    return { remove: jest.fn() } as never;
+    oyentes.add(oyente as (estado: string) => void);
+    return { remove: () => oyentes.delete(oyente as (estado: string) => void) } as never;
   });
   leerBiometria.mockResolvedValue({ disponible: true, tipo: 'rostro' });
 });
@@ -136,6 +138,24 @@ describe('con la app abierta (relojes falsos)', () => {
     await pasar(SALIDA_CORTA_MS + 1_000);
     await estado('inactive');
     await estado('active');
+    expect(screen.getByTestId('bloqueo-local')).toBeTruthy();
+  });
+
+  it('con el candado puesto, volver de segundo plano vuelve a pedir Face ID; la propia hoja (inactive) no', async () => {
+    bloquearAlArrancar();
+    await montar();
+    await pasar(0);
+    expect(autenticar).toHaveBeenCalledTimes(1);
+    // Cancelar la hoja de Face ID: `inactive → active`, sin volver a pedirla en bucle.
+    await estado('inactive');
+    await estado('active');
+    await pasar(0);
+    expect(autenticar).toHaveBeenCalledTimes(1);
+    // Salir y volver con el candado puesto: se vuelve a pedir.
+    await estado('background');
+    await estado('active');
+    await pasar(0);
+    expect(autenticar).toHaveBeenCalledTimes(2);
     expect(screen.getByTestId('bloqueo-local')).toBeTruthy();
   });
 

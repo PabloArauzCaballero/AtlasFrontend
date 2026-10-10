@@ -128,6 +128,24 @@ function Candado({ biometria: leida, onSalir }: { biometria: Biometria | null; o
     void pedirBiometria();
   }, [pedirBiometria]);
 
+  /*
+    Y otra vez al VOLVER de segundo plano con el candado puesto. Si iOS arranco la app en segundo plano (la tarea de
+    ubicacion la despierta), el primer intento fallo sin que nadie lo viera y la persona encontraba el candado sin
+    Face ID. Solo tras `background`: la propia hoja de Face ID pasa por `inactive → active` y repetir ahi la volveria
+    a abrir sin fin al cancelarla.
+  */
+  useEffect(() => {
+    let estuvoFuera = false;
+    const suscripcion = AppState.addEventListener('change', (estado: AppStateStatus) => {
+      if (estado === 'background') estuvoFuera = true;
+      else if (estado === 'active' && estuvoFuera) {
+        estuvoFuera = false;
+        void pedirBiometria();
+      }
+    });
+    return () => suscripcion.remove();
+  }, [pedirBiometria]);
+
   const comprobar = async (completo: string) => {
     if (verificando) return;
     setVerificando(true);
