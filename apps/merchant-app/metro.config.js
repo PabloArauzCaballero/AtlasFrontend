@@ -19,7 +19,8 @@ const raizPropia = path.join(__dirname, 'app', '_layout.tsx');
 
 const esPaquete = (nombre) => !nombre.startsWith('.') && !nombre.startsWith('/');
 
-config.watchFolders = [...(config.watchFolders ?? []), cliente];
+// También sus recursos: la animación de arranque suena con `consumer-app/assets/audio/atlas-marca.mp3`.
+config.watchFolders = [...(config.watchFolders ?? []), cliente, path.resolve(__dirname, '../consumer-app/assets')];
 config.resolver.extraNodeModules = { ...config.resolver.extraNodeModules, '@cliente': cliente };
 
 const resolverPrevio = config.resolver.resolveRequest;

@@ -10,7 +10,7 @@ import { space } from '@cliente/theme/tokens';
 import { AtlasLogo } from '@cliente/ui/brand';
 import { IconField } from '@cliente/ui/form-controls';
 import { Gap, Screen, ScreenHeader } from '@cliente/ui/layout';
-import { AtlasText, Button } from '@cliente/ui/primitives';
+import { AtlasText, Button, IconButton } from '@cliente/ui/primitives';
 import { mensajeDeError } from '@/api/client';
 import { useSession } from '@/session/session';
 import { Aviso } from '@/ui/aviso';
@@ -106,13 +106,11 @@ export default function Ingresar() {
         hint="Nunca compartas tu contraseña; el equipo de soporte jamás te la pedirá."
         ayuda="Tu contraseña del ERP; distingue mayúsculas."
         trailing={
-          <Button
-            label={verClave ? 'Ocultar' : 'Mostrar'}
+          <IconButton
             icon="ojo"
-            variant="ghost"
-            haptic="none"
+            label={verClave ? 'Ocultar contraseña' : 'Mostrar contraseña'}
             onPress={() => setVerClave((v) => !v)}
-            accessibilityLabel={verClave ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+            testID="ingresar-ver-clave"
           />
         }
         required
