@@ -21,11 +21,11 @@
  * recibe el dinero, cada cuota se paga al QR bancario del comercio donde se compro.
  */
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import * as loansApi from '../../../../src/api/endpoints/loans';
 import { categoryLook, dueCopy, formatAmount } from '../../../../src/features/spending-copy';
 import type { IconName } from '../../../../src/ui/icons';
 import { Gap, Screen, ScreenHeader } from '../../../../src/ui/layout';
+import { useAlVolver, useTirarParaRecargar } from '../../../../src/features/al-volver';
+import { useLoanDetail } from '../../../../src/features/use-credit-book';
 import { useCopy } from '../../../../src/features/use-contenido-remoto';
 import {
   AtlasText,
@@ -67,24 +67,10 @@ export default function InstallmentDetail() {
   const t = useCopy();
   const router = useRouter();
   const params = useLocalSearchParams<{ loanId: string; numero: string }>();
-  const [loan, setLoan] = useState<loansApi.LoanDetail | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!params.loanId) return;
-    let cancelled = false;
-    loansApi
-      .getLoan(params.loanId)
-      .then((value) => {
-        if (!cancelled) setLoan(value);
-      })
-      .catch(() => {
-        if (!cancelled) setError('No pudimos cargar esta cuota.');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [params.loanId]);
+  const { loan, error, reload } = useLoanDetail(params.loanId, 'No pudimos cargar esta cuota.');
+  // Al volver (p. ej. tras avisar el pago de una cuota), tras una operación de dinero y cada minuto a la vista.
+  useAlVolver(reload);
+  const tirar = useTirarParaRecargar(reload);
 
   if (error) {
     return (
@@ -138,7 +124,7 @@ export default function InstallmentDetail() {
   const merchantLook = categoryLook(loan.merchant?.businessCategory ?? 'sin_comercio');
 
   return (
-    <Screen>
+    <Screen {...tirar}>
       <ScreenHeader
         title={`Cuota ${installment.installmentNumber}`}
         subtitle={`${loan.merchant?.displayName ?? 'Compra sin comercio'} · ${merchantLook.label}`}

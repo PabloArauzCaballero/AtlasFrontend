@@ -8,13 +8,14 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { AtlasApiError, describeError } from '../../src/api/errors';
 import { useSession } from '../../src/session/session';
+import { mensajeDeSalida } from '../../src/session/tope-de-sesion';
 import { StyleSheet } from 'react-native';
 import { IconField } from '../../src/ui/form-controls';
 import { PIN_LENGTH, PinField } from '../../src/ui/pin-field';
 import { space } from '../../src/theme/tokens';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasLogo } from '../../src/ui/brand';
-import { AtlasText, Button, ErrorState } from '../../src/ui/primitives';
+import { AtlasText, Button, Card, CardHeader, ErrorState } from '../../src/ui/primitives';
 import { useSinCapturas } from '../../src/device/sin-capturas';
 
 export default function SignIn() {
@@ -53,6 +54,7 @@ export default function SignIn() {
     setError(null);
     try {
       await session.signIn(identifier.trim(), clave);
+      // La puerta de entrada (`app/index.tsx`) decide si va a la portada o al alta; desde aqui «/» es ella.
       router.replace('/');
     } catch (caught) {
       setError(caught);
@@ -80,6 +82,11 @@ export default function SignIn() {
    * app hubiera perdido algo, cuando lo que pasa es que la contrasena no coincide.
    */
   const title = credentialsRejected ? 'No pudimos ingresar' : (described?.title ?? '');
+  /*
+    Por que esta aqui si no lo pidio: el tope de 8 h (o el servidor cerro la sesion). Sin esto, la persona
+    se encontraba en «Ingresar» sin saber si la app habia fallado.
+  */
+  const motivo = mensajeDeSalida(session.motivoDeSalida);
 
   return (
     <Screen
@@ -99,6 +106,12 @@ export default function SignIn() {
       */}
       <AtlasLogo size={36} style={styles.marca} />
       <ScreenHeader title="Ingresar" subtitle="Usa el correo o teléfono con el que te registraste." onBack="auto" />
+
+      {motivo && !described ? (
+        <Card tone="warning" testID="ingresar-motivo-salida">
+          <CardHeader icon="candado" iconTone="warning" title={motivo} divider={false} />
+        </Card>
+      ) : null}
 
       {described ? (
         <ErrorState

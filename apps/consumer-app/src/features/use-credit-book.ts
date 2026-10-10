@@ -128,3 +128,35 @@ export function useDelinquencyPolicy(enabled: boolean) {
 
   return { policy, error };
 }
+
+/**
+ * Un credito con sus cuotas, para el detalle del credito y el de la cuota.
+ *
+ * Antes cada pantalla lo pedia UNA vez al montarse: volver al detalle de la cuota despues de avisar el pago seguia
+ * enseñando «pendiente» hasta cerrar la app. Con `reload`, la pantalla lo vuelve a pedir al volver a ella, tras una
+ * operacion de dinero y al tirar hacia abajo (ver `features/al-volver.ts`).
+ */
+export function useLoanDetail(loanId: string | undefined, mensajeDeError: string) {
+  const [loan, setLoan] = useState<loansApi.LoanDetail | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    if (!loanId) return;
+    try {
+      setLoan(await loansApi.getLoan(loanId));
+      setError(null);
+    } catch {
+      // Si ya habia datos, se conservan: un fallo al RECARGAR no borra lo que la persona estaba viendo.
+      setLoan((previo) => {
+        if (!previo) setError(mensajeDeError);
+        return previo;
+      });
+    }
+  }, [loanId, mensajeDeError]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  return { loan, error, reload };
+}

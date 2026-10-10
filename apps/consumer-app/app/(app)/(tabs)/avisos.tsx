@@ -16,6 +16,7 @@
  */
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
+import { useAlVolver } from '../../../src/features/al-volver';
 import { StyleSheet, View } from 'react-native';
 import * as notificationsApi from '../../../src/api/endpoints/notifications';
 import { useSession } from '../../../src/session/session';
@@ -139,6 +140,8 @@ export default function Avisos() {
   useEffect(() => {
     void load();
   }, [load]);
+  // Un pago o una compra dejan avisos nuevos: se piden al volver, tras la operación y cada minuto a la vista.
+  useAlVolver(load);
 
   const refresh = async () => {
     setRefreshing(true);

@@ -12,6 +12,7 @@ import { AtlasApiError } from '../src/api/errors';
 import { SessionProvider, useSession, type SessionValue } from '../src/session/session';
 import { secureTokenStore, profileStorage } from '../src/session/token-storage';
 import { PLAZO_CIERRE_MS } from '../src/session/cierre-de-sesion';
+import { guardarInicioConPin } from '../src/session/tope-de-sesion';
 
 Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -102,9 +103,11 @@ async function salirMidiendo(sesion: SessionValue): Promise<number> {
   return ms;
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.useFakeTimers();
   jest.clearAllMocks();
+  // Una sesión abierta con el PIN hace un rato: dentro del tope de 8 h (`session/tope-de-sesion.ts`).
+  await guardarInicioConPin(Date.now());
   jest.spyOn(console, 'warn').mockImplementation(() => undefined);
 });
 

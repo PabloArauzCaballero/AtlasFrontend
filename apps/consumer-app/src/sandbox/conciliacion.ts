@@ -63,3 +63,28 @@ export function descartarComprasSinSolicitud(
     disputes: state.disputes.filter((entry) => !cuotas.has(entry.scheduleItemId)),
   };
 }
+
+/**
+ * Las cuotas INICIALES que el comercio ya confirmo en el servidor y el telefono todavia no.
+ *
+ * Antes solo lo preguntaba la pantalla del pago inicial (`app/(app)/pago/[itemId].tsx`) mientras estaba abierta: al
+ * pulsar «Entendido» y volver a Inicio nadie volvia a preguntar, y la compra se quedaba «esperando el pago inicial»
+ * aunque el comercio ya lo hubiera confirmado. Ahora lo pregunta el estado de compras, que vive con la sesion.
+ */
+export function inicialesConfirmados(
+  state: SandboxState,
+  solicitudes: readonly (SolicitudDelServidor & { downPaymentStatus?: string | null })[],
+): string[] {
+  const confirmadas = new Set(
+    solicitudes.filter((solicitud) => solicitud.downPaymentStatus === 'confirmed').map((solicitud) => String(solicitud.applicationId)),
+  );
+  if (confirmadas.size === 0) return [];
+  const ordenes = new Set(
+    state.orders
+      .filter((order) => order.status === 'WAITING_INITIAL_PAYMENT' && order.backendApplicationId !== null && confirmadas.has(String(order.backendApplicationId)))
+      .map((order) => order.id),
+  );
+  return state.schedules
+    .filter((schedule) => ordenes.has(schedule.purchaseOrderId))
+    .flatMap((schedule) => schedule.items.filter((item) => item.itemType === 'INITIAL' && item.status !== 'PAID').map((item) => item.id));
+}
