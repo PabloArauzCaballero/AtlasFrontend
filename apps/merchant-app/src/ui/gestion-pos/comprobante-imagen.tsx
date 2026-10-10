@@ -1,19 +1,20 @@
 /**
- * El comprobante, en pantalla. Porte de `ComprobanteImagen` (`MerchantPaymentProofsScreen.tsx`).
+ * El comprobante, en la tarjeta. Porte de `ComprobanteImagen` (`MerchantPaymentProofsScreen.tsx`).
  *
  * Sin esto el comercio decidía a ciegas: la tarjeta enseñaba el importe que el cliente DECLARÓ y la
  * referencia que el cliente ESCRIBIÓ —las dos las teclea la parte interesada— y ninguna prueba de la
- * transferencia. «Verificar y dar por pagado» registra un pago real contra el préstamo, así que
- * pulsarlo sin ver el papel no es verificar: es creer.
+ * transferencia. «Confirmar» registra un pago real contra el préstamo, así que pulsarlo sin ver el
+ * papel no es verificar: es creer.
  *
  * La imagen se trae con la sesión (`apiBlobUrl` → `data:`), porque un `<Image uri>` apuntando a la
  * ruta del backend no lleva las cookies y daría 401, que se vería como una imagen rota —exactamente
  * el fallo que se lee como «el cliente no subió nada»—.
  *
- * Lo que cambia respecto a la web: allí pulsar la imagen la AMPLÍA dentro de la tarjeta (de 14 rem a
- * 36 rem de alto). En un teléfono la tarjeta ya ocupa el ancho entero y crecer en alto no deja leer
- * una cifra pequeña: se abre a pantalla completa, como la foto de un adjunto en el chat de la app del
- * cliente (`ui/adjunto-imagen.tsx`), y se cierra con «Cerrar».
+ * Lo que cambia respecto a la web: allí la imagen va a lo ancho de la tarjeta (14 rem de alto) y
+ * pulsarla la amplía DENTRO de la tarjeta. En el teléfono eso hacía de cada comprobante un bloque de
+ * pantalla entera (Pablo, 2026-10-10: «mucho más claras»): aquí es una MINIATURA a la derecha del
+ * importe, y pulsarla la abre a pantalla completa —como la foto de un adjunto en el chat de la app
+ * del cliente (`ui/adjunto-imagen.tsx`)— con el aviso de la web debajo y «Cerrar».
  */
 import { useEffect, useState } from 'react';
 import { Image, Modal, StyleSheet, View } from 'react-native';
@@ -22,24 +23,17 @@ import { Icon } from '@cliente/ui/icons';
 import { PressSurface } from '@cliente/ui/motion';
 import { AtlasText, Skeleton } from '@cliente/ui/primitives';
 import { mensajeDeError } from '@/api/client';
-import { Aviso } from '@/ui/aviso';
 
-export function ComprobanteImagen({
-  partnerId,
-  id,
-  cargar,
-}: {
-  partnerId: string;
-  /** `claimId` de una cuota, o `applicationId` de un pago inicial. */
-  id: string;
-  /** De dónde sale la imagen. Debe ser estable (a nivel de módulo): si cambia, se vuelve a pedir. */
-  cargar: (partnerId: string, id: string) => Promise<string>;
-}) {
+/** El lado de la miniatura: lo bastante para reconocer un comprobante, no para leerlo (para eso se abre). */
+const LADO = 72;
+
+/** Trae la imagen. `cargar` debe ser estable (a nivel de módulo): si cambia, se vuelve a pedir. */
+export function useImagenDeComprobante(partnerId: string, id: string, cargar: (partnerId: string, id: string) => Promise<string>, activa: boolean) {
   const [uri, setUri] = useState<string | null>(null);
   const [fallo, setFallo] = useState<string | null>(null);
-  const [ampliada, setAmpliada] = useState(false);
 
   useEffect(() => {
+    if (!activa) return undefined;
     let cancelado = false;
     setUri(null);
     setFallo(null);
@@ -54,46 +48,61 @@ export function ComprobanteImagen({
     return () => {
       cancelado = true;
     };
-  }, [partnerId, id, cargar]);
+  }, [partnerId, id, cargar, activa]);
+
+  return { uri, fallo };
+}
+
+/**
+ * La miniatura: cargando, la imagen (pulsable), o un hueco con el ícono de alerta si no se pudo traer
+ * (el porqué lo dice la tarjeta debajo del importe, con el texto de la web).
+ */
+export function MiniaturaDeComprobante({ uri, fallo, id }: { uri: string | null; fallo: string | null; id: string }) {
+  const [ampliada, setAmpliada] = useState(false);
 
   if (fallo) {
     return (
-      <Aviso tono="warning" titulo="No se pudo mostrar el comprobante" testID={`comprobante-error-${id}`}>
-        {`${fallo} Puede rechazarlo indicando que el comprobante no se lee.`}
-      </Aviso>
+      <View style={[styles.miniatura, styles.hueco]} testID={`comprobante-error-${id}`} accessible accessibilityLabel="No se pudo mostrar el comprobante">
+        <Icon name="alerta" size={22} tint={color.feedback.warning} />
+      </View>
     );
   }
 
   if (!uri) {
     return (
       <View accessible accessibilityLabel="Cargando comprobante">
-        <Skeleton height={160} />
+        <Skeleton height={LADO} width={LADO} />
       </View>
     );
   }
 
   return (
-    <View style={styles.figura}>
+    <>
       <PressSurface
         onPress={() => setAmpliada(true)}
         accessibilityRole="imagebutton"
-        accessibilityLabel={`Comprobante de transferencia ${id}. Ampliar`}
-        style={styles.marco}
+        accessibilityLabel="Ver comprobante"
+        style={styles.miniatura}
         testID={`comprobante-imagen-${id}`}
       >
-        <Image source={{ uri }} style={styles.imagen} resizeMode="contain" accessibilityLabel={`Comprobante de transferencia ${id}`} />
+        <Image source={{ uri }} style={styles.imagenMiniatura} resizeMode="cover" accessibilityLabel={`Comprobante de transferencia ${id}`} />
+        <View style={styles.lupa}>
+          <AtlasText variant="micro" tone="onBrand">
+            Ver
+          </AtlasText>
+        </View>
       </PressSurface>
-      <AtlasText variant="caption" tone="secondary">
-        Pulse la imagen para ampliarla. Compruebe el monto, la fecha y la cuenta de destino antes de confirmar.
-      </AtlasText>
 
       <Modal visible={ampliada} transparent animationType="fade" onRequestClose={() => setAmpliada(false)}>
         <View style={styles.velo}>
           <Image source={{ uri }} style={styles.completa} resizeMode="contain" accessibilityLabel={`Comprobante de transferencia ${id}`} />
+          <AtlasText variant="caption" tone="onBrand" align="center" style={styles.pie}>
+            Compruebe el monto, la fecha y la cuenta de destino antes de confirmar.
+          </AtlasText>
           <PressSurface
             onPress={() => setAmpliada(false)}
             accessibilityRole="button"
-            accessibilityLabel="Reducir"
+            accessibilityLabel="Cerrar"
             style={styles.cerrar}
             testID={`comprobante-cerrar-${id}`}
           >
@@ -102,18 +111,33 @@ export function ComprobanteImagen({
           </PressSurface>
         </View>
       </Modal>
-    </View>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  figura: { gap: space.sm },
-  // El marco de la web (`border bg-slate-50 p-2`): la imagen se lee como un papel, no como decoración.
-  marco: { padding: space.sm, borderRadius: radius.md, backgroundColor: color.surface.sunken },
-  // 224 px = `max-h-56` de la web: cabe el comprobante entero sin empujar los botones fuera de la vista.
-  imagen: { width: '100%', height: 224 },
+  miniatura: {
+    width: LADO,
+    height: LADO,
+    borderRadius: radius.md,
+    overflow: 'hidden',
+    backgroundColor: color.surface.sunken,
+  },
+  hueco: { alignItems: 'center', justifyContent: 'center' },
+  imagenMiniatura: { width: '100%', height: '100%' },
+  // La palabra «Ver» sobre la foto: sin ella una miniatura se lee como decoración y no como un botón.
+  lupa: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: 'center',
+    paddingVertical: space.xxs,
+    backgroundColor: color.overlay.scrim,
+  },
   velo: { flex: 1, backgroundColor: color.overlay.scrim, alignItems: 'center', justifyContent: 'center', padding: space.lg },
-  completa: { width: '100%', height: '80%' },
+  completa: { width: '100%', height: '75%' },
+  pie: { marginTop: space.md },
   cerrar: {
     flexDirection: 'row',
     alignItems: 'center',

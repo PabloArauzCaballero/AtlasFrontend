@@ -70,3 +70,17 @@ export function fechaCorta(valor: string): string {
 export function textoDeFallo(error: unknown, respaldo: string): string {
   return error instanceof Error && error.message ? error.message : respaldo;
 }
+
+/**
+ * «3.00» → «3», «2.50» → «2,5»: la tasa de comisión para un rótulo. El backend la manda con dos
+ * decimales fijos y, pegada a «Comisión a Atlas (3.00 %)», cortaba el rótulo del resumen.
+ */
+export function tasaCorta(valor: unknown): string {
+  const numero = Number(valor ?? 0);
+  return (Number.isFinite(numero) ? numero : 0).toLocaleString('es-BO', { maximumFractionDigits: 2 });
+}
+
+/** «1 cuota», «3 cuotas»: en vez del «cuota(s)» de la web. */
+export function cuotasTexto(cantidad: number): string {
+  return `${cantidad} ${cantidad === 1 ? 'cuota' : 'cuotas'}`;
+}

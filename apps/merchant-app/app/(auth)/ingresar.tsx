@@ -10,7 +10,7 @@ import { space } from '@cliente/theme/tokens';
 import { AtlasLogo } from '@cliente/ui/brand';
 import { IconField } from '@cliente/ui/form-controls';
 import { Gap, Screen, ScreenHeader } from '@cliente/ui/layout';
-import { AtlasText, Button, IconButton } from '@cliente/ui/primitives';
+import { Button, IconButton } from '@cliente/ui/primitives';
 import { mensajeDeError } from '@/api/client';
 import { useSession } from '@/session/session';
 import { Aviso } from '@/ui/aviso';
@@ -55,7 +55,6 @@ export default function Ingresar() {
       <ScreenHeader
         eyebrow="Portal del comercio"
         title="Bienvenido nuevamente"
-        subtitle="Ingresa tus credenciales para acceder al portal de tu comercio."
       />
 
       {aviso === 'clave-cambiada' && !error ? (
@@ -103,7 +102,6 @@ export default function Ingresar() {
         returnKeyType="go"
         onSubmitEditing={() => void enviar()}
         error={faltaClave}
-        hint="Nunca compartas tu contraseña; el equipo de soporte jamás te la pedirá."
         ayuda="Tu contraseña del ERP; distingue mayúsculas."
         trailing={
           <IconButton
@@ -124,10 +122,6 @@ export default function Ingresar() {
         variant="ghost"
         onPress={() => router.push({ pathname: '/recuperar', params: email.trim() ? { correo: email.trim() } : {} })}
       />
-      <Gap size="base" />
-      <AtlasText variant="caption" tone="tertiary">
-        El token de refresco viaja en una cookie HttpOnly y las acciones quedan auditadas.
-      </AtlasText>
     </Screen>
   );
 }

@@ -27,6 +27,7 @@ import { POS_QRS } from '../../../src/sandbox/fixtures';
 import { useSession } from '../../../src/session/session';
 import { avisoYaEnviado, submitDownPayment, submitPaymentClaim } from '../../../src/api/endpoints/payment-claims';
 import { subirComprobante } from '../../../src/features/comprobante-de-pago';
+import { avisarCambioDeDinero } from '../../../src/features/refresco';
 import { color, radius, space, marca } from '../../../src/theme/tokens';
 import { Field } from '../../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../../src/ui/layout';
@@ -209,6 +210,8 @@ export default function PaymentScreen() {
         });
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         setRemoto({ tipo: 'esperando_al_comercio' });
+        // Compras, línea y avisos se recargan ya y en los repasos: ver `features/refresco.ts`.
+        avisarCambioDeDinero();
       } catch (error) {
         setFallo(error instanceof Error ? error.message : 'No pudimos enviar tu aviso. Intenta de nuevo.');
       } finally {
@@ -253,6 +256,7 @@ export default function PaymentScreen() {
       });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setReported(true);
+      avisarCambioDeDinero();
     } catch (error) {
       setFallo(error instanceof Error ? error.message : 'No pudimos enviar tu aviso. Intenta de nuevo.');
     } finally {

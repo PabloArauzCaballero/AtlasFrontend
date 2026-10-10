@@ -11,29 +11,45 @@
  * igual que en la web.
  *
  * No aparece la identidad de ningún cliente: el comercio necesita saber que la cuota 3 de una
- * operación suya vence el martes, no quién es la persona.
+ * operación suya vence el martes, no quién es la persona (el porqué, en el ⓘ de «Créditos»).
+ *
+ * El PDF lo imprime el ícono de la cabecera de la pantalla: esta vista le deja en `pdf` cómo armarlo.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type MutableRefObject } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { color, space } from '@cliente/theme/tokens';
 import { Icon } from '@cliente/ui/icons';
-import { AtlasText, Card, CardHeader, Divider, SectionHeader } from '@cliente/ui/primitives';
+import { AtlasText, Card, Divider } from '@cliente/ui/primitives';
 import { merchantCreditService, type Cartera, type CreditoDeCartera } from '@/api/servicios/merchantCreditService';
 import { portalService } from '@/api/servicios/portalService';
 import { documentoCartera } from '@/features/cartera/documentos';
-import { bob, fechaCorta, textoDeFallo } from '@/features/cartera/formato';
+import { ESTADOS, codigoCorto, estadoDeCredito, estadoDeCuota } from '@/features/cartera/estados';
+import { bob, cuotasTexto, fechaCorta, tasaCorta, textoDeFallo } from '@/features/cartera/formato';
+import type { DocumentoPdf } from '@/features/pdf';
 import type { MerchantPartner } from '@/features/use-merchant-partner';
 import { Aviso } from '@/ui/aviso';
-import { BotonPdf } from '@/ui/boton-pdf';
 import { BarraDePestanas, Panel, usePestana } from '@/ui/pestanas';
 import { Resumen } from '@/ui/resumen';
-import { Cifra, Dato, Pastilla, TextoDePanel } from './piezas';
+import { Cifra, FilaDeCuota, FilaDeDia, Pastilla, Seccion, TextoDePanel } from './piezas';
 
 const VISTAS = ['panel', 'creditos', 'calendario', 'comision'] as const;
 
 type ComisionFacturada = Awaited<ReturnType<typeof portalService.commissions>>;
 
-export function VistaCartera({ partner, vuelta }: { partner: MerchantPartner; vuelta: number }) {
+/* Los textos de los ⓘ: son los de la web (descripciones de panel y avisos «Por qué…» / «Cómo se cobra»). */
+const INFO_CREDITOS = [
+  'Abra uno para ver su detalle cuota a cuota.',
+  'Por qué no ve nombres: su cartera dice qué operación vence y cuándo, no quién la debe. El comercio decide sobre la operación; el expediente del cliente es suyo y no de quien le vendió.',
+];
+const INFO_COMISION = [
+  'Lo que Atlas le cobra por el servicio. Se devenga sólo sobre lo que usted cobra.',
+  'Cómo se cobra: la comisión se devenga a medida que sus clientes pagan: un crédito aprobado que aún no cobra no genera comisión, y una venta pagada al 100 % la genera completa. La tasa se pactó en su alta desde el ERP interno de Atlas.',
+];
+const INFO_FACTURADO = [
+  'Devengado y facturado no son el mismo número y no tienen por qué coincidir: lo primero crece con cada cobro suyo, lo segundo sólo cuando Atlas emite el cargo. La diferencia es comisión ya generada que todavía no se le ha facturado.',
+];
+
+export function VistaCartera({ partner, vuelta, pdf }: { partner: MerchantPartner; vuelta: number; pdf: MutableRefObject<(() => DocumentoPdf) | null> }) {
   const [cartera, setCartera] = useState<Cartera | null>(null);
   const [facturado, setFacturado] = useState<ComisionFacturada | null>(null);
   const [cargandoCartera, setCargando] = useState(true);
@@ -69,22 +85,20 @@ export function VistaCartera({ partner, vuelta }: { partner: MerchantPartner; vu
     };
   }, [partnerId, vuelta]);
 
+  useEffect(() => {
+    pdf.current = () => documentoCartera(cartera, partner.nombre);
+  }, [pdf, cartera, partner.nombre]);
+
   // Mientras se resuelve el expediente también se está cargando: no hay que decir «no hay cuotas».
   const cargando = cargandoCartera || (!partnerId && partner.cargando);
   const resumen = cartera?.summary;
+  const tasa = tasaCorta(resumen?.mdrRatePercent);
   const proximos = useMemo(() => (cartera?.calendar ?? []).slice(0, 30), [cartera]);
   const creditos = cartera?.credits ?? [];
   const avisoDeError = error ?? partner.error;
 
   return (
     <View style={styles.columna}>
-      <BotonPdf
-        label="Descargar PDF"
-        testID="pdf-cartera"
-        disabled={cargando || !cartera}
-        documento={() => documentoCartera(cartera, partner.nombre)}
-      />
-
       {avisoDeError ? <Aviso tono="danger">{avisoDeError}</Aviso> : null}
 
       <Resumen
@@ -93,7 +107,7 @@ export function VistaCartera({ partner, vuelta }: { partner: MerchantPartner; vu
           { label: 'Por cobrar', value: cargando ? '…' : bob(resumen?.outstanding) },
           { label: 'Vencido', value: cargando ? '…' : bob(resumen?.overdueAmount), alerta: Number(resumen?.overdueAmount ?? 0) > 0 },
           { label: 'Cobrado', value: cargando ? '…' : bob(resumen?.collected) },
-          { label: `Comisión a Atlas (${resumen?.mdrRatePercent ?? '0'} %)`, value: cargando ? '…' : bob(resumen?.commissionAccrued) },
+          { label: `Comisión Atlas ${tasa} %`, value: cargando ? '…' : bob(resumen?.commissionAccrued) },
         ]}
       />
 
@@ -101,90 +115,60 @@ export function VistaCartera({ partner, vuelta }: { partner: MerchantPartner; vu
         activa={vista}
         onCambiar={elegirVista}
         pestanas={[
-          { id: 'panel', etiqueta: 'Panel', icono: 'cuadricula' },
-          { id: 'creditos', etiqueta: 'Créditos', icono: 'documento' },
-          { id: 'calendario', etiqueta: 'Calendario', icono: 'reloj' },
-          { id: 'comision', etiqueta: 'Comisión', icono: 'grafico' },
+          { id: 'panel', etiqueta: 'Panel', corta: 'Panel' },
+          { id: 'creditos', etiqueta: 'Créditos', corta: 'Créditos' },
+          { id: 'calendario', etiqueta: 'Calendario', corta: 'Calendario' },
+          { id: 'comision', etiqueta: 'Comisión', corta: 'Comisión' },
         ]}
       />
 
       <Panel visible={vista === 'panel'}>
-        <Card>
-          <CardHeader title="Los próximos cobros" detail="Lo que debería entrar en los siguientes días." icon="reloj" />
+        <Seccion titulo="Próximos cobros" info={['Lo que debería entrar en los siguientes días.']} testID="seccion-proximos" />
+        <Card padding="tight">
           {cargando || proximos.length === 0 ? (
             <TextoDePanel cargando={cargando} vacio="No hay cuotas pendientes de cobro." />
           ) : (
-            proximos.slice(0, 8).map((dia, indice) => (
-              <View key={dia.date}>
-                {indice > 0 ? <Divider inset /> : null}
-                <View style={styles.filaDia}>
-                  <Icon name={dia.overdue ? 'alerta' : 'reloj'} size={17} tint={dia.overdue ? color.feedback.warning : color.text.tertiary} />
-                  <View style={styles.crece}>
-                    <AtlasText variant="title">{fechaCorta(dia.date)}</AtlasText>
-                    {dia.overdue ? <Pastilla texto="Vencido" tono="warning" /> : null}
-                  </View>
-                  <View style={styles.derecha}>
-                    <AtlasText variant="bodyStrong">{bob(dia.amount)}</AtlasText>
-                    <AtlasText variant="micro" tone="tertiary">{`${dia.installments} cuota(s)`}</AtlasText>
-                  </View>
-                </View>
-              </View>
-            ))
+            proximos.slice(0, 8).map((dia, indice) => <FilaDeDia key={dia.date} dia={dia} primera={indice === 0} />)
           )}
         </Card>
       </Panel>
 
       <Panel visible={vista === 'creditos'}>
-        <Card>
-          <CardHeader title="Créditos pendientes de pago" detail="Abra uno para ver su detalle cuota a cuota." icon="documento" />
-          {cargando || creditos.length === 0 ? (
+        <Seccion titulo="Créditos pendientes de pago" info={INFO_CREDITOS} testID="seccion-creditos" />
+        {cargando || creditos.length === 0 ? (
+          <Card>
             <TextoDePanel cargando={cargando} vacio="No hay créditos originados en su comercio." />
+          </Card>
+        ) : (
+          creditos.map((credito) => (
+            <TarjetaDeCredito
+              key={credito.loanId}
+              credito={credito}
+              abierto={abierto === credito.loanId}
+              onAlternar={() => setAbierto(abierto === credito.loanId ? null : credito.loanId)}
+            />
+          ))
+        )}
+      </Panel>
+
+      <Panel visible={vista === 'calendario'}>
+        <Seccion titulo="Calendario de cobros" info={['Cuánto debería entrar cada día.']} testID="seccion-calendario" />
+        <Card padding="tight">
+          {cargando || proximos.length === 0 ? (
+            <TextoDePanel cargando={cargando} vacio="No hay cobros programados." />
           ) : (
-            creditos.map((credito, indice) => (
-              <View key={credito.loanId}>
-                {indice > 0 ? <Divider /> : null}
-                <FilaDeCredito credito={credito} abierto={abierto === credito.loanId} onAlternar={() => setAbierto(abierto === credito.loanId ? null : credito.loanId)} />
-              </View>
-            ))
+            proximos.map((dia, indice) => <FilaDeDia key={dia.date} dia={dia} primera={indice === 0} />)
           )}
         </Card>
       </Panel>
 
-      <Panel visible={vista === 'calendario'}>
-        <SectionHeader title="Calendario de cobros" detail="Cuánto debería entrar cada día." />
-        {cargando || proximos.length === 0 ? (
-          <Card>
-            <TextoDePanel cargando={cargando} vacio="No hay cobros programados." />
-          </Card>
-        ) : (
-          <View style={styles.rejilla}>
-            {proximos.map((dia) => (
-              <Card key={dia.date} tone={dia.overdue ? 'warning' : 'default'} padding="tight" style={styles.celda}>
-                <View style={styles.filaEntre}>
-                  <AtlasText variant="captionStrong">{fechaCorta(dia.date)}</AtlasText>
-                  {dia.overdue ? <Pastilla texto="Vencido" tono="warning" /> : null}
-                </View>
-                <AtlasText variant="h3" numberOfLines={1} adjustsFontSizeToFit>
-                  {bob(dia.amount)}
-                </AtlasText>
-                <AtlasText variant="caption" tone="tertiary">{`${dia.installments} cuota(s)`}</AtlasText>
-              </Card>
-            ))}
-          </View>
-        )}
-      </Panel>
-
       <Panel visible={vista === 'comision'}>
-        <Card>
-          <CardHeader
-            title="Comisión por venta"
-            detail="Lo que Atlas le cobra por el servicio. Se devenga sólo sobre lo que usted cobra."
-            icon="grafico"
-          />
+        <Seccion titulo="Comisión por venta" info={INFO_COMISION} testID="seccion-comision" />
+        <Card padding="tight">
           <View style={styles.cifras}>
-            <Cifra etiqueta="Tasa de comisión" valor={`${resumen?.mdrRatePercent ?? '0'} %`} nota="Sobre cada venta financiada" />
-            <Cifra etiqueta="Cobrado (base)" valor={bob(resumen?.collected)} nota="Lo que sus clientes ya pagaron" />
-            <Cifra etiqueta="Comisión a Atlas" valor={bob(resumen?.commissionAccrued)} nota="Devengada sobre lo cobrado" />
+            <Cifra etiqueta="Tasa" valor={`${tasa} %`} />
+            <Cifra etiqueta="Cobrado (base)" valor={bob(resumen?.collected)} />
+            <Cifra etiqueta="Comisión" valor={bob(resumen?.commissionAccrued)} />
           </View>
         </Card>
 
@@ -194,112 +178,100 @@ export function VistaCartera({ partner, vuelta }: { partner: MerchantPartner; vu
           </Card>
         ) : (
           <Card padding="tight">
-            {creditos.map((credito, indice) => (
-              <View key={credito.loanId} style={styles.filaComision}>
-                {indice > 0 ? <Divider /> : null}
-                <View style={styles.filaEntre}>
-                  <AtlasText variant="title" numberOfLines={1} style={styles.crece}>
-                    {credito.loanCode}
+            {creditos.map((credito, indice) => {
+              const estado = ESTADOS[estadoDeCredito(credito)];
+              return (
+                <View key={credito.loanId} style={styles.filaComision}>
+                  {indice > 0 ? <Divider /> : null}
+                  <View style={styles.filaEntre}>
+                    <AtlasText variant="bodyStrong" numberOfLines={1} style={styles.crece}>
+                      {bob(credito.commissionAccrued)}
+                    </AtlasText>
+                    <Pastilla texto={estado.etiqueta} tono={estado.tono} />
+                  </View>
+                  <AtlasText variant="caption" tone="secondary" numberOfLines={1} accessibilityLabel={`Crédito ${credito.loanCode}`}>
+                    {`${codigoCorto(credito.loanCode)} · cobrado ${bob(credito.collected)}`}
                   </AtlasText>
-                  <Pastilla texto={credito.status} tono={Number(credito.outstanding) === 0 ? 'success' : 'neutral'} />
                 </View>
-                <Dato etiqueta="Cobrado" valor={bob(credito.collected)} />
-                <Dato etiqueta={`Comisión (${resumen?.mdrRatePercent ?? '0'} %)`} valor={bob(credito.commissionAccrued)} fuerte />
-              </View>
-            ))}
+              );
+            })}
           </Card>
         )}
 
-        <Aviso tono="info" titulo="Cómo se cobra">
-          La comisión se devenga a medida que sus clientes pagan: un crédito aprobado que aún no cobra no genera comisión, y una venta pagada al 100 % la genera completa. La tasa se pactó en su alta desde el ERP interno de Atlas.
-        </Aviso>
-
         {facturado ? (
-          <Card testID="comision-facturada">
-            <AtlasText variant="micro" tone="tertiary">
-              LO QUE ATLAS YA LE FACTURÓ
-            </AtlasText>
-            <View style={styles.cifras}>
-              <Cifra
-                etiqueta={`Facturado (${Number(facturado.summary?.salesCharged ?? 0)} ventas)`}
-                valor={bob(facturado.summary?.chargedTotal)}
-              />
-              <Cifra etiqueta="Ya pagado por usted" valor={bob(facturado.summary?.settled)} />
-              <Cifra etiqueta="Pendiente de pago a Atlas" valor={bob(facturado.summary?.owedToAtlas)} tono="warning" />
-            </View>
-            <AtlasText variant="caption" tone="tertiary">
-              Devengado y facturado no son el mismo número y no tienen por qué coincidir: lo primero crece con cada cobro suyo, lo segundo sólo cuando Atlas emite el cargo. La diferencia es comisión ya generada que todavía no se le ha facturado.
-            </AtlasText>
-          </Card>
+          <>
+            <Seccion titulo="Lo que Atlas ya le facturó" info={INFO_FACTURADO} testID="seccion-facturado" />
+            <Card padding="tight" testID="comision-facturada">
+              <View style={styles.cifras}>
+                <Cifra etiqueta={`Facturado (${Number(facturado.summary?.salesCharged ?? 0)})`} valor={bob(facturado.summary?.chargedTotal)} />
+                <Cifra etiqueta="Ya pagado" valor={bob(facturado.summary?.settled)} />
+                <Cifra etiqueta="Por pagar" valor={bob(facturado.summary?.owedToAtlas)} tono="warning" />
+              </View>
+            </Card>
+          </>
         ) : null}
       </Panel>
-
-      <Aviso tono="info" titulo="Por qué no ve nombres">
-        Su cartera dice qué operación vence y cuándo, no quién la debe. El comercio decide sobre la operación; el expediente del cliente es suyo y no de quien le vendió.
-      </Aviso>
     </View>
   );
 }
 
-/** Un crédito plegado (código, cuotas, estado, por cobrar) que se abre en sus cuotas. */
-function FilaDeCredito({ credito, abierto, onAlternar }: { credito: CreditoDeCartera; abierto: boolean; onAlternar: () => void }) {
+/**
+ * Un crédito como tarjeta (regla 5): arriba lo que falta por cobrar y su estado; debajo una línea con
+ * el código corto y las cuotas. Al tocarla se abre en sus cuotas.
+ */
+function TarjetaDeCredito({ credito, abierto, onAlternar }: { credito: CreditoDeCartera; abierto: boolean; onAlternar: () => void }) {
+  const estado = ESTADOS[estadoDeCredito(credito)];
   return (
-    <View>
+    <Card padding="tight">
       <Pressable
         onPress={onAlternar}
         accessibilityRole="button"
         accessibilityState={{ expanded: abierto }}
-        accessibilityLabel={`${credito.loanCode}, por cobrar ${bob(credito.outstanding)}`}
-        style={styles.filaCredito}
+        accessibilityLabel={`${credito.loanCode}, por cobrar ${bob(credito.outstanding)}, ${estado.etiqueta}`}
+        style={styles.cabeceraCredito}
         testID={`credito-${credito.loanId}`}
       >
-        <View style={styles.crece}>
-          <AtlasText variant="title" numberOfLines={1}>
-            {credito.loanCode}
+        <View style={styles.filaEntre}>
+          <AtlasText variant="h3" numberOfLines={1} adjustsFontSizeToFit style={styles.crece}>
+            {bob(credito.outstanding)}
           </AtlasText>
-          <AtlasText variant="caption" tone="secondary">{`${credito.installments.length} cuotas · ${credito.status}`}</AtlasText>
+          <Pastilla texto={estado.etiqueta} tono={estado.tono} />
         </View>
-        <View style={styles.derecha}>
-          <AtlasText variant="micro" tone="tertiary">
-            POR COBRAR
+        <View style={styles.filaEntre}>
+          <AtlasText variant="caption" tone="secondary" numberOfLines={1} style={styles.crece}>
+            {`Por cobrar · ${codigoCorto(credito.loanCode)} · ${cuotasTexto(credito.installments.length)}`}
           </AtlasText>
-          <AtlasText variant="bodyStrong">{bob(credito.outstanding)}</AtlasText>
-        </View>
-        <View style={abierto ? styles.flechaAbierta : undefined}>
-          <Icon name="adelante" size={18} tint={color.text.tertiary} />
+          <View style={abierto ? styles.flechaAbierta : undefined}>
+            <Icon name="adelante" size={16} tint={color.text.tertiary} />
+          </View>
         </View>
       </Pressable>
       {abierto
-        ? credito.installments.map((cuota) => (
-            <View key={cuota.installmentId} style={styles.cuota}>
-              <View style={styles.filaEntre}>
-                <AtlasText variant="captionStrong">{`Cuota ${cuota.installmentNumber} · vence ${fechaCorta(cuota.dueDate)}`}</AtlasText>
-                <Pastilla
-                  texto={cuota.overdue ? `Mora ${cuota.daysPastDue}d` : cuota.status}
-                  tono={cuota.overdue ? 'warning' : Number(cuota.amountOutstanding) === 0 ? 'success' : 'neutral'}
-                />
-              </View>
-              <Dato etiqueta="Debe" valor={bob(cuota.amountDue)} />
-              <Dato etiqueta="Pagado" valor={bob(cuota.amountPaid)} apagado />
-              <Dato etiqueta="Falta" valor={bob(cuota.amountOutstanding)} fuerte />
-            </View>
-          ))
+        ? credito.installments.map((cuota) => {
+            const cesta = ESTADOS[estadoDeCuota(cuota)];
+            return (
+              <FilaDeCuota
+                key={cuota.installmentId}
+                numero={cuota.installmentNumber}
+                vence={fechaCorta(cuota.dueDate)}
+                debe={cuota.amountDue}
+                pagado={cuota.amountPaid}
+                falta={cuota.amountOutstanding}
+                estado={cuota.overdue ? { texto: `Mora ${cuota.daysPastDue} d`, tono: 'warning' } : { texto: cesta.etiqueta, tono: cesta.tono }}
+              />
+            );
+          })
         : null}
-    </View>
+    </Card>
   );
 }
 
 const styles = StyleSheet.create({
   columna: { gap: space.base },
-  crece: { flex: 1, gap: space.xxs },
-  derecha: { alignItems: 'flex-end', gap: space.xxs },
-  filaDia: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.sm },
+  crece: { flex: 1 },
   filaEntre: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
-  filaCredito: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md },
+  cabeceraCredito: { gap: space.xxs, paddingBottom: space.xs },
   flechaAbierta: { transform: [{ rotate: '90deg' }] },
-  cuota: { gap: space.xxs, paddingVertical: space.sm, paddingLeft: space.md, borderLeftWidth: 2, borderLeftColor: color.border.subtle, marginBottom: space.sm },
-  rejilla: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
-  celda: { flexBasis: '47%', flexGrow: 1, gap: space.xs },
-  cifras: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md, paddingVertical: space.sm },
+  cifras: { flexDirection: 'row', flexWrap: 'wrap', gap: space.md },
   filaComision: { gap: space.xxs, paddingVertical: space.xs },
 });

@@ -14,13 +14,19 @@
  * `x-atlas-session-mode: cookie`, el token de refresco va en la cookie `atlas_customer_refresh` (HttpOnly,
  * SameSite=Strict, sólo en las rutas de refresco y cierre) y no en el cuerpo; el refresco lee la cookie y el
  * cierre la borra. `estado.sesionWeb` anota cada llamada de sesión para que la prueba compruebe qué viajó.
+ *
+ * Y el tope ABSOLUTO de la sesión (8 h): tras `POST /__vencer-sesion` toda llamada autenticada responde 401 y el
+ * refresco 401 `SESSION_EXPIRED`, como AtlasBackend cuando la sesión supera su tope. Con `pagos: true`, un crédito con
+ * una cuota que se paga con confirmación diferida (`api-simulada-pagos.mjs`).
  */
 import { Buffer } from 'node:buffer';
 import { createServer } from 'node:http';
 import { atenderCredito } from './api-simulada-credito.mjs';
+import { crearMundoDePagos } from './api-simulada-pagos.mjs';
 
-export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', pinInicial = '4821', enmascarado = 'pa***@gmail.com', vencido = 0 } = {}) {
-  const estado = { pin: pinInicial, sesionViva: false, ultimoEnvio: 0, desafios: new Map(), bandeja: [], llamadas: [], envios: 0, sesionWeb: [] };
+export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', pinInicial = '4821', enmascarado = 'pa***@gmail.com', vencido = 0, pagos = false } = {}) {
+  const estado = { pin: pinInicial, sesionViva: false, topeVencido: false, ultimoEnvio: 0, desafios: new Map(), bandeja: [], llamadas: [], envios: 0, sesionWeb: [] };
+  const mundoDePagos = pagos ? crearMundoDePagos() : null;
   const COOKIE = 'atlas_customer_refresh';
   const RUTAS_COOKIE = ['/api/v1/auth/refresh', '/api/v1/auth/logout'];
   const modoCookie = (req) => String(req.headers['x-atlas-session-mode'] ?? '').toLowerCase() === 'cookie';
@@ -62,7 +68,13 @@ export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', 
     req.on('data', (c) => (texto += c));
     req.on('end', () => {
       const ruta = (req.url ?? '').split('?')[0].replace('/api/v1', '');
-      const cuerpo = texto ? JSON.parse(texto) : {};
+      // El comprobante sube en bytes al «almacén» (`/__almacen/…`): no todo cuerpo es JSON.
+      let cuerpo = {};
+      try {
+        cuerpo = texto ? JSON.parse(texto) : {};
+      } catch {
+        cuerpo = {};
+      }
       estado.llamadas.push(`${req.method} ${ruta}`);
 
       if (ruta === '/__bandeja') return responder(res, 200, { bandeja: estado.bandeja, envios: estado.envios });
@@ -72,6 +84,11 @@ export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', 
         return ok(res, { reiniciado: true });
       }
       if (ruta === '/__llamadas') return responder(res, 200, { llamadas: estado.llamadas });
+      if (ruta === '/__vencer-sesion') {
+        estado.topeVencido = true;
+        return ok(res, { vencida: true });
+      }
+      if (ruta === '/__pagos') return responder(res, 200, mundoDePagos?.estado ?? {});
 
       if (['/auth/login', '/auth/refresh', '/auth/logout'].includes(ruta)) {
         estado.sesionWeb.push({ ruta, modo: modoCookie(req) ? 'cookie' : 'cuerpo', cookie: leerCookie(req), cuerpo, origin: req.headers.origin ?? null });
@@ -83,10 +100,15 @@ export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', 
       if (ruta === '/auth/login') {
         if (cuerpo.password !== estado.pin) return fallo(res, 401, 'UNAUTHORIZED', 'Credenciales inválidas.');
         estado.sesionViva = true;
+        estado.topeVencido = false;
         return ok(res, tokens(req));
       }
       if (ruta === '/auth/refresh') {
         const token = modoCookie(req) ? (leerCookie(req) ?? cuerpo.refreshToken) : cuerpo.refreshToken;
+        if (estado.topeVencido) {
+          if (modoCookie(req)) ponerCookie(res, '');
+          return fallo(res, 401, 'SESSION_EXPIRED', 'SESSION_EXPIRED: la sesión superó su duración máxima.');
+        }
         if (!estado.sesionViva || !token) {
           if (modoCookie(req)) ponerCookie(res, '');
           return fallo(res, 401, 'UNAUTHORIZED', 'Sesión revocada.');
@@ -101,6 +123,9 @@ export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', 
 
       // Todo lo que sigue exige sesión viva: tras el cambio de PIN el servidor real también responde 401.
       if (!estado.sesionViva) return fallo(res, 401, 'UNAUTHORIZED', 'Sesión revocada.');
+      // El almacén no pide sesión: la URL firmada es la credencial.
+      if (mundoDePagos && ruta.startsWith('/__almacen/') && mundoDePagos.atender({ req, ruta, res, ok })) return undefined;
+      if (estado.topeVencido) return fallo(res, 401, 'TOKEN_EXPIRED', 'TOKEN_EXPIRED');
 
       if (ruta === '/auth/me') return ok(res, usuario());
       if (ruta === '/customer-onboarding/53/status')
@@ -171,6 +196,8 @@ export function crearApiSimulada({ puerto = 8799, correo = 'pablo@example.com', 
         estado.desafios.delete(cuerpo.challengeToken);
         return ok(res, { passwordChanged: true });
       }
+
+      if (mundoDePagos?.atender({ req, ruta, res, ok })) return undefined;
 
       // La línea, los puntos, la calificación y los extractos: datos fijos, en `api-simulada-credito.mjs`.
       if (atenderCredito({ ruta, res, ok, fallo, vencido })) return undefined;

@@ -10,7 +10,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react-nativ
 const mockParams: { tab?: string } = {};
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => mockParams,
-  useRouter: () => ({ push: jest.fn(), setParams: (p: { tab?: string }) => Object.assign(mockParams, p) }),
+  useRouter: () => ({ push: jest.fn(), back: jest.fn(), canGoBack: () => true, replace: jest.fn(), setParams: (p: { tab?: string }) => Object.assign(mockParams, p) }),
   usePathname: () => '/empresa',
 }));
 jest.mock('react-native-safe-area-context', () => ({
@@ -44,7 +44,7 @@ jest.mock('@/api/client', () => ({
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const MiEmpresa = (require('../../app/(app)/(tabs)/empresa') as { default: () => React.JSX.Element }).default;
+const MiEmpresa = (require('../../app/(app)/empresa') as { default: () => React.JSX.Element }).default;
 
 
 beforeEach(() => {
@@ -67,7 +67,7 @@ test('sin expediente: las cuatro pestañas existen y cada una dice lo que le fal
   expect(screen.getByTestId('btn-abrir-expediente')).toBeTruthy();
   // Las demás, montadas aunque ocultas: dicen qué falta, y Sucursales enseña los locales del ERP.
   expect(screen.getAllByText('Primero hay que abrir tu expediente', { includeHiddenElements: true }).length).toBe(2);
-  expect(screen.getByText(/Todavía no has abierto el expediente de tu empresa/, { includeHiddenElements: true })).toBeTruthy();
+  expect(screen.getByText('Abre tu expediente en «Estado» para tener QR.', { includeHiddenElements: true })).toBeTruthy();
   expect(mockGetState).not.toHaveBeenCalled();
 });
 
@@ -91,7 +91,11 @@ test('con expediente: enseña lo que falta y el enlace lleva a su pestaña', asy
   await render(<MiEmpresa />);
   expect(await screen.findByText('Falta 1 requisito para enviar a revisión')).toBeTruthy();
   expect(mockGetState).toHaveBeenCalledWith('p-1');
-  expect(screen.getByTestId('pdf-mi-empresa')).toBeTruthy();
+  // El PDF es el ícono de la cabecera, ya no un botón a lo ancho.
+  expect(screen.getByTestId('boton-pdf')).toBeTruthy();
+  // El estado en español, sin el identificador interno del expediente.
+  expect(screen.getByText('Borrador')).toBeTruthy();
+  expect(screen.queryByText(/expediente p-1/)).toBeNull();
   await fireEvent.press(screen.getByTestId('resolver-branch'));
   expect(mockParams.tab).toBe('sucursales');
 });

@@ -18,7 +18,7 @@ import {
 } from '../../src/features/historial-compras';
 import { categoryLook, formatAmount } from '../../src/features/spending-copy';
 import { useCreditBook } from '../../src/features/use-credit-book';
-import { useAlVolver } from '../../src/features/al-volver';
+import { useAlVolver, useTirarParaRecargar } from '../../src/features/al-volver';
 import { useSession } from '../../src/session/session';
 import { Field } from '../../src/ui/fields';
 import type { IconName } from '../../src/ui/icons';
@@ -41,6 +41,7 @@ export default function Compras() {
   const book = useCreditBook(session.customerId);
   // Al volver a la pantalla: lo que cambió mientras tanto (un pago confirmado, una compra nueva) se ve sin cerrar la app.
   useAlVolver(book.reload);
+  const tirar = useTirarParaRecargar(book.reload);
   const [filtro, setFiltro] = useState<FiltroCompras>('todas');
   const [busqueda, setBusqueda] = useState('');
 
@@ -52,7 +53,7 @@ export default function Compras() {
 
   if (!book.ready) {
     return (
-      <Screen>
+      <Screen {...tirar}>
         <ScreenHeader title="Mis compras" subtitle={`Todo lo que compraste con ${marca.nombre}.`} onBack="auto" />
         <SkeletonLista filas={5} alto={72} pantalla />
       </Screen>
@@ -61,7 +62,7 @@ export default function Compras() {
 
   if (book.error && book.loans.length === 0) {
     return (
-      <Screen>
+      <Screen {...tirar}>
         <ScreenHeader title="Mis compras" subtitle={`Todo lo que compraste con ${marca.nombre}.`} onBack="auto" />
         <ErrorState title="No pudimos cargar tus compras" detail={book.error} onRetry={() => void book.reload()} />
       </Screen>
@@ -69,7 +70,7 @@ export default function Compras() {
   }
 
   return (
-    <Screen>
+    <Screen {...tirar}>
       <ScreenHeader title="Mis compras" subtitle={`Todo lo que compraste con ${marca.nombre}.`} onBack="auto" />
 
       {book.loans.length === 0 ? (

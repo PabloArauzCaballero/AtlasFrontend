@@ -1,61 +1,67 @@
 /**
- * Piezas pequeñas que repiten las tarjetas de Gestión POS, hechas con lo de la app del cliente.
+ * Piezas que repiten las tarjetas de Gestión POS, hechas con lo de la app del cliente.
  *
- *  - `OrigenDeCaja`: la sucursal y la caja de la compra (`components/atlas/OrigenDeCaja.tsx` en la web).
- *  - `ImporteDeclarado`: el bloque «IMPORTE / Bs 1.500 / 6 meses · BOB» que la web pone a la derecha
- *    de cada tarjeta. En un teléfono no hay «a la derecha» con sitio para una cifra de 24 px junto al
- *    código y la caja, así que va DEBAJO de la cabecera, a todo el ancho.
- *  - `LineaDeReferencia`: «Referencia del banco: XYZ» con la referencia en negrita.
+ * Pablo (2026-10-10): las tarjetas tienen que ser «mucho más claras». Una jerarquía fija para las
+ * tres colas y el historial:
+ *
+ *  - `CabeceraDeImporte`: el IMPORTE grande a la izquierda —es lo que se vino a mirar— y el estado en
+ *    español a la derecha.
+ *  - `LineaSecundaria`: UNA línea con lo demás (cuotas o referencia · fecha · caja) y, en gris al
+ *    final, la referencia corta del código. Antes el título de la tarjeta era el código entero y la
+ *    caja, la referencia y el importe iban en tres bloques apilados.
+ *  - `TituloDeSeccion`: un título pequeño con su ⓘ, donde fue a parar la frase de las tarjetas
+ *    «Por qué…» que cerraban cada pestaña.
  */
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { color, space } from '@cliente/theme/tokens';
-import { Icon } from '@cliente/ui/icons';
-import { AtlasText, Badge, Overline } from '@cliente/ui/primitives';
-import { nombreDeCaja, type Origen } from '@/features/gestion-pos/origen-de-caja';
+import { space } from '@cliente/theme/tokens';
+import { BotonInfo, InfoSheet } from '@cliente/ui/help-sheet';
+import { AtlasText, Badge } from '@cliente/ui/primitives';
+import type { Tono } from '@/features/gestion-pos/historial';
 
-export function OrigenDeCaja({ origen }: { origen: Origen }) {
-  const caja = nombreDeCaja(origen);
-  if (!origen.branchName && !caja) {
-    return (
-      <AtlasText variant="caption" tone="tertiary" style={styles.cursiva}>
-        Sin caja registrada en la compra
-      </AtlasText>
-    );
-  }
+export function CabeceraDeImporte({ importe, estado, tono, variante = 'h2' }: { importe: string; estado: string; tono: Tono; variante?: 'h2' | 'h3' }) {
   return (
-    <View style={styles.origen} testID="origen-de-caja" accessible accessibilityLabel={[origen.branchName ?? 'Sucursal sin nombre', caja].filter(Boolean).join(', ')}>
-      <Icon name="comercio" size={14} tint={color.accent.base} />
-      <AtlasText variant="captionStrong">{origen.branchName ?? 'Sucursal sin nombre'}</AtlasText>
-      {caja ? <Badge label={caja} tone="info" /> : null}
-    </View>
-  );
-}
-
-export function ImporteDeclarado({ etiqueta, importe, nota }: { etiqueta: string; importe: string; nota: string }) {
-  return (
-    <View style={styles.importe} accessible accessibilityLabel={`${etiqueta}: ${importe}. ${nota}`}>
-      <Overline>{etiqueta}</Overline>
-      <AtlasText variant="amount" numberOfLines={1} adjustsFontSizeToFit>
+    <View style={styles.cabecera}>
+      <AtlasText variant={variante} numberOfLines={1} adjustsFontSizeToFit style={styles.importe}>
         {importe}
       </AtlasText>
-      <AtlasText variant="caption" tone="secondary">
-        {nota}
-      </AtlasText>
+      <Badge label={estado} tone={tono} dot />
     </View>
   );
 }
 
-export function LineaDeReferencia({ referencia }: { referencia: string | null }) {
+export function LineaSecundaria({ texto, referencia, testID }: { texto: string; referencia?: string; testID?: string }) {
   return (
-    <AtlasText variant="caption" tone="secondary">
-      Referencia del banco:{' '}
-      <AtlasText variant="captionStrong">{referencia ?? 'sin referencia'}</AtlasText>
+    <AtlasText variant="caption" tone="secondary" numberOfLines={2} {...(testID ? { testID } : {})}>
+      {texto}
+      {referencia ? <AtlasText variant="caption" tone="tertiary">{`${texto ? ' · ' : ''}#${referencia}`}</AtlasText> : null}
     </AtlasText>
   );
 }
 
+export function TituloDeSeccion({ titulo, info, testID }: { titulo: string; info?: string; testID?: string }) {
+  const [abierta, setAbierta] = useState(false);
+  return (
+    <View style={styles.seccion} {...(testID ? { testID } : {})}>
+      <AtlasText variant="captionStrong" tone="secondary">
+        {titulo}
+      </AtlasText>
+      {info ? (
+        <>
+          <BotonInfo etiqueta={titulo} onPress={() => setAbierta(true)} {...(testID ? { testID: `${testID}-info` } : {})} />
+          <InfoSheet visible={abierta} titulo={titulo} onClose={() => setAbierta(false)}>
+            <AtlasText variant="body" tone="secondary">
+              {info}
+            </AtlasText>
+          </InfoSheet>
+        </>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  origen: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: space.xs },
-  cursiva: { fontStyle: 'italic' },
-  importe: { gap: 2 },
+  cabecera: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.sm },
+  importe: { flexShrink: 1 },
+  seccion: { flexDirection: 'row', alignItems: 'center', gap: space.xs, marginTop: space.xs },
 });
