@@ -237,7 +237,7 @@ export function Sucursales({
 
       <View style={styles.fila}>
         <Button
-          label="Importar Excel"
+          label="Importar"
           icon="subir"
           variant="secondary"
           disabled={!ready}
@@ -245,7 +245,7 @@ export function Sucursales({
           testID="btn-importar-sucursales"
           style={styles.mitad}
         />
-        <Button label="Agregar sucursal" icon="ubicacion" disabled={!ready} onPress={() => setCreando(true)} testID="btn-agregar-sucursal" style={styles.mitad} />
+        <Button label="Agregar" icon="ubicacion" disabled={!ready} onPress={() => setCreando(true)} testID="btn-agregar-sucursal" style={styles.mitad} />
       </View>
       {errorSucursales ? (
         <Aviso tono="danger" titulo="No se pudo consultar">
@@ -460,7 +460,7 @@ export function Sucursales({
 }
 
 /** Un enlace de texto con su spinner: para la acción secundaria de una tarjeta, que no merece un botón a lo ancho. */
-function Enlace({ texto, onPress, ocupado = false, testID, tono = 'brand' }: { texto: string; onPress: () => void; ocupado?: boolean; testID?: string; tono?: 'brand' | 'danger' }) {
+function Enlace({ texto, onPress, ocupado = false, testID, tono = 'brand' }: { texto: string; onPress: () => void; ocupado?: boolean; testID?: string; tono?: 'brand' | 'danger' | 'secondary' }) {
   return (
     <Pressable
       onPress={ocupado ? undefined : onPress}
@@ -520,7 +520,7 @@ function Caja({
         ) : null}
         <Enlace
           texto={accion}
-          tono={accion === 'Suspender' ? 'danger' : 'brand'}
+          tono={accion === 'Suspender' ? 'secondary' : 'brand'}
           ocupado={ocupada === `pos-${pos.terminalId}`}
           onPress={() => void onCambiarEstado()}
           testID={`btn-estado-pos-${pos.terminalSerial}`}

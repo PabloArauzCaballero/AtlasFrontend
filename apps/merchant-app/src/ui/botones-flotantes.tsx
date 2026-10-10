@@ -23,7 +23,7 @@ import { HojaDelAsistente } from './asistente/hoja';
 /** El alto de la barra de pestañas sin el área segura (`BAR_HEIGHT` de `app/(app)/(tabs)/_layout.tsx`). */
 const ALTO_BARRA = 72;
 const PRINCIPAL = 56;
-const SECUNDARIO = 46;
+const SECUNDARIO = 40;
 
 function useTecladoVisible(): boolean {
   const [visible, setVisible] = useState(false);
@@ -45,7 +45,7 @@ function useTecladoVisible(): boolean {
 function Secundario({ icono, etiqueta, onPress, testID }: { icono: IconName; etiqueta: string; onPress: () => void; testID: string }) {
   return (
     <PressSurface onPress={onPress} accessibilityRole="button" accessibilityLabel={etiqueta} style={styles.secundario} testID={testID}>
-      <Icon name={icono} size={21} tint={color.text.primary} />
+      <Icon name={icono} size={19} tint={color.text.primary} />
     </PressSurface>
   );
 }
@@ -84,7 +84,7 @@ export function BotonesFlotantes() {
 }
 
 const styles = StyleSheet.create({
-  pila: { position: 'absolute', right: space.md, alignItems: 'flex-end', gap: space.sm, zIndex: 40 },
+  pila: { position: 'absolute', right: space.md, alignItems: 'flex-end', gap: space.xs, zIndex: 40 },
   secundario: {
     width: SECUNDARIO,
     height: SECUNDARIO,
