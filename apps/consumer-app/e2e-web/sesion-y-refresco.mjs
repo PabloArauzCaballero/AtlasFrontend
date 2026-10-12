@@ -156,8 +156,8 @@ await paso('con la sesión vencida en el servidor (401 SESSION_EXPIRED) vuelve a
   await entrar();
   await texto('1.210,00').waitFor({ timeout: 30_000 });
   await fetch(`${API}/__vencer-sesion`, { method: 'POST' });
-  // Cualquier llamada lo descubre: aquí, abrir Pagos.
-  await page.getByRole('tab', { name: /Pagos/ }).first().click();
+  // Cualquier llamada lo descubre: aquí, abrir Perfil.
+  await page.getByRole('tab', { name: /Perfil/ }).first().click();
   await page.waitForURL(/\/ingresar/, { timeout: 20_000 });
   await texto('Por seguridad, tu sesión dura 8 horas. Vuelve a entrar con tu PIN.').waitFor({ timeout: 10_000 });
   await sinRecargar();

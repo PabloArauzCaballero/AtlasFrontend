@@ -26,9 +26,9 @@ export const AVISOS_QUE_LLEGAN = [
 export const AVISOS_QUE_LLEGAN_RESUMEN =
   'Hoy te avisamos de tus pagos (reportado, confirmado o rechazado), de la verificación de tu identidad y de cuando tu cuenta queda activa.';
 
-/** Lo que NO se envia, dicho igual de claro: las fechas de tus cuotas las ves en Pagos. */
+/** Lo que NO se envia, dicho igual de claro: las fechas de tus cuotas las ves en Inicio. */
 export const AVISO_SIN_RECORDATORIOS =
-  'Todavía no te avisamos cuando se acerca o vence una cuota. Revisa tus fechas en la pestaña Pagos.';
+  'Todavía no te avisamos cuando se acerca o vence una cuota. Revisa tus fechas en Inicio, en «Tu próximo pago».';
 
 /**
  * Eventos del catalogo que Core no emite hacia el cliente. Se reconocen por el codigo que manda el

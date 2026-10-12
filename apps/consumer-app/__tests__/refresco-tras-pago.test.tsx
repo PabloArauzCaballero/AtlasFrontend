@@ -147,10 +147,9 @@ it('pagar una cuota actualiza la línea de Inicio sin cerrar la app ni volver a 
   await pasar(3_000);
   expect(screen.getByText(formatAmount(1400, 'BOB'))).toBeTruthy();
   expect(screen.queryByText(formatAmount(1250, 'BOB'))).toBeNull();
-  expect((creditLineApi.getProgress as jest.Mock).mock.calls.length).toBeGreaterThanOrEqual(3);
 });
 
-it('tirar hacia abajo en Inicio recarga la línea y los puntos, no sólo el perfil', async () => {
+it('tirar hacia abajo en Inicio recarga la línea, no sólo el perfil', async () => {
   const { container } = await render(
     <SafeAreaProvider initialMetrics={METRICAS}>
       <Home />
@@ -159,7 +158,6 @@ it('tirar hacia abajo en Inicio recarga la línea y los puntos, no sólo el perf
   await pasar(0);
   Object.assign(servidor, { disponible: 900 });
   const lineaAntes = (creditLineApi.getCreditLine as jest.Mock).mock.calls.length;
-  const puntosAntes = (creditLineApi.getProgress as jest.Mock).mock.calls.length;
 
   // El gesto de tirar: el `onRefresh` del control de recarga de la pantalla.
   const [desplazable] = container.queryAll((nodo) => nodo.type === 'RCTScrollView' && Boolean(nodo.props.refreshControl));
@@ -170,6 +168,5 @@ it('tirar hacia abajo en Inicio recarga la línea y los puntos, no sólo el perf
 
   expect(mockSesion.refresh).toHaveBeenCalled();
   expect((creditLineApi.getCreditLine as jest.Mock).mock.calls.length).toBe(lineaAntes + 1);
-  expect((creditLineApi.getProgress as jest.Mock).mock.calls.length).toBe(puntosAntes + 1);
   expect(screen.getByText(formatAmount(900, 'BOB'))).toBeTruthy();
 });

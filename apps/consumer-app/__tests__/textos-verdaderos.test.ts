@@ -128,7 +128,7 @@ describe('guardia de promesas: textos que la app dice al cliente', () => {
 
   it('no castiga la frase verdadera equivalente', () => {
     const buenas = [
-      'Todavía no te avisamos cuando se acerca o vence una cuota. Revisa tus fechas en la pestaña Pagos.',
+      'Todavía no te avisamos cuando se acerca o vence una cuota. Revisa tus fechas en Inicio, en «Tu próximo pago».',
       avisosCopy.AVISOS_QUE_LLEGAN_RESUMEN,
       'Cuotas mensuales, con la tasa que Atlas te asigna según tu perfil.',
     ];
