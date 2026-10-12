@@ -2,11 +2,12 @@
  * Inicio.
  *
  * Responde en un vistazo las tres preguntas que trae quien abre la app: cuanto puedo gastar, cuanto
- * debo y que me vence primero. Todo lo demas baja en la jerarquia.
+ * debo y que me vence primero. Nada mas: el nivel, la calificacion, cuanto puede crecer el credito y
+ * el gasto por rubro salieron de la portada (Pablo, 2026-10-12); los tres primeros siguen en Perfil.
  */
 import { useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
-import { Alert, Linking, Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { formatMoney } from '../../../src/domain/money';
 import { useSandbox } from '../../../src/sandbox/store';
 import { useSession } from '../../../src/session/session';
@@ -21,27 +22,15 @@ import {
   CardHeader,
   Divider,
   EmptyState,
-  ErrorState,
-  IconChip,
   ListRow,
-  ProgressBar,
   SectionHeader,
   Skeleton,
-  SkeletonLista,
-  Stat,
-  StatRow,
 } from '../../../src/ui/primitives';
-import { PressSurface } from '../../../src/ui/motion';
 import { PartnerBanner, usePartnerBanner } from '../../../src/ui/partner-banner';
-import { downloadSpendingReport } from '../../../src/features/spending-report';
-import { categoryLook, formatAmount } from '../../../src/features/spending-copy';
+import { formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useAlVolver, useTirarParaRecargar } from '../../../src/features/al-volver';
-import { useProgress } from '../../../src/features/use-progress';
-import { CalificacionCard } from '../../../src/ui/calificacion-card';
-import { CrecimientoCreditoCard } from '../../../src/ui/crecimiento-credito-card';
 import { CreditoHabilitadoCard } from '../../../src/ui/credito-habilitado-card';
-import { NivelCard } from '../../../src/ui/nivel-card';
 import { dueLabel, statusTone, statusLabel } from '../../../src/features/payment-copy';
 import { TOUR_INICIO_KEY, TOUR_INICIO_TARGETS } from '../../../src/features/tour-inicio';
 import { useCopy, useTourInicio } from '../../../src/features/use-contenido-remoto';
@@ -60,16 +49,13 @@ export default function Home() {
    * que se debe, su reparto por rubro y la mora salen de `loans`, que es lo que de verdad se cobra.
    */
   const book = useCreditBook(session.customerId);
-  const nivel = useProgress(session.customerId);
-  // Al volver a Inicio, tras pagar y cada minuto a la vista: puntos, calificación y créditos al día, y las cifras cuentan otra vez.
-  const recargarTodo = () => Promise.all([session.refresh(), nivel.recargar(), book.reload()]);
-  const vuelta = useAlVolver(recargarTodo);
+  // Al volver a Inicio, tras pagar y cada minuto a la vista: la línea y los créditos al día.
+  const recargarTodo = () => Promise.all([session.refresh(), book.reload()]);
+  useAlVolver(recargarTodo);
   const tirar = useTirarParaRecargar(recargarTodo);
   const partnerBanner = usePartnerBanner();
   // Avisos y mensajes que negocio escribe para el inicio; los del banner de partner salen aparte.
   const avisosDeInicio = useSurfaceContent('home', esBannerDePartner);
-  // El informe tarda: sin este estado el boton parece no responder y la gente lo pulsa dos veces.
-  const [reportBusy, setReportBusy] = useState(false);
   const spending = book.spending;
   const creditLine = book.creditLine;
   const currency = spending?.currencyCode ?? 'BOB';
@@ -228,23 +214,6 @@ export default function Home() {
         </Card>
       ) : null}
 
-      {/*
-        El orden de la portada, de arriba abajo: cuánto crédito hay habilitado, el nivel con sus puntos de experiencia
-        (1 por boliviano comprado) y la calificación de 1 a 100. Pablo (2026-10-06): eran cuatro tarjetas que repetían
-        el mismo «0 puntos» con un párrafo cada una; ahora son dos, y cómo se calcula cada cosa está en su «Más info».
-        Salen de la base de datos y no del motor, así que se ven aunque la línea aún no esté calculada.
-      */}
-      {nivel.fase === 'lista' ? (
-        <NivelCard key={`nivel-${vuelta}`} progress={nivel.progress} onVerLogros={() => router.push('/(app)/progreso')} />
-      ) : nivel.fase === 'fallo' ? (
-        <ErrorState title="No pudimos cargar tu nivel y tu calificación" detail="Revisa tu conexión y vuelve a intentar." onRetry={() => void nivel.recargar()} />
-      ) : (
-        <SkeletonLista filas={2} alto={96} pantalla />
-      )}
-      {nivel.fase === 'lista' ? <CalificacionCard key={`calificacion-${vuelta}`} progress={nivel.progress} masInfo /> : null}
-      {/* Hijo directo de `Screen`, no dentro de un fragmento: `Screen` separa a sus hijos, y un fragmento los deja pegados. */}
-      {nivel.fase === 'lista' ? <CrecimientoCreditoCard key={`crecimiento-${vuelta}`} progress={nivel.progress} /> : null}
-
       <TourTarget id={TOUR_INICIO_TARGETS.pagos}>
         {proximaCuotaReal ? (
           <Card>
@@ -302,80 +271,6 @@ export default function Home() {
           </Card>
         )}
       </TourTarget>
-
-      {/* El tablero de gasto por rubro. Sale del comercio donde nacio cada credito. */}
-      {spending && spending.categories.length > 0 ? (
-        <Card>
-          <CardHeader
-            icon="grafico"
-            title="En qué gastas"
-            trailing={
-              <Badge
-                label={String(spending.totals.loanCount) + (spending.totals.loanCount === 1 ? ' compra' : ' compras')}
-                tone="neutral"
-              />
-            }
-          />
-
-          <StatRow>
-            <Stat label="Financiado" value={formatAmount(spending.totals.financed, currency)} />
-            <Stat label="Por pagar" value={formatAmount(spending.totals.outstanding, currency)} />
-          </StatRow>
-
-          {spending.categories.map((item) => {
-            const look = categoryLook(item.category);
-            const others = item.merchants.length - 1;
-            return (
-              <PressSurface
-                key={item.category}
-                style={styles.categoryRow}
-                onPress={() => router.push('/(app)/(tabs)/pagos')}
-                accessibilityRole="button"
-                accessibilityLabel={look.label + ': ' + item.share.toFixed(0) + ' por ciento de tu gasto'}
-              >
-                <IconChip name={look.icon} tone={item.overdue > 0 ? 'danger' : 'brand'} />
-                <View style={styles.categoryText}>
-                  <View style={styles.rowBetween}>
-                    <AtlasText variant="title">{look.label}</AtlasText>
-                    <AtlasText variant="amountMicro">{formatAmount(item.financed, currency)}</AtlasText>
-                  </View>
-                  {/*
-                    La barra usa el porcentaje que YA calculo el servidor: recalcularlo aquí haria
-                    que la pantalla y el PDF discreparan por redondeo.
-                  */}
-                  <ProgressBar value={item.share} label={look.label + ': ' + item.share.toFixed(0) + ' por ciento'} />
-                  <AtlasText variant="caption" tone="tertiary">
-                    {item.share.toFixed(0)}
-                    {/* Espacio duro: el porcentaje y su signo son una sola unidad y no se separan al final de un renglon. */}
-                    {'\u00A0% · '}
-                    {item.merchants[0]?.displayName ?? 'sin comercio'}
-                    {others > 0 ? ' y ' + others + ' más' : ''}
-                  </AtlasText>
-                </View>
-              </PressSurface>
-            );
-          })}
-
-          <Divider />
-          {/*
-            El informe lo compone el SERVIDOR y se abre en el visor del sistema. Traerlo a memoria
-            para reescribirlo en disco no anade nada y deja una copia del documento en el teléfono.
-          */}
-          <Button
-            label={reportBusy ? 'Preparando informe…' : 'Descargar informe en PDF'}
-            variant="secondary"
-            loading={reportBusy}
-            onPress={() => {
-              if (!session.customerId || reportBusy) return;
-              setReportBusy(true);
-              void downloadSpendingReport(session.customerId).then((outcome) => {
-                setReportBusy(false);
-                if (!outcome.ok) Alert.alert('Informe no disponible', outcome.reason);
-              });
-            }}
-          />
-        </Card>
-      ) : null}
 
       <SectionHeader
         title="Tus compras"
@@ -445,7 +340,4 @@ const styles = StyleSheet.create({
   },
   botonAtlasPulsado: { opacity: 0.85, transform: [{ scale: 0.97 }] },
   greetingText: { gap: space.xxs },
-  rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
-  categoryRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.xs },
-  categoryText: { flex: 1, gap: space.xs },
 });

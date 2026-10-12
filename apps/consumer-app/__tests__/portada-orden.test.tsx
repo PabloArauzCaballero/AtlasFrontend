@@ -1,15 +1,14 @@
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { render, screen } from "@testing-library/react-native";
 import {
   SafeAreaProvider,
   initialWindowMetrics,
 } from "react-native-safe-area-context";
 import Home from "../app/(app)/(tabs)/index";
-import { PROGRESO_DE_PRUEBA } from "./progreso-datos";
 
 /**
- * El orden de la portada, que es un pedido de negocio y no un detalle de maquetación (Pablo, 2026-10-05):
- * primero SIEMPRE cuánto crédito hay habilitado; después los puntos XP; después la calificación desglosada.
- * Ni el aviso de mora va por encima de la línea.
+ * El orden de la portada, que es un pedido de negocio y no un detalle de maquetación: primero SIEMPRE cuánto crédito
+ * hay habilitado (Pablo, 2026-10-05), la mora justo debajo y después el próximo pago. El nivel, la calificación, cuánto
+ * puede crecer el crédito y el gasto por rubro salieron de la portada (Pablo, 2026-10-12).
  */
 jest.mock("expo-router", () => ({
   useFocusEffect: () => undefined,
@@ -56,15 +55,6 @@ const mockLibro: Record<string, unknown> = {};
 jest.mock("../src/features/use-credit-book", () => ({
   useCreditBook: () => mockLibro,
 }));
-const mockNivel: { fase: string; progress: unknown; recargar: jest.Mock } = {
-  fase: "lista",
-  progress: PROGRESO_DE_PRUEBA,
-  recargar: jest.fn(),
-};
-jest.mock("../src/features/use-progress", () => ({
-  useProgress: () => mockNivel,
-}));
-
 const METRICAS = initialWindowMetrics ?? {
   frame: { x: 0, y: 0, width: 390, height: 844 },
   insets: { top: 47, left: 0, right: 0, bottom: 34 },
@@ -104,27 +94,30 @@ function libro(extra: Record<string, unknown> = {}) {
 }
 
 describe("Inicio · el orden de la portada", () => {
-  beforeEach(() => {
-    mockNivel.fase = "lista";
-    mockNivel.progress = PROGRESO_DE_PRUEBA;
-    libro();
+  beforeEach(() => libro());
+
+  it("primero el crédito habilitado y después los pagos", async () => {
+    await montar();
+    const [credito, pagos] = posiciones(["Crédito habilitado", "Tus pagos"]);
+    expect(credito).toBeGreaterThan(-1);
+    expect(credito).toBeLessThan(pagos as number);
   });
 
-  it("primero el crédito habilitado, después el nivel con sus puntos y después la calificación 1-100", async () => {
+  it("no lleva nivel, calificación, crecimiento del crédito ni gasto por rubro", async () => {
+    libro({
+      spending: {
+        currencyCode: "BOB",
+        categories: [{ category: "retail", share: 100, financed: 640, overdue: 0, merchants: [{ displayName: "Multicenter" }] }],
+        totals: { overdue: 0, financed: 640, outstanding: 640, loanCount: 2 },
+      },
+    });
     await montar();
-    const [credito, nivel, calificacion, pagos] = posiciones(["Crédito habilitado", "NIVEL ", "Tu calificación", "Tus pagos"]);
-    for (const posicion of [credito, nivel, calificacion, pagos]) expect(posicion).toBeGreaterThan(-1);
-    expect(credito).toBeLessThan(nivel as number);
-    expect(nivel).toBeLessThan(calificacion as number);
-    expect(calificacion).toBeLessThan(pagos as number);
-  });
-
-  it("no repite: una sola tarjeta de puntos (la del nivel) y las explicaciones quedan tras «Más info»", async () => {
-    await montar();
-    expect(screen.queryByText("TU PUNTAJE")).toBeNull();
-    expect(screen.queryByTestId("por-que-puntaje")).toBeNull();
-    expect(screen.getByTestId("nivel-mas-info")).toBeTruthy();
-    expect(screen.getByTestId("calificacion-mas-info")).toBeTruthy();
+    expect(screen.queryByTestId("nivel-card")).toBeNull();
+    expect(screen.queryByTestId("calificacion-card")).toBeNull();
+    expect(screen.queryByText("Tu calificación")).toBeNull();
+    expect(screen.queryByText("Cuánto puede crecer tu crédito")).toBeNull();
+    expect(screen.queryByText("En qué gastas")).toBeNull();
+    expect(screen.queryByText("Descargar informe en PDF")).toBeNull();
   });
 
   it("enseña el disponible como la cifra de la tarjeta principal, con el límite y lo que falta por pagar", async () => {
@@ -134,7 +127,7 @@ describe("Inicio · el orden de la portada", () => {
     expect(screen.getByText(/1[.,]500/)).toBeTruthy();
   });
 
-  it("con pagos vencidos, el crédito sigue yendo primero y la mora justo debajo, antes de los puntos", async () => {
+  it("con pagos vencidos, el crédito sigue yendo primero y la mora justo debajo, antes del próximo pago", async () => {
     libro({
       spending: {
         currencyCode: "BOB",
@@ -143,52 +136,20 @@ describe("Inicio · el orden de la portada", () => {
       },
     });
     await montar();
-    const [credito, mora, puntos] = posiciones([
-      "Crédito habilitado",
-      "Tienes pagos que regularizar",
-      "NIVEL ",
-    ]);
+    const [credito, mora, pagos] = posiciones(["Crédito habilitado", "Tienes pagos que regularizar", "Tus pagos"]);
     expect(credito).toBeGreaterThan(-1);
     expect(credito).toBeLessThan(mora as number);
-    expect(mora).toBeLessThan(puntos as number);
+    expect(mora).toBeLessThan(pagos as number);
   });
 
-  it("«Más info» de la calificación trae cada parte con su razón, no sólo el número", async () => {
-    await montar();
-    await fireEvent.press(screen.getByTestId("calificacion-mas-info"));
-    const progreso = PROGRESO_DE_PRUEBA;
-    for (const parte of progreso.components) {
-      expect(screen.getByText(parte.label)).toBeTruthy();
-      expect(screen.getByText(parte.why)).toBeTruthy();
-    }
-  });
-
-  it("sin línea calculada todavía, los puntos y la calificación se ven igual: no dependen del motor", async () => {
+  it("sin línea calculada todavía, la portada no se cae", async () => {
     libro({ creditLine: null });
     await montar();
     expect(screen.getByText("Crédito habilitado")).toBeTruthy();
-    expect(screen.getByTestId("nivel-card")).toBeTruthy();
-    expect(screen.getByTestId("calificacion-card")).toBeTruthy();
-  });
-
-  it("si los puntos no cargan se dice y se puede reintentar; la línea no desaparece", async () => {
-    mockNivel.fase = "fallo";
-    mockNivel.progress = null;
-    await montar();
-    expect(screen.getByText("Crédito habilitado")).toBeTruthy();
-    expect(
-      screen.getByText("No pudimos cargar tu nivel y tu calificación"),
-    ).toBeTruthy();
-    expect(screen.queryByTestId("nivel-card")).toBeNull();
   });
 });
 
 describe("Inicio · tarjeta Crédito habilitado", () => {
-  beforeEach(() => {
-    mockNivel.fase = "lista";
-    mockNivel.progress = PROGRESO_DE_PRUEBA;
-  });
-
   it("dice que la cifra la decidió el motor cuando hay una ejecución que lo respalda", async () => {
     libro({ creditLine: { ...LINEA, decision: { executionId: "exe-1", calculatedAt: "2026-10-01T12:00:00Z" } } });
     await montar();

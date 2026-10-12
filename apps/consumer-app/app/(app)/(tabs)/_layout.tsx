@@ -1,12 +1,8 @@
 /**
  * Barra de pestanas.
  *
- * Cinco destinos de primer nivel y recurrentes, que es para lo unico que sirven las pestanas.
+ * Tres destinos de primer nivel y recurrentes, que es para lo unico que sirven las pestanas.
  * Nada de pasos de un asistente, detalles ni acciones destructivas aqui dentro.
- *
- * «Avisos» es pestana y no una campanita en una esquina: lo que llega ahi son vencimientos, moras y
- * cambios en la linea de credito. Escondido tras un icono con un punto rojo, el aviso que dice «te
- * vence una cuota manana» compite con la notificacion del sistema y pierde.
  *
  * "Escanear" ocupa el centro porque es la accion que define el producto: comprar en un comercio.
  * Es la unica que lleva realce, y lo lleva siempre —tambien sin foco— porque su realce no dice
@@ -24,7 +20,7 @@ import { ANCHO_CARRIL, useTramo } from '../../../src/ui/responsive';
 /**
  * El icono de la pestana activa se asienta; no aparece ya colocado.
  *
- * El cambio de color al enfocar era instantaneo, y en una barra de cinco destinos eso hace que
+ * El cambio de color al enfocar era instantaneo, y en una barra de pocos destinos eso hace que
  * cambiar de pestana se lea como un corte de camara: la pantalla nueva entra y, a la vez, un icono
  * de abajo se ha vuelto verde sin haber pasado por ningun sitio.
  *
@@ -90,10 +86,10 @@ export default function TabsLayout() {
   /*
     En escritorio la barra pasa a ser un CARRIL a la izquierda.
 
-    Cinco pestañas repartidas a lo ancho de una ventana de 1.400 px quedan a treinta centímetros
+    Las pestañas repartidas a lo ancho de una ventana de 1.400 px quedan a treinta centímetros
     unas de otras y a medio metro del contenido, que está centrado: la mirada tiene que bajar y
     cruzar la pantalla para cambiar de sección. Pegadas en vertical junto a la columna, están donde
-    el ojo ya está. Son los mismos cinco destinos con los mismos iconos; sólo cambia dónde viven.
+    el ojo ya está. Son los mismos destinos con los mismos iconos; sólo cambia dónde viven.
 
     `tabBarPosition: 'left'` exige la variante `material` (lo comprueba la propia barra); con ella
     la etiqueta va debajo del icono, que es como se lee en la barra de abajo.
@@ -132,14 +128,12 @@ export default function TabsLayout() {
           tabBarIcon: ({ focused }) => <TabIcon name="escanear" focused={focused} highlighted />,
         }}
       />
-      <Tabs.Screen
-        name="pagos"
-        options={{ title: 'Pagos', tabBarIcon: ({ focused }) => <TabIcon name="pagos" focused={focused} /> }}
-      />
-      <Tabs.Screen
-        name="avisos"
-        options={{ title: 'Avisos', tabBarIcon: ({ focused }) => <TabIcon name="sobre" focused={focused} /> }}
-      />
+      {/*
+        «Pagos» y «Avisos» salieron de la barra (Pablo, 2026-10-12). Las pantallas siguen existiendo —a Pagos se
+        llega desde la portada y a Avisos desde una notificación—; `href: null` sólo les quita el botón.
+      */}
+      <Tabs.Screen name="pagos" options={{ title: 'Pagos', href: null }} />
+      <Tabs.Screen name="avisos" options={{ title: 'Avisos', href: null }} />
       <Tabs.Screen
         name="perfil"
         options={{ title: 'Perfil', tabBarIcon: ({ focused }) => <TabIcon name="perfil" focused={focused} /> }}
@@ -172,8 +166,8 @@ const styles = StyleSheet.create({
     sobre la fuente por defecto, las cuatro etiquetas de la barra eran lo unico de la app que no se
     dibujaba en Manrope: bastaba eso para que la barra se viera prestada de otra aplicacion.
 
-    El interletraje se sube de 0,2 a 0,4: a 11 px, cinco palabras cortas puestas en fila se leen
-    apretadas contra sus vecinas, y es el unico sitio de la app donde cinco textos comparten renglon.
+    El interletraje se sube de 0,2 a 0,4: a 11 px, varias palabras cortas puestas en fila se leen
+    apretadas contra sus vecinas, y es el unico sitio de la app donde varios textos comparten renglon.
   */
   label: {
     ...type.micro,
@@ -184,7 +178,7 @@ const styles = StyleSheet.create({
       Sin el relleno vertical de Android. Es el mismo ajuste que hace `render` en `ui/primitives`
       para el resto de la app, y aqui importa el doble: la etiqueta va pegada al borde inferior de
       la pantalla, asi que los 3 px que Android anade debajo de la palabra son 3 px que empujan las
-      cinco etiquetas hacia la barra de gestos.
+      etiquetas hacia la barra de gestos.
     */
     ...(Platform.OS === 'android' ? { includeFontPadding: false } : null),
   },
