@@ -31,11 +31,15 @@ import { formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useAlVolver, useTirarParaRecargar } from '../../../src/features/al-volver';
 import { CreditoHabilitadoCard } from '../../../src/ui/credito-habilitado-card';
-import { dueLabel, statusTone, statusLabel } from '../../../src/features/payment-copy';
+import { dueLabel } from '../../../src/features/payment-copy';
+import { ProximoPagoCard, fechaDeVencimiento } from '../../../src/ui/proximo-pago-card';
 import { TOUR_INICIO_KEY, TOUR_INICIO_TARGETS } from '../../../src/features/tour-inicio';
 import { useCopy, useTourInicio } from '../../../src/features/use-contenido-remoto';
 import { SurfaceContent, esBannerDePartner, useSurfaceContent } from '../../../src/ui/surface-content';
 import { TourTarget, shouldAutoStart, useTour } from '../../../src/ui/tour';
+
+/** «Vence mañana» → «vence mañana»: la frase va detrás del importe, no al principio de un renglón. */
+const minusculaInicial = (texto: string) => texto.charAt(0).toLowerCase() + texto.slice(1);
 
 export default function Home() {
   const router = useRouter();
@@ -216,47 +220,19 @@ export default function Home() {
 
       <TourTarget id={TOUR_INICIO_TARGETS.pagos}>
         {proximaCuotaReal ? (
-          <Card>
-            <CardHeader
-              icon="reloj"
-              title="Tu próximo pago"
-              trailing={
-                <Badge
-                  dot
-                  label={proximaCuotaReal.state === 'overdue' ? 'vencida' : 'próxima'}
-                  tone={proximaCuotaReal.state === 'overdue' ? 'danger' : 'warning'}
-                />
-              }
-            />
-            <View>
-              <AtlasText variant="amount">{formatAmount(proximaCuotaReal.pendingAmount, proximaCuotaReal.currencyCode)}</AtlasText>
-              <AtlasText variant="caption" tone="secondary">
-                {`${proximaCuotaReal.merchant.displayName} · cuota ${proximaCuotaReal.installmentNumber} · vence ${proximaCuotaReal.dueDate}`}
-              </AtlasText>
-            </View>
-            <Button
-              label="Ver cómo pagar"
-              variant="secondary"
-              onPress={() => router.push(`/(app)/cuota/${proximaCuotaReal.loanId}/${proximaCuotaReal.installmentNumber}`)}
-            />
-          </Card>
+          <ProximoPagoCard
+            importe={formatAmount(proximaCuotaReal.pendingAmount, proximaCuotaReal.currencyCode)}
+            cuando={`${proximaCuotaReal.state === 'overdue' ? 'venció' : 'vence'} el ${fechaDeVencimiento(proximaCuotaReal.dueDate)}`}
+            vencido={proximaCuotaReal.state === 'overdue'}
+            onPress={() => router.push(`/(app)/cuota/${proximaCuotaReal.loanId}/${proximaCuotaReal.installmentNumber}`)}
+          />
         ) : sandbox.nextDue ? (
-          <Card>
-            <CardHeader
-              icon="reloj"
-              title="Tu próximo pago"
-              trailing={
-                <Badge dot label={statusLabel(sandbox.nextDue.item.status)} tone={statusTone(sandbox.nextDue.item.status)} />
-              }
-            />
-            <View>
-              <AtlasText variant="amount">{formatMoney(sandbox.nextDue.item.amount)}</AtlasText>
-              <AtlasText variant="caption" tone="secondary">
-                {dueLabel(sandbox.nextDue.item)}
-              </AtlasText>
-            </View>
-            <Button label="Ver cómo pagar" variant="secondary" onPress={() => router.push(`/(app)/pago/${sandbox.nextDue!.item.id}`)} />
-          </Card>
+          <ProximoPagoCard
+            importe={formatMoney(sandbox.nextDue.item.amount)}
+            cuando={minusculaInicial(dueLabel(sandbox.nextDue.item))}
+            vencido={sandbox.nextDue.item.status === 'OVERDUE'}
+            onPress={() => router.push(`/(app)/pago/${sandbox.nextDue!.item.id}`)}
+          />
         ) : (
           /*
             Sin próximo pago el paso del recorrido necesita igual algo a lo que apuntar. En vez de un
