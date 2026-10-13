@@ -5,6 +5,7 @@ import {
 } from "react-native-safe-area-context";
 import Home from "../app/(app)/(tabs)/index";
 import { porcentajeUsado } from "../src/ui/credito-habilitado-card";
+import { fechaDeVencimiento } from "../src/ui/proximo-pago-card";
 
 /**
  * El orden de la portada, que es un pedido de negocio y no un detalle de maquetación: primero SIEMPRE cuánto crédito
@@ -154,6 +155,39 @@ describe("Inicio · el orden de la portada", () => {
     libro({ creditLine: null });
     await montar();
     expect(screen.getByText("Disponible para comprar")).toBeTruthy();
+  });
+});
+
+describe("Inicio · próximo pago en una fila", () => {
+  const cuota = (extra: Record<string, unknown> = {}) => ({
+    loanId: "5",
+    installmentNumber: 1,
+    dueDate: "2026-10-21",
+    state: "upcoming",
+    pendingAmount: 213.33,
+    currencyCode: "BOB",
+    merchant: { displayName: "Multicenter" },
+    ...extra,
+  });
+
+  it("dice cuánto y cuándo, y toda la fila es el botón", async () => {
+    libro({ calendar: { entries: [cuota()] } });
+    await montar();
+    expect(screen.getByText("Próximo pago")).toBeTruthy();
+    expect(screen.getByLabelText("Próximo pago: Bs\u00A0213,33, vence el 21 de oct. Toca para ver cómo pagar.")).toBeTruthy();
+    expect(screen.queryByText("Ver cómo pagar")).toBeNull();
+  });
+
+  it("vencida, lo dice", async () => {
+    libro({ calendar: { entries: [cuota({ state: "overdue" })] } });
+    await montar();
+    expect(screen.getByLabelText("Pago vencido: Bs\u00A0213,33, venció el 21 de oct. Toca para ver cómo pagar.")).toBeTruthy();
+  });
+
+  it("la fecha no retrocede un día por la zona horaria", () => {
+    expect(fechaDeVencimiento("2026-11-01")).toBe("1 de nov");
+    expect(fechaDeVencimiento("2026-10-21T00:00:00.000Z")).toBe("21 de oct");
+    expect(fechaDeVencimiento("pronto")).toBe("pronto");
   });
 });
 

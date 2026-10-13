@@ -102,7 +102,7 @@ await paso('entrar y ver la portada con la línea y el próximo pago', async () 
   await page.goto(`${BASE}/ingresar`, { waitUntil: 'load' });
   await page.waitForTimeout(1_500);
   await entrar();
-  await texto('Tu próximo pago').waitFor({ timeout: 30_000 });
+  await texto('Próximo pago').waitFor({ timeout: 30_000 });
   await texto('1.000,00').waitFor({ timeout: 10_000 });
   // La secuencia de marca se ve una vez por pestaña y tapa la pantalla unos segundos.
   await page.waitForTimeout(5_000);
@@ -113,7 +113,7 @@ await paso('entrar y ver la portada con la línea y el próximo pago', async () 
 });
 
 await paso('pagar la cuota: QR del comercio, comprobante y aviso', async () => {
-  await boton('Ver cómo pagar').click();
+  await boton(/Próximo pago/).click();
   await boton('Pagar esta cuota').waitFor({ timeout: 15_000 });
   await boton('Pagar esta cuota').click();
   await boton(/Adjuntar comprobante/).waitFor({ timeout: 15_000 });
@@ -135,7 +135,7 @@ await paso('volver a Inicio: la línea y el próximo pago se ponen al día SOLOS
   await page.goBack();
   await texto('El crédito completo').waitFor({ state: 'detached', timeout: 10_000 }).catch(() => undefined);
   await texto('1.210,00').waitFor({ timeout: 40_000 });
-  await texto('Tu próximo pago').waitFor({ state: 'detached', timeout: 10_000 });
+  await texto('Próximo pago').waitFor({ state: 'detached', timeout: 10_000 });
   afirmar((await pagos()).confirmado === true, 'el servidor no llegó a confirmar');
   await sinRecargar();
   return 'disponible Bs 1.210,00 y sin cuota pendiente';
