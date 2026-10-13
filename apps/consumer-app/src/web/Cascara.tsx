@@ -2,7 +2,7 @@
  * La cáscara de escritorio: la barra superior de la landing, para el área de cliente.
  *
  * Marca a la izquierda, menú central con la píldora que persigue al destino activo (los mismos
- * cinco de las pestañas del teléfono), chip de cuenta y «Escanear QR» como acción primaria a la
+ * tres de las pestañas del teléfono), chip de cuenta y «Escanear QR» como acción primaria a la
  * derecha, y un pie sobrio. Sólo web y sólo desde 600 px: por debajo, las pestañas del teléfono.
  * El aspecto entero vive en `estilo.ts` (`.nav`, `.pie`).
  */
@@ -16,8 +16,6 @@ import { color, marca } from '../theme/tokens';
 const DESTINOS = [
   { href: '/', etiqueta: 'Inicio' },
   { href: '/escanear', etiqueta: 'Escanear' },
-  { href: '/pagos', etiqueta: 'Pagos' },
-  { href: '/avisos', etiqueta: 'Avisos' },
   { href: '/perfil', etiqueta: 'Perfil' },
 ] as const;
 

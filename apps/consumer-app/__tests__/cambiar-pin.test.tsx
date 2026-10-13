@@ -136,7 +136,8 @@ describe('reenvío del código', () => {
     await waitFor(() => expect(requestPinChange).toHaveBeenCalledTimes(2));
     // Tras reenviar vuelve a empezar la espera.
     await waitFor(() => expect(screen.getByRole('button', { name: /Reenviar código en 60 s/ })).toBeTruthy());
-  });
+    // Sesenta tics de reloj, cada uno con su `act`: con la máquina cargada no cabe en los 5 s por defecto.
+  }, 20_000);
 });
 
 describe('guardar el PIN nuevo', () => {

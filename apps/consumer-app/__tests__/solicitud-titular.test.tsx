@@ -153,7 +153,8 @@ describe('el formulario', () => {
     expect(solicitarDerecho).toHaveBeenCalledWith('53', { requestType: 'rectification', field: 'city', proposedValue: 'Montero' });
     expect(solicitarDerecho).toHaveBeenCalledWith('53', { requestType: 'rectification', field: 'occupation', proposedValue: 'Transporte' });
     expect(await screen.findByTestId('solicitud-enviada')).toBeTruthy();
-  });
+    // Tres hojas de opciones y un PIN en una sola prueba: en el runner de CI pasaba de los 5 s por defecto (rojo del PR #130).
+  }, 20_000);
 
   it('si una falla, lo enviado no se repite: queda sólo el dato que falló', async () => {
     const { AtlasApiError } = jest.requireActual('../src/api/errors');
