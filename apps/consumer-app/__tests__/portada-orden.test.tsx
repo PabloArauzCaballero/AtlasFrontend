@@ -4,6 +4,7 @@ import {
   initialWindowMetrics,
 } from "react-native-safe-area-context";
 import Home from "../app/(app)/(tabs)/index";
+import { porcentajeUsado } from "../src/ui/credito-habilitado-card";
 
 /**
  * El orden de la portada, que es un pedido de negocio y no un detalle de maquetación: primero SIEMPRE cuánto crédito
@@ -98,7 +99,7 @@ describe("Inicio · el orden de la portada", () => {
 
   it("primero el crédito habilitado y después los pagos", async () => {
     await montar();
-    const [credito, pagos] = posiciones(["Crédito habilitado", "Tus pagos"]);
+    const [credito, pagos] = posiciones(["Disponible para comprar", "Tus pagos"]);
     expect(credito).toBeGreaterThan(-1);
     expect(credito).toBeLessThan(pagos as number);
   });
@@ -120,11 +121,18 @@ describe("Inicio · el orden de la portada", () => {
     expect(screen.queryByText("Descargar informe en PDF")).toBeNull();
   });
 
-  it("enseña el disponible como la cifra de la tarjeta principal, con el límite y lo que falta por pagar", async () => {
+  it("enseña el disponible como la cifra principal y cómo se consume la línea: barra y «usado de límite»", async () => {
     await montar();
     expect(screen.getByText(/1[.,]250/)).toBeTruthy();
-    expect(screen.getByText("Límite aprobado")).toBeTruthy();
-    expect(screen.getByText(/1[.,]500/)).toBeTruthy();
+    expect(screen.getByTestId("credito-consumo").props.children).toBe("Bs\u00A0250 usado de Bs\u00A01.500 de límite");
+    // La barra se llena con lo USADO: 250 de 1.500 es un 17 %.
+    const barra = screen.getByLabelText("Usaste Bs\u00A0250 de tu límite de Bs\u00A01.500");
+    expect(barra.props.accessibilityValue).toEqual({ min: 0, max: 100, now: 17 });
+  });
+
+  it("sin límite aprobado la barra queda vacía en vez de dividir por cero", () => {
+    expect(porcentajeUsado({ used: 0, approvedLimit: 0 })).toBe(0);
+    expect(porcentajeUsado({ used: 2000, approvedLimit: 1500 })).toBe(100);
   });
 
   it("con pagos vencidos, el crédito sigue yendo primero y la mora justo debajo, antes del próximo pago", async () => {
@@ -136,7 +144,7 @@ describe("Inicio · el orden de la portada", () => {
       },
     });
     await montar();
-    const [credito, mora, pagos] = posiciones(["Crédito habilitado", "Tienes pagos que regularizar", "Tus pagos"]);
+    const [credito, mora, pagos] = posiciones(["Disponible para comprar", "Tienes pagos que regularizar", "Tus pagos"]);
     expect(credito).toBeGreaterThan(-1);
     expect(credito).toBeLessThan(mora as number);
     expect(mora).toBeLessThan(pagos as number);
@@ -145,7 +153,7 @@ describe("Inicio · el orden de la portada", () => {
   it("sin línea calculada todavía, la portada no se cae", async () => {
     libro({ creditLine: null });
     await montar();
-    expect(screen.getByText("Crédito habilitado")).toBeTruthy();
+    expect(screen.getByText("Disponible para comprar")).toBeTruthy();
   });
 });
 

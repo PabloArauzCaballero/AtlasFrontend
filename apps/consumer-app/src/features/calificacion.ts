@@ -29,3 +29,11 @@ export function fraseDeCalificacion(valor: number): string {
   if (valor >= 40) return 'Está a mitad de camino. Cada cuota en fecha suma.';
   return 'Recién empieza. Se construye pagando a tiempo tus compras.';
 }
+
+/** El tramo en dos palabras, para la pastilla que acompaña a la cifra. Los mismos cortes que `fraseDeCalificacion`. */
+export function tramoDeCalificacion(valor: number): { nombre: string; tono: 'success' | 'info' | 'neutral' } {
+  if (valor >= 80) return { nombre: 'Muy buen pagador', tono: 'success' };
+  if (valor >= 60) return { nombre: 'Vas bien', tono: 'success' };
+  if (valor >= 40) return { nombre: 'A mitad de camino', tono: 'info' };
+  return { nombre: 'Inicial', tono: 'neutral' };
+}

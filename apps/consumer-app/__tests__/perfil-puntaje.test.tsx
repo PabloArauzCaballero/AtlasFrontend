@@ -117,7 +117,7 @@ it('si el libro de créditos falla, el nivel se sigue viendo y Perfil no pinta u
 it('lo primero de Perfil es el saldo de crédito, antes de la tarjeta y del nivel', async () => {
   await montar();
   const textos = screen.getAllByText(/\S/).map((nodo) => [nodo.props.children].flat().join(''));
-  const credito = textos.findIndex((t) => t.includes('Crédito habilitado'));
+  const credito = textos.findIndex((t) => t.includes('Disponible para comprar'));
   const nivel = textos.findIndex((t) => t.includes('NIVEL 1 DE 12'));
   expect(credito).toBeGreaterThan(-1);
   expect(credito).toBeLessThan(nivel);

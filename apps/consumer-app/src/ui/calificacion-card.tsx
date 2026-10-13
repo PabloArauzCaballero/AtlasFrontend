@@ -8,11 +8,12 @@
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import type { Progress } from '../api/endpoints/credit-line';
-import { calificacionDe, fraseDeCalificacion } from '../features/calificacion';
+import { calificacionDe, fraseDeCalificacion, tramoDeCalificacion } from '../features/calificacion';
 import { space } from '../theme/tokens';
 import { BotonInfo, InfoSheet } from './help-sheet';
 import { PressSurface } from './motion';
-import { AtlasText, Card, CardHeader } from './primitives';
+import { AtlasText, Badge, Card } from './primitives';
+import { EncabezadoTarjeta } from './encabezado-tarjeta';
 import { Barra, CuentaArriba, useAvance } from './cuenta-arriba';
 import { PuntajeDesglose } from './puntaje-desglose';
 
@@ -51,17 +52,32 @@ export function CalificacionCard({ progress, onPress, masInfo = false }: { progr
 
 function Cuerpo({ valor, frase, info }: { valor: number; frase: string; info?: React.ReactNode }) {
   const avance = useAvance(true);
+  const tramo = tramoDeCalificacion(valor);
   return (
     <>
-      <CardHeader icon="grafico" eyebrow="Qué tan buen pagador eres" title="Tu calificación" trailing={info} divider={false} />
+      <EncabezadoTarjeta icono="grafico" etiqueta="Tu calificación" derecha={info} />
       <View style={styles.cifra}>
-        <CuentaArriba avance={avance} hasta={valor} formato={(n) => String(Math.round(n))} tamano="amountHero" testID="calificacion-valor" />
-        <AtlasText variant="bodyStrong" tone="secondary">
-          de 100
-        </AtlasText>
+        <View style={styles.numero}>
+          <CuentaArriba avance={avance} hasta={valor} formato={(n) => String(Math.round(n))} tamano="amountHero" testID="calificacion-valor" />
+          <AtlasText variant="bodyStrong" tone="tertiary">
+            de 100
+          </AtlasText>
+        </View>
+        <Badge label={tramo.nombre} tone={tramo.tono} />
       </View>
-      {/* La misma barra que la cifra: comparten `avance`, así que llegan juntas. */}
-      <Barra valor={valor} avance={avance} grosor="lg" etiqueta={`Calificación ${valor} de 100`} />
+      <View>
+        {/* La misma barra que la cifra: comparten `avance`, así que llegan juntas. */}
+        <Barra valor={valor} avance={avance} grosor="lg" etiqueta={`Calificación ${valor} de 100`} />
+        {/* Los extremos de la escala: sin ellos la barra es un dibujo; con ellos, una medida. */}
+        <View style={styles.escala} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+          <AtlasText variant="micro" tone="tertiary">
+            1
+          </AtlasText>
+          <AtlasText variant="micro" tone="tertiary">
+            100
+          </AtlasText>
+        </View>
+      </View>
       <AtlasText variant="caption" tone="secondary">
         {frase}
       </AtlasText>
@@ -70,5 +86,8 @@ function Cuerpo({ valor, frase, info }: { valor: number; frase: string; info?: R
 }
 
 const styles = StyleSheet.create({
-  cifra: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
+  cifra: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md },
+  numero: { flexDirection: 'row', alignItems: 'baseline', gap: space.xs, flexShrink: 1 },
+  // Mismo sangrado que la barra (medio punto vivo a cada lado): el «1» y el «100» caen bajo sus extremos.
+  escala: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 7 },
 });
