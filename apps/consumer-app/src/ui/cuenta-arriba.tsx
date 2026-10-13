@@ -116,6 +116,7 @@ export function Barra({
   grosor = 'md',
   tono = 'marca',
   punto: conPunto = true,
+  alRas = false,
 }: {
   valor: number;
   avance: SharedValue<number>;
@@ -126,6 +127,8 @@ export function Barra({
   tono?: 'marca' | 'apagado';
   /** El punto vivo de la punta. Fuera cuando varias barras comparten tarjeta y sólo una es «aquí estás». */
   punto?: boolean;
+  /** Sin el sangrado que deja sitio al punto: la barra llega a los mismos márgenes que el texto de la tarjeta. Sólo sin punto. */
+  alRas?: boolean;
 }) {
   const [pista, setPista] = useState(0);
   const fraccion = Math.max(0, Math.min(100, valor)) / 100;
@@ -142,7 +145,7 @@ export function Barra({
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: 100, now: Math.round(fraccion * 100) }}
       accessibilityLabel={etiqueta}
-      style={styles.barra}
+      style={[styles.barra, alRas && !conPunto && styles.barraAlRas]}
       onLayout={(e) => setPista(e.nativeEvent.layout.width)}
     >
       <View style={[styles.pista, grande && styles.pistaGrande]}>
@@ -175,6 +178,7 @@ export function BarraViva({
   tono,
   retardo,
   punto,
+  alRas,
 }: {
   value: number;
   label?: string;
@@ -182,10 +186,11 @@ export function BarraViva({
   tono?: 'marca' | 'apagado';
   retardo?: number;
   punto?: boolean;
+  alRas?: boolean;
 }) {
   const avance = useAvance(true, retardo);
   const v = Math.max(0, Math.min(100, value));
-  return <Barra valor={v} avance={avance} etiqueta={label ?? `Avance ${v}%`} grosor={grosor} tono={tono} punto={punto} />;
+  return <Barra valor={v} avance={avance} etiqueta={label ?? `Avance ${v}%`} grosor={grosor} tono={tono} punto={punto} alRas={alRas} />;
 }
 
 const styles = StyleSheet.create({
@@ -193,6 +198,8 @@ const styles = StyleSheet.create({
 
   // Sangrado de medio punto a cada lado: con el valor en 0 o en 100 el punto y su halo no se salen del margen de la tarjeta.
   barra: { height: PUNTO + 6, justifyContent: 'center', marginVertical: space.xs, marginHorizontal: PUNTO / 2 },
+
+  barraAlRas: { marginHorizontal: 0 },
 
   pista: { height: 6, borderRadius: radius.pill, backgroundColor: color.surface.raisedStrong, overflow: 'hidden' },
 
