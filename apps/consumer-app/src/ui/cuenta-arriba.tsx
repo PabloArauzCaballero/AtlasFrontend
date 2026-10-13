@@ -144,6 +144,10 @@ export function Barra({
       accessible
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: 100, now: Math.round(fraccion * 100) }}
+      // En el navegador `accessibilityValue` no llega al DOM: sin los `aria-value*` la barra no decía cuánto marca.
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(fraccion * 100)}
       accessibilityLabel={etiqueta}
       style={[styles.barra, alRas && !conPunto && styles.barraAlRas]}
       onLayout={(e) => setPista(e.nativeEvent.layout.width)}

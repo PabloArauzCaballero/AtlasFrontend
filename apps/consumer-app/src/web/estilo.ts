@@ -307,13 +307,13 @@ ${TOQUES.map((t) => { const l = ladosDe(t); return `[data-toque="${t}"]::before{
 .nav__salir:hover{color:var(--t1);background:var(--ink-2)}
 /*
   En tableta (600–1023 px) la barra se parte en DOS filas: marca, cuenta y acción arriba; el menú
-  con sus cinco destinos y la píldora en una fila propia. Antes el menú se escondía y la barra de
-  pestañas también, así que entre esos anchos no había ningún enlace a Pagos ni a Avisos.
+  con sus destinos y la píldora en una fila propia. Antes el menú se escondía y la barra de
+  pestañas también, así que entre esos anchos no había forma de cambiar de sección.
 */
 @media ${HASTA_TABLETA}{
   .nav{padding-block:.6rem}
   .nav__inner{flex-wrap:wrap;gap:.7rem 1rem}
-  /* flex-basis 100 % fuerza la fila propia; max-content encoge la píldora a sus cinco enlaces, centrada. */
+  /* flex-basis 100 % fuerza la fila propia; max-content encoge la píldora a sus enlaces, centrada. */
   .nav__menu{order:9;flex-basis:100%;max-width:max-content;justify-content:center;margin-inline:auto}
   .nav__link{padding:.5rem .85rem;font-size:.86rem}
   .nav__cta{margin-left:auto}

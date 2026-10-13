@@ -2,8 +2,8 @@
  * La portada y los extractos, en un navegador real.
  *
  * Qué prueba (y por qué existe): tres cosas que son pedido de negocio y que jest sólo ve como árbol —
- *  1. el ORDEN de la portada medido en píxeles: primero cuánto crédito hay habilitado, después los puntos XP y
- *     después la calificación parte por parte. Ni con pagos vencidos el aviso rojo pasa por encima de la línea;
+ *  1. la portada medida en píxeles: primero cuánto crédito hay habilitado, con su barra de consumo, y sin nivel,
+ *     calificación ni gasto por rubro. Ni con pagos vencidos el aviso rojo pasa por encima de la línea;
  *  2. que «Mis datos» lista los extractos bancarios que subió la persona;
  *  3. que el PDF se DESCARGA de verdad: salen los bytes que mandó el servidor, pedidos con la sesión.
  *
@@ -91,46 +91,46 @@ async function recorrer({ ancho, vencido }) {
     await page.waitForURL((u) => !u.pathname.startsWith('/ingresar'), { timeout: 30000 });
   });
 
-  await paso('la portada: crédito, puntos XP y calificación, en ese orden', async () => {
+  await paso('la portada: crédito con su barra de consumo y, debajo, los pagos', async () => {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });
     await texto('Disponible para comprar').waitFor({ timeout: 30000 });
     // La secuencia de marca se reproduce una vez por pestaña y tapa la pantalla unos segundos: se espera a que acabe.
     await page.waitForTimeout(6000);
-    await texto('PUNTOS XP').waitFor({ timeout: 15000 });
-    await texto('Tu calificación, parte por parte').waitFor({ timeout: 15000 });
 
     // El recorrido de bienvenida se abre solo la primera vez y tapa media portada: se cierra antes de medir.
     const saltar = page.getByRole('button', { name: 'Saltar' });
     if (await saltar.count()) await saltar.first().click();
     await page.waitForTimeout(600);
 
-    const orden = {
-      credito: await lugar('Disponible para comprar'),
-      puntos: await lugar('PUNTOS XP'),
-      calificacion: await lugar('Tu calificación, parte por parte'),
-    };
-    afirmar(antes(orden.credito, orden.puntos), `los puntos ${diga(orden.puntos)} se leen antes que el crédito ${diga(orden.credito)}`);
-    afirmar(antes(orden.puntos, orden.calificacion), `la calificación ${diga(orden.calificacion)} se lee antes que los puntos ${diga(orden.puntos)}`);
+    const credito = await lugar('Disponible para comprar');
     // Nada de la portada empieza por encima de la línea de crédito.
-    for (const otro of ['PUNTOS XP', 'Tu calificación, parte por parte', 'Tus compras']) {
-      afirmar((await lugar(otro)).y >= orden.credito.y - 24, `«${otro}» empieza por encima del crédito`);
-    }
+    afirmar((await lugar('Tus compras')).y >= credito.y - 24, '«Tus compras» empieza por encima del crédito');
 
-    // El importe de la línea que mandó el servidor, y los puntos, tal cual.
+    // El importe de la línea que mandó el servidor y cómo se consume: barra y «usado de límite».
     afirmar((await page.getByText(/1[.,]000/).count()) > 0, 'no se ve el disponible (Bs 1.000) de la línea');
-    afirmar((await page.getByText('350 XP').count()) > 0, 'no se ven los 350 XP');
-    for (const parte of ['Pagos a tiempo', 'Compras terminadas de pagar', 'Antigüedad', 'Identidad verificada']) {
-      afirmar((await page.getByText(parte).count()) > 0, `la calificación no desglosa «${parte}»`);
+    afirmar((await page.getByText(/250 usado de Bs.1\.250 de límite/).count()) > 0, 'no se ve «Bs 250 usado de Bs 1.250 de límite»');
+    const barra = page.getByRole('progressbar', { name: /Usaste Bs.250 de tu límite/ }).first();
+    const usado = await barra.getAttribute('aria-valuenow');
+    afirmar(usado === '20', `la barra de consumo marca ${usado} y no el 20 % usado`);
+
+    // Lo que salió de la portada (Pablo, 2026-10-12) no vuelve: nivel, calificación, crecimiento y gasto por rubro.
+    for (const fuera of ['Mis logros', 'Tu calificación', 'Cuánto puede crecer tu crédito', 'En qué gastas']) {
+      // Exacto: el aviso de mora dice «tu calificación baja» y no es la tarjeta.
+      afirmar((await page.getByText(fuera, { exact: true }).count()) === 0, `«${fuera}» volvió a la portada`);
+    }
+    // Y la barra de pestañas queda en tres.
+    if (ancho < 600) {
+      const pestanas = await page.getByRole('tab').allInnerTexts();
+      afirmar(pestanas.length === 3, `la barra tiene ${pestanas.length} pestañas: ${pestanas.join(', ')}`);
     }
 
     if (vencido) {
       const mora = await lugar('Tienes pagos que regularizar');
-      afirmar(antes(orden.credito, mora), `el aviso de mora ${diga(mora)} se lee antes que el crédito ${diga(orden.credito)}`);
-      afirmar(antes(mora, orden.puntos), `los puntos ${diga(orden.puntos)} se leen antes que el aviso de mora ${diga(mora)}`);
-      return `crédito ${diga(orden.credito)} → mora ${diga(mora)} → puntos ${diga(orden.puntos)} → calificación ${diga(orden.calificacion)}`;
+      afirmar(antes(credito, mora), `el aviso de mora ${diga(mora)} se lee antes que el crédito ${diga(credito)}`);
+      return `crédito ${diga(credito)} → mora ${diga(mora)}`;
     }
     afirmar((await page.getByText('Tienes pagos que regularizar').count()) === 0, 'aparece un aviso de mora sin pagos vencidos');
-    return `crédito ${diga(orden.credito)} → puntos ${diga(orden.puntos)} → calificación ${diga(orden.calificacion)}`;
+    return `crédito ${diga(credito)}, 20 % usado`;
   });
 
   await paso('sin desborde horizontal en la portada', async () => {
