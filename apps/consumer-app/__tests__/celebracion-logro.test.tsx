@@ -2,7 +2,8 @@ import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import type { Logro } from "../src/features/celebraciones";
-import { CelebracionDeLogro, ARENGA, PARTICULAS, azar, trazoDe } from "../src/ui/celebracion-logro";
+import { CelebracionDeLogro, ARENGA, CASCADA, PARTICULAS, azar, trazoDe } from "../src/ui/celebracion-logro";
+import { acentoDe, METAL } from "../src/ui/trofeo";
 
 /**
  * La escena de un logro: dice qué se ganó, de qué colección y lo siguiente más cercano; pasa de uno a otro en una cola;
@@ -58,11 +59,37 @@ describe("CelebracionDeLogro · insignia", () => {
     expect(screen.getByText(/Lo próximo: «Racha de 12» · 6 de 12/)).toBeTruthy();
   });
 
-  it("el botón la cierra", async () => {
+  it("el botón la cierra tras el relevo, y dos toques no la cierran dos veces", async () => {
+    jest.useFakeTimers();
     const onCerrar = jest.fn();
     await render(envolver(<CelebracionDeLogro logro={insignia()} posicion={{ actual: 1, total: 1 }} onCerrar={onCerrar} />));
     await fireEvent.press(screen.getByTestId("celebracion-cerrar"));
+    await fireEvent.press(screen.getByTestId("celebracion-cerrar"));
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
     expect(onCerrar).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
+  });
+
+  it("con más de una en la ceremonia ofrece «Saltar todas», que las cierra de una vez; en la última, no", async () => {
+    jest.useFakeTimers();
+    const onSaltarTodas = jest.fn();
+    const onCerrar = jest.fn();
+    const { rerender } = await render(
+      envolver(<CelebracionDeLogro logro={insignia()} posicion={{ actual: 1, total: 3 }} onCerrar={onCerrar} onSaltarTodas={onSaltarTodas} />),
+    );
+    expect(screen.getByText("LOGRO 1 DE 3")).toBeTruthy();
+    expect(screen.getByText("Saltar todas (3)")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId("celebracion-saltar-todas"));
+    await act(async () => {
+      jest.advanceTimersByTime(400);
+    });
+    expect(onSaltarTodas).toHaveBeenCalledTimes(1);
+    expect(onCerrar).not.toHaveBeenCalled();
+    await rerender(envolver(<CelebracionDeLogro logro={insignia()} posicion={{ actual: 3, total: 3 }} onCerrar={onCerrar} onSaltarTodas={onSaltarTodas} />));
+    expect(screen.queryByTestId("celebracion-saltar-todas")).toBeNull();
+    jest.useRealTimers();
   });
 
   it("en una cola dice cuántas van, y sólo en la última habla de las que no cupieron", async () => {
@@ -108,6 +135,16 @@ describe("la fiesta crece con el rango", () => {
     const n = (["bronce", "plata", "oro", "platino", "diamante"] as const).map((r) => PARTICULAS[r]);
     expect(n).toEqual([...n].sort((a, b) => a - b));
     expect(new Set(n).size).toBe(5);
+  });
+
+  it("más golpecitos cuanto más difícil, y ninguno en los rangos de entrada", () => {
+    const n = (["bronce", "plata", "oro", "platino", "diamante"] as const).map((r) => CASCADA[r]);
+    expect(n).toEqual([...n].sort((a, b) => a - b));
+    expect(CASCADA.bronce).toBe(0);
+  });
+
+  it("el color del rango como texto no es el brillo del metal en el tema claro (no se leía sobre blanco)", () => {
+    for (const r of ["bronce", "plata", "oro", "platino", "diamante"] as const) expect(acentoDe(r)).not.toBe(METAL[r].luz);
   });
 
   it("la ráfaga es determinista: la misma partícula sale siempre igual", () => {

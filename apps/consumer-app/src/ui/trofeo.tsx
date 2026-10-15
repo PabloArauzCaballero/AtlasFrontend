@@ -8,7 +8,7 @@
 import { StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, Ellipse, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import type { Badge, BadgeRank } from '../api/endpoints/credit-line';
-import { color, luz, metal, objeto, stroke } from '../theme/tokens';
+import { color, esquema, luz, metal, objeto, stroke } from '../theme/tokens';
 import { Icon, ICON_NAMES, type IconName } from './icons';
 
 export type Rango = BadgeRank;
@@ -25,6 +25,19 @@ export const METAL: Record<Rango, { luz: string; medio: string; sombra: string; 
   platino: { luz: metal.platino.luz, medio: color.brand.b300, sombra: color.brand.b700, halo: color.brand.b400, tinta: color.brand.b900, nombre: 'Platino', chispas: [metal.platino.luz, color.brand.b300, color.brand.b400, luz.blanco] },
   diamante: { luz: metal.diamante.luz, medio: metal.diamante.medio, sombra: metal.diamante.sombra, halo: metal.diamante.halo, tinta: metal.diamante.tinta, nombre: 'Diamante', chispas: [metal.diamante.luz, metal.diamante.medio, metal.diamante.violeta, metal.diamante.rosa, luz.blanco] },
 };
+
+/**
+ * El color del metal cuando es TEXTO sobre la interfaz (la arenga, el nombre del rango, la colección).
+ *
+ * `luz` es el brillo del metal: sobre el fondo oscuro se lee, sobre el blanco del tema claro desaparecía («¡INSIGNIA DE
+ * ORO!» en amarillo pálido sobre blanco, 1,3:1). En claro se usa el tono profundo del mismo metal; la plata, cuyo
+ * profundo es un gris medio (4,2:1), baja a su tinta.
+ */
+export function acentoDe(rango: Rango): string {
+  const m = METAL[rango];
+  if (esquema === 'oscuro') return m.luz;
+  return rango === 'plata' ? m.tinta : m.sombra;
+}
 
 /** Qué tan difícil es cada logro, para un backend que aún no manda `rank`. Uno desconocido es de plata. */
 const RANGO_DE: Record<string, Rango> = {

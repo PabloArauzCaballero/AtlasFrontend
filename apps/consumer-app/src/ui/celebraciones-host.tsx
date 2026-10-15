@@ -5,6 +5,13 @@
  * Cuándo mira y cuándo muestra está razonado en `features/celebraciones.ts`. En corto: mira al abrir la app, al volver a
  * ella y cada vez que la persona llega a una pantalla tranquila (con un respiro entre miradas para no pedirle al servidor
  * el progreso en cada navegación); muestra sólo en pantallas tranquilas y con el recorrido guiado apagado.
+ *
+ * ## La ceremonia (2026-10-15)
+ *
+ * Lo que se celebra de una vez es UNA ceremonia: `total` cuenta los logros que entraron desde que el escenario se abrió,
+ * y el contador dice «2 de 3» sobre ese total (antes decía «1 de 2» al pasar al segundo, porque contaba la cola que
+ * quedaba). Del segundo en adelante la escena entra `continua`, sin volver a fundir el fondo, y «Saltar todas» vacía
+ * la cola de golpe. Las saltadas ya quedaron anotadas como vistas: se pueden revivir desde la vitrina.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePathname } from 'expo-router';
@@ -52,11 +59,18 @@ export function CelebracionesHost() {
   const tour = useTour();
   const [cola, setCola] = useState<Logro[]>([]);
   const [mas, setMas] = useState(0);
+  /** Cuántos logros lleva la ceremonia abierta: lo que ya pasó más lo que queda en la cola. */
+  const [total, setTotal] = useState(0);
   const [repeticion, setRepeticion] = useState<Logro | null>(null);
   const [carta, setCarta] = useState<Logro | null>(null);
   const [listo, setListo] = useState(false);
   const ultima = useRef(0);
   const enCurso = useRef(false);
+  /** La cola tal como está ahora, para sumar al total sin efectos dentro de un actualizador de estado. */
+  const colaVista = useRef<Logro[]>([]);
+  useEffect(() => {
+    colaVista.current = cola;
+  }, [cola]);
 
   const revisar = useCallback(
     async (forzar = false) => {
@@ -71,7 +85,11 @@ export function CelebracionesHost() {
         // Se anota ANTES de mostrar: si la app se cierra a media fiesta, no se repite al volver.
         await guardarVistos(customerId, siguiente);
         if (logros.length > 0) {
-          setCola((previa) => [...previa, ...logros.filter((l) => !previa.some((p) => idDe(p) === idDe(l)))]);
+          const previa = colaVista.current;
+          const nuevos = logros.filter((l) => !previa.some((p) => idDe(p) === idDe(l)));
+          colaVista.current = [...previa, ...nuevos];
+          setCola(colaVista.current);
+          setTotal((t) => (previa.length === 0 ? nuevos.length : t + nuevos.length));
           setMas((previo) => previo + masSinMostrar);
         }
       } catch {
@@ -131,15 +149,24 @@ export function CelebracionesHost() {
     );
   if (repeticion) return <CelebracionDeLogro logro={repeticion} posicion={{ actual: 1, total: 1 }} onCerrar={() => setRepeticion(null)} />;
   if (!hayCola || !listo) return null;
+  const totalCeremonia = Math.max(total, cola.length);
+  const actual = totalCeremonia - cola.length + 1;
+  const terminar = () => {
+    setCola([]);
+    setMas(0);
+    setTotal(0);
+  };
   return (
     <CelebracionDeLogro
       key={idDe(cola[0]!)}
       logro={cola[0]!}
-      posicion={{ actual: 1, total: cola.length }}
+      posicion={{ actual, total: totalCeremonia }}
+      continua={actual > 1}
       masSinMostrar={mas}
+      onSaltarTodas={terminar}
       onCerrar={() => {
+        if (cola.length <= 1) return terminar();
         setCola((previa) => previa.slice(1));
-        if (cola.length <= 1) setMas(0);
       }}
     />
   );
