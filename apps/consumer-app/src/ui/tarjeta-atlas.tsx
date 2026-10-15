@@ -42,6 +42,7 @@ import { acabadoDeTarjeta } from '../theme/tarjeta';
 import { alpha, luz, marca, motion, radius, space, spring } from '../theme/tokens';
 import { AtlasMark } from './brand';
 import { Icon } from './icons';
+import { IndicioTocable } from './indicio-tocable';
 import { PressSurface, suavidad } from './motion';
 import { AtlasText } from './primitives';
 import { ReflejoEspecular, SinContacto } from './tarjeta-atlas-piezas';
@@ -86,6 +87,8 @@ export function TarjetaAtlas({ tier, tamano = 'grande', bloqueada = false, titul
       testID={testID ? `${testID}-boton` : undefined}
     >
       {tarjeta}
+      {/* Una tarjeta de banco no parece un botón: el pie dice que abre algo (Pablo, 2026-10-15). */}
+      <IndicioTocable texto="Ver tus tarjetas y beneficios" separador={false} testID={testID ? `${testID}-indicio` : undefined} />
     </PressSurface>
   );
 }

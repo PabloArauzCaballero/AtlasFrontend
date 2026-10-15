@@ -29,9 +29,15 @@ import { AtlasText } from './primitives';
 
 const LADO = 76;
 
+/*
+ * Sello de marca, no metal fosforescente (Pablo, 2026-10-15: «más premium, más serio, el mismo estilo de colores»).
+ * Era un menta escrito a mano (`#7DF6D8`) con resplandor verde: el único objeto de Perfil que no salía de la marca.
+ * Ahora la cara va del verde azulado de marca al marino profundo —la misma rampa que el resto de la app, y por tanto
+ * sigue a cualquier marca blanca—, con la letra en blanco y una sombra neutra corta. Con atraso, el aviso de sistema.
+ */
 const METAL = {
-  marca: { cara: [objeto.riesgo.marca.cara.luz, color.brand.b400, objeto.riesgo.marca.cara.sombra] as const, aro: alpha(luz.blanco, 0.5), luz: color.brand.b400 },
-  alerta: { cara: [objeto.riesgo.alerta.cara.luz, color.feedback.warning, objeto.riesgo.alerta.cara.sombra] as const, aro: alpha(luz.blanco, 0.5), luz: color.feedback.warning },
+  marca: { cara: [color.brand.b500, color.brand.b700, color.brand.navyProfundo] as const, aro: alpha(luz.blanco, 0.28) },
+  alerta: { cara: [color.feedback.warning, objeto.riesgo.alerta.cara.sombra, objeto.riesgo.alerta.cara.sombra] as const, aro: alpha(luz.blanco, 0.32) },
 };
 
 export function MedallaDeRiesgo({ letra, alerta = false }: { letra: string; alerta?: boolean }) {
@@ -49,7 +55,7 @@ export function MedallaDeRiesgo({ letra, alerta = false }: { letra: string; aler
   }, [barrido, reducido]);
 
   const estiloLuz = useAnimatedStyle(() => ({
-    opacity: Math.sin(Math.PI * barrido.value) * 0.85,
+    opacity: Math.sin(Math.PI * barrido.value) * 0.35,
     transform: [{ translateX: -LADO + barrido.value * LADO * 2 }, { rotate: '22deg' }],
   }));
 
@@ -57,12 +63,12 @@ export function MedallaDeRiesgo({ letra, alerta = false }: { letra: string; aler
   const cuerpo = letra.length > 1 ? 30 : 42;
 
   return (
-    <View style={[styles.sombra, { shadowColor: metal.luz }]} accessibilityRole="image" accessibilityLabel={`Categoría ${letra}`} testID="medalla-riesgo">
+    <View style={styles.sombra} accessibilityRole="image" accessibilityLabel={`Categoría ${letra}`} testID="medalla-riesgo">
       <LinearGradient colors={metal.cara} start={{ x: 0.1, y: 0 }} end={{ x: 0.9, y: 1 }} style={styles.cara}>
         {/* El brillo de arriba: el metal recibe la luz desde encima. */}
         <LinearGradient
           pointerEvents="none"
-          colors={[alpha(luz.blanco, 0.55), alpha(luz.blanco, 0.08), alpha(luz.blanco, 0)]}
+          colors={[alpha(luz.blanco, 0.22), alpha(luz.blanco, 0.04), alpha(luz.blanco, 0)]}
           locations={[0, 0.5, 0.75]}
           style={styles.brillo}
         />
@@ -95,9 +101,10 @@ const styles = StyleSheet.create({
     width: LADO,
     height: LADO,
     borderRadius: LADO / 2,
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: luz.negro,
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
   },
   cara: {
     width: LADO,
@@ -113,11 +120,11 @@ const styles = StyleSheet.create({
   aro: { position: 'absolute', top: 6, left: 6, right: 6, bottom: 6, borderRadius: (LADO - 12) / 2, borderWidth: 1.5 },
   letra: {
     ...fuente('displayBlack'),
-    color: objeto.riesgo.tinta,
+    color: luz.blanco,
     textAlign: 'center',
     letterSpacing: 0,
-    // Hundida en el metal: un filo de luz debajo de cada trazo.
-    textShadowColor: alpha(luz.blanco, 0.55),
+    // Grabada en el sello: una sombra corta debajo de cada trazo.
+    textShadowColor: alpha(luz.negro, 0.28),
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 0.5,
   },

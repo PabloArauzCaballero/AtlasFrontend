@@ -16,8 +16,9 @@ import { desdeDelNivel, formatoPuntos, fraseDeLoQueFalta, iconoDeEscalon, idDeEs
 import { color, radius, space, stroke, marca } from '../theme/tokens';
 import { BotonInfo, InfoSheet } from './help-sheet';
 import { Icon } from './icons';
-import { Vivo } from './motion';
-import { AtlasText, Badge, Button, Divider } from './primitives';
+import { IndicioTocable } from './indicio-tocable';
+import { PressSurface } from './motion';
+import { AtlasText, Badge, Divider } from './primitives';
 import { Barra, CuentaArriba, useAvance } from './cuenta-arriba';
 
 export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVerLogros?: () => void }) {
@@ -30,12 +31,15 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
   const puntos = level.points === 1 ? 'punto' : 'puntos';
   const avance = useAvance(true);
 
-  return (
-    <View
-      style={styles.tarjeta}
-      accessibilityLabel={`Tu nivel ${marca.nombre}: ${level.label}, nivel ${level.index} de ${level.of}, ${formatoPuntos(level.points)} ${puntos} de experiencia. ${fraseDeLoQueFalta(nivel)}`}
-      testID="nivel-card"
-    >
+  const etiqueta = `Tu nivel ${marca.nombre}: ${level.label}, nivel ${level.index} de ${level.of}, ${formatoPuntos(level.points)} ${puntos} de experiencia. ${fraseDeLoQueFalta(nivel)}`;
+
+  /*
+    Toda la tarjeta lleva a «Mis logros» (Pablo, 2026-10-15: «que se vea que es cliqueable»). Antes sólo lo hacía un
+    botón gris al pie que se leía como deshabilitado; ahora la tarjeta se hunde al tocarla y su pie lo dice con el
+    verbo y el chevron. El ⓘ de «Más info» sigue siendo su propio toque.
+  */
+  const cuerpo = (
+    <View style={styles.tarjeta} accessibilityLabel={onVerLogros ? undefined : etiqueta} testID="nivel-card">
       {/*
         Los puntos ARRIBA A LA IZQUIERDA (Pablo, 2026-10-08): son LA cifra de la tarjeta y lo primero que se lee. La
         insignia del nivel va a su derecha, y el nombre del nivel debajo, como subtítulo de la cifra.
@@ -59,12 +63,10 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
           </AtlasText>
         </View>
         <View style={styles.lateral}>
-          {/* La insignia del nivel respira: es lo que se ha ganado. */}
-          <Vivo tipo="flota" periodo={3200}>
-            <View style={styles.insignia}>
-              <Icon name={iconoDeEscalon(level)} size={26} tint={color.action.primary} />
-            </View>
-          </Vivo>
+          {/* La insignia del nivel, quieta: una tarjeta seria no flota (Pablo, 2026-10-15: «más premium, más serio»). */}
+          <View style={styles.insignia}>
+            <Icon name={iconoDeEscalon(level)} size={26} tint={color.action.primary} />
+          </View>
           {currentStreak > 0 ? <Badge label={`Racha ${currentStreak}`} tone="success" /> : null}
         </View>
       </View>
@@ -88,72 +90,89 @@ export function NivelCard({ progress, onVerLogros }: { progress: Progress; onVer
       <AtlasText variant="caption" tone="secondary">
         {nextLevel ? `Faltan ${formatoPuntos(nextLevel.pointsMissing)} para «${nextLevel.label}»` : 'Nivel máximo'}
       </AtlasText>
-      <View style={styles.acciones}>
-        {onVerLogros ? <Button label="Mis logros" icon="estrella" variant="secondary" onPress={onVerLogros} style={styles.accion} testID="nivel-logros" /> : null}
-      </View>
+      {onVerLogros ? <IndicioTocable texto="Ver mis logros y niveles" testID="nivel-logros-indicio" /> : null}
 
-      <InfoSheet visible={info} titulo="Tus puntos y tu nivel" onClose={() => setInfo(false)} testID="nivel-info">
-          <AtlasText variant="bodyStrong">Cómo se ganan</AtlasText>
-          <AtlasText variant="body" tone="secondary">
-            Como en un programa de puntos, pero aquí pesa más cumplir que comprar. Tus puntos nunca bajan, y con ellos subes
-            de nivel y de tarjeta.
-          </AtlasText>
-          {COMO_SE_GANAN.map((fila) => (
-            <View key={fila.motivo} style={styles.escalon}>
-              <AtlasText variant="body" style={styles.falta}>
-                {fila.motivo}
-              </AtlasText>
-              <AtlasText variant="captionStrong" tone="brand">
-                {fila.puntos}
-              </AtlasText>
-            </View>
-          ))}
-          {filasDeMisPuntos(progress.experience).length > 0 ? (
-            <>
-              <Divider />
-              <AtlasText variant="bodyStrong">De dónde salen tus puntos</AtlasText>
-              {filasDeMisPuntos(progress.experience).map((fila) => (
-                <View key={fila.motivo} style={styles.escalon} testID={`mis-puntos-${fila.motivo}`}>
-                  <AtlasText variant="body" style={styles.falta}>
-                    {fila.motivo}
-                  </AtlasText>
-                  <AtlasText variant="caption" tone="secondary">
-                    {fila.detalle}
-                  </AtlasText>
-                  <AtlasText variant="bodyStrong" tone="brand">
-                    {formatoPuntos(fila.puntos)}
-                  </AtlasText>
-                </View>
-              ))}
-            </>
-          ) : null}
-          <Divider />
-          <AtlasText variant="bodyStrong">Los niveles</AtlasText>
-          {/* El nivel más alto ARRIBA y «Nuevo» abajo, como la línea de niveles de Progreso (Pablo, 2026-10-08). */}
-          {[...nivel.levelLadder].reverse().map((escalon) => (
-            <View key={idDeEscalon(escalon)} style={styles.escalon}>
-              <Icon name={escalon.reached ? 'check' : iconoDeEscalon(escalon)} size={18} tint={escalon.reached ? color.action.primary : color.text.tertiary} />
-              <AtlasText variant="body" tone={idDeEscalon(escalon) === idDeEscalon(level) ? 'brand' : escalon.reached ? 'primary' : 'secondary'} style={styles.falta}>
-                {escalon.label}
-              </AtlasText>
-              <AtlasText variant="caption" tone="secondary">
-                {`desde ${formatoPuntos(escalon.from)}`}
-              </AtlasText>
-            </View>
-          ))}
-          <Divider />
-          <AtlasText variant="bodyStrong">La racha</AtlasText>
-          <AtlasText variant="body" tone="secondary">
-            {`Cuotas seguidas pagadas a tiempo. Ahora llevas ${currentStreak}; tu mejor racha es ${bestStreak}.`}
-          </AtlasText>
-          <Divider />
-          <AtlasText variant="bodyStrong">Puntos no es lo mismo que calificación</AtlasText>
-          <AtlasText variant="body" tone="secondary">
-            Los puntos miden cuánto usas {marca.nombre}. Qué tan buen pagador eres lo dice tu calificación de 1 a 100, que sube pagando a
-            tiempo y es la que cuenta para tu crédito.
-          </AtlasText>
-      </InfoSheet>
     </View>
+  );
+
+  // La hoja de «Más info» va FUERA de la superficie pulsable: no se hunde con ella ni le roba el toque.
+  const hoja = (
+      <InfoSheet visible={info} titulo="Tus puntos y tu nivel" onClose={() => setInfo(false)} testID="nivel-info">
+        <AtlasText variant="bodyStrong">Cómo se ganan</AtlasText>
+        <AtlasText variant="body" tone="secondary">
+          Como en un programa de puntos, pero aquí pesa más cumplir que comprar. Tus puntos nunca bajan, y con ellos subes
+          de nivel y de tarjeta.
+        </AtlasText>
+        {COMO_SE_GANAN.map((fila) => (
+          <View key={fila.motivo} style={styles.escalon}>
+            <AtlasText variant="body" style={styles.falta}>
+              {fila.motivo}
+            </AtlasText>
+            <AtlasText variant="captionStrong" tone="brand">
+              {fila.puntos}
+            </AtlasText>
+          </View>
+        ))}
+        {filasDeMisPuntos(progress.experience).length > 0 ? (
+          <>
+            <Divider />
+            <AtlasText variant="bodyStrong">De dónde salen tus puntos</AtlasText>
+            {filasDeMisPuntos(progress.experience).map((fila) => (
+              <View key={fila.motivo} style={styles.escalon} testID={`mis-puntos-${fila.motivo}`}>
+                <AtlasText variant="body" style={styles.falta}>
+                  {fila.motivo}
+                </AtlasText>
+                <AtlasText variant="caption" tone="secondary">
+                  {fila.detalle}
+                </AtlasText>
+                <AtlasText variant="bodyStrong" tone="brand">
+                  {formatoPuntos(fila.puntos)}
+                </AtlasText>
+              </View>
+            ))}
+          </>
+        ) : null}
+        <Divider />
+        <AtlasText variant="bodyStrong">Los niveles</AtlasText>
+        {/* El nivel más alto ARRIBA y «Nuevo» abajo, como la línea de niveles de Progreso (Pablo, 2026-10-08). */}
+        {[...nivel.levelLadder].reverse().map((escalon) => (
+          <View key={idDeEscalon(escalon)} style={styles.escalon}>
+            <Icon name={escalon.reached ? 'check' : iconoDeEscalon(escalon)} size={18} tint={escalon.reached ? color.action.primary : color.text.tertiary} />
+            <AtlasText variant="body" tone={idDeEscalon(escalon) === idDeEscalon(level) ? 'brand' : escalon.reached ? 'primary' : 'secondary'} style={styles.falta}>
+              {escalon.label}
+            </AtlasText>
+            <AtlasText variant="caption" tone="secondary">
+              {`desde ${formatoPuntos(escalon.from)}`}
+            </AtlasText>
+          </View>
+        ))}
+        <Divider />
+        <AtlasText variant="bodyStrong">La racha</AtlasText>
+        <AtlasText variant="body" tone="secondary">
+          {`Cuotas seguidas pagadas a tiempo. Ahora llevas ${currentStreak}; tu mejor racha es ${bestStreak}.`}
+        </AtlasText>
+        <Divider />
+        <AtlasText variant="bodyStrong">Puntos no es lo mismo que calificación</AtlasText>
+        <AtlasText variant="body" tone="secondary">
+          Los puntos miden cuánto usas {marca.nombre}. Qué tan buen pagador eres lo dice tu calificación de 1 a 100, que sube pagando a
+          tiempo y es la que cuenta para tu crédito.
+        </AtlasText>
+    </InfoSheet>
+  );
+  if (!onVerLogros)
+    return (
+      <>
+        {cuerpo}
+        {hoja}
+      </>
+    );
+  return (
+    <>
+      <PressSurface onPress={onVerLogros} accessibilityRole="button" accessibilityLabel={etiqueta} accessibilityHint="Abre tus logros y niveles" testID="nivel-logros">
+        {cuerpo}
+      </PressSurface>
+      {hoja}
+    </>
   );
 }
 
@@ -175,15 +194,13 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: color.feedbackSoft.success,
+    backgroundColor: color.accent.soft,
     borderWidth: stroke.hairline,
-    borderColor: color.feedbackBorder.brand,
+    borderColor: color.accent.border,
   },
   sobretitulo: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   cifra: { flexDirection: 'row', alignItems: 'baseline', gap: space.sm },
   extremos: { flexDirection: 'row', justifyContent: 'space-between', gap: space.sm },
   falta: { flex: 1 },
-  acciones: { flexDirection: 'row', gap: space.sm, marginTop: space.xs },
-  accion: { flex: 1 },
   escalon: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
 });

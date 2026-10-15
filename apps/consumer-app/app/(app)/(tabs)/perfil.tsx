@@ -273,7 +273,8 @@ export default function Profile() {
           <CardHeader
             icon="estrella"
             title="Tu categoría de riesgo"
-            trailing={<Badge dot label={rating.gradeLabel} tone={rating.worstDaysPastDue > 0 ? 'warning' : 'success'} />}
+            // Sin atraso, el acento de marca y no el verde de «éxito»: es una categoría, no una operación que salió bien.
+            trailing={<Badge dot label={rating.gradeLabel} tone={rating.worstDaysPastDue > 0 ? 'warning' : 'info'} />}
           />
 
           <View style={styles.gradeRow}>

@@ -211,7 +211,7 @@ button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
   */
   [data-atlas="btn"]:not([aria-disabled="true"]):hover{transform:translateY(-2px)}
   [data-atlas="btn"][data-variant="primary"]:not([aria-disabled="true"]):hover{box-shadow:var(--sh-b-hover)}
-  [data-atlas="btn"][data-variant="secondary"]:not([aria-disabled="true"]):hover,
+  [data-atlas="btn"][data-variant="secondary"]:not([aria-disabled="true"]):hover{background-color:${alpha(color.accent.base, 0.16)} !important;box-shadow:var(--sh)}
   [data-atlas="btn"][data-variant="ghost"]:not([aria-disabled="true"]):hover{background-color:var(--ink-3) !important;box-shadow:var(--sh)}
 }
 [data-atlas="btn"]:not([aria-disabled="true"]):active{transform:translateY(-1px) scale(.97);transition-duration:.1s}
