@@ -251,8 +251,12 @@ export const motion = {
   /**
    * La celebración de un logro (`ui/celebracion-logro.tsx`): el otro movimiento que se sale del cuarto de segundo, y
    * también ocurre una vez por logro. Caída del trofeo, ráfaga de partículas y barrido de luz.
+   *
+   * `carga` es la ANTICIPACIÓN (2026-10-15): el halo se enciende y se recoge antes de que caiga la medalla. Sin ella el
+   * golpe llegaba sin aviso y se leía como un salto, no como un premio. `relevo` es el paso de un logro al siguiente
+   * dentro de la misma ceremonia: el anterior se va sin volver a apagar el fondo.
    */
-  celebracion: { caida: 560, rafaga: 2600, barrido: 800, rayos: 16000 },
+  celebracion: { carga: 300, caida: 560, rafaga: 2400, barrido: 800, rayos: 16000, relevo: 220 },
 } as const;
 
 /**

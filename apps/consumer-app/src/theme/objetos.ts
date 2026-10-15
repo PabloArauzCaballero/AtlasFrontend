@@ -17,6 +17,14 @@ export const objeto = {
     cara: { arriba: '#0C1B30', abajo: '#08111F' },
     rotuloApagado: { borde: '#16263D', centro: '#22364F' },
     tintaApagada: '#C9D6E8',
+    /**
+     * Las tintas del texto DENTRO de la carta. La carta es un objeto oscuro en los dos temas, así que no puede usar las
+     * tintas del tema: en claro salían casi negras sobre azul noche (el «6 de 12» del avance no se veía). Medidas contra
+     * `cara.arriba`: primaria 15:1, secundaria 9:1, terciaria 5,6:1.
+     */
+    tinta: { primaria: '#F3F6FB', secundaria: '#BAC6D8', terciaria: '#91A0B6' },
+    /** El carril de la barra de avance dentro de la carta. */
+    pista: '#1C2C45',
   },
   /** Las caras metalizadas de la medalla de riesgo y la tinta de su letra. */
   riesgo: {

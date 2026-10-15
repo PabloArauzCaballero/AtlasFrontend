@@ -16,10 +16,10 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import type { Badge } from '../api/endpoints/credit-line';
 import { avanceDeInsignia } from '../features/puntaje-explicado';
-import { color, radius, space, stroke, marca } from '../theme/tokens';
+import { alpha, color, radius, space, stroke, marca } from '../theme/tokens';
 import { AtlasText } from './primitives';
 import { Medalla } from './medalla';
-import { METAL, rangoDe } from './trofeo';
+import { acentoDe, METAL, rangoDe } from './trofeo';
 
 export { rangoDe };
 export type { Rango } from './trofeo';
@@ -48,8 +48,9 @@ export function Insignia({ insignia, onPress }: { insignia: Badge; onPress?: () 
       <AtlasText variant="captionStrong" tone={ganada ? 'primary' : 'secondary'} align="center" numberOfLines={2}>
         {cara.label}
       </AtlasText>
-      <View style={[styles.rango, ganada ? { borderColor: m.medio } : null]}>
-        <AtlasText variant="micro" tone={ganada ? 'primary' : 'tertiary'} align="center" style={ganada ? { color: m.luz } : undefined}>
+      {/* El rango en el color del metal que SE LEE en este tema: el brillo `luz` sobre blanco era invisible. */}
+      <View style={[styles.rango, ganada ? { borderColor: m.medio, backgroundColor: alpha(m.halo, 0.14) } : null]}>
+        <AtlasText variant="micro" tone={ganada ? 'primary' : 'tertiary'} align="center" style={ganada ? { color: acentoDe(rango) } : undefined}>
           {pie}
         </AtlasText>
       </View>

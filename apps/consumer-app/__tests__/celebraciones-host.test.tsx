@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { act, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import type { Badge, Progress } from "../src/api/endpoints/credit-line";
 import { CelebracionesHost, ESPERA_MS } from "../src/ui/celebraciones-host";
@@ -110,5 +110,21 @@ it("sin red no pasa nada: ni celebración ni error", async () => {
   mockObtener.mockRejectedValue(new Error("red"));
   await montar();
   await pasar(3000);
+  expect(screen.queryByTestId("celebracion-logro")).toBeNull();
+});
+
+it("varias seguidas son una ceremonia: el contador va sobre el total y «Saltar todas» la cierra entera", async () => {
+  await AsyncStorage.setItem("atlas.logros.vistos.v1:42", JSON.stringify({ insignias: [], nivel: "NUEVO" }));
+  mockObtener.mockResolvedValue(progreso(insignia("a", true), insignia("b", true), insignia("c", true)));
+  await montar();
+  await pasar(2000);
+  await pasar(ESPERA_MS + 100);
+  expect(screen.getByText("Siguiente (1 de 3)")).toBeTruthy();
+  await fireEvent.press(screen.getByTestId("celebracion-cerrar"));
+  await pasar(400);
+  // Antes decía «1 de 2»: contaba la cola que quedaba, no la ceremonia.
+  expect(screen.getByText("Siguiente (2 de 3)")).toBeTruthy();
+  await fireEvent.press(screen.getByTestId("celebracion-saltar-todas"));
+  await pasar(400);
   expect(screen.queryByTestId("celebracion-logro")).toBeNull();
 });

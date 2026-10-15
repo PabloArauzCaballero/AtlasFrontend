@@ -13,13 +13,21 @@
  * Pendiente: cuánto llevas y cuánto falta. Secreta sin ganar: sólo su pista.
  *
  * Es una capa en el layout, no un `Modal` (ver `celebracion-logro.tsx`). Con movimiento reducido todo aparece ya puesto.
+ *
+ * ## La carta es un objeto oscuro en los dos temas (2026-10-15)
+ *
+ * Pablo: «se ven pobres, la carta de la vitrina». En el tema claro el texto de dentro usaba las tintas del tema —casi
+ * negras— sobre el azul noche de la carta: el detalle apenas se leía y la cifra del avance («6» de «6 de 12») no se veía.
+ * Ahora todo lo que va dentro usa `objeto.carta.tinta`, medida contra la cara de la carta. Además: un filo interior de
+ * metal (el marco de una carta de coleccionista), el arte con rayos finos y grabado, y un pie con las casillas de la
+ * colección, que llena el hueco que quedaba bajo el texto y dice cuánto falta para cerrarla.
  */
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useEffect } from 'react';
 import { AccessibilityInfo, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useReducedMotion, useSharedValue, withDelay, withSpring, withTiming } from 'react-native-reanimated';
-import Svg, { Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NOMBRE_COLECCION, type Logro } from '../features/celebraciones';
 import { alpha, color, luz, motion, objeto, radius, space, spring, marca } from '../theme/tokens';
@@ -29,6 +37,8 @@ import { caraDe } from './insignia';
 import { Medalla } from './medalla';
 import { AtlasText, Escenario, Button } from './primitives';
 import { METAL } from './trofeo';
+
+const TINTA = objeto.carta.tinta;
 
 const ALTO_BOTONES = 132;
 
@@ -46,9 +56,9 @@ function ArteDeFondo({ ancho, alto, rango }: { ancho: number; alto: number; rang
   const m = METAL[rango];
   const cx = ancho / 2;
   const cy = alto / 2;
-  const cuñas = Array.from({ length: 14 }, (_, k) => {
-    const a0 = (k * (360 / 14) * Math.PI) / 180;
-    const a1 = ((k * (360 / 14) + 10) * Math.PI) / 180;
+  const cuñas = Array.from({ length: 20 }, (_, k) => {
+    const a0 = (k * (360 / 20) * Math.PI) / 180;
+    const a1 = ((k * (360 / 20) + 6) * Math.PI) / 180;
     const r = ancho * 1.1;
     return `M${cx} ${cy} L${cx + r * Math.cos(a0)} ${cy + r * Math.sin(a0)} L${cx + r * Math.cos(a1)} ${cy + r * Math.sin(a1)} Z`;
   });
@@ -63,7 +73,11 @@ function ArteDeFondo({ ancho, alto, rango }: { ancho: number; alto: number; rang
       </Defs>
       <Rect width={ancho} height={alto} fill={objeto.carta.arte} />
       {cuñas.map((d, k) => (
-        <Path key={k} d={d} fill={m.halo} opacity={0.1} />
+        <Path key={k} d={d} fill={m.halo} opacity={0.07} />
+      ))}
+      {/* El grabado: anillos finos alrededor de la medalla, como el fondo de un billete. */}
+      {Array.from({ length: 9 }, (_, k) => (
+        <Circle key={k} cx={cx} cy={cy} r={alto * (0.2 + k * 0.07)} fill="none" stroke={m.luz} strokeWidth={0.6} opacity={0.08} />
       ))}
       <Rect width={ancho} height={alto} fill={`url(#arte-${rango})`} />
     </Svg>
@@ -148,6 +162,8 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
           <LinearGradient colors={[m.luz, m.medio, m.sombra, m.medio]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.marco}>
             <View style={styles.cara}>
               <LinearGradient colors={[objeto.carta.cara.arriba, objeto.carta.cara.abajo]} style={StyleSheet.absoluteFill} />
+              {/* El filo interior de metal: lo que hace que se lea como carta y no como tarjeta. */}
+              <View style={[styles.filo, { borderColor: alpha(m.medio, ganada ? 0.55 : 0.25) }]} pointerEvents="none" />
 
               <View style={[styles.arte, { height: alturaArte }]}>
                 <ArteDeFondo ancho={ancho - 8} alto={alturaArte} rango={rango} />
@@ -158,13 +174,13 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
                     </AtlasText>
                   </View>
                   {coleccion ? (
-                    <AtlasText variant="micro" tone="secondary" numberOfLines={1} style={styles.coleccion}>
+                    <AtlasText variant="micro" numberOfLines={1} style={[styles.coleccion, { color: TINTA.terciaria }]}>
                       {coleccion.toUpperCase()}
                     </AtlasText>
                   ) : null}
                 </View>
                 <Animated.View style={estiloMedalla}>
-                  <Medalla codigo={`carta-${insignia.code}`} rango={rango} icono={cara.icon} ganado={ganada} avance={cara.oculta ? 0 : Math.min(1, insignia.current / Math.max(1, insignia.target))} lado={Math.round(alturaArte * 0.86)} />
+                  <Medalla codigo={`carta-${insignia.code}`} rango={rango} icono={cara.icon} ganado={ganada} avance={cara.oculta ? 0 : Math.min(1, insignia.current / Math.max(1, insignia.target))} lado={Math.round(alturaArte * 0.86)} sobreOscuro />
                 </Animated.View>
               </View>
 
@@ -176,7 +192,7 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
               </LinearGradient>
 
               <View style={styles.cuerpo}>
-                <AtlasText variant="caption" tone="secondary" align="center" numberOfLines={3}>
+                <AtlasText variant="body" align="center" numberOfLines={3} style={{ color: TINTA.secundaria }}>
                   {cara.detail}
                 </AtlasText>
 
@@ -189,26 +205,40 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
                       </AtlasText>
                     </View>
                     {fecha ? (
-                      <AtlasText variant="caption" tone="secondary" align="center">
+                      <AtlasText variant="caption" align="center" style={{ color: TINTA.terciaria }}>
                         {`El ${fecha}`}
                       </AtlasText>
                     ) : null}
                   </View>
                 ) : cara.oculta ? (
-                  <AtlasText variant="captionStrong" tone="tertiary" align="center">
+                  <AtlasText variant="captionStrong" align="center" style={{ color: TINTA.terciaria }}>
                     SECRETA · sigue usando {marca.nombre}
                   </AtlasText>
                 ) : (
                   <View style={styles.avance}>
                     <View style={styles.cifraAvance}>
-                      <CuentaArriba avance={avance} hasta={insignia.current} formato={miles} tamano="h2" />
-                      <AtlasText variant="caption" tone="secondary">{`de ${miles(insignia.target)}`}</AtlasText>
+                      <CuentaArriba avance={avance} hasta={insignia.current} formato={miles} tamano="h2" color={TINTA.primaria} />
+                      <AtlasText variant="caption" style={{ color: TINTA.secundaria }}>{`de ${miles(insignia.target)}`}</AtlasText>
                     </View>
                     <Barra valor={Math.round((insignia.current / Math.max(1, insignia.target)) * 100)} avance={avance} etiqueta={`Avance: ${insignia.current} de ${insignia.target}`} />
-                    <AtlasText variant="caption" tone="tertiary" align="center">{`Te faltan ${miles(faltan)}`}</AtlasText>
+                    <AtlasText variant="caption" align="center" style={{ color: TINTA.terciaria }}>{`Te faltan ${miles(faltan)}`}</AtlasText>
                   </View>
                 )}
               </View>
+
+              {/* El pie: la colección en casillas, la de esta carta resaltada por estar ganada o no. */}
+              {logro.coleccion && coleccion ? (
+                <View style={styles.pie}>
+                  <View style={styles.casillas}>
+                    {Array.from({ length: Math.min(logro.coleccion.total, 12) }, (_, i) => (
+                      <View key={i} style={[styles.casilla, i < logro.coleccion!.ganadas ? { backgroundColor: m.medio, borderColor: m.luz } : null]} />
+                    ))}
+                  </View>
+                  <AtlasText variant="micro" style={{ color: TINTA.terciaria }}>
+                    {`${logro.coleccion.ganadas} DE ${logro.coleccion.total} EN ${coleccion.toUpperCase()}`}
+                  </AtlasText>
+                </View>
+              ) : null}
 
               {/* El barrido holográfico: una banda de luz recortada por el marco de la carta. */}
               <Animated.View style={[styles.barrido, { height: alto * 1.5 }, estiloBarrido]} pointerEvents="none">
@@ -240,7 +270,11 @@ const styles = StyleSheet.create({
   pildora: { borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space.sm, paddingVertical: 2, backgroundColor: color.stage.chip },
   coleccion: { flexShrink: 1, letterSpacing: 1 },
   rotulo: { paddingVertical: space.sm, paddingHorizontal: space.md, alignItems: 'center', justifyContent: 'center', minHeight: 54 },
-  cuerpo: { flex: 1, gap: space.sm, padding: space.md, justifyContent: 'center' },
+  cuerpo: { flex: 1, gap: space.md, paddingHorizontal: space.lg, paddingVertical: space.md, justifyContent: 'center' },
+  filo: { position: 'absolute', top: 5, left: 5, right: 5, bottom: 5, borderWidth: 1, borderRadius: radius.xl - 3, zIndex: 2 },
+  pie: { alignItems: 'center', gap: space.xs, paddingBottom: space.md },
+  casillas: { flexDirection: 'row', gap: space.xs },
+  casilla: { width: 12, height: 4, borderRadius: radius.pill, borderWidth: 1, borderColor: objeto.carta.pista, backgroundColor: objeto.carta.pista },
   sello: { alignItems: 'center', gap: space.xs },
   selloMarca: { flexDirection: 'row', alignItems: 'center', gap: space.xs, borderWidth: 1, borderRadius: radius.pill, paddingHorizontal: space.md, paddingVertical: 3 },
   avance: { gap: space.xs },
