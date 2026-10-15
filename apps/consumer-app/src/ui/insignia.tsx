@@ -1,25 +1,29 @@
 /**
- * El logro: un TROFEO que se gana, en bronce, plata, oro, platino o diamante según lo difícil que es.
+ * Una insignia en la vitrina: una BALDOSA tocable con la medalla, su nombre y su rango.
  *
- * Pablo (2026-10-06): «los logros, más bonitos, más ultra HD, como trofeos, algo premium y sofisticado». Y el
- * 2026-10-07: «más variedad». Hay más de treinta, en siete colecciones, y algunos son SECRETOS: hasta ganarlos sólo
- * enseñan una pista. La curiosidad también engancha.
+ * Pablo (2026-10-06): «los logros, más bonitos, como trofeos, algo premium y sofisticado». Y el 2026-10-07: «más
+ * variedad». Hay más de treinta, en siete colecciones, y algunas son SECRETAS: hasta ganarlas sólo enseñan una pista.
+ *
+ * ## Que se note que se puede tocar (2026-10-15)
+ *
+ * Pablo: «la tarjeta tocable no se nota que es cliqueable». La medalla era un dibujo suelto sobre la tarjeta: nada decía
+ * que abría algo. Ahora cada insignia es una baldosa —superficie elevada y borde sutil, como un botón—, se HUNDE bajo el
+ * dedo con el muelle `press` de los tokens (`PressSurface`), y la vitrina pone encima la línea «Toca una insignia para ver
+ * su carta». Para el lector de pantalla es un botón con su pista.
  *
  * ## Qué muestra
  *
- * Ganada: medalla-escudo de metal con gemas por rango, el icono del logro en el centro y un halo del color del metal.
- * Pendiente: la misma silueta en grafito, con un anillo que se llena según el avance —se ve
- * cuánto falta, no un candado mudo—.
- *
- * El dibujo vive en `medalla.tsx`: la celebración al ganar y la carta usan el mismo, grande. Tocar CUALQUIERA abre su carta.
+ * Ganada: la medalla de esmalte con las marcas de su rango, y el rango escrito. Pendiente: la misma silueta en relieve
+ * apagado de marca, llenándose según el avance, y cuánto lleva. El dibujo vive en `medalla.tsx`.
  */
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import type { Badge } from '../api/endpoints/credit-line';
 import { avanceDeInsignia } from '../features/puntaje-explicado';
-import { alpha, color, radius, space, stroke, marca } from '../theme/tokens';
-import { AtlasText } from './primitives';
+import { color, marca, press, radius, space, stroke } from '../theme/tokens';
 import { Medalla } from './medalla';
-import { acentoDe, METAL, rangoDe } from './trofeo';
+import { PressSurface } from './motion';
+import { AtlasText } from './primitives';
+import { RANGO, rangoDe } from './trofeo';
 
 export { rangoDe };
 export type { Rango } from './trofeo';
@@ -36,55 +40,59 @@ export function Insignia({ insignia, onPress }: { insignia: Badge; onPress?: () 
   const cara = caraDe(insignia);
   const avance = insignia.target > 0 && !cara.oculta ? Math.min(1, insignia.current / insignia.target) : 0;
   const rango = rangoDe(insignia);
-  const m = METAL[rango];
+  const r = RANGO[rango];
   const ganada = insignia.earned;
-  const pie = ganada ? m.nombre.toUpperCase() : cara.oculta ? 'SECRETA' : avanceDeInsignia(insignia);
-
-  const trofeo = <Medalla codigo={insignia.code} rango={rango} icono={cara.icon} ganado={ganada} avance={avance} />;
+  const pie = ganada ? r.nombre.toUpperCase() : cara.oculta ? 'SECRETA' : avanceDeInsignia(insignia);
 
   const contenido = (
     <>
-      {trofeo}
-      <AtlasText variant="captionStrong" tone={ganada ? 'primary' : 'secondary'} align="center" numberOfLines={2}>
+      <Medalla codigo={insignia.code} rango={rango} icono={cara.icon} ganado={ganada} avance={avance} lado={72} />
+      <AtlasText variant="captionStrong" tone={ganada ? 'primary' : 'secondary'} align="center" numberOfLines={2} style={styles.nombre}>
         {cara.label}
       </AtlasText>
-      {/* El rango en el color del metal que SE LEE en este tema: el brillo `luz` sobre blanco era invisible. */}
-      <View style={[styles.rango, ganada ? { borderColor: m.medio, backgroundColor: alpha(m.halo, 0.14) } : null]}>
-        <AtlasText variant="micro" tone={ganada ? 'primary' : 'tertiary'} align="center" style={ganada ? { color: acentoDe(rango) } : undefined}>
-          {pie}
-        </AtlasText>
-      </View>
+      <AtlasText variant="micro" tone={ganada ? 'brand' : 'tertiary'} align="center" numberOfLines={1}>
+        {pie}
+      </AtlasText>
     </>
   );
 
-  const etiqueta = `Insignia de ${m.nombre.toLowerCase()}: ${cara.label}. ${ganada ? 'Ganado' : cara.oculta ? 'Secreto' : `Pendiente, ${avanceDeInsignia(insignia)}`}. ${cara.detail}`;
+  const etiqueta = `Insignia de rango ${r.nombre.toLowerCase()}: ${cara.label}. ${ganada ? 'Ganada' : cara.oculta ? 'Secreta' : `Pendiente, ${avanceDeInsignia(insignia)}`}. ${cara.detail}`;
 
-  if (onPress)
-    return (
-      <Pressable
-        style={styles.celda}
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={`${etiqueta} Toca para ver su carta.`}
-        testID={`insignia-${insignia.code}`}
-      >
-        {contenido}
-      </Pressable>
-    );
   return (
-    <View style={styles.celda} accessible accessibilityLabel={etiqueta} testID={`insignia-${insignia.code}`}>
-      {contenido}
+    <View style={styles.celda}>
+      {onPress ? (
+        <PressSurface
+          style={styles.baldosa}
+          onPress={onPress}
+          scaleTo={press.scale}
+          accessibilityRole="button"
+          accessibilityLabel={etiqueta}
+          accessibilityHint="Abre la carta de esta insignia"
+          testID={`insignia-${insignia.code}`}
+        >
+          {contenido}
+        </PressSurface>
+      ) : (
+        <View style={styles.baldosa} accessible accessibilityLabel={etiqueta} testID={`insignia-${insignia.code}`}>
+          {contenido}
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  celda: { width: '33.33%', alignItems: 'center', gap: space.xs, paddingVertical: space.md, paddingHorizontal: space.xs },
-  rango: {
-    paddingHorizontal: space.sm,
-    paddingVertical: 2,
-    borderRadius: radius.pill,
+  celda: { width: '33.33%', padding: space.xs },
+  baldosa: {
+    alignItems: 'center',
+    gap: space.xxs,
+    paddingTop: space.sm,
+    paddingBottom: space.md,
+    paddingHorizontal: space.xs,
+    borderRadius: radius.lg,
+    backgroundColor: color.surface.raised,
     borderWidth: stroke.hairline,
-    borderColor: color.border.hairline,
+    borderColor: color.border.subtle,
   },
+  nombre: { minHeight: 32, marginTop: space.xxs },
 });

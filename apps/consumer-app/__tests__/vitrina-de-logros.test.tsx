@@ -68,7 +68,7 @@ describe("VitrinaDeLogros", () => {
     expect(screen.queryByText("Pago de domingo")).toBeNull();
     expect(screen.getByText("Insignia secreta")).toBeTruthy();
     expect(screen.getByText("SECRETA")).toBeTruthy();
-    expect(screen.getByLabelText(/Secreto\. Ni el día de descanso te frena/)).toBeTruthy();
+    expect(screen.getByLabelText(/Secreta\. Ni el día de descanso te frena/)).toBeTruthy();
   });
 
   it("una secreta ya ganada enseña su nombre", async () => {
@@ -94,10 +94,27 @@ describe("VitrinaDeLogros", () => {
     expect(screen.getAllByRole("tab")).toHaveLength(3);
   });
 
-  it("cada rango tiene su metal: un diamante se anuncia como diamante", async () => {
+  it("el rango se escribe y se anuncia: un diamante se anuncia como diamante", async () => {
     await render(<VitrinaDeLogros progress={con([b("d", { rank: "diamante", earned: true, current: 10, label: "Imparable" })])} />);
     expect(screen.getByText("DIAMANTE")).toBeTruthy();
-    expect(screen.getByLabelText(/Insignia de diamante: Imparable\. Ganado/)).toBeTruthy();
+    expect(screen.getByLabelText(/Insignia de rango diamante: Imparable\. Ganada/)).toBeTruthy();
+  });
+});
+
+describe("lo tocable se nota (2026-10-15)", () => {
+  it("cada insignia es un botón con su pista, y la rejilla dice que se tocan", async () => {
+    await render(<VitrinaDeLogros progress={con([b("a", { earned: true, current: 10 }), b("c", { current: 3 })])} />);
+    expect(screen.getByText("Toca una insignia para ver su carta.")).toBeTruthy();
+    const boton = screen.getByTestId("insignia-a");
+    expect(boton.props.accessibilityRole).toBe("button");
+    expect(boton.props.accessibilityHint).toBe("Abre la carta de esta insignia");
+  });
+
+  it("«Lo más cercano» también se toca: es un botón que abre su carta", async () => {
+    await render(<VitrinaDeLogros progress={con([b("c", { current: 3, target: 10 })])} />);
+    const tarjeta = screen.getByTestId("logro-mas-cercano");
+    expect(tarjeta.props.accessibilityRole).toBe("button");
+    expect(tarjeta.props.accessibilityHint).toBe("Abre la carta de esta insignia");
   });
 });
 

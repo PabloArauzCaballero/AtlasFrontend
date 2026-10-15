@@ -8,6 +8,13 @@
  *
  * Tocar CUALQUIER insignia abre su carta (`carta-de-insignia.tsx`); desde la de una ganada se puede revivir su celebración.
  * Van TODAS, paginadas por colección: treinta y cuatro de golpe eran demasiadas y Pablo pidió paginar, no esconder (2026-10-07).
+ *
+ * ## Lo tocable se nota (2026-10-15)
+ *
+ * Pablo: «la tarjeta tocable no se nota que es cliqueable». Lenguaje común de la app: lo que se toca se HUNDE con el muelle
+ * `press` (`PressSurface`), lleva un indicio visible y es un botón con pista para el lector de pantalla. Aquí: «Lo más
+ * cercano» es una tarjeta con chevron que abre la carta de esa insignia; la rejilla lleva encima «Toca una insignia para
+ * ver su carta» y cada insignia es una baldosa (`insignia.tsx`).
  */
 import { useRef, useState } from 'react';
 import { type LayoutChangeEvent, Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
@@ -16,8 +23,10 @@ import type { Badge, Progress } from '../api/endpoints/credit-line';
 import { logroDeInsignia, NOMBRE_COLECCION } from '../features/celebraciones';
 import { abrirCartaDeInsignia } from '../features/celebraciones-bus';
 import { avanceDeInsignia } from '../features/puntaje-explicado';
-import { color, space } from '../theme/tokens';
+import { color, radius, space, stroke } from '../theme/tokens';
+import { Icon } from './icons';
 import { Insignia } from './insignia';
+import { PressSurface } from './motion';
 import { AtlasText, Card, SectionHeader } from './primitives';
 import { BarraViva } from './cuenta-arriba';
 
@@ -64,18 +73,31 @@ export function VitrinaDeLogros({ progress }: { progress: Progress }) {
       <SectionHeader title="Tus insignias" detail={`${ganadas} de ${badges.length} ganadas · de bronce a diamante`} />
       <BarraViva value={badges.length > 0 ? Math.round((ganadas / badges.length) * 100) : 0} label={`${ganadas} de ${badges.length} insignias ganadas`} />
       {cercano ? (
-        <Card tone="brand" testID="logro-mas-cercano">
-          <AtlasText variant="overline" tone="brand">
-            LO MÁS CERCANO
-          </AtlasText>
-          <AtlasText variant="bodyStrong">{cercano.label}</AtlasText>
-          <AtlasText variant="caption" tone="secondary">{`${cercano.detail} Llevas ${avanceDeInsignia(cercano)}.`}</AtlasText>
-          <BarraViva value={Math.round((cercano.current / cercano.target) * 100)} label={`Avance de ${cercano.label}`} />
-        </Card>
+        <PressSurface
+          style={styles.cercano}
+          onPress={() => abrirCartaDeInsignia(logroDeInsignia(progress, cercano))}
+          accessibilityRole="button"
+          accessibilityLabel={`Lo más cercano: ${cercano.label}. Llevas ${avanceDeInsignia(cercano)}.`}
+          accessibilityHint="Abre la carta de esta insignia"
+          testID="logro-mas-cercano"
+        >
+          <View style={styles.cercanoTexto}>
+            <AtlasText variant="overline" tone="brand">
+              LO MÁS CERCANO
+            </AtlasText>
+            <AtlasText variant="bodyStrong">{cercano.label}</AtlasText>
+            <AtlasText variant="caption" tone="secondary">{`${cercano.detail} Llevas ${avanceDeInsignia(cercano)}.`}</AtlasText>
+            <BarraViva value={Math.round((cercano.current / cercano.target) * 100)} label={`Avance de ${cercano.label}`} />
+          </View>
+          <Icon name="adelante" size={18} tint={color.text.tertiary} />
+        </PressSurface>
       ) : null}
 
       {/* Una colección por página: treinta y cuatro insignias de golpe eran una pared, no una vitrina. */}
       <Card style={styles.caja} testID="vitrina-paginada">
+        <AtlasText variant="caption" tone="tertiary" testID="vitrina-guia">
+          Toca una insignia para ver su carta.
+        </AtlasText>
         {actual && actual.clave !== 'todas' ? (
           <View style={styles.cabecera}>
             <AtlasText variant="bodyStrong">{actual.nombre}</AtlasText>
@@ -129,6 +151,17 @@ const styles = StyleSheet.create({
   visor: { overflow: 'hidden' },
   rejilla: { justifyContent: 'flex-start' },
   celdas: { flexDirection: 'row', flexWrap: 'wrap' },
+  cercano: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    padding: space.base,
+    borderRadius: radius.xxl,
+    backgroundColor: color.surface.tinted.brand,
+    borderWidth: stroke.hairline,
+    borderColor: color.border.subtle,
+  },
+  cercanoTexto: { flex: 1, gap: space.xs },
   puntos: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: space.xs, paddingTop: space.xs },
   dot: { height: 6, borderRadius: 3, backgroundColor: color.action.primary },
 });
