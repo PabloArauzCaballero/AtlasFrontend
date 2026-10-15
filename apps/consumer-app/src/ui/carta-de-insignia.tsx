@@ -145,7 +145,7 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
   return (
     <Escenario>
     <View
-      style={StyleSheet.absoluteFill}
+      style={[StyleSheet.absoluteFill, styles.escenario]}
       accessibilityViewIsModal
       importantForAccessibility="yes"
       testID="carta-de-insignia"
@@ -260,6 +260,8 @@ export function CartaDeInsignia({ logro, onCerrar, onRevivir }: { logro: Extract
 }
 
 const styles = StyleSheet.create({
+  /** La capa es la pantalla entera y recorta lo que la decora: la sombra de la carta no puede ensanchar la página web. */
+  escenario: { overflow: 'hidden' },
   fondo: { backgroundColor: color.stage.scrim },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.md, paddingHorizontal: space.lg },
   sombra: { shadowOpacity: 0.5, shadowRadius: 28, shadowOffset: { width: 0, height: 10 }, elevation: 18 },

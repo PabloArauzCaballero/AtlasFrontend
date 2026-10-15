@@ -6,6 +6,9 @@
  *     el último;
  *  2. «Saltar todas» cierra la ceremonia entera;
  *  3. la vitrina abre la carta de una insignia ganada y la de una pendiente;
+ *  4. en NINGÚN momento la página se ensancha: ni en el golpe (rayos y chispas en vuelo), ni en reposo, ni durante la
+ *     secuencia de arranque. Una capa decorativa que sobresalía ensanchaba el documento y el navegador lo desplazaba de
+ *     lado (2026-10-15: la ceremonia salía 31-41 px corrida a la izquierda; el arranque llevaba el ancho a 576 px);
  * y deja capturas de cada momento, en claro y en oscuro, para mirarlas.
  *
  * Uso:
@@ -86,9 +89,29 @@ async function recorrer(tema) {
   const errores = [];
   page.on('pageerror', (e) => errores.push(String(e.message).slice(0, 200)));
   let n = 0;
+  /**
+   * Que el documento no sea más ancho que la ventana ni esté desplazado de lado. No corta el recorrido: anota el momento
+   * y lo que sobresale, y el paso final falla con la lista entera (así un desborde en el arranque no esconde los demás).
+   */
+  const desbordes = [];
+  const sinDesborde = async (momento) => {
+    const m = await page.evaluate(() => {
+      const se = document.scrollingElement;
+      const W = window.innerWidth;
+      const fuera = [...document.querySelectorAll('body *')]
+        .map((e) => ({ e, r: e.getBoundingClientRect() }))
+        .filter(({ r }) => r.width > 0 && r.right > W + 1)
+        .slice(-3)
+        .map(({ e, r }) => `${e.tagName.toLowerCase()}${e.getAttribute('data-testid') ? `#${e.getAttribute('data-testid')}` : ''} ${Math.round(r.width)}px→${Math.round(r.right)}`);
+      return { ancho: se.scrollWidth, ventana: W, desplazado: se.scrollLeft, fuera };
+    });
+    if (m.ancho > m.ventana + 1 || m.desplazado !== 0)
+      desbordes.push(`${momento}: mide ${m.ancho} px en ${m.ventana}, desplazada ${m.desplazado} px (${m.fuera.join(', ')})`);
+  };
   const foto = async (nombre) => {
     n += 1;
     await page.screenshot({ path: join(SALIDA, `${tema}-${String(n).padStart(2, '0')}-${nombre}.png`) });
+    await sinDesborde(nombre);
   };
   async function paso(nombre, fn) {
     let estado = 'ok';
@@ -107,7 +130,10 @@ async function recorrer(tema) {
 
   await paso('entrar', async () => {
     await page.goto(`http://127.0.0.1:${PUERTO_WEB}/ingresar`, { waitUntil: 'load' });
-    await page.waitForTimeout(1500);
+    // A mitad de la secuencia de arranque, que es cuando su resplandor es más grande.
+    await page.waitForTimeout(700);
+    await sinDesborde('arranque');
+    await page.waitForTimeout(800);
     await page.getByRole('textbox', { name: 'Correo o teléfono' }).first().fill('pablo@example.com');
     await page.getByRole('textbox', { name: 'PIN' }).first().fill(PIN);
     await page.keyboard.press('Enter');
@@ -164,6 +190,11 @@ async function recorrer(tema) {
     await page.waitForTimeout(2200);
     await foto('carta-pendiente');
     await page.getByTestId('carta-cerrar').click();
+  });
+
+  await paso('sin desborde horizontal en ningún momento', async () => {
+    afirmar(desbordes.length === 0, desbordes.join(' | '));
+    return `${n + 1} momentos medidos`;
   });
 
   await paso('sin errores de JavaScript en la página', async () => {

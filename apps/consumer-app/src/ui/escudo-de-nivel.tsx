@@ -93,21 +93,25 @@ export function EscudoDeNivel({
         </G>
         {children}
       </Svg>
-      <View style={[styles.icono, { top: 12 * k }]} pointerEvents="none">
-        <Icon name={icono} size={18 * k} tint={m.luz} />
+      {/*
+        El bloque termina en y≈70 de 96. Antes acababa en y≈80, donde el interior ya se cierra hacia la punta, y «DE 12» se
+        montaba sobre el filo del escudo a tamaño de celebración (2026-10-15).
+      */}
+      <View style={[styles.icono, { top: 14 * k }]} pointerEvents="none">
+        <Icon name={icono} size={15 * k} tint={m.luz} />
       </View>
-      <View style={[styles.numero, { top: 30 * k }]} pointerEvents="none">
-        <AtlasText variant="micro" tone="secondary" style={{ color: m.luz, fontSize: 8 * k, lineHeight: 10 * k }}>
+      <View style={[styles.numero, { top: 29 * k }]} pointerEvents="none">
+        <AtlasText variant="micro" tone="secondary" style={{ color: m.luz, fontSize: 7 * k, lineHeight: 8 * k }}>
           NIVEL
         </AtlasText>
         <AtlasText
           variant="display"
           accessibilityElementsHidden
-          style={{ color: luz.blanco, ...fuente('displayBlack'), fontSize: 28 * k, lineHeight: 30 * k, includeFontPadding: false }}
+          style={{ color: luz.blanco, ...fuente('displayBlack'), fontSize: 25 * k, lineHeight: 26 * k, includeFontPadding: false }}
         >
           {numero}
         </AtlasText>
-        <AtlasText variant="micro" tone="secondary" style={{ color: m.medio, fontSize: 8 * k, lineHeight: 10 * k }}>
+        <AtlasText variant="micro" tone="secondary" style={{ color: m.medio, fontSize: 7 * k, lineHeight: 8 * k }}>
           {`DE ${de}`}
         </AtlasText>
       </View>

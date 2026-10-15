@@ -357,7 +357,7 @@ export function CelebracionDeLogro({
   return (
     <Escenario>
       <View
-        style={StyleSheet.absoluteFill}
+        style={[StyleSheet.absoluteFill, styles.escenario]}
         accessibilityViewIsModal
         importantForAccessibility="yes"
         testID="celebracion-logro"
@@ -366,7 +366,7 @@ export function CelebracionDeLogro({
         <Animated.View style={[StyleSheet.absoluteFill, styles.fondo, estiloFondo]} pointerEvents="none" />
 
         <View style={[styles.centro, { paddingTop: insets.top + space.lg, paddingBottom: insets.bottom + space.lg }]} pointerEvents="box-none">
-          <View style={[styles.escena, { width: lado * 2, height: lado * 1.3 }]} pointerEvents="none">
+          <View style={[styles.escena, { width: Math.min(lado * 2, width), height: lado * 1.3 }]} pointerEvents="none">
             {CON_RAYOS.has(rango) && animar ? (
               <Animated.View style={[styles.capa, estiloRayos]}>
                 <Rayos rango={rango} lado={Math.min(width * 1.6, 520)} />
@@ -471,6 +471,15 @@ export function CelebracionDeLogro({
 }
 
 const styles = StyleSheet.create({
+  /*
+    El escenario es la pantalla entera y RECORTA lo que la decora. Los rayos (hasta 520 px), el halo y las chispas en vuelo
+    son más grandes que la ventana a propósito; en la web, lo que sobresale de una capa absoluta ensancha el documento
+    (medido a 390 px: `scrollWidth` 1.129 en el golpe y 421 en reposo) y el navegador lo desplazaba 31-41 px a la
+    izquierda: botones y panel pegados al borde y una franja vacía a la derecha. Además, la caja de la escena medía dos
+    medallas de ancho (452 px) y ahora no pasa de la ventana. En iOS y Android no se veía porque una capa absoluta sin
+    `ScrollView` no desplaza nada y Yoga centra lo que desborda por igual a los dos lados; el recorte también es correcto ahí.
+  */
+  escenario: { overflow: 'hidden' },
   fondo: { backgroundColor: color.stage.bg },
   centro: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: space.lg },
   escena: { alignItems: 'center', justifyContent: 'center' },
