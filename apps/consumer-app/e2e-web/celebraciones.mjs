@@ -5,7 +5,7 @@
  *  1. tres logros nuevos (bronce, oro y una subida de nivel) salen como UNA ceremonia: «1 de 3», «2 de 3», y el nivel
  *     el último;
  *  2. «Saltar todas» cierra la ceremonia entera;
- *  3. la vitrina abre la carta de una insignia ganada y la de una pendiente;
+ *  3. la vitrina dice que sus insignias se tocan, cada una es un botón, y abre la carta de una ganada y de una pendiente;
  *  4. en NINGÚN momento la página se ensancha: ni en el golpe (rayos y chispas en vuelo), ni en reposo, ni durante la
  *     secuencia de arranque. Una capa decorativa que sobresalía ensanchaba el documento y el navegador lo desplazaba de
  *     lado (2026-10-15: la ceremonia salía 31-41 px corrida a la izquierda; el arranque llevaba el ancho a 576 px);
@@ -14,6 +14,7 @@
  * Uso:
  *   EXPO_PUBLIC_ATLAS_API_URL=http://127.0.0.1:8799/api/v1 npx expo export --platform web --output-dir /tmp/web-celebr
  *   PLAYWRIGHT_DIR=<carpeta con playwright> node e2e-web/celebraciones.mjs --dist /tmp/web-celebr [--salida carpeta] [--temas claro,oscuro]
+ *     [--web 8767] [--api 8799]
  *
  * Sirve el `dist` él mismo (como SPA) y levanta la API simulada. `--canal chrome` usa el Chrome instalado si Playwright
  * no tiene navegadores propios.
@@ -30,6 +31,9 @@ for (let i = 2; i < process.argv.length; i += 2) args.set(process.argv[i].replac
 const DIST = args.get('dist') ?? '/tmp/web-celebr';
 const SALIDA = args.get('salida') ?? 'e2e-web/salida-celebraciones';
 const PUERTO_WEB = Number(args.get('web') ?? 8767);
+// El de la API tiene que ser el mismo con el que se exportó (`EXPO_PUBLIC_ATLAS_API_URL`). Otro que el de por defecto
+// deja correr dos recorridos a la vez en la misma máquina sin pisarse.
+const PUERTO_API = Number(args.get('api') ?? 8799);
 const TEMAS = (args.get('temas') ?? 'claro,oscuro').split(',');
 const CANAL = args.get('canal');
 // `--antes 1`: la versión anterior, sin «Saltar todas»; sólo para sacar las capturas de comparación.
@@ -77,7 +81,7 @@ const afirmar = (condicion, mensaje) => {
 };
 
 async function recorrer(tema) {
-  const api = crearApiSimulada({ pinInicial: PIN });
+  const api = crearApiSimulada({ puerto: PUERTO_API, pinInicial: PIN });
   await api.escuchar();
   const browser = await chromium.launch(CANAL ? { channel: CANAL } : {});
   const contexto = await browser.newContext({ locale: 'es-BO', viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
@@ -162,9 +166,9 @@ async function recorrer(tema) {
     await boton(/Siguiente/).click();
     await page.waitForTimeout(3200);
     await foto('ceremonia-3-nivel');
-    afirmar((await page.getByText('¡SUBISTE DE NIVEL!').count()) > 0, 'el nivel no cierra la ceremonia');
+    afirmar((await page.getByText('NUEVO NIVEL').count()) > 0, 'el nivel no cierra la ceremonia');
     afirmar(ANTES || (await boton(/Saltar todas/).count()) === 0, '«Saltar todas» sigue en la última');
-    await boton(/Genial/).click();
+    await boton(/Continuar/).click();
     await page.waitForTimeout(800);
     afirmar((await escena.count()) === 0, 'la escena no se cerró');
   });
@@ -176,6 +180,9 @@ async function recorrer(tema) {
     await page.getByTestId('vitrina-paginada').scrollIntoViewIfNeeded();
     await page.waitForTimeout(400);
     await foto('vitrina');
+    // Lo tocable se nota: la línea guía encima de la rejilla y cada insignia es un botón.
+    afirmar((await page.getByText('Toca una insignia para ver su carta.').count()) > 0, 'la rejilla no dice que las insignias se tocan');
+    afirmar((await page.getByRole('button', { name: /Insignia de rango bronce: Primer pago/ }).count()) > 0, 'la insignia no es un botón');
     await page.getByTestId('insignia-primer_pago').click();
     await page.getByTestId('carta-de-insignia').waitFor({ timeout: 10000 });
     await page.waitForTimeout(2200);

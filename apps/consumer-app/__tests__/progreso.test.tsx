@@ -266,7 +266,7 @@ describe("experiencia e insignias", () => {
     await render(envolver(<Progreso />));
     await abrir("Logros");
     expect(screen.getByText(/2 de 4 ganadas/)).toBeTruthy();
-    expect(screen.getByLabelText(/Insignia de bronce: Primera compra\. Ganado/)).toBeTruthy();
+    expect(screen.getByLabelText(/Insignia de rango bronce: Primera compra\. Ganada/)).toBeTruthy();
     expect(screen.getByLabelText(/Racha de 6\. Pendiente, 3 de 6/)).toBeTruthy();
     expect(screen.getByLabelText(/1\.000 Bs a tiempo\. Pendiente, 350 de 1\.000/)).toBeTruthy();
   });

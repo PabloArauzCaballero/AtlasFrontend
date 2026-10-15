@@ -13,10 +13,10 @@ describe("Insignia", () => {
     await render(<Insignia insignia={ganada} />);
     expect(
       screen.getByLabelText(
-        /Insignia de bronce: Primera compra\. Ganado\. Hiciste tu primera compra/,
+        /Insignia de rango bronce: Primera compra\. Ganada\. Hiciste tu primera compra/,
       ),
     ).toBeTruthy();
-    // El rango del trofeo, en su placa.
+    // El rango, escrito: ya no es un color.
     expect(screen.getByText("BRONCE")).toBeTruthy();
   });
 

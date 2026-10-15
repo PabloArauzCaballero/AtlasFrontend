@@ -2,8 +2,9 @@ import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import type { ReactElement } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import type { Logro } from "../src/features/celebraciones";
-import { CelebracionDeLogro, ARENGA, CASCADA, PARTICULAS, azar, trazoDe } from "../src/ui/celebracion-logro";
-import { acentoDe, METAL } from "../src/ui/trofeo";
+import * as Haptics from "expo-haptics";
+import { CelebracionDeLogro, ARENGA } from "../src/ui/celebracion-logro";
+import { RANGO } from "../src/ui/trofeo";
 
 /**
  * La escena de un logro: dice qué se ganó, de qué colección y lo siguiente más cercano; pasa de uno a otro en una cola;
@@ -51,7 +52,7 @@ const insignia = (extra: Partial<Extract<Logro, { tipo: "insignia" }>> = {}): Lo
 describe("CelebracionDeLogro · insignia", () => {
   it("anuncia la insignia con su rango, su nombre, su colección y lo próximo", async () => {
     await render(envolver(<CelebracionDeLogro logro={insignia()} posicion={{ actual: 1, total: 1 }} onCerrar={jest.fn()} />));
-    expect(screen.getByText("¡INSIGNIA DE ORO!")).toBeTruthy();
+    expect(screen.getByText("INSIGNIA · ORO")).toBeTruthy();
     expect(screen.getByText("Racha de 6")).toBeTruthy();
     expect(screen.getByText(ARENGA.oro)).toBeTruthy();
     expect(screen.getByText("Seis cuotas seguidas a tiempo.")).toBeTruthy();
@@ -97,7 +98,7 @@ describe("CelebracionDeLogro · insignia", () => {
     expect(screen.getByText("Siguiente (1 de 3)")).toBeTruthy();
     expect(screen.queryByText(/te esperan en tu vitrina/)).toBeNull();
     await rerender(envolver(<CelebracionDeLogro logro={insignia()} posicion={{ actual: 3, total: 3 }} masSinMostrar={2} onCerrar={jest.fn()} />));
-    expect(screen.getByText("¡Genial!")).toBeTruthy();
+    expect(screen.getByText("Continuar")).toBeTruthy();
     expect(screen.getByText("Y 2 logros más te esperan en tu vitrina.")).toBeTruthy();
   });
 
@@ -123,47 +124,38 @@ describe("CelebracionDeLogro · nivel", () => {
 
   it("celebra el cambio de nivel con su escudo y lo que falta para el siguiente", async () => {
     await render(envolver(<CelebracionDeLogro logro={nivel} posicion={{ actual: 1, total: 1 }} onCerrar={jest.fn()} />));
-    expect(screen.getByText("¡SUBISTE DE NIVEL!")).toBeTruthy();
+    expect(screen.getByText("NUEVO NIVEL")).toBeTruthy();
     expect(screen.getByText("Explorador")).toBeTruthy();
     expect(screen.getByText(/Nivel 2 de 12/)).toBeTruthy();
     expect(screen.getByText(/Lo próximo: «En crecimiento» · te faltan 150 puntos/)).toBeTruthy();
   });
 });
 
-describe("la fiesta crece con el rango", () => {
-  it("más partículas cuanto más difícil", () => {
-    const n = (["bronce", "plata", "oro", "platino", "diamante"] as const).map((r) => PARTICULAS[r]);
-    expect(n).toEqual([...n].sort((a, b) => a - b));
-    expect(new Set(n).size).toBe(5);
+describe("ceremonia, no fiesta (2026-10-15)", () => {
+  it("el rango se lee por escrito y por sus marcas, de una a cinco, no por un color", () => {
+    const marcas = (["bronce", "plata", "oro", "platino", "diamante"] as const).map((r) => RANGO[r].marcas);
+    expect(marcas).toEqual([1, 2, 3, 4, 5]);
   });
 
-  it("más golpecitos cuanto más difícil, y ninguno en los rangos de entrada", () => {
-    const n = (["bronce", "plata", "oro", "platino", "diamante"] as const).map((r) => CASCADA[r]);
-    expect(n).toEqual([...n].sort((a, b) => a - b));
-    expect(CASCADA.bronce).toBe(0);
+  it("las frases son sobrias: ninguna lleva signos de exclamación", () => {
+    for (const frase of Object.values(ARENGA)) expect(frase).not.toMatch(/[¡!]/);
   });
 
-  it("el color del rango como texto no es el brillo del metal en el tema claro (no se leía sobre blanco)", () => {
-    for (const r of ["bronce", "plata", "oro", "platino", "diamante"] as const) expect(acentoDe(r)).not.toBe(METAL[r].luz);
-  });
-
-  it("la ráfaga es determinista: la misma partícula sale siempre igual", () => {
-    expect(trazoDe(7, "oro", 1)).toEqual(trazoDe(7, "oro", 1));
-    expect(azar(3, 1)).toBe(azar(3, 1));
-  });
-
-  it("las partículas del diamante usan colores de prisma y las del bronce no", () => {
-    const colores = (r: "bronce" | "diamante") => new Set(Array.from({ length: 64 }, (_, i) => trazoDe(i, r, 1).color));
-    expect(colores("diamante").size).toBeGreaterThan(colores("bronce").size);
-  });
-
-  it("cada partícula arranca dentro de su ventana y gira a su manera", () => {
-    for (let i = 0; i < 64; i += 1) {
-      const t = trazoDe(i, "diamante", 1);
-      expect(t.retardo).toBeGreaterThanOrEqual(0);
-      expect(t.retardo).toBeLessThan(0.13);
-      expect(t.velocidad).toBeGreaterThan(100);
-    }
+  it("un único aviso háptico de éxito al asentarse; ni golpes pesados ni cascada", async () => {
+    jest.useFakeTimers();
+    const impacto = Haptics.impactAsync as jest.Mock;
+    const aviso = Haptics.notificationAsync as jest.Mock;
+    impacto.mockClear();
+    aviso.mockClear();
+    const diamante: Logro = { ...insignia(), rango: "diamante" } as Logro;
+    const { unmount } = await render(envolver(<CelebracionDeLogro logro={diamante} posicion={{ actual: 1, total: 1 }} onCerrar={jest.fn()} />));
+    await act(async () => {
+      jest.advanceTimersByTime(4000);
+    });
+    expect(aviso).toHaveBeenCalledTimes(1);
+    expect(impacto).not.toHaveBeenCalled();
+    await unmount();
+    jest.useRealTimers();
   });
 });
 
