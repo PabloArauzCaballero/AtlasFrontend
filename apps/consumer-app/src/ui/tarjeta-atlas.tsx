@@ -42,6 +42,7 @@ import { acabadoDeTarjeta } from '../theme/tarjeta';
 import { alpha, luz, marca, motion, radius, space, spring } from '../theme/tokens';
 import { AtlasMark } from './brand';
 import { Icon } from './icons';
+import { IndicioTocable } from './indicio-tocable';
 import { PressSurface, suavidad } from './motion';
 import { AtlasText } from './primitives';
 import { ReflejoEspecular, SinContacto } from './tarjeta-atlas-piezas';
@@ -86,6 +87,8 @@ export function TarjetaAtlas({ tier, tamano = 'grande', bloqueada = false, titul
       testID={testID ? `${testID}-boton` : undefined}
     >
       {tarjeta}
+      {/* Una tarjeta de banco no parece un botón: el pie dice que abre algo (Pablo, 2026-10-15). */}
+      <IndicioTocable texto="Ver tus tarjetas y beneficios" separador={false} style={styles.indicio} testID={testID ? `${testID}-indicio` : undefined} />
     </PressSurface>
   );
 }
@@ -298,6 +301,8 @@ function TarjetaMini({
 }
 
 const styles = StyleSheet.create({
+  // El pie bajo la tarjeta: alineado con su canto y con aire antes de la tarjeta siguiente.
+  indicio: { paddingHorizontal: space.lg, paddingBottom: space.sm },
   // La sombra y la inclinación necesitan aire: la tarjeta gira unos grados y su sombra se extiende; sin margen chocaría
   // con lo de arriba, lo de abajo y los bordes de la pantalla.
   aire: { paddingVertical: space.lg, paddingHorizontal: space.sm },

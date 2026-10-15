@@ -11,6 +11,7 @@ import type { Progress } from '../api/endpoints/credit-line';
 import { calificacionDe, fraseDeCalificacion, tramoDeCalificacion } from '../features/calificacion';
 import { space } from '../theme/tokens';
 import { BotonInfo, InfoSheet } from './help-sheet';
+import { IndicioTocable } from './indicio-tocable';
 import { PressSurface } from './motion';
 import { AtlasText, Badge, Card } from './primitives';
 import { EncabezadoTarjeta } from './encabezado-tarjeta';
@@ -45,7 +46,10 @@ export function CalificacionCard({ progress, onPress, masInfo = false }: { progr
       accessibilityLabel={`Tu calificación: ${valor} de 100. ${frase} Toca para ver de dónde sale.`}
       testID="calificacion-card"
     >
-      <Card>{cuerpo}</Card>
+      <Card>
+        {cuerpo}
+        <IndicioTocable texto="Ver de dónde sale" testID="calificacion-indicio" />
+      </Card>
     </PressSurface>
   );
 }

@@ -398,7 +398,7 @@ export function Button({
             <Icon
               name={icono as IconName}
               size={18}
-              tint={variant === 'primary' ? color.text.onBrand : variant === 'destructive' ? color.feedback.danger : color.text.primary}
+              tint={variant === 'primary' ? color.text.onBrand : variant === 'destructive' ? color.feedback.danger : variant === 'secondary' ? color.accent.strong : color.text.primary}
             />
           ) : (
             icono
@@ -406,7 +406,7 @@ export function Button({
           <AtlasText
             variant="bodyStrong"
             tone={variant === 'primary' ? 'onBrand' : variant === 'destructive' ? 'danger' : 'primary'}
-            style={isBlocked ? styles.buttonLabelDisabled : undefined}
+            style={isBlocked ? styles.buttonLabelDisabled : variant === 'secondary' ? styles.buttonLabelSecondary : undefined}
           >
             {label}
           </AtlasText>
@@ -1399,7 +1399,13 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
   },
   buttonInner: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  buttonSecondary: { backgroundColor: color.action.secondary, borderWidth: 1, borderColor: color.border.subtle },
+  /*
+    El secundario es TONAL de marca (Pablo, 2026-10-15): el gris neutro de antes se leía como un botón deshabilitado
+    («Mis logros», «¿Cómo se calcula?»). Lavado del acento, filo del acento y rótulo en el acento fuerte, como el
+    botón «tinted» de iOS: se ve que se toca y no compite con el principal, que sigue siendo el único sólido.
+  */
+  buttonSecondary: { backgroundColor: color.accent.soft, borderWidth: 1, borderColor: color.accent.border },
+  buttonLabelSecondary: { color: color.accent.strong },
   buttonGhost: { backgroundColor: 'transparent' },
   buttonDestructive: { backgroundColor: 'transparent', borderWidth: 1, borderColor: color.feedback.danger },
   // `overflow: hidden` recorta el degradado al radio de la pildora; sin el, asoma por las esquinas.
