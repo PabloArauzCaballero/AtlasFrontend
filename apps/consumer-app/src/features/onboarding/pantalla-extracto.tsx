@@ -27,8 +27,8 @@
  */
 import * as DocumentPicker from "expo-document-picker";
 import { borrarCopiaLocal, leerBytes } from "../../device/archivos";
-import { useRouter } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { promesasDesdeContenido } from "../contenido-remoto";
 import { useContenido } from "../use-contenido-remoto";
 import { Alert, StyleSheet, View } from "react-native";
@@ -37,11 +37,12 @@ import { describeError } from "../../api/errors";
 import { fetchAlAlmacen } from "../../api/almacen";
 import { useSession } from "../../session/session";
 import { space, marca } from "../../theme/tokens";
+import { etapasDelExtracto, fechaYHora, periodoDelExtracto } from "../extracto-estado";
+import { CambioDeLinea, CuentaDeLaLinea, EtapasDelExtracto } from "../../ui/extracto-seguimiento";
 import type { IconName } from "../../ui/icons";
 import { Gap, Screen, ScreenHeader } from "../../ui/layout";
 import {
   AtlasText,
-  Badge,
   Button,
   Card,
   CardHeader,
@@ -139,6 +140,13 @@ const RECHAZO: Record<string, { titulo: string; accion: string }> = {
   },
 };
 
+/**
+ * Cada cuánto se vuelve a mirar el extracto mientras está en curso y la pantalla está delante. La pantalla decía
+ * «vuelve a esta pantalla para ver el resultado» y, con ella abierta, el resultado no llegaba nunca: había que salir y
+ * volver a entrar.
+ */
+const REFRESCO_MS = 20_000;
+
 /** Cifras en bolivianos, con el formato que la persona reconoce en su banca. */
 function bolivianos(value: number | null): string {
   if (value === null || !Number.isFinite(value)) return "—";
@@ -184,6 +192,23 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
 
   const pending =
     review?.status === "received" || review?.status === "processing";
+
+  // Mientras está en curso y la pantalla está delante, se vuelve a mirar sin esqueleto: el estado cambia solo.
+  useFocusEffect(
+    useCallback(() => {
+      if (!pending || !session.customerId) return;
+      const id = session.customerId;
+      const t = setInterval(() => {
+        creditLineApi
+          .getLatestBankStatement(id)
+          .then((value) => setReview(value))
+          .catch(() => {
+            // Un fallo del refresco no borra lo que ya se ve: el siguiente lo vuelve a intentar.
+          });
+      }, REFRESCO_MS);
+      return () => clearInterval(t);
+    }, [pending, session.customerId]),
+  );
 
   const subir = async () => {
     if (!session.customerId || busy) return;
@@ -312,8 +337,9 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
       {/* El estado va primero cuando hay uno: es la respuesta a «¿y lo que subí ayer?». */}
       {!loading && review ? (
         <Card
+          testID="extracto-estado"
           tone={
-            review.status === "applied"
+            review.status === "applied" && !review.lineAwaitingApproval
               ? "success"
               : review.status === "rejected"
                 ? "danger"
@@ -322,14 +348,14 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
         >
           <CardHeader
             icon={
-              review.status === "applied"
+              review.status === "applied" && !review.lineAwaitingApproval
                 ? "check"
                 : review.status === "rejected"
                   ? "alerta"
                   : "reloj"
             }
             iconTone={
-              review.status === "applied"
+              review.status === "applied" && !review.lineAwaitingApproval
                 ? "success"
                 : review.status === "rejected"
                   ? "danger"
@@ -342,6 +368,33 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
           <AtlasText variant="body" tone="secondary">
             {review.statusDetail}
           </AtlasText>
+
+          {/*
+            Las etapas: que la espera se vea avanzar. En un rechazo no hacen falta —lo que importa es qué hacer—
+            y en un aplicado con línea las sustituye el resultado.
+          */}
+          {review.status !== "rejected" && !(review.status === "applied" && review.lineChange) ? (
+            <>
+              <Divider />
+              <EtapasDelExtracto etapas={etapasDelExtracto(review)} />
+            </>
+          ) : null}
+
+          {/* Qué extracto es, en filas legibles. Antes la hora comprometida iba en una pastilla en versalitas diminutas. */}
+          <Divider />
+          <KeyValue label="Subido el" value={fechaYHora(review.submittedAt)} />
+          {review.institutionName ? <KeyValue label="Banco" value={review.institutionName} /> : null}
+          {periodoDelExtracto(review.period) ? <KeyValue label="Periodo" value={periodoDelExtracto(review.period)!} /> : null}
+          {pending ? <KeyValue label="Respuesta a más tardar" value={fechaYHora(review.promisedBy)} tone="warning" /> : null}
+
+          {/* El resultado: la línea de antes, la de ahora y la cuenta que las une. */}
+          {review.status === "applied" && review.lineChange ? (
+            <>
+              <Divider />
+              <CambioDeLinea cambio={review.lineChange} />
+              <CuentaDeLaLinea cambio={review.lineChange} />
+            </>
+          ) : null}
 
           {/*
             El paso concreto va SEPARADO de la explicacion y con su propio peso.
@@ -395,9 +448,6 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
                 value={bolivianos(review.capacity.monthlyObligations)}
                 numeric
               />
-              {review.institutionName ? (
-                <KeyValue label="Banco" value={review.institutionName} />
-              ) : null}
               {review.capacity.reasons.slice(0, 3).map((motivo) => (
                 <AtlasText key={motivo.code} variant="caption" tone="tertiary">
                   {motivo.message}
@@ -406,18 +456,7 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
             </>
           ) : null}
 
-          {pending ? (
-            <Badge
-              label={`Tendrás respuesta antes de las ${new Date(
-                review.promisedBy,
-              ).toLocaleTimeString("es-BO", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })} del ${new Date(review.promisedBy).toLocaleDateString("es-BO")}`}
-              tone="warning"
-            />
-          ) : null}
-          {review.status === "applied" && !enAlta ? (
+          {review.status === "applied" && !review.lineAwaitingApproval && !enAlta ? (
             <Button
               label="Ver mi línea actualizada"
               variant="secondary"
@@ -456,10 +495,10 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
         />
         <AtlasText variant="body" tone="secondary">
           En un máximo de <AtlasText variant="bodyStrong">24 horas</AtlasText>{" "}
-          recalculamos tu capacidad de pago con lo que diga tu extracto. Hoy no
-          te enviamos un aviso al terminar: vuelve a esta pantalla para ver el
-          resultado. Tu línea puede subir, quedarse igual o bajar: depende de lo
-          que muestren tus movimientos, no de lo que declaraste.
+          recalculamos tu capacidad de pago con lo que diga tu extracto. Mientras
+          tengas esta pantalla abierta, el estado se actualiza solo. Tu línea
+          puede subir, quedarse igual o bajar: depende de lo que muestren tus
+          movimientos, no de lo que declaraste.
         </AtlasText>
         <AtlasText variant="caption" tone="tertiary">
           Sube el extracto de los{" "}
