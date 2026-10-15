@@ -679,7 +679,12 @@ function LetraDelRotulo({
 const styles = StyleSheet.create({
   // El mismo navy que el splash nativo (`app.json`): si no coinciden, el relevo se ve como un parpadeo de fondo.
   // Es el ESCENARIO de marca, oscuro en los dos temas; al terminar se desvanece sobre la app.
-  capa: { backgroundColor: color.stage.bg, alignItems: 'center', justifyContent: 'center' },
+  /*
+    `overflow: 'hidden'`: la capa es la pantalla entera y su resplandor mide 2,4 veces la escena (864 px). En la web, lo
+    que sobresale de una capa absoluta ensancha el documento: a 390 px el `scrollWidth` llegaba a 576 y la primera pantalla
+    de cada pestaña (la que muestra el arranque) se podía arrastrar de lado. La capa es el borde: recorta lo que la decora.
+  */
+  capa: { backgroundColor: color.stage.bg, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   centro: { alignItems: 'center', justifyContent: 'center' },
   centrado: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
   escena: { width: ESCENA_PX, height: ESCENA_PX, alignItems: 'center', justifyContent: 'center', gap: 22 },
