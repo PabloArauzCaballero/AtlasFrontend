@@ -129,6 +129,34 @@ export type StatementCapacity = {
   reasons: { code: string; message: string; severity: string }[];
 };
 
+/**
+ * Cómo se llegó a la línea nueva, paso por paso (AtlasBackend `bank-statement-line-change.mapper.ts`).
+ *
+ * Cuota que sostienes × meses del plazo; los topes de relación, de subida escalonada y del producto; manda el menor
+ * (la propuesta), y el Motor aplica el porcentaje de su banda de riesgo. Cualquier paso puede faltar con líneas viejas.
+ */
+export type LineCalculation = {
+  monthlyInstallment: number | null;
+  termMonths: number | null;
+  byCapacity: number | null;
+  byRelationship: number | null;
+  relationshipTier: string | null;
+  byGraduation: number | null;
+  productCeiling: number | null;
+  recommendedLimit: number | null;
+  bindingConstraint: string | null;
+  riskBand: string | null;
+  approvedLimit: number;
+};
+
+export type LineChange = {
+  /** `null` cuando ésta es la primera línea que se calculó. */
+  previousLimit: number | null;
+  newLimit: number;
+  currencyCode: string;
+  calculation: LineCalculation | null;
+};
+
 /** El extracto bancario en revision. `promisedBy` es el compromiso, no una estimacion. */
 export type BankStatementReview = {
   reviewId: string;
@@ -138,6 +166,15 @@ export type BankStatementReview = {
   submittedAt: string;
   promisedBy: string;
   appliedCreditLineId: string | null;
+  /**
+   * Aplicado SIN línea: el extracto ya cuenta, pero el límite nuevo lo concede una persona. Opcional: un backend
+   * anterior al 2026-10-15 no lo manda, y entonces un aplicado se lee como siempre.
+   */
+  lineAwaitingApproval?: boolean;
+  /** En curso porque lo revisa una persona (la lectura no terminó). Opcional por la misma razón. */
+  inHumanReview?: boolean;
+  /** La línea de antes, la de ahora y la cuenta que las une. Sólo en la última revisión, y sólo aplicada con línea. */
+  lineChange?: LineChange | null;
   rejectionReason: string | null;
   /** Codigo estable de la categoria del rechazo. El texto se puede reescribir; esto no. */
   rejectionCategory: RejectionCategory | null;
