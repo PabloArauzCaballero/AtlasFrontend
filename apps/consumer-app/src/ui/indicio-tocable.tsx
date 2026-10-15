@@ -8,15 +8,15 @@
  * No es un botón aparte: va DENTRO de la tarjeta pulsable y no recibe el toque (toda la tarjeta lo recibe), así que
  * el lector de pantalla no lo anuncia dos veces.
  */
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
 import { color, space, stroke } from '../theme/tokens';
 import { Icon } from './icons';
 import { AtlasText } from './primitives';
 
-export function IndicioTocable({ texto, separador = true, testID }: { texto: string; separador?: boolean; testID?: string }) {
+export function IndicioTocable({ texto, separador = true, style, testID }: { texto: string; separador?: boolean; style?: ViewStyle; testID?: string }) {
   return (
     <View
-      style={[styles.pie, separador && styles.conFilo]}
+      style={[styles.pie, separador && styles.conFilo, style]}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       pointerEvents="none"
