@@ -119,14 +119,14 @@ const RECHAZO: Record<string, { titulo: string; accion: string }> = {
   PERIODO_INSUFICIENTE: {
     titulo: "Faltan meses",
     accion:
-      "En tu banca por internet elige el periodo de los últimos 3 meses completos y vuelve a subirlo.",
+      "En tu banca por internet descarga los últimos 3 meses completos (por ejemplo, de julio a septiembre) o hasta hoy, y vuelve a subirlo.",
   },
   // El vencido es la contraria del anterior: no le faltan meses hacia atras, le falta el presente.
   // Con un solo motivo, a quien sube doce meses cerrados en marzo se le pedia «mas meses».
   EXTRACTO_VENCIDO: {
     titulo: "Ese extracto ya venció",
     accion:
-      "Su último movimiento es de hace demasiado. Descarga el extracto hasta la fecha de hoy y vuelve a subirlo.",
+      "Termina antes del último mes completo. Descarga los últimos 3 meses completos (por ejemplo, de julio a septiembre) o hasta hoy, y vuelve a subirlo.",
   },
   ARCHIVO_ILEGIBLE: {
     titulo: "No pudimos abrir el archivo",
@@ -505,7 +505,7 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
           <AtlasText variant="captionStrong">
             últimos 3 meses completos
           </AtlasText>
-          , en PDF, tal como te lo entrega tu banco. Pedimos 3 meses porque con
+          {" "}(por ejemplo, de julio a septiembre) o hasta hoy, en PDF, tal como te lo entrega tu banco. Pedimos 3 meses porque con
           menos, un mes bueno o uno malo desvía el cálculo entero. Un PDF
           editado no sirve: se comprueba.
         </AtlasText>
