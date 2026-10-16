@@ -20,6 +20,11 @@ export type CustomerNotification = {
   priority: string | null;
   readAt: string | null;
   createdAt: string;
+  /**
+   * Los datos del hecho que originó el aviso. Lo único que la app lee de aquí es `deepLink`: la pantalla que
+   * abre tocarlo (AtlasBackend `customer-notices.ts`, 2026-10-16). Se valida con `rutaDelAviso` antes de navegar.
+   */
+  payload?: Record<string, unknown> | null;
 };
 
 /**

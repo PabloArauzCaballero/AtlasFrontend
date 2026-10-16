@@ -14,14 +14,15 @@
  * leidas, marcar como leida—. La app no las pedia, asi que el cliente no tenia donde verlas: los
  * avisos existian del lado del servidor y nunca llegaban a una pantalla.
  */
-import { useRouter } from 'expo-router';
+import { type Href, useRouter } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import { useAlVolver } from '../../../src/features/al-volver';
 import { StyleSheet, View } from 'react-native';
 import * as notificationsApi from '../../../src/api/endpoints/notifications';
+import { rutaDelAviso } from '../../../src/device/ruta-del-aviso';
 import { useSession } from '../../../src/session/session';
 import { color, radius, space, marca } from '../../../src/theme/tokens';
-import type { IconName } from '../../../src/ui/icons';
+import { Icon, type IconName } from '../../../src/ui/icons';
 import { Gap, HeaderAction, Screen, ScreenHeader } from '../../../src/ui/layout';
 import { PressSurface } from '../../../src/ui/motion';
 import { useCopy } from '../../../src/features/use-contenido-remoto';
@@ -157,6 +158,13 @@ export default function Avisos() {
    * proxima carga lo devuelve a no leido, que es el peor caso aceptable.
    */
   const abrir = async (item: notificationsApi.CustomerNotification) => {
+    /*
+     * Tocar un aviso con destino abre su pantalla (2026-10-16: «tu capacidad fue actualizada» lleva a Inicio,
+     * «no pudimos usar tu extracto» a Recalcular mi línea). Se navega ANTES de marcar leído: la marca no
+     * espera al servidor y un fallo no debe impedir ir adonde el aviso dice.
+     */
+    const ruta = rutaDelAviso(item.payload);
+    if (ruta) router.push(ruta as Href);
     if (!session.customerId || item.readAt) return;
     setItems((current) => current.map((entry) => (entry.id === item.id ? { ...entry, readAt: new Date().toISOString() } : entry)));
     await notificationsApi.markRead(session.customerId, item.id).catch(() => undefined);
@@ -228,6 +236,7 @@ export default function Avisos() {
             {avisos.map((item, index) => {
               const look = lookOf(item.category);
               const unreadItem = !item.readAt;
+              const conDestino = rutaDelAviso(item.payload) !== null;
               return (
                 <View key={item.id}>
                   {index > 0 ? <Divider inset /> : null}
@@ -236,6 +245,7 @@ export default function Avisos() {
                     onPress={() => void abrir(item)}
                     accessibilityRole="button"
                     accessibilityLabel={item.title ?? item.subject ?? 'Aviso'}
+                    accessibilityHint={conDestino ? 'Abre la pantalla del aviso' : undefined}
                   >
                     <IconChip name={look.icon} tone={look.tone} size="sm" />
                     <View style={styles.rowText}>
@@ -255,6 +265,12 @@ export default function Avisos() {
                         {relativeTime(item.createdAt)}
                       </AtlasText>
                     </View>
+                    {/* El chevron dice que el aviso lleva a algún sitio: sin él, tocarlo parecía sólo marcarlo leído. */}
+                    {conDestino ? (
+                      <View style={styles.chevron}>
+                        <Icon name="adelante" size={18} tint={color.text.tertiary} />
+                      </View>
+                    ) : null}
                   </PressSurface>
                 </View>
               );
@@ -274,6 +290,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   tramo: { gap: space.sm },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: space.md, paddingVertical: space.sm },
+  chevron: { alignSelf: 'center' },
   rowText: { flex: 1, gap: space.xxs },
   // El punto viaja al lado del TITULO, no al borde de la fila: junto al texto que marca como nuevo
   // se lee de un vistazo; en el extremo derecho de una fila de tres lineas queda sin nada a lo que
