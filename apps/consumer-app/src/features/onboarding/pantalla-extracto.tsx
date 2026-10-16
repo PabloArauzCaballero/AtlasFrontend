@@ -138,6 +138,12 @@ const RECHAZO: Record<string, { titulo: string; accion: string }> = {
     accion:
       "Sube el extracto completo de los últimos 3 meses, tal como lo descargas de tu banco.",
   },
+  // El titular del extracto tiene que ser la persona (2026-10-16). No se dice qué nombre se leyó.
+  TITULAR_NO_COINCIDE: {
+    titulo: "Ese extracto no es de una cuenta a tu nombre",
+    accion:
+      "Sube el extracto de una cuenta tuya (o de la que eres cotitular), descargado de tu banca por internet.",
+  },
 };
 
 /**
@@ -506,7 +512,10 @@ export function PantallaExtracto({ enAlta = false }: { enAlta?: boolean }) {
             últimos 3 meses completos
           </AtlasText>
           {" "}(por ejemplo, de julio a septiembre) o hasta hoy, en PDF, tal como te lo entrega tu banco. Pedimos 3 meses porque con
-          menos, un mes bueno o uno malo desvía el cálculo entero. Un PDF
+          menos, un mes bueno o uno malo desvía el cálculo entero. Tiene que
+          ser de una{" "}
+          <AtlasText variant="captionStrong">cuenta a tu nombre</AtlasText>
+          {" "}(o de la que seas cotitular): se compara con tu nombre. Un PDF
           editado no sirve: se comprueba.
         </AtlasText>
       </Card>

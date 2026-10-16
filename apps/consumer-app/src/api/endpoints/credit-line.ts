@@ -115,7 +115,9 @@ export type RejectionCategory =
   | "PERIODO_INSUFICIENTE"
   | "EXTRACTO_VENCIDO"
   | "ARCHIVO_ILEGIBLE"
-  | "LECTURA_INSUFICIENTE";
+  | "LECTURA_INSUFICIENTE"
+  /** El extracto es de la cuenta de otra persona (2026-10-16). */
+  | "TITULAR_NO_COINCIDE";
 
 /** Lo que el extracto demostro. Ningun movimiento individual viaja: solo las cifras del calculo. */
 export type StatementCapacity = {
