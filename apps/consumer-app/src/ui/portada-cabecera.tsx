@@ -165,5 +165,5 @@ const styles = StyleSheet.create({
   marca: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.xs, paddingHorizontal: space.md },
   // El logotipo va abierto, como en `AtlasLogo`: cinco letras en caja alta son una marca, no un titular.
   palabra: { color: color.text.onBrand, letterSpacing: 2.4 },
-  menu: { paddingBottom: space.base },
+  menu: { paddingHorizontal: space.base, paddingBottom: space.base },
 });
