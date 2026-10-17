@@ -206,6 +206,8 @@ export default function Avisos() {
       <Gap size="sm" />
       <ScreenHeader
         title="Avisos"
+        // Ya no está en la barra: se llega desde Inicio (la campana, los tres puntos), así que se vuelve a Inicio.
+        onBack="auto"
         subtitle={unread > 0 ? `Tienes ${unread} sin leer.` : 'Todo al día.'}
         action={
           <HeaderAction

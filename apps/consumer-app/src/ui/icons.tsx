@@ -98,6 +98,9 @@ export type IconName =
   | 'clip'
   | 'chat'
   | 'galeria'
+  // La cabecera de Inicio (Pablo, 2026-10-17): la campana abre Avisos y los tres puntos, el menú.
+  | 'campana'
+  | 'mas'
   | 'papelera'
   // Los trofeos y los niveles: cada logro y cada escalón con su propio dibujo, no la estrella para todo.
   | 'fuego'
@@ -588,6 +591,25 @@ const PATHS: Record<IconName, (stroke: string, width: number, d: Dibujo) => Reac
     <>
       <Path d="M4 7h16M9.5 7V4.5h5V7M6.5 7l.8 12.2A2 2 0 0 0 9.3 21h5.4a2 2 0 0 0 2-1.8L17.5 7" stroke={s} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" />
       <Path d="M10 11v6M14 11v6" stroke={s} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  campana: (s, w, d) => (
+    <>
+      <Path
+        d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15L6 16.5z"
+        stroke={s} fill={s} fillOpacity={d.f}
+        strokeWidth={w}
+        strokeLinejoin="round"
+      />
+      <Path d="M10 20.5a2.2 2.2 0 0 0 4 0" stroke={d.a} strokeWidth={w} strokeLinecap="round" />
+    </>
+  ),
+  // Tres puntos en vertical: «más opciones», como en Android y en la cabecera de los bancos que la gente ya usa.
+  mas: (s) => (
+    <>
+      <Circle cx={12} cy={5.5} r={1.7} fill={s} />
+      <Circle cx={12} cy={12} r={1.7} fill={s} />
+      <Circle cx={12} cy={18.5} r={1.7} fill={s} />
     </>
   ),
   galeria: (s, w, d) => (

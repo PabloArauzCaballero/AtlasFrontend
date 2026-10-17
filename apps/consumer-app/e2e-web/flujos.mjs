@@ -131,7 +131,7 @@ await paso('ingreso', async () => {
   await caja('PIN').fill(PIN);
   await page.keyboard.press('Enter');
   await page.waitForURL((u) => !u.pathname.startsWith('/ingresar'), { timeout: 20000 });
-  await texto('Tu línea Atlas').waitFor({ timeout: 40000 });
+  await texto('Disponible para comprar').waitFor({ timeout: 40000 });
   const login = llamadas.find((l) => l.startsWith('POST /auth/login'));
   if (!login || !/ 20\d$/.test(login)) throw new Error(`login sin 2xx: ${login ?? 'sin llamada'}`);
   return login;

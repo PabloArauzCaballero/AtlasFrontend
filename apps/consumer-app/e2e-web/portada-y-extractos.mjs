@@ -104,7 +104,10 @@ async function recorrer({ ancho, vencido }) {
 
     const credito = await lugar('Disponible para comprar');
     // Nada de la portada empieza por encima de la línea de crédito.
-    afirmar((await lugar('Tus compras')).y >= credito.y - 24, '«Tus compras» empieza por encima del crédito');
+    afirmar((await lugar('Mis compras')).y >= credito.y - 24, '«Mis compras» empieza por encima del crédito');
+    // La cabecera de marca (Pablo, 2026-10-17): la campana lleva a Avisos y los tres puntos abren el menú.
+    afirmar((await page.getByRole('button', { name: /^Avisos/ }).count()) === 1, 'no se ve la campana de Avisos');
+    afirmar((await page.getByRole('button', { name: 'Más opciones' }).count()) === 1, 'no se ven los tres puntos');
 
     // El importe de la línea que mandó el servidor y cómo se consume: barra y «usado de límite».
     afirmar((await page.getByText(/1[.,]000/).count()) > 0, 'no se ve el disponible (Bs 1.000) de la línea');
