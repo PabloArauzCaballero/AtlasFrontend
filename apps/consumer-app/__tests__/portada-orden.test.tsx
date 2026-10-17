@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 import {
   SafeAreaProvider,
   initialWindowMetrics,
@@ -12,9 +12,10 @@ import { fechaDeVencimiento } from "../src/ui/proximo-pago-card";
  * hay habilitado (Pablo, 2026-10-05), la mora justo debajo y después el próximo pago. El nivel, la calificación, cuánto
  * puede crecer el crédito y el gasto por rubro salieron de la portada (Pablo, 2026-10-12).
  */
+const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useFocusEffect: () => undefined,
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
   usePathname: () => "/",
 }));
 const mockSesion = {
@@ -23,8 +24,9 @@ const mockSesion = {
   refresh: jest.fn(),
 };
 jest.mock("../src/session/session", () => ({ useSession: () => mockSesion }));
+const mockOrdenes: Record<string, unknown>[] = [];
 jest.mock("../src/sandbox/store", () => ({
-  useSandbox: () => ({ ready: true, nextDue: null, state: { orders: [] } }),
+  useSandbox: () => ({ ready: true, nextDue: null, state: { orders: mockOrdenes } }),
 }));
 jest.mock("../src/ui/partner-banner", () => ({
   PartnerBanner: () => null,
@@ -223,5 +225,83 @@ describe("Inicio · tarjeta Crédito habilitado", () => {
     await montar();
     expect(screen.getByText("inicio.calculando")).toBeTruthy();
     expect(screen.getByText("—")).toBeTruthy();
+  });
+});
+
+describe("Inicio · cabecera con campana y menú (Pablo, 2026-10-17)", () => {
+  beforeEach(() => {
+    libro();
+    mockPush.mockClear();
+  });
+
+  it("saluda por el nombre y la campana abre Avisos", async () => {
+    await montar();
+    expect(screen.getByTestId("inicio-saludo").props.children).toEqual(["Hola", ", Pablo"]);
+    fireEvent.press(screen.getByLabelText("Avisos"));
+    expect(mockPush).toHaveBeenCalledWith("/(app)/(tabs)/avisos");
+  });
+
+  it("los tres puntos ofrecen ver los créditos pendientes y las compras", async () => {
+    await montar();
+    await fireEvent.press(screen.getByLabelText("Más opciones"));
+    expect(screen.getByText("Mis créditos pendientes")).toBeTruthy();
+    expect(screen.getByTestId("menu-mis-compras")).toBeTruthy();
+  });
+});
+
+describe("Inicio · Mis compras salen del libro del backend", () => {
+  const compra = (n: number) => ({
+    loanId: `L${n}`,
+    loanCode: `C${n}`,
+    currencyCode: "BOB",
+    principalAmount: String(100 * n),
+    status: "active",
+    daysPastDue: 0,
+    disbursedAt: `2026-10-${String(n).padStart(2, "0")}T12:00:00Z`,
+    firstDueDate: null,
+    merchant: { displayName: `Comercio ${n}`, businessCategory: "retail" },
+  });
+
+  beforeEach(() => mockPush.mockClear());
+
+  it("sin compras lo dice", async () => {
+    libro();
+    await montar();
+    expect(screen.getByText("Todavía no tienes compras")).toBeTruthy();
+  });
+
+  it("pinta las compras reales, la más reciente primero, y abre su detalle", async () => {
+    libro({ loans: [compra(1), compra(3), compra(2)] });
+    await montar();
+    expect(screen.queryByText("Todavía no tienes compras")).toBeNull();
+    const [tres, dos, uno] = posiciones(["Comercio 3", "Comercio 2", "Comercio 1"]);
+    expect(tres).toBeLessThan(dos as number);
+    expect(dos).toBeLessThan(uno as number);
+    expect(screen.queryByTestId("compras-ver-todas")).toBeNull();
+    fireEvent.press(screen.getByTestId("compra-portada-L3"));
+    expect(mockPush).toHaveBeenCalledWith("/(app)/credito/L3");
+  });
+
+  it("con más de cinco, enseña cinco y una tarjeta lleva al historial", async () => {
+    libro({ loans: [1, 2, 3, 4, 5, 6, 7].map(compra) });
+    await montar();
+    expect(screen.getByTestId("compra-portada-L7")).toBeTruthy();
+    expect(screen.queryByTestId("compra-portada-L2")).toBeNull();
+    expect(screen.getByText("2 compras más")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("compras-ver-todas"));
+    expect(mockPush).toHaveBeenCalledWith("/(app)/compras");
+  });
+});
+
+describe("Inicio · la compra que espera el inicial también se ve", () => {
+  afterEach(() => mockOrdenes.splice(0));
+
+  it("va en el carrusel aunque todavía no sea préstamo", async () => {
+    mockOrdenes.push({ id: "o1", status: "WAITING_INITIAL_PAYMENT", grossAmount: 50000, orderCode: "X1", context: { tradeName: "Farmacia Chávez" } });
+    libro();
+    await montar();
+    expect(screen.getByTestId("compra-por-confirmar-o1")).toBeTruthy();
+    expect(screen.getByText("Falta el inicial")).toBeTruthy();
+    expect(screen.queryByText("Todavía no tienes compras")).toBeNull();
   });
 });

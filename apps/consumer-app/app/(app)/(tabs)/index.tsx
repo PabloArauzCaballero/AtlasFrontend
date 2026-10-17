@@ -4,25 +4,24 @@
  * Responde en un vistazo las tres preguntas que trae quien abre la app: cuanto puedo gastar, cuanto
  * debo y que me vence primero. Nada mas: el nivel, la calificacion, cuanto puede crecer el credito y
  * el gasto por rubro salieron de la portada (Pablo, 2026-10-12); los tres primeros siguen en Perfil.
+ *
+ * Arriba, la barra de marca con la campana (Avisos), el logotipo y el menú de tres puntos; debajo del crédito, las
+ * últimas compras en tarjetas que se deslizan (Pablo, 2026-10-17).
  */
 import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import { Linking } from 'react-native';
 import { formatMoney } from '../../../src/domain/money';
 import { useSandbox } from '../../../src/sandbox/store';
 import { useSession } from '../../../src/session/session';
-import { color, radius, space, marca } from '../../../src/theme/tokens';
-import { AtlasMark } from '../../../src/ui/brand';
+import { marca } from '../../../src/theme/tokens';
 import { Gap, Screen } from '../../../src/ui/layout';
 import {
   AtlasText,
-  Badge,
   Button,
   Card,
   CardHeader,
-  Divider,
   EmptyState,
-  ListRow,
   SectionHeader,
   Skeleton,
 } from '../../../src/ui/primitives';
@@ -31,6 +30,8 @@ import { formatAmount } from '../../../src/features/spending-copy';
 import { useCreditBook } from '../../../src/features/use-credit-book';
 import { useAlVolver, useTirarParaRecargar } from '../../../src/features/al-volver';
 import { CreditoHabilitadoCard } from '../../../src/ui/credito-habilitado-card';
+import { ComprasCarrusel } from '../../../src/ui/compras-carrusel';
+import { PortadaCabecera } from '../../../src/ui/portada-cabecera';
 import { dueLabel } from '../../../src/features/payment-copy';
 import { ProximoPagoCard, fechaDeVencimiento } from '../../../src/ui/proximo-pago-card';
 import { TOUR_INICIO_KEY, TOUR_INICIO_TARGETS } from '../../../src/features/tour-inicio';
@@ -75,6 +76,11 @@ export default function Home() {
     return pendientes[0] ?? null;
   })();
   const activeOrders = sandbox.state.orders.filter((order) => order.status === 'ACTIVE' || order.status === 'WAITING_INITIAL_PAYMENT');
+  // Las que esperan el pago inicial todavía no son préstamo: sólo existen en el teléfono hasta que el comercio lo confirma.
+  const porConfirmar = activeOrders.filter((order) => order.status === 'WAITING_INITIAL_PAYMENT');
+  // Las compras que todavía se están pagando: las del backend y las que esperan el inicial.
+  const comprasEnCurso =
+    book.loans.filter((loan) => loan.status === 'active' || loan.status === 'pending_disbursement').length + porConfirmar.length;
 
   const tour = useTour();
   // El texto del recorrido sale del portal; el de fábrica queda de respaldo (sin red, o sin pieza).
@@ -99,7 +105,7 @@ export default function Home() {
      * Se vio en la primera captura de la demo: el paso 1 tapaba «tienes pagos pendientes».
      */
     if (!book.ready || (spending?.totals.overdue ?? 0) > 0) return;
-    if (!sandbox.ready || activeOrders.length > 0 || sandbox.nextDue) return;
+    if (!sandbox.ready || activeOrders.length > 0 || book.loans.length > 0 || sandbox.nextDue) return;
     let cancelled = false;
     void shouldAutoStart(TOUR_INICIO_KEY).then((should) => {
       if (should && !cancelled) tour.start(pasosTourRef.current, TOUR_INICIO_KEY);
@@ -108,7 +114,7 @@ export default function Home() {
       cancelled = true;
     };
     // `tour.start` es estable y las dependencias reales son las tres condiciones de arranque.
-  }, [sandbox.ready, sandbox.nextDue, activeOrders.length, tour, book.ready, spending]);
+  }, [sandbox.ready, sandbox.nextDue, activeOrders.length, tour, book.ready, book.loans.length, spending]);
 
   if (!sandbox.ready) {
     return (
@@ -139,25 +145,10 @@ export default function Home() {
       la línea, las compras y los puntos seguían como estaban, y lo único que los traía era cerrar la app.
     */
     <Screen {...tirar}>
-      <View style={styles.greeting}>
-        <View style={styles.greetingText}>
-          <AtlasText variant="caption" tone="secondary">
-            Hola{firstName ? `, ${firstName}` : ''}
-          </AtlasText>
-          <AtlasText variant="h1">Tu línea {marca.nombre}</AtlasText>
-        </View>
-        {/* El botón de la marca: abre «Conoce Atlas», las pantallas de presentación de antes (Pablo, 2026-10-08). */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Conoce ${marca.nombre}`}
-          onPress={() => router.push('/(app)/conoce-atlas')}
-          style={({ pressed }) => [styles.botonAtlas, pressed && styles.botonAtlasPulsado]}
-          testID="inicio-conoce-atlas"
-        >
-          <AtlasMark size={22} />
-          <AtlasText variant="captionStrong">{marca.nombre}</AtlasText>
-        </Pressable>
-      </View>
+      <PortadaCabecera customerId={session.customerId} />
+      <AtlasText variant="h1" numberOfLines={1} testID="inicio-saludo">
+        Hola{firstName ? `, ${firstName}` : ''}
+      </AtlasText>
 
       <SurfaceContent entries={avisosDeInicio} />
 
@@ -248,38 +239,39 @@ export default function Home() {
         )}
       </TourTarget>
 
+      {/*
+        Las compras REALES, del libro del backend (Pablo, 2026-10-17: «no están cargando por más que sí haya realizado
+        compras»). Antes salían del motor local de compra, que no se entera de las compras hechas de verdad.
+      */}
       <SectionHeader
-        title="Tus compras"
-        eyebrow={activeOrders.length > 0 ? `${activeOrders.length} en curso` : undefined}
+        title="Mis compras"
+        eyebrow={comprasEnCurso > 0 ? `${comprasEnCurso} en curso` : undefined}
+        action={
+          book.loans.length > 0 || porConfirmar.length > 0 ? (
+            <Button label="Ver todas" variant="ghost" onPress={() => router.push('/(app)/compras')} />
+          ) : undefined
+        }
       />
 
-      {activeOrders.length === 0 ? (
+      {book.loans.length === 0 && porConfirmar.length === 0 ? (
         <EmptyState
           icon="billetera"
-          title="Todavía no tienes compras"
+          title={book.ready ? 'Todavía no tienes compras' : 'Cargando tus compras…'}
           detail={`Cuando compres en un comercio ${marca.nombre}, aquí verás el detalle y tus cuotas.`}
           action={<Button label="Escanear un QR" variant="secondary" onPress={() => router.push('/(app)/(tabs)/escanear')} />}
         />
       ) : (
-        <Card padding="tight">
-          {activeOrders.map((order, index) => (
-            <View key={order.id}>
-              {index > 0 ? <Divider inset /> : null}
-              <ListRow
-                icon="comercio"
-                title={order.context.tradeName}
-                subtitle={`${order.orderCode} · ${formatMoney(order.grossAmount)}`}
-                right={
-                  <Badge
-                    label={order.status === 'ACTIVE' ? 'activa' : 'falta inicial'}
-                    tone={order.status === 'ACTIVE' ? 'success' : 'warning'}
-                  />
-                }
-                onPress={() => router.push(`/(app)/compra/${order.id}`)}
-              />
-            </View>
-          ))}
-        </Card>
+        <ComprasCarrusel
+          loans={book.loans}
+          porConfirmar={porConfirmar.map((order) => ({
+            id: order.id,
+            comercio: order.context.tradeName,
+            importe: formatMoney(order.grossAmount),
+            onPress: () => router.push(`/(app)/compra/${order.id}`),
+          }))}
+          onAbrir={(loanId) => router.push(`/(app)/credito/${loanId}` as never)}
+          onVerTodas={() => router.push('/(app)/compras')}
+        />
       )}
 
       {/* Al final del inicio: lo comercial nunca por encima de lo que el cliente debe. */}
@@ -293,27 +285,3 @@ export default function Home() {
     </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  greeting: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: space.md },
-  /*
-    El botón de la marca (Pablo, 2026-10-08: «el padding de Atlas está bugueado»): el logo iba pegado al borde izquierdo
-    (relleno asimétrico), el resplandor se salía de la píldora y quedaba arriba del todo en vez de a la altura del
-    título. Ahora relleno simétrico, centrado con el saludo y un borde de marca en vez de sombra.
-  */
-  botonAtlas: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
-    gap: space.sm,
-    minHeight: 44,
-    paddingVertical: space.xs,
-    paddingHorizontal: space.md,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: color.feedbackBorder.brand,
-    backgroundColor: color.surface.raised,
-  },
-  botonAtlasPulsado: { opacity: 0.85, transform: [{ scale: 0.97 }] },
-  greetingText: { gap: space.xxs },
-});

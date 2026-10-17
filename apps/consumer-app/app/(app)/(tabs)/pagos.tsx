@@ -280,6 +280,8 @@ export default function Payments() {
       <Gap size="sm" />
       <ScreenHeader
         title="Tus pagos"
+        // Ya no está en la barra: se llega desde Inicio (la campana, los tres puntos), así que se vuelve a Inicio.
+        onBack="auto"
         subtitle={t.texto('pagos.subtitulo')}
         action={
           <View style={{ flexDirection: 'row', gap: space.sm }}>
