@@ -1,9 +1,10 @@
 /**
  * Puerta de entrada.
  *
- * Decide a que area entra la persona segun el estado REAL de su cuenta en el servidor, no segun lo
- * que la app recuerde. Mientras la sesion se restaura no redirige a ningun lado: el splash sigue
- * visible y no se ve ningun parpadeo.
+ * Decide a que area entra la persona segun el estado de su cuenta en el servidor. Al abrir con sesion
+ * guardada usa el ultimo que dio el servidor mientras llega el de ahora (`estado-recordado.ts`), y en
+ * cuanto llega manda el nuevo. Mientras la sesion se restaura no redirige a ningun lado: el splash
+ * sigue visible y no se ve ningun parpadeo.
  *
  * ## Los permisos YA NO van antes que todo lo demas (2026-09-18)
  *

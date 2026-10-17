@@ -20,6 +20,7 @@ import { getCurrentScreen } from './current-screen';
 import { AtlasApiError, kindFromStatus } from './errors';
 import { conReintentos, repeticionDe } from './reintentos';
 import { esMarcaDeCookie, marcaDeCookie } from './marca-de-cookie';
+import { caducaPronto } from './caducidad-del-token';
 
 export type TokenPair = { accessToken: string; refreshToken: string };
 
@@ -282,6 +283,13 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     mandar una peticion condenada al 401. En el telefono no pasa: su almacen nunca da un par a medias.
   */
   if (tokens && !tokens.accessToken) tokens = await renovarAntesDeEmpezar(tokens, correlationId, pantalla);
+  /*
+    Con el token de acceso ya caducado (o a punto), se refresca ANTES en vez de gastar un viaje en el 401. Si el
+    refresco no sale (sin red, servidor caído), se manda con el que había: decide el 401 de siempre, como antes.
+  */
+  else if (tokens?.accessToken && tokens.refreshToken && caducaPronto(tokens.accessToken)) {
+    tokens = await tokenRenovado(tokens, correlationId, pantalla).catch(() => tokens);
+  }
   // Una clave por operacion, compartida por todos sus intentos. Ver `rawRequest`.
   const idempotencyKey = options.idempotent ? newIdempotencyKey() : null;
   const repeticion = repeticionDe(options.method, options.idempotent);

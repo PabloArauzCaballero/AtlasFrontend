@@ -6,6 +6,8 @@
  *    `customerId` en la clave, así que quien entraba después en el mismo teléfono las veía como suyas;
  *  - la lectura del carnet (nombres, apellidos, nacimiento leídos por OCR), en AsyncStorage sin cifrar;
  *  - las copias en caché: fotos del carnet, selfies, fotogramas, comprobantes, extractos y descargas;
+ *  - lo que se recuerda para abrir sin esperar al servidor: el último estado de la cuenta y la copia del libro de
+ *    crédito (2026-10-17, ver `estado-recordado.ts` y `libro-recordado.ts`);
  *  - el historial de posiciones, si la sesión no se cerró con `signOut` sino que caducó.
  *
  * Se llama desde DOS sitios: `signOut`, y `signIn` cuando entra un cliente DISTINTO del último que
@@ -22,6 +24,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { vaciarCopiasLocales } from '../device/archivos';
 import { borrarHistorial } from '../device/historial-ubicaciones';
 import { borrarLecturaDelCarnet } from '../features/lectura-del-carnet';
+import { olvidarLibroRecordado } from '../features/libro-recordado';
+import { CLAVE_ESTADO_RECORDADO } from './estado-recordado';
 
 /** La clave del estado de compras de demostración. Aquí y no en `sandbox/store.tsx` para no importar React. */
 export const CLAVE_COMPRAS_DE_PRUEBA = 'atlas.sandbox.purchase.v1';
@@ -55,6 +59,8 @@ export async function limpiarDatosLocales(): Promise<void> {
   }
   await Promise.all([
     AsyncStorage.removeItem(CLAVE_COMPRAS_DE_PRUEBA).catch(() => undefined),
+    AsyncStorage.removeItem(CLAVE_ESTADO_RECORDADO).catch(() => undefined),
+    olvidarLibroRecordado(),
     borrarLecturaDelCarnet(),
     borrarHistorial(),
   ]);
