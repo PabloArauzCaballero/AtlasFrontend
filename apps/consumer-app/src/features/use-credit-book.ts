@@ -6,10 +6,11 @@
  * haria tres viajes por pantalla y, peor, permitiria que el tablero y la lista de pagos quedaran
  * desfasados entre si: el mismo dinero contado en dos momentos distintos.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import * as creditLineApi from '../api/endpoints/credit-line';
 import * as loansApi from '../api/endpoints/loans';
 import { AtlasApiError } from '../api/errors';
+import { leerLibroRecordado, recordarLibro } from './libro-recordado';
 
 type State = {
   ready: boolean;
@@ -53,6 +54,21 @@ export function errorDeLinea(motivo: unknown): string | null {
 
 export function useCreditBook(customerId: string | null) {
   const [state, setState] = useState<State>(EMPTY);
+  // Ya llegó la respuesta del servidor: la copia recordada, si se lee tarde, no la pisa.
+  const fresco = useRef(false);
+
+  /* Lo último que se supo, mientras llega lo de ahora. Ver `libro-recordado.ts`. */
+  useEffect(() => {
+    fresco.current = false;
+    if (!customerId) return;
+    let vigente = true;
+    void leerLibroRecordado<State>(customerId).then((recordado) => {
+      if (vigente && recordado && !fresco.current) setState({ ...recordado, ready: true });
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [customerId]);
 
   const load = useCallback(async () => {
     if (!customerId) {
@@ -73,17 +89,22 @@ export function useCreditBook(customerId: string | null) {
       creditLineApi.getCreditLine(customerId),
     ]);
 
-    setState({
+    const sostenFallo = loans.status === 'rejected' && spending.status === 'rejected';
+    const nuevo: State = {
       ready: true,
       // Solo se reporta error si falla lo que sostiene la pantalla; la calificacion ausente no lo es.
-      error: loans.status === 'rejected' && spending.status === 'rejected' ? 'No pudimos cargar tus créditos.' : null,
+      error: sostenFallo ? 'No pudimos cargar tus créditos.' : null,
       loans: loans.status === 'fulfilled' ? loans.value.items : [],
       spending: spending.status === 'fulfilled' ? spending.value : null,
       rating: rating.status === 'fulfilled' ? rating.value : null,
       calendar: calendar.status === 'fulfilled' ? calendar.value : null,
       creditLine: creditLine.status === 'fulfilled' ? creditLine.value : null,
       creditLineError: creditLine.status === 'rejected' ? errorDeLinea(creditLine.reason) : null,
-    });
+    };
+    fresco.current = true;
+    setState(nuevo);
+    // Sólo se recuerda lo que vino bien: un fallo de red no reemplaza la última copia buena.
+    if (!sostenFallo) void recordarLibro(customerId, nuevo);
   }, [customerId]);
 
   useEffect(() => {

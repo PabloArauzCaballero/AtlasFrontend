@@ -18,7 +18,8 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { color, press, radius, space } from '../theme/tokens';
-import { getContent, type ContentAction, type ContentEntry } from '../api/endpoints/app-content';
+import type { ContentAction, ContentEntry } from '../api/endpoints/app-content';
+import { contenidoDe } from '../features/use-contenido-remoto';
 import { ICON_NAMES, Icon, type IconName } from './icons';
 import { PressSurface } from './motion';
 import { AtlasText } from './primitives';
@@ -70,7 +71,8 @@ export function usePartnerBanner(): PartnerBannerContent | null {
   const [banner, setBanner] = useState<PartnerBannerContent | null>(null);
   useEffect(() => {
     let cancelled = false;
-    void getContent('home').then((entries) => {
+    // Compartida con las piezas de Inicio (`useSurfaceContent('home')`): una sola petición por arranque.
+    void contenidoDe('home').then((entries) => {
       if (!cancelled) setBanner(bannerDesdeContenido(entries));
     });
     return () => {

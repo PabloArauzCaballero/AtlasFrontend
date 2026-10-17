@@ -26,6 +26,7 @@ import { useRastreoEnPrimerPlano } from './use-rastreo-primer-plano';
 import { cerrarSesionEnServidor } from './cierre-de-sesion';
 import { useLatidoDeSesion, type ContextoDeLatido } from './use-latido-de-sesion';
 import { limpiarDatosLocales } from './datos-locales';
+import { leerEstadoRecordado, olvidarEstadoRecordado, recordarEstado } from './estado-recordado';
 
 export type SessionStatus = 'restoring' | 'anonymous' | 'authenticated';
 
@@ -45,6 +46,11 @@ export type SessionValue = {
   /** Estado de onboarding cacheado: decide a que area entra la persona al abrir la app. */
   onboarding: onboardingApi.OnboardingStatus | null;
   me: customerApi.CustomerMe | null;
+  /**
+   * El `lifecycleStatus` que dio el servidor la vez anterior, mientras llega el de ahora. Con él se entra al área
+   * enseguida al abrir la app, sin esperar un viaje con la pantalla en blanco. Ver `estado-recordado.ts`.
+   */
+  estadoRecordado: string | null;
   refresh(): Promise<void>;
   signIn(identifier: string, password: string): Promise<void>;
   register(input: RegisterInput): Promise<onboardingApi.StartOnboardingResponse>;
@@ -131,6 +137,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   const dispositivoTelemetria = useRef<string | null>(null);
   const [onboarding, setOnboarding] = useState<onboardingApi.OnboardingStatus | null>(null);
   const [me, setMe] = useState<customerApi.CustomerMe | null>(null);
+  const [estadoRecordado, setEstadoRecordado] = useState<string | null>(null);
   /*
     El contexto del rastreo SI va en estado y no en una referencia, al reves que los dos de arriba.
 
@@ -176,6 +183,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
         setOnboarding(null);
         setMe(null);
+        setEstadoRecordado(null);
+        void olvidarEstadoRecordado();
       },
     });
   }, []);
@@ -189,7 +198,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       onboardingApi.getStatus(customerId, { sinPantalla: true }),
       customerApi.getMe(customerId, { sinPantalla: true }),
     ]);
-    if (statusResult.status === 'fulfilled') setOnboarding(statusResult.value);
+    if (statusResult.status === 'fulfilled') {
+      setOnboarding(statusResult.value);
+      void recordarEstado(customerId, statusResult.value.lifecycleStatus);
+    }
     if (meResult.status === 'fulfilled') setMe(meResult.value);
     return statusResult.status === 'fulfilled' ? statusResult.value : null;
   }, []);
@@ -288,7 +300,18 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setProfile(stored);
+    const recordado = await leerEstadoRecordado(stored.customerId);
     try {
+      /*
+        Con un estado recordado se entra YA, y la portada pide lo suyo a la vez que el estado de la cuenta: antes eran
+        dos tandas en serie con la pantalla en blanco entre ellas. El candado (Face ID o PIN) se pone igual antes del
+        primer fotograma. Cuando vuelve el servidor manda él; si la cuenta cambió, las rutas redirigen solas.
+      */
+      if (recordado) {
+        setEstadoRecordado(recordado);
+        bloquearAlArrancar();
+        setStatus('authenticated');
+      }
       const estado = await loadCustomerState(stored.customerId);
       /*
         `loadCustomerState` no lanza (tolera fallos parciales): si el refresco fue RECHAZADO mientras
@@ -302,8 +325,10 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       // Abrir en frio con una sesion guardada SIEMPRE pide Face ID o el PIN (APP-13), antes del primer fotograma.
-      bloquearAlArrancar();
-      setStatus('authenticated');
+      if (!recordado) {
+        bloquearAlArrancar();
+        setStatus('authenticated');
+      }
       /*
         Quien vuelve con el alta a medias retoma su bitacora ANTES de que la sesion de telemetria la
         vacie: lo guardado en disco sale con su linea de tiempo original, y lo que haga desde ahora
@@ -453,6 +478,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         secureTokenStore.clear().catch(() => undefined),
         profileStorage.clear().catch(() => undefined),
         olvidarInicioConPin(),
+        olvidarEstadoRecordado(),
       ]);
       // Compras de prueba, lectura del carnet, fotos y descargas: quien entre después no las hereda.
       await limpiarDatosLocales().catch(() => undefined);
@@ -463,6 +489,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
         setOnboarding(null);
         setMe(null);
+        setEstadoRecordado(null);
         setMotivoDeSalida(opciones?.motivo ?? null);
         setStatus('anonymous');
         saliendo.current = null;
@@ -524,6 +551,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       profile,
       onboarding,
       me,
+      estadoRecordado,
       motivoDeSalida,
       refresh,
       signIn,
@@ -531,7 +559,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       signOut,
       reactivarSeñales,
     }),
-    [me, motivoDeSalida, onboarding, profile, reactivarSeñales, refresh, register, signIn, signOut, status],
+    [estadoRecordado, me, motivoDeSalida, onboarding, profile, reactivarSeñales, refresh, register, signIn, signOut, status],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
@@ -551,7 +579,8 @@ export function useSession(): SessionValue {
  */
 export function areaFor(session: SessionValue): 'auth' | 'onboarding' | 'app' {
   if (session.status !== 'authenticated' || !session.customerId) return 'auth';
-  const lifecycle = session.onboarding?.lifecycleStatus ?? session.me?.customer.status ?? 'registered';
+  // Lo que acaba de decir el servidor primero; lo recordado sólo mientras no ha contestado.
+  const lifecycle = session.onboarding?.lifecycleStatus ?? session.me?.customer.status ?? session.estadoRecordado ?? 'registered';
   if (lifecycle === 'active') return 'app';
   return 'onboarding';
 }

@@ -14,7 +14,8 @@
  * una tarjeta vacia seria peor que ninguna.
  */
 import { useEffect, useState } from 'react';
-import { getContent, type ContentEntry } from '../api/endpoints/app-content';
+import type { ContentEntry } from '../api/endpoints/app-content';
+import { contenidoDe } from '../features/use-contenido-remoto';
 import { ContentActionButton, ContentBullets } from './content';
 import { Markdown } from './markdown';
 import { AtlasText, Card, CardHeader } from './primitives';
@@ -43,7 +44,8 @@ export function useSurfaceContent(surface: string, omitir?: (entry: ContentEntry
   const [entries, setEntries] = useState<ContentEntry[]>([]);
   useEffect(() => {
     let cancelled = false;
-    void getContent(surface).then((loaded) => {
+    // Por `contenidoDe`: el banner de partner pide la MISMA superficie al montar Inicio, y eran dos viajes.
+    void contenidoDe(surface).then((loaded) => {
       if (!cancelled) setEntries(piezasVisibles(loaded, omitir));
     });
     return () => {
