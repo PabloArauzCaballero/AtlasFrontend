@@ -198,10 +198,11 @@ export default function Identity() {
   const activeStep = STEPS.find((step) => step.kind === capturing) ?? null;
   const allCaptured = STEPS.every((step) => evidence[step.kind]);
   const documentOk = documentNumber.trim().length >= 5;
-  // Carnet ya registrado en otra cuenta: se avisa al teclearlo, antes de pedir las fotos, y no se puede enviar.
-  const { bloqueo, alFallarElEnvio } = useCarnetDeOtraCuenta(session.customerId, documentNumber, 5);
+  // Carnet ya registrado en otra cuenta: se avisa al teclearlo, antes de pedir las fotos. Avisa sin bloquear;
+  // solo el servidor bloquea, al reincidir.
+  const { bloqueo, avisoDelCarnet, alFallarElEnvio } = useCarnetDeOtraCuenta(session.customerId, documentNumber, 5);
   const expiryOk = isIsoDate(expiresAt) && new Date(`${expiresAt}T23:59:59.999Z`).getTime() > Date.now();
-  const canSubmit = allCaptured && documentOk && expiryOk && !busy && !subiendo && !bloqueo;
+  const canSubmit = allCaptured && documentOk && expiryOk && !busy && !subiendo && !bloqueo && !avisoDelCarnet;
 
   /*
     Las tres capturas se nombran una a una. Decir "faltan fotos" obliga a repasar las tres tarjetas
@@ -209,6 +210,7 @@ export default function Identity() {
   */
   const blockedReason = firstBlocker([
     [!bloqueo, 'No podemos continuar con el registro desde esta conexión.'],
+    [!avisoDelCarnet, 'Ese carnet ya está registrado en otra cuenta: revisa el número.'],
     [!subiendo, 'Espera a que termine de subirse la foto.'],
     [Boolean(evidence.identity_front), 'Falta la foto del anverso del carnet.'],
     [Boolean(evidence.identity_back), 'Falta la foto del reverso del carnet.'],
@@ -538,7 +540,7 @@ export default function Identity() {
     }
   };
 
-  const mostrado = error ?? bloqueo;
+  const mostrado = error ?? bloqueo ?? avisoDelCarnet;
   const described = mostrado ? describeError(mostrado) : null;
 
   // El fallo se pinta arriba y el boton esta abajo: hay que llevar la vista hasta el.

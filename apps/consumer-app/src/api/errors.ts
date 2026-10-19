@@ -101,6 +101,8 @@ const MESSAGE_BY_CODE: Record<string, string> = {
   CUSTOMER_ALREADY_EXISTS: 'Ya existe una cuenta con este correo o teléfono. Si la empezaste tú, ingresa y sigues donde lo dejaste.',
   CONTACT_ALREADY_REGISTERED: 'Ese correo o teléfono ya está registrado en otra cuenta.',
   CONTACT_ALREADY_VERIFIED: 'Ese contacto ya estaba verificado. Puedes continuar.',
+  IDENTITY_DOCUMENT_ALREADY_REGISTERED:
+    'Ese carnet ya está registrado en otra cuenta. Si es tuyo, ingresa con tu cuenta. Si no, revisa el número que escribiste.',
   ONBOARDING_IP_BLOCKED:
     'Por seguridad no podemos continuar con el registro desde esta conexión. Si crees que es un error, escríbenos y lo revisamos.',
   IDENTITY_FIELDS_LOCKED: 'Tu identidad ya fue verificada con tu documento. Para corregir tu nombre o tu fecha de nacimiento, escríbenos.',
@@ -199,6 +201,7 @@ function titleFor(kind: AtlasErrorKind, code?: string): string {
   if (code === 'CUSTOMER_ALREADY_EXISTS' || code === 'CONTACT_ALREADY_REGISTERED') return 'Ya tienes una cuenta';
   if (code === 'ACCOUNT_LOCKED') return 'Cuenta bloqueada temporalmente';
   if (code === 'ONBOARDING_IP_BLOCKED') return 'No podemos continuar';
+  if (code === 'IDENTITY_DOCUMENT_ALREADY_REGISTERED') return 'Ese carnet ya tiene cuenta';
 
   switch (kind) {
     case 'network':
