@@ -423,6 +423,16 @@ export const submitIdentityPackage = (
     { method: 'POST', idempotent: true, body },
   );
 
+/**
+ * ¿Ese carnet ya es de otra cuenta? Si lo es, el servidor bloquea la conexión (403 `ONBOARDING_IP_BLOCKED`).
+ * El número viaja por TLS solo para que el servidor calcule el hash; no se guarda.
+ */
+export const checkIdentityDocument = (customerId: string, documentNumber: string) =>
+  request<{ available: true }>(`/customer-onboarding/${customerId}/identity-document/check`, {
+    method: 'POST',
+    body: { documentNumber },
+  });
+
 export const verifyIdentity = (customerId: string, body: { documentNumber: string; documentComplement?: string }) =>
   request<{ status: string }>(`/customer-onboarding/${customerId}/identity-verification`, {
     method: 'POST',

@@ -25,6 +25,7 @@ import { hashSensitiveText } from '../../src/device/device';
 import { escanearDocumento, escanerHabilitado } from '../../src/device/escaner-documento';
 import { comprobarCaptura, PROPORCION_CARNET, siguientePendiente } from '../../src/features/captura-del-carnet';
 import { CapturasLocales } from '../../src/features/capturas-locales';
+import { useCarnetDeOtraCuenta } from '../../src/features/carnet-de-otra-cuenta';
 import {
   esSubidaCancelada,
   leerBase64,
@@ -197,14 +198,17 @@ export default function Identity() {
   const activeStep = STEPS.find((step) => step.kind === capturing) ?? null;
   const allCaptured = STEPS.every((step) => evidence[step.kind]);
   const documentOk = documentNumber.trim().length >= 5;
+  // Carnet ya registrado en otra cuenta: se avisa al teclearlo, antes de pedir las fotos, y no se puede enviar.
+  const { bloqueo, alFallarElEnvio } = useCarnetDeOtraCuenta(session.customerId, documentNumber, 5);
   const expiryOk = isIsoDate(expiresAt) && new Date(`${expiresAt}T23:59:59.999Z`).getTime() > Date.now();
-  const canSubmit = allCaptured && documentOk && expiryOk && !busy && !subiendo;
+  const canSubmit = allCaptured && documentOk && expiryOk && !busy && !subiendo && !bloqueo;
 
   /*
     Las tres capturas se nombran una a una. Decir "faltan fotos" obliga a repasar las tres tarjetas
     para descubrir cual, cuando la pantalla ya sabe exactamente cual es.
   */
   const blockedReason = firstBlocker([
+    [!bloqueo, 'No podemos continuar con el registro desde esta conexión.'],
     [!subiendo, 'Espera a que termine de subirse la foto.'],
     [Boolean(evidence.identity_front), 'Falta la foto del anverso del carnet.'],
     [Boolean(evidence.identity_back), 'Falta la foto del reverso del carnet.'],
@@ -311,6 +315,7 @@ export default function Identity() {
     es un error. Si cancela, no pasa nada.
   */
   const abrirCaptura = async (step: (typeof STEPS)[number]) => {
+    if (bloqueo) return; // carnet de otra cuenta: no se piden fotos a quien ya no puede seguir
     const que = CAPTURA_DE[step.kind];
     const conEscaner = step.facing === 'back' && escanerHabilitado();
     if (conEscaner && (escaneando.current || subiendo)) return;
@@ -525,6 +530,7 @@ export default function Identity() {
       );
     } catch (caught) {
       setError(caught);
+      alFallarElEnvio(caught);
     } finally {
       setBusy(false);
       envioEnCurso.current = null;
@@ -532,13 +538,14 @@ export default function Identity() {
     }
   };
 
-  const described = error ? describeError(error) : null;
+  const mostrado = error ?? bloqueo;
+  const described = mostrado ? describeError(mostrado) : null;
 
   // El fallo se pinta arriba y el boton esta abajo: hay que llevar la vista hasta el.
 
   const scroll = useRef<ScrollView>(null);
 
-  useScrollToError(error, scroll);
+  useScrollToError(mostrado, scroll);
 
   /*
     El formulario tiene su propio desplazamiento, aparte del de la pantalla de permiso. Solo sirve
