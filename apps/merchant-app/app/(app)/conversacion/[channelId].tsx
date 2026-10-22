@@ -13,8 +13,11 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { space } from '@cliente/theme/tokens';
+import { armarHilo, type LadoDelMensaje } from '@cliente/features/chat-hilo';
+import { Escribiendo, InicioDeChat, type EstadoDePresencia, NotaDeSeguridad, PresenciaDeSoporte, SeparadorDeDia } from '@cliente/ui/chat-kit';
 import { Gap, HeaderAction, Screen, ScreenHeader } from '@cliente/ui/layout';
-import { AtlasText, Card, EmptyState, Skeleton } from '@cliente/ui/primitives';
+import { AtlasText, Card, Skeleton } from '@cliente/ui/primitives';
+import type { MensajeDeSoporte } from '@/api/servicios/supportService';
 import { supportService } from '@/api/servicios/supportService';
 import { fueLeido, nuevoClientMessageId, TEXTOS } from '@/features/soporte/chat';
 import { useHiloEnVivo } from '@/features/soporte/use-hilo-en-vivo';
@@ -85,6 +88,10 @@ export default function Conversacion() {
     ]);
   };
 
+  const entradas = armarHilo(hilo.mensajes, ladoDelMensaje);
+  let presencia: EstadoDePresencia = hilo.conectado ? 'en_linea' : 'reconectando';
+  if (hilo.cerrado) presencia = 'cerrado';
+
   return (
     <Screen
       scroll={false}
@@ -109,15 +116,17 @@ export default function Conversacion() {
             enviando={enviando}
             deshabilitado={hilo.cerrado}
           />
+          <NotaDeSeguridad texto="Nadie de Atlas te pedirá tu contraseña ni los códigos de verificación." />
         </View>
       }
     >
       <ScreenHeader
-        title="Conversación"
-        subtitle={hilo.conectado ? 'En vivo' : 'Reconectando…'}
+        title="Soporte"
         onBack="auto"
         action={hilo.cerrado ? undefined : <HeaderAction icon="cerrar" label="Cerrar conversación" onPress={cerrarConversacion} />}
       />
+      {/* «En vivo» / «Reconectando…» de la web, ahora con una cara: quién responde y si está ahí. */}
+      <PresenciaDeSoporte estado={presencia} detalle="Te responde una persona del equipo de comercios." />
 
       {aviso === 'sin-agentes' ? <Aviso tono="warning">{TEXTOS.sinAgentes}</Aviso> : null}
       {hilo.cerrado ? (
@@ -133,25 +142,35 @@ export default function Conversacion() {
         </Card>
       ) : null}
 
-      {!hilo.cargando && hilo.mensajes.length === 0 ? (
-        <EmptyState icon="chat" title="Aún no hay mensajes" detail="Escribe abajo y te respondemos por aquí mismo." />
-      ) : null}
-
       <ScrollView
         ref={scrollRef}
         style={styles.lista}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         contentContainerStyle={styles.contenido}
+        keyboardShouldPersistTaps="handled"
         testID="hilo-de-soporte"
       >
-        {hilo.mensajes.map((mensaje) => (
-          <Burbuja key={mensaje.messageId} mensaje={mensaje} leido={fueLeido(mensaje, hilo.readState)} />
-        ))}
-        {hilo.escribiendo ? (
-          <AtlasText variant="caption" tone="secondary">
-            Atlas está escribiendo…
-          </AtlasText>
+        {!hilo.cargando && hilo.mensajes.length === 0 && !hilo.cerrado ? (
+          <InicioDeChat
+            detalle="Cuéntanos qué pasa con tu negocio. Te respondemos por aquí mismo; si cierras la app, la conversación queda en tus casos."
+            sugerencias={SUGERENCIAS}
+            onElegir={setTexto}
+          />
         ) : null}
+        {entradas.map((entrada) =>
+          entrada.tipo === 'dia' ? (
+            <SeparadorDeDia key={entrada.clave} dia={entrada.etiqueta} />
+          ) : (
+            <Burbuja
+              key={entrada.clave}
+              mensaje={entrada.mensaje}
+              leido={fueLeido(entrada.mensaje, hilo.readState)}
+              primeroDelGrupo={entrada.primeroDelGrupo}
+              ultimoDelGrupo={entrada.ultimoDelGrupo}
+            />
+          ),
+        )}
+        {hilo.escribiendo ? <Escribiendo /> : null}
       </ScrollView>
 
       <Gap size="sm" />
@@ -159,8 +178,21 @@ export default function Conversacion() {
   );
 }
 
+/** Lo que más le pasa a un comercio. Tocar uno escribe la primera frase; se completa con el caso. */
+const SUGERENCIAS = [
+  'Un cliente no puede pagar con Atlas',
+  'Tengo una duda sobre una liquidación',
+  'El QR de cobro no funciona',
+  'Necesito ayuda con Gestión POS',
+] as const;
+
+function ladoDelMensaje(mensaje: MensajeDeSoporte): LadoDelMensaje {
+  if (mensaje.senderActorType === 'SYSTEM' || mensaje.visibility === 'SYSTEM') return 'sistema';
+  return mensaje.senderActorType === 'PARTNER_USER' ? 'mio' : 'suyo';
+}
+
 const styles = StyleSheet.create({
   pie: { gap: space.sm },
   lista: { flex: 1 },
-  contenido: { gap: space.sm, paddingBottom: space.base, flexGrow: 1, justifyContent: 'flex-end' },
+  contenido: { paddingBottom: space.base, flexGrow: 1, justifyContent: 'flex-end' },
 });

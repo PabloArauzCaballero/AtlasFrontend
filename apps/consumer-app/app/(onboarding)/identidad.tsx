@@ -23,7 +23,10 @@ import { AtlasApiError, describeError } from '../../src/api/errors';
 import { CARNET_DE_PRUEBA, capturaSimulada, estaDisponible as hayCamaraDePrueba } from '../../src/device/camara-de-prueba';
 import { hashSensitiveText } from '../../src/device/device';
 import { escanearDocumento, escanerHabilitado } from '../../src/device/escaner-documento';
-import { comprobarCaptura, PROPORCION_CARNET, siguientePendiente } from '../../src/features/captura-del-carnet';
+import { PROPORCION_CARNET, siguientePendiente } from '../../src/features/captura-del-carnet';
+import { evaluarFotoDeCarnet, type EvaluacionDeFoto } from '../../src/features/parece-carnet';
+import { leerBytes } from '../../src/device/archivos';
+import { DudaDeCarnet, RevisionDeCaptura } from '../../src/ui/revision-de-captura';
 import { CapturasLocales } from '../../src/features/capturas-locales';
 import { useCarnetDeOtraCuenta } from '../../src/features/carnet-de-otra-cuenta';
 import {
@@ -91,6 +94,15 @@ const ORDEN: readonly EvidenceKind[] = STEPS.map((step) => step.kind);
 
 /** A partir de cuando una subida «tarda mas de lo normal»: una foto de 1-3 MB sube en 2-5 s. */
 const AVISO_DE_SUBIDA_LENTA_MS = 10_000;
+
+/** Lo que se revisa de cada cara del carnet en la vista previa, antes de subirla. */
+const COMPROBACIONES: Partial<Record<EvidenceKind, readonly string[]>> = {
+  identity_front: ['Es el anverso de tu carnet, con tu foto.', 'Se leen tu nombre y el número.', 'Se ven las cuatro esquinas y no hay reflejos.'],
+  identity_back: ['Es el reverso de tu carnet.', 'Se lee el texto, sin sombras ni reflejos.', 'Se ven las cuatro esquinas.'],
+};
+
+/** Una foto recién tomada que se está mirando antes de subirla. */
+type Revision = { kind: EvidenceKind; uri: string; ancho?: number; alto?: number; origen: OrigenCaptura };
 
 /** Una subida en curso o que no salio, con lo necesario para reintentarla sin repetir la foto. */
 type Subida = { kind: EvidenceKind; vista: EstadoDeSubida; reintento?: { uri: string; origen: OrigenCaptura } };
@@ -161,6 +173,11 @@ export default function Identity() {
   const [error, setError] = useState<unknown>(null);
   const [subida, setSubida] = useState<Subida | null>(null);
   const [enfocar, setEnfocar] = useState<PeticionDeLamina | null>(null);
+  /** La vista previa abierta y, si la foto no parece un carnet, la pregunta encima. */
+  const [revision, setRevision] = useState<Revision | null>(null);
+  const [duda, setDuda] = useState<EvaluacionDeFoto | null>(null);
+  const [evaluando, setEvaluando] = useState(false);
+  const repetirTrasLaDuda = useRef(false);
   const cancelarSubida = useRef<AbortController | null>(null);
   const escaneando = useRef(false);
   /*
@@ -292,8 +309,9 @@ export default function Identity() {
     setError(null);
     setSubida(null);
     let uri: string;
+    let photo: { uri: string; width?: number; height?: number } | undefined;
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
+      photo = await cameraRef.current.takePictureAsync({ quality: 0.7, skipProcessing: true });
       if (!photo?.uri) throw new Error('CAPTURE_FAILED');
       uri = photo.uri;
       capturas.current?.anotar(uri);
@@ -304,7 +322,8 @@ export default function Identity() {
       setBusy(false);
     }
     bitacora.captura(CAPTURA_DE[kind], evidence[kind] ? 'repite' : 'toma');
-    await subir(kind, uri, 'camera');
+    // No se sube todavía: primero la vista previa.
+    setRevision({ kind, uri, ancho: photo.width, alto: photo.height, origen: 'camera' });
   };
 
   /*
@@ -353,18 +372,8 @@ export default function Identity() {
       }
       capturas.current?.anotar(resultado.uri);
       bitacora.captura(que, evidence[step.kind] ? 'repite' : 'toma');
-      const comprobacion = comprobarCaptura(resultado);
-      if (!comprobacion.ok) {
-        bitacora.validacion(`captura_${comprobacion.motivo}`);
-        setSubida({
-          kind: step.kind,
-          vista: { fase: 'rechazada', mensaje: comprobacion.mensaje },
-          // Para «Usar esta foto igual»: la comprobación ahorra subidas dudosas, pero no es el juez.
-          reintento: { uri: resultado.uri, origen: 'system_scanner' },
-        });
-        return;
-      }
-      await subir(step.kind, resultado.uri, 'system_scanner');
+      // La vista previa decide: ahí se mira la foto y, si no parece un carnet, se pregunta.
+      setRevision({ kind: step.kind, uri: resultado.uri, ancho: resultado.ancho, alto: resultado.alto, origen: 'system_scanner' });
     } finally {
       escaneando.current = false;
     }
@@ -389,6 +398,48 @@ export default function Identity() {
     const step = escaneoTrasElConsejo.current;
     escaneoTrasElConsejo.current = null;
     if (step) void abrirCaptura(step);
+  };
+
+  /*
+    «Usar esta foto» en la vista previa. Si la foto no parece un carnet, no sube: pregunta. La
+    sospecha es barata y se equivoca a veces, por eso la persona siempre puede contestar «sí, es mi carnet».
+  */
+  const usarRevision = async () => {
+    if (!revision || evaluando) return;
+    setEvaluando(true);
+    let bytes: number | null = null;
+    try {
+      bytes = (await leerBytes(revision.uri)).length;
+    } catch {
+      // Sin el peso no se mide el detalle; las otras señales siguen valiendo.
+    }
+    setEvaluando(false);
+    const evaluacion = evaluarFotoDeCarnet({ ancho: revision.ancho, alto: revision.alto, bytes, origen: revision.origen === 'system_scanner' ? 'system_scanner' : 'camera' });
+    if (!evaluacion.pareceCarnet) {
+      for (const motivo of evaluacion.motivos) bitacora.validacion(`captura_${motivo.senal}`);
+      setDuda(evaluacion);
+      return;
+    }
+    await subirRevision();
+  };
+
+  const subirRevision = async () => {
+    const actual = revision;
+    if (!actual) return;
+    setDuda(null);
+    setRevision(null);
+    await subir(actual.kind, actual.uri, actual.origen);
+  };
+
+  /** «Repetir»: con la cámara de la app se vuelve al visor; con el escáner, se abre otra vez. */
+  const repetirRevision = () => {
+    const actual = revision;
+    setDuda(null);
+    setRevision(null);
+    if (!actual) return;
+    bitacora.captura(CAPTURA_DE[actual.kind], 'repite');
+    const step = STEPS.find((candidato) => candidato.kind === actual.kind);
+    if (actual.origen === 'system_scanner' && step) void abrirCaptura(step);
   };
 
   /** Una foto de la prueba de vida: se sube aparte, sin bloquear la pose siguiente. */
@@ -571,6 +622,44 @@ export default function Identity() {
       // Sin medida no se mueve nada: la pantalla queda arriba, como antes.
     }
   };
+
+  /* --------------------------------------------------------- vista previa */
+
+  if (revision) {
+    const step = STEPS.find((candidato) => candidato.kind === revision.kind)!;
+    return (
+      <>
+        <RevisionDeCaptura
+          titulo={step.title}
+          uri={revision.uri}
+          ancho={revision.ancho}
+          alto={revision.alto}
+          comprobaciones={COMPROBACIONES[revision.kind] ?? [step.hint]}
+          ocupado={evaluando}
+          onUsar={() => void usarRevision()}
+          onRepetir={repetirRevision}
+        />
+        {/*
+          «Tomar otra foto» se ejecuta cuando la hoja TERMINÓ de cerrarse: con el escáner del sistema,
+          abrirlo encima de una hoja que se está yendo lo hace parpadear en iOS (ver la hoja de consejo).
+        */}
+        <DudaDeCarnet
+          evaluacion={duda}
+          onCerrar={() => setDuda(null)}
+          onUsarIgual={() => void subirRevision()}
+          onRepetir={() => {
+            repetirTrasLaDuda.current = true;
+            setDuda(null);
+          }}
+          alCerrarse={() => {
+            if (!repetirTrasLaDuda.current) return;
+            repetirTrasLaDuda.current = false;
+            repetirRevision();
+          }}
+        />
+      </>
+    );
+  }
 
   /* ---------------------------------------------------------------- camara */
 

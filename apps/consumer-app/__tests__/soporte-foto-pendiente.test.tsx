@@ -111,5 +111,15 @@ it('si el envío falla, la foto y el texto se quedan para reintentar', async () 
 
 it('la advertencia de no escribir el PIN sigue a la vista', async () => {
   await montar();
-  expect(screen.getByText(/Nunca escribas tu PIN/)).toBeTruthy();
+  expect(screen.getByText(/Nadie de Atlas te pedirá tu PIN/)).toBeTruthy();
+});
+
+it('el chat vacío ofrece temas frecuentes: tocar uno escribe la primera frase sin enviarla', async () => {
+  await montar();
+  await waitFor(() => expect(screen.getByTestId('inicio-de-chat')).toBeTruthy());
+  expect(screen.getByText('Equipo de soporte Atlas')).toBeTruthy();
+
+  await fireEvent.press(screen.getByLabelText('Empezar con: Pagué y todavía no se refleja'));
+  expect(screen.getByTestId('compositor-campo').props.value).toBe('Pagué y todavía no se refleja');
+  expect(sendMessage).not.toHaveBeenCalled();
 });

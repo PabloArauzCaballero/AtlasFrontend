@@ -22,6 +22,7 @@ import type { AssistScreen } from '../api/endpoints/assist';
 import { PREGUNTAS_FRECUENTES, type BurbujaAssist, type useAssist } from '../features/assist';
 import { color, radius, space, stroke, touch, marca } from '../theme/tokens';
 import { AssistHistorial } from './assist-historial';
+import { BurbujaChat } from './chat-kit';
 import { Field } from './fields';
 import { BottomSheet } from './help-sheet';
 import { toqueWeb } from './hit-slop';
@@ -260,25 +261,27 @@ function irASoporte(onClose: () => void) {
  */
 function Burbuja({ burbuja, onHablarConPersona }: { burbuja: BurbujaAssist; onHablarConPersona: () => void }) {
   const mia = burbuja.rol === 'persona';
+  // La misma burbuja que el chat de soporte (`ui/chat-kit.tsx`): lo mío en color de marca.
   return (
-    <View style={{ alignItems: mia ? 'flex-end' : 'flex-start' }}>
-      <View style={[styles.burbuja, mia ? styles.burbujaMia : styles.burbujaAsistente]}>
-        <AtlasText variant="body">{burbuja.texto}</AtlasText>
-        {burbuja.sugiereHumano ? (
-          <PressSurface
-            onPress={onHablarConPersona}
-            accessibilityRole="button"
-            accessibilityLabel="Hablar con una persona"
-            style={styles.atajoHumano}
-            {...webData('presionable')}
-          >
-            <AtlasText variant="captionStrong" tone="brand">
-              Hablar con una persona
-            </AtlasText>
-          </PressSurface>
-        ) : null}
-      </View>
-    </View>
+    <BurbujaChat mio={mia}>
+      <AtlasText variant="body" style={mia ? { color: color.text.onBrand } : undefined}>
+        {burbuja.texto}
+      </AtlasText>
+      {burbuja.sugiereHumano ? (
+        <PressSurface
+          onPress={onHablarConPersona}
+          accessibilityRole="button"
+          accessibilityLabel="Hablar con una persona"
+          style={styles.atajoHumano}
+          {...webData('presionable')}
+        >
+          <Icon name="chat" size={14} tint={color.action.primary} />
+          <AtlasText variant="captionStrong" tone="brand">
+            Hablar con una persona
+          </AtlasText>
+        </PressSurface>
+      ) : null}
+    </BurbujaChat>
   );
 }
 
@@ -309,10 +312,7 @@ const styles = StyleSheet.create({
     borderColor: color.feedbackBorder.brand,
     backgroundColor: color.feedbackSoft.success,
   },
-  burbuja: { maxWidth: '85%', borderRadius: radius.lg, padding: space.sm, gap: space.xs },
-  burbujaMia: { backgroundColor: color.surface.raisedStrong },
-  burbujaAsistente: { backgroundColor: color.surface.raised },
-  atajoHumano: { paddingVertical: space.xs, alignSelf: 'flex-start' },
+  atajoHumano: { flexDirection: 'row', alignItems: 'center', gap: space.xs, paddingVertical: space.xs, alignSelf: 'flex-start' },
   escribiendo: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
   error: { gap: space.sm },
   pie: {

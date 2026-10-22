@@ -12,6 +12,11 @@
  * Una foto elegida queda como ADJUNTO PENDIENTE sobre el campo, con su miniatura: se ve qué se va a
  * mandar, se puede quitar y se puede escribir un texto antes de enviar. Enviar en el acto no daba
  * ocasión de ninguna de las tres cosas.
+ *
+ * ## Sin clip y deshabilitado (2026-10-22)
+ *
+ * `onAdjuntar` es opcional: el chat del comercio no admite adjuntos y reutiliza este mismo compositor
+ * sin el clip. `deshabilitado` apaga el campo cuando la conversación ya está cerrada.
  */
 import { Image, StyleSheet, TextInput, View } from 'react-native';
 import { color, inputChrome, radius, space, stroke, touch } from '../theme/tokens';
@@ -27,19 +32,24 @@ export function CompositorChat({
   adjuntoUri = null,
   onQuitarAdjunto,
   enviando = false,
+  deshabilitado = false,
   placeholder = 'Escribe un mensaje…',
+  accessibilityHint,
 }: {
   texto: string;
   onChangeText: (valor: string) => void;
   onEnviar: () => void;
-  onAdjuntar: () => void;
+  /** Sin él no hay clip. */
+  onAdjuntar?: () => void;
   /** La foto elegida y todavía sin enviar. */
   adjuntoUri?: string | null;
   onQuitarAdjunto?: () => void;
   enviando?: boolean;
+  deshabilitado?: boolean;
   placeholder?: string;
+  accessibilityHint?: string;
 }) {
-  const puedeEnviar = (texto.trim().length > 0 || adjuntoUri !== null) && !enviando;
+  const puedeEnviar = (texto.trim().length > 0 || adjuntoUri !== null) && !enviando && !deshabilitado;
 
   return (
     <View style={styles.raiz}>
@@ -60,16 +70,18 @@ export function CompositorChat({
       ) : null}
 
       <View style={styles.fila}>
-        <PressSurface
-          onPress={onAdjuntar}
-          disabled={enviando}
-          accessibilityRole="button"
-          accessibilityLabel="Adjuntar una foto"
-          style={styles.redondo}
-          testID="compositor-adjuntar"
-        >
-          <Icon name="clip" size={22} tint={color.text.secondary} />
-        </PressSurface>
+        {onAdjuntar ? (
+          <PressSurface
+            onPress={onAdjuntar}
+            disabled={enviando || deshabilitado}
+            accessibilityRole="button"
+            accessibilityLabel="Adjuntar una foto"
+            style={styles.redondo}
+            testID="compositor-adjuntar"
+          >
+            <Icon name="clip" size={22} tint={color.text.secondary} />
+          </PressSurface>
+        ) : null}
 
         <TextInput
           value={texto}
@@ -77,11 +89,13 @@ export function CompositorChat({
           placeholder={placeholder}
           placeholderTextColor={color.text.tertiary}
           multiline
+          editable={!deshabilitado}
           keyboardAppearance={inputChrome.keyboardAppearance}
           selectionColor={inputChrome.selectionColor}
           cursorColor={inputChrome.cursorColor}
           accessibilityLabel="Tu mensaje"
-          style={styles.campo}
+          accessibilityHint={accessibilityHint}
+          style={[styles.campo, deshabilitado ? styles.campoApagado : null]}
           testID="compositor-campo"
         />
 
@@ -102,6 +116,8 @@ export function CompositorChat({
 }
 
 const DIAMETRO = touch.minSize;
+/** El campo de una conversación cerrada: se sigue leyendo, pero se ve que no admite texto. */
+const OPACIDAD_APAGADO = 0.5;
 
 const styles = StyleSheet.create({
   raiz: { gap: space.sm },
@@ -130,6 +146,7 @@ const styles = StyleSheet.create({
     color: color.text.primary,
     fontSize: 16,
   },
+  campoApagado: { opacity: OPACIDAD_APAGADO },
   adjunto: { alignSelf: 'flex-start' },
   miniatura: { width: 96, height: 96, borderRadius: radius.lg, backgroundColor: color.surface.raised },
   quitar: {

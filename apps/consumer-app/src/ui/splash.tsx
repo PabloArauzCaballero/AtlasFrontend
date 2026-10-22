@@ -24,7 +24,7 @@
  * 1860 ms  ┃ un punto da una vuelta alrededor de la «A» dejando la órbita dibujada (`ui/orbita-arranque.tsx`)
  * 1960 ms  ┃ A·T·L·A·S aparecen una a una y el tracking se cierra hacia el centro
  * 2600 ms  ┃ el respiro: todo quieto salvo los rayos, que siguen girando despacio
- * 2900 ms  ┃ (si la app está lista) la cámara acelera hacia la marca y la atraviesa
+ * 2900 ms  ┃ (si la app está lista) la escena se apaga en un fundido corto, sin zoom
  * ```
  *
  * ## Por qué ya no hay globo (2026-10-08)
@@ -47,12 +47,12 @@
  * Cuando la sesion tarda menos que el intro —el caso normal— no se nota ninguna espera, porque la
  * app termino de cargar mientras se dibujaba la letra.
  *
- * ## Por que se va hacia ADELANTE y no se desvanece
+ * ## Por que la salida es un fundido y no un zoom (2026-10-22)
  *
- * La salida escala la marca hasta salirse del encuadre mientras se apaga: la camara se acerca y la
- * atraviesa, que es el mismo lenguaje que el corte de marca de la bienvenida (`ui/brand-cut.tsx`).
- * Un fundido a secas diria «se acabo el logo»; acercandose dice «estas entrando», y las dos
- * transiciones de la app cuentan entonces la misma historia.
+ * La salida escalaba la marca hasta atravesarla: una segunda fase de 640 ms encima de un intro que
+ * ya dura 2,9 s. Pablo pidió sacarla. Ahora, cuando la app esta lista, la escena se apaga quieta en
+ * 320 ms y debajo aparece la primera pantalla. Vale igual para la app del comercio, que usa esta
+ * misma capa.
  *
  * ## Movimiento reducido
  *
@@ -113,7 +113,11 @@ const GUION = {
 
 /** Lo que dura el intro completo. La salida se encadena DESPUES, y solo si la app esta lista. */
 const INTRO = 2900;
-const SALIDA = 640;
+/**
+ * La salida es un fundido corto, sin zoom (Pablo, 2026-10-22: «saquemos la segunda fase de la transición»).
+ * Antes la cámara aceleraba hacia la marca y la atravesaba durante 640 ms; ahora la escena se apaga quieta.
+ */
+const SALIDA = 320;
 
 /**
  * Las chispas del polvo de luz: ángulo y distancia de partida, tamaño y retardo. Con semilla fija,
@@ -241,7 +245,7 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
       terminar.current();
       return;
     }
-    salida.value = withTiming(1, { duration: SALIDA, easing: Easing.in(Easing.cubic) }, (completo) => {
+    salida.value = withTiming(1, { duration: SALIDA, easing: Easing.out(Easing.quad) }, (completo) => {
       if (completo) runOnJS(avisar)();
     });
   }, [introTerminado, listo, reduced, salida, avisar]);
@@ -270,20 +274,19 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
   /* ---- Las capas ---- */
 
   const capa = useAnimatedStyle(() => ({
-    // La capa entera se apaga en el ULTIMO tercio de la salida. Antes no: mientras la marca crece,
-    // lo que hay debajo todavia no debe verse o se ven dos pantallas superpuestas.
-    opacity: 1 - frena(tramo(salida.value, 0.55, 1)),
+    // Un solo fundido de la capa entera: sin la segunda fase (el zoom que atravesaba la marca).
+    opacity: 1 - salida.value,
   }));
 
   /** El resplandor de fondo. Nace tenue, se abre de golpe en el impacto y se queda respirando. */
   const resplandor = useAnimatedStyle(() => {
     const previo = suave(tramo(reloj.value, GUION.trazo[0], GUION.impacto)) * 0.45;
     const estallido = frenaMucho(tramo(reloj.value, GUION.impacto, GUION.impacto + 420));
-    const escala = 0.55 + previo * 0.35 + estallido * 0.55 + salida.value * 1.6;
+    const escala = 0.55 + previo * 0.35 + estallido * 0.55;
     return {
       // Acotado a 1: los dos sumandos pueden pasarse juntos, y una opacidad mayor que uno no es
       // «mas brillante», es un valor que cada plataforma decide recortar a su manera.
-      opacity: Math.min(1, previo + estallido * 0.75) * (1 - acelera(tramo(salida.value, 0.3, 1))),
+      opacity: Math.min(1, previo + estallido * 0.75),
       transform: [{ scale: escala }],
     };
   });
@@ -299,13 +302,11 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
    * El escenario: la camara.
    *
    * Un empuje LENTISIMO durante todo el intro —de 1.0 a 1.03— que la persona no ve pero si nota:
-   * es lo que separa un plano fijo de un plano vivo. Y luego la aceleracion de la salida, que es la
-   * misma idea llevada al extremo.
+   * es lo que separa un plano fijo de un plano vivo. La salida ya no empuja la camara: es solo el fundido.
    */
   const escenario = useAnimatedStyle(() => {
     const deriva = suave(tramo(reloj.value, 0, INTRO)) * 0.03;
-    const empuje = acelera(salida.value) * 0.55;
-    return { transform: [{ scale: 1 + deriva + empuje }] };
+    return { transform: [{ scale: 1 + deriva }] };
   });
 
   /** La marca: entra con un empuje corto y sale atravesando la camara. */
@@ -313,10 +314,8 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
     const asentar = frena(tramo(reloj.value, GUION.trazo[0], GUION.relleno[1]));
     const golpeVisual = frenaMucho(tramo(reloj.value, GUION.impacto, GUION.impacto + 220)) * 0.06;
     const retroceso = frena(tramo(reloj.value, GUION.impacto + 220, GUION.impacto + 560)) * 0.06;
-    const atravesar = acelera(salida.value) * 7.2;
     return {
-      opacity: 1 - acelera(tramo(salida.value, 0.4, 1)),
-      transform: [{ scale: 0.92 + asentar * 0.08 + golpeVisual - retroceso + atravesar }],
+      transform: [{ scale: 0.92 + asentar * 0.08 + golpeVisual - retroceso }],
     };
   });
 
@@ -406,8 +405,8 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
     const pico = Math.sin(Math.PI * tramo(reloj.value, GUION.rayos[0], GUION.rayos[0] + 520));
     const visible = Math.max(abre * 0.32, pico * 0.85);
     return {
-      opacity: visible * (1 - acelera(tramo(salida.value, 0, 0.7))),
-      transform: [{ rotate: `${reloj.value * 0.012 + salida.value * 40}deg` }, { scale: 0.3 + abre * 0.7 + salida.value * 1.2 }],
+      opacity: visible,
+      transform: [{ rotate: `${reloj.value * 0.012}deg` }, { scale: 0.3 + abre * 0.7 }],
     };
   });
 
@@ -575,7 +574,7 @@ export function AnimatedSplash({ listo, onDone }: { listo: boolean; onDone: () =
 
           <View style={styles.rotulo}>
             {LETRAS.map((letra, indice) => (
-              <LetraDelRotulo key={`${letra}-${indice}`} letra={letra} indice={indice} reloj={reloj} salida={salida} />
+              <LetraDelRotulo key={`${letra}-${indice}`} letra={letra} indice={indice} reloj={reloj} />
             ))}
           </View>
         </View>
@@ -639,12 +638,10 @@ function LetraDelRotulo({
   letra,
   indice,
   reloj,
-  salida,
 }: {
   letra: string;
   indice: number;
   reloj: SharedValue<number>;
-  salida: SharedValue<number>;
 }) {
   /** Distancia al centro del rotulo, en «letras». Con cinco letras: -2, -1, 0, 1, 2. */
   const desdeCentro = indice - (LETRAS.length - 1) / 2;
@@ -658,11 +655,11 @@ function LetraDelRotulo({
     // de que la ultima letra ya se lee.
     const apertura = 1 - frenaMucho(tramo(reloj.value, desde, hasta + 180));
     return {
-      opacity: avance * (1 - acelera(tramo(salida.value, 0.25, 0.85))),
+      opacity: avance,
       transform: [
-        { translateX: desdeCentro * apertura * 16 + desdeCentro * acelera(salida.value) * 190 },
+        { translateX: desdeCentro * apertura * 16 },
         { translateY: (1 - avance) * 10 },
-        { scale: 0.94 + avance * 0.06 + acelera(salida.value) * 0.9 },
+        { scale: 0.94 + avance * 0.06 },
       ],
     };
   });

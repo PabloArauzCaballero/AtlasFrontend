@@ -25,10 +25,11 @@ import * as supportApi from '../../../src/api/endpoints/support';
 import { CHAT_POLL_MS, fueLeido, mezclarMensajes, subirFotoAlChat, ultimaSecuencia } from '../../../src/features/support-chat';
 import { AdjuntoImagen } from '../../../src/ui/adjunto-imagen';
 import { CompositorChat } from '../../../src/ui/compositor-chat';
-import { Icon } from '../../../src/ui/icons';
+import { AvisoDelSistema, BurbujaChat, InicioDeChat, NotaDeSeguridad, PresenciaDeSoporte, SeparadorDeDia } from '../../../src/ui/chat-kit';
+import { armarHilo, horaCorta, type LadoDelMensaje } from '../../../src/features/chat-hilo';
 import { Gap, HeaderAction, Screen, ScreenHeader } from '../../../src/ui/layout';
-import { AtlasText, Badge, Card, EmptyState, Skeleton } from '../../../src/ui/primitives';
-import { color, radius, space } from '../../../src/theme/tokens';
+import { AtlasText, Badge, Card, Skeleton } from '../../../src/ui/primitives';
+import { color, space } from '../../../src/theme/tokens';
 import { useCopy } from '../../../src/features/use-contenido-remoto';
 
 /** Identificador propio del mensaje. Se conserva al reintentar: es lo que evita duplicarlo. */
@@ -188,6 +189,8 @@ export default function Conversacion() {
     ]);
   };
 
+  const hilo = armarHilo(mensajes, ladoDelMensaje);
+
   return (
     <Screen
       scroll={false}
@@ -217,34 +220,25 @@ export default function Conversacion() {
             adjuntoUri={fotoPendiente}
             onQuitarAdjunto={() => setFotoPendiente(null)}
             enviando={enviando}
-            placeholder="Escribe un mensaje…"
+            placeholder="Cuéntanos qué pasó…"
           />
-          {/*
-            La advertencia del ⓘ del campo viejo, ahora a la vista: nadie de Atlas pide el PIN ni los
-            códigos, y quien escribe con prisa no abre una ayuda para enterarse.
-          */}
-          <AtlasText variant="micro" tone="tertiary" style={{ textAlign: 'center' }}>
-            Nunca escribas tu PIN ni el código que te llega por SMS o correo.
-          </AtlasText>
+          {/* Nadie de Atlas pide el PIN ni los códigos, y quien escribe con prisa no abre una ayuda para enterarse. */}
+          <NotaDeSeguridad />
         </View>
       }
     >
       <ScreenHeader
         title="Soporte"
-        subtitle="Escríbenos tu duda."
         onBack="auto"
         action={<HeaderAction icon="cerrar" label="Cerrar la conversación" onPress={cerrarConversacion} />}
       />
+      <PresenciaDeSoporte estado={error ? 'reconectando' : 'en_linea'} />
 
       {cargando ? (
         <Card>
           <Skeleton height={40} width="70%" />
           <Skeleton height={40} width="55%" />
         </Card>
-      ) : null}
-
-      {!cargando && mensajes.length === 0 ? (
-        <EmptyState icon="ayuda" title="Aún no hay mensajes" detail="Escribe abajo y te respondemos por aquí mismo." />
       ) : null}
 
       {/*
@@ -258,16 +252,47 @@ export default function Conversacion() {
         ref={scrollRef}
         style={{ flex: 1 }}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
-        contentContainerStyle={{ gap: space.sm, paddingBottom: space.base, flexGrow: 1, justifyContent: 'flex-end' }}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: space.base, flexGrow: 1, justifyContent: 'flex-end' }}
       >
-        {mensajes.map((mensaje) => (
-          <Burbuja key={mensaje.messageId} mensaje={mensaje} leido={fueLeido(mensaje, readState)} />
-        ))}
+        {!cargando && mensajes.length === 0 ? (
+          <InicioDeChat sugerencias={SUGERENCIAS} onElegir={(frase) => setTexto(frase)} />
+        ) : null}
+        {hilo.map((entrada) =>
+          entrada.tipo === 'dia' ? (
+            <SeparadorDeDia key={entrada.clave} dia={entrada.etiqueta} />
+          ) : (
+            <Mensaje
+              key={entrada.clave}
+              mensaje={entrada.mensaje}
+              lado={entrada.lado}
+              primeroDelGrupo={entrada.primeroDelGrupo}
+              ultimoDelGrupo={entrada.ultimoDelGrupo}
+              leido={fueLeido(entrada.mensaje, readState)}
+            />
+          ),
+        )}
       </ScrollView>
 
       <Gap size="sm" />
     </Screen>
   );
+}
+
+/**
+ * Los temas con los que más se escribe a soporte. Tocar uno escribe la primera frase; la persona la
+ * completa con su caso. Son frases en su voz, no categorías del sistema.
+ */
+const SUGERENCIAS = [
+  'Tengo una duda sobre mi próxima cuota',
+  'Pagué y todavía no se refleja',
+  'Quiero saber cómo va mi solicitud',
+  'Tuve un problema al comprar en un comercio',
+] as const;
+
+function ladoDelMensaje(mensaje: supportApi.SupportMessage): LadoDelMensaje {
+  if (mensaje.senderActorType === 'SYSTEM' || mensaje.visibility === 'SYSTEM') return 'sistema';
+  return mensaje.senderActorType === 'CUSTOMER' ? 'mio' : 'suyo';
 }
 
 /**
@@ -277,81 +302,48 @@ export default function Conversacion() {
  * de las dos partes, es una regla de la casa. Confundirlo con un mensaje del agente haria pensar
  * que el agente esta a punto de pedir algo.
  */
-function Burbuja({ mensaje, leido }: { mensaje: supportApi.SupportMessage; leido: boolean }) {
+function Mensaje({
+  mensaje,
+  lado,
+  primeroDelGrupo,
+  ultimoDelGrupo,
+  leido,
+}: {
+  mensaje: supportApi.SupportMessage;
+  lado: LadoDelMensaje;
+  primeroDelGrupo: boolean;
+  ultimoDelGrupo: boolean;
+  leido: boolean;
+}) {
   const t = useCopy();
-  const mio = mensaje.senderActorType === 'CUSTOMER';
-  const delSistema = mensaje.senderActorType === 'SYSTEM' || mensaje.visibility === 'SYSTEM';
-
-  if (delSistema) {
-    return (
-      <Card tone="warning" padding="tight">
-        <AtlasText variant="caption" tone="secondary">
-          {mensaje.body}
-        </AtlasText>
-      </Card>
-    );
-  }
+  if (lado === 'sistema') return <AvisoDelSistema texto={mensaje.body ?? ''} />;
+  const mio = lado === 'mio';
 
   return (
-    <View style={{ alignItems: mio ? 'flex-end' : 'flex-start' }}>
-      <View
-        style={{
-          maxWidth: '85%',
-          // El mío en superficie de marca tenue y el del agente en la superficie elevada normal:
-          // el lado ya lo dice, pero el color lo dice también para quien no distingue el lado.
-          backgroundColor: mio ? color.surface.raisedStrong : color.surface.raised,
-          borderRadius: radius.lg,
-          // La cola: la esquina de abajo del lado de quien habla se aprieta, como en cualquier chat.
-          ...(mio ? { borderBottomRightRadius: radius.xs } : { borderBottomLeftRadius: radius.xs }),
-          padding: space.sm,
-          gap: space.xs,
-        }}
-      >
-        <AtlasText variant="body">{mensaje.body}</AtlasText>
-
-        {mensaje.attachments.map((adjunto) =>
-          adjunto.mime?.startsWith('image/') ? (
-            <AdjuntoImagen key={adjunto.attachmentId} adjunto={adjunto} />
-          ) : (
-            <Badge key={adjunto.attachmentId} label={`📎 ${adjunto.filename}`} tone="info" />
-          ),
-        )}
-
-        {/*
-          La redaccion se EXPLICA. Un texto que aparece tachado sin motivo se lee como un fallo de la
-          app; decir que se oculto un codigo enseña, ademas, por que no hay que compartirlo.
-        */}
-        {mensaje.redacted ? (
-          <AtlasText variant="caption" tone="secondary">
-            {t.texto('soporte.dato_oculto')}
-          </AtlasText>
-        ) : null}
-
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: space.xs }}>
-          <AtlasText variant="caption" tone="secondary">
-            {new Date(mensaje.createdAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}
-          </AtlasText>
-          {mio ? (
-            /*
-              Un check = enviado; dos = leído (y en el color de marca). El texto se queda: el color solo
-              no lo lee quien no distingue colores, y el check solo no lo anuncia un lector de pantalla.
-            */
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }} accessibilityLabel={leido ? 'Leído' : 'Enviado'}>
-              <View style={{ flexDirection: 'row' }}>
-                <Icon name="check" size={14} tint={leido ? color.action.primary : color.text.secondary} />
-                {leido ? (
-                  <View style={{ marginLeft: -8 }}>
-                    <Icon name="check" size={14} tint={color.action.primary} />
-                  </View>
-                ) : null}
-              </View>
-              <AtlasText variant="caption" tone={leido ? 'brand' : 'secondary'}>
-                {leido ? 'Leído' : 'Enviado'}
-              </AtlasText>
-            </View>
-          ) : null}
-        </View>
-      </View>
-    </View>
+    <BurbujaChat
+      mio={mio}
+      primeroDelGrupo={primeroDelGrupo}
+      ultimoDelGrupo={ultimoDelGrupo}
+      hora={horaCorta(mensaje.createdAt)}
+      estado={mio ? (leido ? 'leido' : 'enviado') : undefined}
+      /*
+        La redaccion se EXPLICA. Un texto que aparece tachado sin motivo se lee como un fallo de la
+        app; decir que se oculto un codigo enseña, ademas, por que no hay que compartirlo.
+      */
+      nota={mensaje.redacted ? t.texto('soporte.dato_oculto') : null}
+    >
+      {mensaje.body ? (
+        <AtlasText variant="body" style={mio ? { color: color.text.onBrand } : undefined}>
+          {mensaje.body}
+        </AtlasText>
+      ) : null}
+      {mensaje.attachments.map((adjunto) =>
+        adjunto.mime?.startsWith('image/') ? (
+          <AdjuntoImagen key={adjunto.attachmentId} adjunto={adjunto} />
+        ) : (
+          <Badge key={adjunto.attachmentId} label={`📎 ${adjunto.filename}`} tone="info" />
+        ),
+      )}
+    </BurbujaChat>
   );
 }

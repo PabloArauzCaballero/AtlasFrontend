@@ -38,6 +38,11 @@ jest.mock('../src/device/camara-de-prueba', () => ({
   ...jest.requireActual('../src/device/camara-de-prueba'),
   estaDisponible: () => false,
 }));
+jest.mock('../src/device/archivos', () => ({
+  ...jest.requireActual('../src/device/archivos'),
+  // 1,2 MB por defecto: el peso de una foto de carnet con detalle.
+  leerBytes: jest.fn(async () => new Uint8Array(1_200_000)),
+}));
 jest.mock('../src/features/evidence-upload', () => ({
   ...jest.requireActual('../src/features/evidence-upload'),
   uploadEvidence: jest.fn(),
@@ -85,6 +90,12 @@ async function terminaDeCerrarseLaHoja() {
   });
 }
 
+/** En la vista previa: «Usar esta foto». */
+async function usarLaFoto() {
+  await waitFor(() => expect(screen.getByTestId('revision-de-captura')).toBeTruthy());
+  await fireEvent.press(screen.getByTestId('revision-usar'));
+}
+
 /** La primera vez que se abre el escaner en la pantalla, antes pasa por la hoja de consejo. */
 async function abrirEscanerConConsejo() {
   await fireEvent.press(screen.getByText('Tomar foto'));
@@ -128,6 +139,10 @@ describe('identidad con la bandera del escaner encendida', () => {
     expect(screen.getByText('1 de 5')).toBeTruthy();
 
     await abrirEscanerConConsejo();
+    // Primero se ve la foto; no se sube hasta que la persona la acepta.
+    await waitFor(() => expect(screen.getByTestId('revision-de-captura')).toBeTruthy());
+    expect(subir).not.toHaveBeenCalled();
+    await usarLaFoto();
 
     await waitFor(() => expect(subir).toHaveBeenCalledTimes(1));
     expect(escanear).toHaveBeenCalledTimes(1);
@@ -135,11 +150,13 @@ describe('identidad con la bandera del escaner encendida', () => {
     // Con plazo y con forma de cancelar.
     expect(typeof subir.mock.calls[0]![0].plazo).toBe('function');
     expect(subir.mock.calls[0]![0].signal).toBeDefined();
-    // Y el carrusel se va a la siguiente pendiente, no a la primera.
+    // Y el carrusel (montado de nuevo al salir de la vista previa) se va a la siguiente pendiente.
+    await medirCarrusel();
     await waitFor(() => expect(screen.getByText('2 de 5')).toBeTruthy());
     expect(screen.getByText('Reverso del carnet')).toBeTruthy();
-    // Ni la camara de la app ni una segunda confirmacion: lo escaneado queda en la lamina.
+    // Ni la camara de la app ni la vista previa: lo subido queda en la lamina.
     expect(screen.queryByTestId('visor-de-la-camara')).toBeNull();
+    expect(screen.queryByTestId('revision-de-captura')).toBeNull();
   });
 
   it('si el escaner no esta disponible, abre la camara de siempre y sube con origen «camera»', async () => {
@@ -155,6 +172,7 @@ describe('identidad con la bandera del escaner encendida', () => {
     expect(subir).not.toHaveBeenCalled();
 
     await fireEvent.press(screen.getByText('Tomar foto'));
+    await usarLaFoto();
     await waitFor(() => expect(subir).toHaveBeenCalledTimes(1));
     expect(mockTomarFoto).toHaveBeenCalledWith({ quality: 0.7, skipProcessing: true });
     expect(subir.mock.calls[0]![0]).toMatchObject({ kind: 'identity_front', localUri: 'file:///foto.jpg', captureSource: 'camera' });
@@ -172,17 +190,29 @@ describe('identidad con la bandera del escaner encendida', () => {
     expect(screen.queryByText('Repite la foto')).toBeNull();
   });
 
-  it('un recorte pequeño o que no es el carnet entero no se sube: se pide repetirlo', async () => {
+  it('si la foto no parece un carnet, pregunta antes de subirla: «Tomar otra» repite y «Sí, es mi carnet» sube igual', async () => {
     escanear.mockResolvedValueOnce({ tipo: 'imagen', uri: 'file:///chico.jpg', ancho: 1000, alto: 630, origen: 'escaner_sistema' });
     await pintar();
     await abrirEscanerConConsejo();
-    await waitFor(() => expect(screen.getByText('La imagen salió muy pequeña. Acerca un poco el teléfono.')).toBeTruthy());
+    await usarLaFoto();
+    await waitFor(() => expect(screen.getByText('¿Seguro que esta foto es tu carnet?')).toBeTruthy());
+    expect(screen.getByText('La imagen salió muy pequeña para leer el número.')).toBeTruthy();
     expect(subir).not.toHaveBeenCalled();
 
+    // «Tomar otra foto»: el escáner se vuelve a abrir cuando la hoja terminó de irse.
     escanear.mockResolvedValueOnce({ tipo: 'imagen', uri: 'file:///cuadrado.jpg', ancho: 2000, alto: 2000, origen: 'escaner_sistema' });
-    await fireEvent.press(screen.getByText('Repetir la foto'));
-    await waitFor(() => expect(screen.getByText('No parece el carnet entero. Repite con los cuatro bordes a la vista.')).toBeTruthy());
+    await fireEvent.press(screen.getByTestId('duda-repetir'));
+    await terminaDeCerrarseLaHoja();
+    await waitFor(() => expect(escanear).toHaveBeenCalledTimes(2));
+    await usarLaFoto();
+    await waitFor(() =>
+      expect(screen.getByText('El recorte no tiene la forma de un carnet: puede faltar un borde o ser otro documento.')).toBeTruthy(),
+    );
     expect(subir).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByTestId('duda-usar-igual'));
+    await waitFor(() => expect(subir).toHaveBeenCalledTimes(1));
+    expect(subir.mock.calls[0]![0]).toMatchObject({ kind: 'identity_front', localUri: 'file:///cuadrado.jpg', captureSource: 'system_scanner' });
   });
 
   it('antes del primer escaneo explica como ponerlo; cerrar la hoja no abre nada y no vuelve a salir', async () => {
@@ -217,6 +247,7 @@ describe('identidad con la bandera del escaner encendida', () => {
 
     await terminaDeCerrarseLaHoja();
     await waitFor(() => expect(escanear).toHaveBeenCalledTimes(1));
+    await usarLaFoto();
     await waitFor(() => expect(subir).toHaveBeenCalledTimes(1));
 
     // Cerrar la hoja con «Cerrar» (sin pedir el escáner) no lo abre al terminar de irse.
@@ -273,6 +304,7 @@ describe('identidad con la bandera del escaner encendida', () => {
     );
     await pintar();
     await abrirEscanerConConsejo();
+    await usarLaFoto();
 
     await waitFor(() => expect(screen.getByText('Subiendo el anverso…')).toBeTruthy());
     await fireEvent.press(screen.getByText('Cancelar la subida'));
@@ -287,6 +319,7 @@ describe('identidad con la bandera del escaner encendida', () => {
       throw new AtlasApiError({ kind: 'timeout', code: 'UPLOAD_TIMEOUT', message: 'vencio' });
     });
     await fireEvent.press(screen.getByText('Tomar foto'));
+    await usarLaFoto();
     await waitFor(() => expect(screen.getByText('La foto no terminó de subirse')).toBeTruthy());
     expect(escanear).toHaveBeenCalledTimes(2);
 
@@ -307,6 +340,7 @@ describe('identidad con la bandera apagada: como siempre', () => {
     await fireEvent.press(screen.getByText('Tomar foto'));
     await waitFor(() => expect(screen.getByTestId('visor-de-la-camara')).toBeTruthy());
     await fireEvent.press(screen.getByText('Tomar foto'));
+    await usarLaFoto();
 
     await waitFor(() => expect(subir).toHaveBeenCalledTimes(1));
     expect(escanear).not.toHaveBeenCalled();
@@ -336,6 +370,7 @@ describe('identidad con la bandera apagada: como siempre', () => {
     await fireEvent.press(screen.getByText('Tomar foto'));
     await waitFor(() => expect(screen.getByTestId('visor-de-la-camara')).toBeTruthy());
     await fireEvent.press(screen.getByText('Tomar foto'));
+    await usarLaFoto();
     await waitFor(() => expect(screen.getByText('Subiendo el anverso…')).toBeTruthy());
 
     await fireEvent.press(screen.getByText('Cancelar la subida'));
@@ -344,6 +379,43 @@ describe('identidad con la bandera apagada: como siempre', () => {
     expect(senal?.aborted).toBe(true);
     expect(screen.getByTestId('visor-de-la-camara')).toBeTruthy();
     expect(screen.getByText('Cancelar')).toBeTruthy();
+  });
+});
+
+describe('vista previa con la cámara de la app', () => {
+  beforeEach(() => habilitado.mockReturnValue(false));
+
+  it('«Repetir» vuelve al visor sin subir nada', async () => {
+    mockTomarFoto.mockResolvedValue({ uri: 'file:///foto.jpg', width: 3024, height: 4032 });
+    await pintar();
+    await fireEvent.press(screen.getByText('Tomar foto'));
+    await waitFor(() => expect(screen.getByTestId('visor-de-la-camara')).toBeTruthy());
+    await fireEvent.press(screen.getByText('Tomar foto'));
+    await waitFor(() => expect(screen.getByTestId('revision-de-captura')).toBeTruthy());
+    expect(screen.getByText('Se leen tu nombre y el número.')).toBeTruthy();
+
+    await fireEvent.press(screen.getByTestId('revision-repetir'));
+    await waitFor(() => expect(screen.getByTestId('visor-de-la-camara')).toBeTruthy());
+    expect(subir).not.toHaveBeenCalled();
+  });
+
+  it('una foto casi sin detalle (oscura o del piso) pregunta si es el carnet', async () => {
+    const { leerBytes } = jest.requireMock('../src/device/archivos') as { leerBytes: jest.Mock };
+    leerBytes.mockResolvedValueOnce(new Uint8Array(90_000));
+    mockTomarFoto.mockResolvedValue({ uri: 'file:///oscura.jpg', width: 3024, height: 4032 });
+    await pintar();
+    await fireEvent.press(screen.getByText('Tomar foto'));
+    await waitFor(() => expect(screen.getByTestId('visor-de-la-camara')).toBeTruthy());
+    await fireEvent.press(screen.getByText('Tomar foto'));
+    await usarLaFoto();
+
+    await waitFor(() => expect(screen.getByText('¿Seguro que esta foto es tu carnet?')).toBeTruthy());
+    expect(screen.getByText('La foto casi no tiene detalle: puede estar oscura, borrosa o no mostrar el carnet.')).toBeTruthy();
+    expect(subir).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByTestId('duda-usar-igual'));
+    await waitFor(() => expect(subir).toHaveBeenCalledTimes(1));
+    expect(subir.mock.calls[0]![0]).toMatchObject({ kind: 'identity_front', localUri: 'file:///oscura.jpg' });
   });
 });
 
