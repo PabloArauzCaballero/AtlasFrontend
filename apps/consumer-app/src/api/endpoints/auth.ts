@@ -89,3 +89,15 @@ export const confirmPinChange = (input: { challengeToken: string; code: string; 
  */
 export const verifyPin = (pin: string) =>
   request<{ verified: true; verifiedAt: string }>('/auth/pin/verify', { method: 'POST', body: { pin } });
+
+/**
+ * Repetir el PIN y recibir una PRUEBA que el servidor comprueba y gasta en la operacion sensible
+ * (declarar un correo nuevo). A diferencia de `verifyPin`, un «si» del cliente no se cree: la prueba
+ * vale 300 s, sirve una sola vez y solo para esta cuenta. Un PIN errado es 400 `REAUTH_INVALID_PASSWORD`
+ * y cuenta en el bloqueo del ingreso (429 `ACCOUNT_LOCKED` al agotar los intentos).
+ */
+export const reauthenticate = (pin: string) =>
+  request<{ reauthToken: string; expiresInSeconds: number; expiresAt: string }>('/auth/reauthenticate', {
+    method: 'POST',
+    body: { password: pin },
+  });

@@ -41,6 +41,12 @@ const BY_CODE: Record<string, ChangeEmailFailure> = {
   INVALID_VERIFICATION_CODE: { kind: 'field', field: 'code', message: 'El código no es correcto. Revísalo e inténtalo de nuevo.' },
   VERIFICATION_CODE_EXPIRED: { kind: 'field', field: 'code', message: 'El código venció. Pide uno nuevo.' },
   VERIFICATION_ATTEMPT_NOT_FOUND: { kind: 'field', field: 'code', message: 'Primero pide un código para este correo.' },
+  // La prueba de PIN vencio (5 minutos) o ya se uso: la pantalla vuelve a abrir la hoja del PIN.
+  REAUTH_REQUIRED: {
+    kind: 'banner',
+    title: 'Confirma tu PIN otra vez',
+    detail: 'La confirmación con tu PIN venció antes de terminar. Escríbelo de nuevo para continuar; tu correo escrito no se pierde.',
+  },
   VERIFICATION_RATE_LIMITED: {
     kind: 'banner',
     title: 'Espera un momento',

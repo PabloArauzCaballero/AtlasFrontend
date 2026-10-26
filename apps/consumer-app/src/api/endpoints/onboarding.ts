@@ -168,7 +168,12 @@ export const submitContactVerification = (
  * enviando el `contactMethodId` devuelto aqui. Declarar otra vez el mismo valor sin verificar
  * devuelve el mismo id, asi que una correccion que quedo a medias se retoma escribiendolo de nuevo.
  */
-export const addContactMethod = (customerId: string, body: { contactType: 'phone' | 'email'; value: string }) =>
+export const addContactMethod = (
+  customerId: string,
+  body: { contactType: 'phone' | 'email'; value: string },
+  /** Prueba de `reauthenticate()`: el servidor la exige para declarar un correo y la gasta al aceptarlo. */
+  reauthToken?: string,
+) =>
   request<{
     customerId: string;
     contactMethodId: string;
@@ -177,7 +182,11 @@ export const addContactMethod = (customerId: string, body: { contactType: 'phone
     valueLast4: string | null;
     emailDomain: string | null;
     nextStep: string;
-  }>(`/customer-onboarding/${customerId}/contact-methods`, { method: 'POST', body });
+  }>(`/customer-onboarding/${customerId}/contact-methods`, {
+    method: 'POST',
+    body,
+    ...(reauthToken ? { headers: { 'x-reauth-token': reauthToken } } : {}),
+  });
 
 export const updateProfile = (
   customerId: string,

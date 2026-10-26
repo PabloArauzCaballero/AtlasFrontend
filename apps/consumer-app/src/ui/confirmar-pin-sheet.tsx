@@ -23,17 +23,24 @@ import { BottomSheet } from './help-sheet';
 import { PinField } from './pin-field';
 import { AtlasText, Button, Cargando } from './primitives';
 
-export function ConfirmarPinSheet({
+export function ConfirmarPinSheet<R = unknown>({
   visible,
   onClose,
   onVerificado,
   motivo = 'Por tu seguridad, escribe tu PIN para continuar.',
+  verificar = verifyPin as unknown as (pin: string) => Promise<R>,
 }: {
   visible: boolean;
   onClose: () => void;
-  /** Se llama UNA vez, cuando el servidor confirmó el PIN. */
-  onVerificado: () => void;
+  /** Se llama UNA vez, cuando el servidor confirmó el PIN, con lo que devolvió `verificar`. */
+  onVerificado: (resultado: R) => void;
   motivo?: string;
+  /**
+   * Cómo se comprueba el PIN. Por omisión, `verifyPin` (sólo responde si es el correcto). Una operación
+   * que el servidor protege con prueba de un solo uso pasa `reauthenticate`, y recibe la prueba en
+   * `onVerificado` para mandarla con la operación.
+   */
+  verificar?: (pin: string) => Promise<R>;
 }) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -55,11 +62,14 @@ export function ConfirmarPinSheet({
     setVerificando(true);
     setError(null);
     try {
-      await verifyPin(completo);
-      onVerificado();
+      const resultado = await verificar(completo);
+      onVerificado(resultado);
     } catch (caught) {
       setPin('');
-      if (caught instanceof AtlasApiError && caught.kind === 'rate_limited') {
+      if (caught instanceof AtlasApiError && caught.code === 'ACCOUNT_LOCKED') {
+        // El bloqueo del ingreso dura minutos, no uno: decir «espera un minuto» haría volver a fallar.
+        setError('Por tu seguridad bloqueamos el PIN unos minutos tras varios intentos fallidos. Vuelve a probar más tarde.');
+      } else if (caught instanceof AtlasApiError && caught.kind === 'rate_limited') {
         setError('Demasiados intentos seguidos. Espera un minuto y vuelve a probar.');
       } else if (caught instanceof AtlasApiError && (caught.code === 'PIN_INCORRECT' || caught.status === 400)) {
         setError('PIN incorrecto.');

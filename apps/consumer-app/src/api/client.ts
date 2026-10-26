@@ -70,6 +70,11 @@ export type RequestOptions = {
    * `credentials: 'include'`, para que el navegador guarde y mande la cookie del token de refresco.
    */
   sesion?: boolean;
+  /**
+   * Cabeceras propias de una operacion, como la prueba de reautenticacion (`x-reauth-token`). Van
+   * antes que las del cliente: ninguna operacion puede pisar la autorizacion ni el tenant.
+   */
+  headers?: Record<string, string>;
 };
 
 type Envelope<T> = { requestId?: string; data?: T; error?: { code?: string; message?: string; issues?: { path?: string; message?: string }[] } };
@@ -153,6 +158,7 @@ async function rawRequest<T>(
       // Sólo en la web y sólo en las llamadas de sesión: es lo que deja al navegador guardar y mandar la cookie.
       ...(sesionEnCookie ? { credentials: 'include' as const } : {}),
       headers: {
+        ...options.headers,
         accept: 'application/json',
         'x-tenant-id': apiConfig.tenantId,
         // Un id por OPERACION, no por intento: si el 401 dispara un refresco y se reintenta, las dos

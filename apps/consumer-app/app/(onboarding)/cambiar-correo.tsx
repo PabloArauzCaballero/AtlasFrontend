@@ -14,16 +14,26 @@
  * principal —y en el de ingreso— cuando llega el codigo que se envio A ESE correo. Hasta entonces
  * el anterior sigue funcionando: equivocarse otra vez al escribirlo no deja a nadie fuera.
  *
+ * ## Por que pide el PIN antes
+ *
+ * Con la sesion sola, quien tuviera un telefono prestado o perdido podia poner un correo suyo,
+ * confirmarlo —el codigo llega a ESE correo— y pedir desde ahi un PIN nuevo. El servidor exige ahora
+ * una prueba de PIN (`reauthenticate`, un solo uso, 5 minutos) para aceptar el correo; esta pantalla la
+ * pide con la misma hoja que protege «Mis datos». Reenviar el codigo no la vuelve a pedir: el correo ya
+ * esta declarado y reenviar no cambia nada de la cuenta.
+ *
  * Vive en `(onboarding)` porque ese grupo solo exige sesion: sirve igual a quien esta en pleno alta
  * que a quien ya tiene la cuenta activa.
  */
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { reauthenticate } from '../../src/api/endpoints/auth';
 import * as onboardingApi from '../../src/api/endpoints/onboarding';
-import { describeError } from '../../src/api/errors';
+import { AtlasApiError, describeError } from '../../src/api/errors';
 import { changeEmailFailure, domainOf, emailError } from '../../src/features/change-email';
 import { useSession } from '../../src/session/session';
 import { firstBlocker } from '../../src/ui/blocked';
+import { ConfirmarPinSheet } from '../../src/ui/confirmar-pin-sheet';
 import { Field } from '../../src/ui/fields';
 import { Gap, Screen, ScreenHeader } from '../../src/ui/layout';
 import { AtlasText, Button, Card, ErrorState } from '../../src/ui/primitives';
@@ -45,6 +55,7 @@ export default function ChangeEmail() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [promoted, setPromoted] = useState(true);
+  const [pidiendoPin, setPidiendoPin] = useState(false);
 
   const localEmailError = emailError(email);
   const failure = error ? changeEmailFailure(error, step === 'email' ? 'email' : 'code') : null;
@@ -54,17 +65,38 @@ export default function ChangeEmail() {
 
   /*
    * Declarar + pedir el codigo van juntos: para la persona es UN paso («mandame el codigo»).
+   * Declarar el correo exige el PIN (la prueba llega de la hoja); reenviar, no.
    * Si ya existe el correo sin verificar, el servidor devuelve el mismo id y esto retoma.
    */
-  const sendCode = async () => {
+  const pedirCodigo = () => {
     setEmailTouched(true);
     if (!customerId || busy || localEmailError) return;
+    setError(null);
+    if (sent?.contactMethodId) void enviarCodigo(sent.contactMethodId);
+    else setPidiendoPin(true);
+  };
+
+  const declararYEnviar = async (reauthToken: string) => {
+    if (!customerId) return;
     setBusy(true);
     setError(null);
     try {
-      const contactMethodId =
-        sent?.contactMethodId ??
-        (await onboardingApi.addContactMethod(customerId, { contactType: 'email', value: email.trim() })).contactMethodId;
+      const declarado = await onboardingApi.addContactMethod(customerId, { contactType: 'email', value: email.trim() }, reauthToken);
+      await enviarCodigo(declarado.contactMethodId);
+    } catch (caught) {
+      setError(caught);
+      // La prueba vencio o ya se uso: se vuelve a pedir el PIN, sin perder el correo escrito.
+      if (caught instanceof AtlasApiError && caught.code === 'REAUTH_REQUIRED') setPidiendoPin(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const enviarCodigo = async (contactMethodId: string) => {
+    if (!customerId) return;
+    setBusy(true);
+    setError(null);
+    try {
       const result = await onboardingApi.requestContactVerification(customerId, {
         contactType: 'email',
         verificationChannel: 'email',
@@ -113,7 +145,7 @@ export default function ChangeEmail() {
     step === 'email' ? (
       <Button
         label="Enviarme el código"
-        onPress={sendCode}
+        onPress={pedirCodigo}
         loading={busy}
         disabled={busy}
         blockedReason={firstBlocker([[!localEmailError, localEmailError ?? '']])}
@@ -130,7 +162,7 @@ export default function ChangeEmail() {
             haptic="success"
           />
         ) : null}
-        <Button label="Enviar otro código" variant="ghost" onPress={sendCode} disabled={busy} />
+        <Button label="Enviar otro código" variant="ghost" onPress={pedirCodigo} disabled={busy} />
         <Button label="Corregir el correo" variant="ghost" onPress={editEmail} disabled={busy} />
       </>
     ) : (
@@ -151,7 +183,7 @@ export default function ChangeEmail() {
           title={generic.title}
           detail={generic.detail}
           reference={generic.reference}
-          onRetry={generic.canRetry ? (step === 'code' ? confirmCode : sendCode) : undefined}
+          onRetry={generic.canRetry ? (step === 'code' ? confirmCode : pedirCodigo) : undefined}
         />
       ) : null}
 
@@ -183,7 +215,8 @@ export default function ChangeEmail() {
             required
           />
           <AtlasText variant="caption" tone="tertiary">
-            Hasta que confirmes el código, tu correo actual sigue funcionando.
+            Te pediremos tu PIN para confirmar que eres tú. Hasta que confirmes el código, tu correo actual sigue
+            funcionando.
           </AtlasText>
         </>
       ) : null}
@@ -194,7 +227,7 @@ export default function ChangeEmail() {
             <ErrorState
               title="No pudimos entregar el código"
               detail={`El correo a @${domainOf(email)} no salió. Revisa que esté bien escrito o pide otro código.`}
-              onRetry={sendCode}
+              onRetry={pedirCodigo}
             />
           ) : (
             <Card>
@@ -238,6 +271,17 @@ export default function ChangeEmail() {
       <AtlasText variant="caption" tone="tertiary">
         Nunca te pediremos este código por teléfono ni por redes sociales.
       </AtlasText>
+
+      <ConfirmarPinSheet
+        visible={pidiendoPin}
+        onClose={() => setPidiendoPin(false)}
+        motivo="Para cambiar el correo con el que entras, confirma que eres tú con tu PIN."
+        verificar={reauthenticate}
+        onVerificado={(prueba) => {
+          setPidiendoPin(false);
+          void declararYEnviar(prueba.reauthToken);
+        }}
+      />
     </Screen>
   );
 }
